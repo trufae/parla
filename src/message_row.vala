@@ -1,0 +1,141 @@
+namespace Dc {
+
+    /**
+     * A single message bubble in the conversation view.
+     * Incoming messages are left-aligned, outgoing messages right-aligned.
+     */
+    public class MessageRow : Gtk.ListBoxRow {
+
+        public int message_id { get; private set; }
+
+        public void highlight () {
+            this.add_css_class ("message-new");
+            Timeout.add (2000, () => {
+                this.remove_css_class ("message-new");
+                return Source.REMOVE;
+            });
+        }
+
+        public MessageRow (Message msg) {
+            this.message_id = msg.id;
+            this.activatable = false;
+            this.selectable = false;
+
+            /* Info messages (system notifications) get centered styling */
+            if (msg.is_info) {
+                build_info_row (msg);
+                return;
+            }
+
+            bool outgoing = msg.is_outgoing;
+
+            /* Outer container for alignment */
+            var outer = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 0);
+            outer.margin_start = 8;
+            outer.margin_end = 8;
+            outer.margin_top = 2;
+            outer.margin_bottom = 2;
+
+            /* Bubble */
+            var bubble = new Gtk.Box (Gtk.Orientation.VERTICAL, 2);
+            bubble.add_css_class ("message-bubble");
+            bubble.add_css_class (outgoing ? "outgoing" : "incoming");
+
+            /* Sender name (incoming only) */
+            if (!outgoing && msg.sender_name != null && msg.sender_name.length > 0) {
+                var sender = new Gtk.Label (msg.sender_name);
+                sender.add_css_class ("message-sender");
+                sender.halign = Gtk.Align.START;
+                sender.xalign = 0;
+                bubble.append (sender);
+            }
+
+            /* File attachment indicator */
+            if (msg.file_name != null && msg.file_name.length > 0) {
+                var file_box = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 6);
+                file_box.add_css_class ("message-attachment");
+
+                var icon = new Gtk.Image.from_icon_name ("mail-attachment-symbolic");
+                icon.pixel_size = 16;
+                file_box.append (icon);
+
+                var fname = new Gtk.Label (msg.file_name);
+                fname.add_css_class ("dim-label");
+                fname.ellipsize = Pango.EllipsizeMode.MIDDLE;
+                fname.max_width_chars = 28;
+                file_box.append (fname);
+
+                bubble.append (file_box);
+
+                /* Try to show image preview for image types */
+                if (msg.file_mime != null && msg.file_mime.has_prefix ("image/") &&
+                    msg.file_path != null &&
+                    FileUtils.test (msg.file_path, FileTest.EXISTS)) {
+                    try {
+                        var pixbuf = new Gdk.Pixbuf.from_file_at_scale (
+                            msg.file_path, 280, 280, true);
+                        var texture = Gdk.Texture.for_pixbuf (pixbuf);
+                        var picture = new Gtk.Picture.for_paintable (texture);
+                        picture.content_fit = Gtk.ContentFit.CONTAIN;
+                        picture.width_request = 200;
+                        picture.add_css_class ("message-image");
+                        bubble.append (picture);
+                    } catch (Error e) {
+                        /* Skip image preview on error */
+                    }
+                }
+            }
+
+            /* Message text */
+            if (msg.text != null && msg.text.length > 0) {
+                var text = new Gtk.Label (msg.text);
+                text.wrap = true;
+                text.wrap_mode = Pango.WrapMode.WORD_CHAR;
+                text.halign = Gtk.Align.START;
+                text.xalign = 0;
+                text.selectable = true;
+                text.max_width_chars = 50;
+                bubble.append (text);
+            }
+
+            /* Timestamp */
+            var time_str = format_timestamp (msg.timestamp);
+            var time_lbl = new Gtk.Label (time_str);
+            time_lbl.add_css_class ("message-time");
+            time_lbl.halign = Gtk.Align.END;
+            bubble.append (time_lbl);
+
+            /* Alignment: outgoing right, incoming left */
+            if (outgoing) {
+                var spacer = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 0);
+                spacer.hexpand = true;
+                outer.append (spacer);
+            }
+            outer.append (bubble);
+            if (!outgoing) {
+                var spacer = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 0);
+                spacer.hexpand = true;
+                outer.append (spacer);
+            }
+
+            this.child = outer;
+        }
+
+        private void build_info_row (Message msg) {
+            var label = new Gtk.Label (msg.text ?? "");
+            label.add_css_class ("dim-label");
+            label.add_css_class ("caption");
+            label.halign = Gtk.Align.CENTER;
+            label.margin_top = 4;
+            label.margin_bottom = 4;
+            label.wrap = true;
+            this.child = label;
+        }
+
+        private static string format_timestamp (int64 ts) {
+            if (ts <= 0) return "";
+            var dt = new DateTime.from_unix_local (ts);
+            return dt.format ("%H:%M");
+        }
+    }
+}
