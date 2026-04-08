@@ -62,7 +62,16 @@ namespace Dc {
             var sidebar_box = new Gtk.Box (Gtk.Orientation.VERTICAL, 0);
 
             sidebar_header = new Adw.HeaderBar ();
-            sidebar_header.title_widget = new Adw.WindowTitle ("Delta Chat", "");
+            var title_widget = new Adw.WindowTitle ("Delta Chat", "");
+            sidebar_header.title_widget = title_widget;
+
+            /* Click on title to show app menu (Settings / About) */
+            var title_click = new Gtk.GestureClick ();
+            title_click.button = 0; /* any button */
+            title_click.pressed.connect ((n, x, y) => {
+                show_app_menu (title_widget, x, y);
+            });
+            title_widget.add_controller (title_click);
 
             /* New chat button in header */
             var new_chat_btn = new Gtk.Button.from_icon_name ("list-add-symbolic");
@@ -1054,6 +1063,88 @@ namespace Dc {
                 yield load_chats ();
             } catch (Error e) {
                 show_toast ("Delete failed: " + e.message);
+            }
+        }
+
+        /* ================================================================
+         *  App Menu (Settings / About)
+         * ================================================================ */
+
+        private void show_app_menu (Gtk.Widget anchor, double x, double y) {
+            var popover = new Gtk.Popover ();
+
+            var vbox = new Gtk.Box (Gtk.Orientation.VERTICAL, 4);
+            vbox.margin_start = 4;
+            vbox.margin_end = 4;
+            vbox.margin_top = 4;
+            vbox.margin_bottom = 4;
+
+            var settings_btn = new Gtk.Button.with_label ("Settings");
+            settings_btn.add_css_class ("flat");
+            settings_btn.clicked.connect (() => {
+                popover.popdown ();
+                show_settings_dialog ();
+            });
+            vbox.append (settings_btn);
+
+            var about_btn = new Gtk.Button.with_label ("About");
+            about_btn.add_css_class ("flat");
+            about_btn.clicked.connect (() => {
+                popover.popdown ();
+                show_about_dialog ();
+            });
+            vbox.append (about_btn);
+
+            popover.child = vbox;
+            popover.set_parent (anchor);
+            popover.popup ();
+        }
+
+        private void show_about_dialog () {
+            var about = new Adw.AboutDialog ();
+            about.application_name = "Delta Chat";
+            about.application_icon = "org.deltachat.Gnome";
+            about.version = "0.1.0";
+            about.developer_name = "pancake";
+            about.developers = { "pancake" };
+            about.license_type = Gtk.License.GPL_3_0;
+            about.website = "https://delta.chat";
+            about.issue_url = "https://github.com/nickolay/deltachat-gnome/issues";
+            about.comments = "Native Delta Chat client for GNOME";
+            about.present (this);
+        }
+
+        private void show_settings_dialog () {
+            var rpc = ((Dc.Application) this.application).rpc;
+            var dialog = new SettingsDialog (rpc, this);
+            dialog.account_changed.connect (() => {
+                reload_active_account.begin ();
+            });
+            dialog.present (this);
+        }
+
+        public async void reload_active_account () {
+            var rpc = ((Dc.Application) this.application).rpc;
+            if (rpc.account_id <= 0) {
+                self_email = null;
+                var title = (Adw.WindowTitle) sidebar_header.title_widget;
+                title.subtitle = "";
+                content_stack.visible_child_name = "empty";
+                current_chat_id = 0;
+                return;
+            }
+            try {
+                self_email = yield rpc.get_config (rpc.account_id, "addr");
+            } catch (Error e) {
+                self_email = null;
+            }
+            var title = (Adw.WindowTitle) sidebar_header.title_widget;
+            title.subtitle = self_email ?? "Connected";
+            current_chat_id = 0;
+            content_stack.visible_child_name = "empty";
+            yield load_chats ();
+            if (!listening) {
+                start_listener.begin ();
             }
         }
 

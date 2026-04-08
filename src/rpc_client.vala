@@ -276,6 +276,10 @@ namespace Dc {
             return yield call ("get_account_info", build_params_int (acct_id));
         }
 
+        public async void remove_account (int acct_id) throws Error {
+            yield call ("remove_account", build_params_int (acct_id));
+        }
+
         public async void start_io (int acct_id) throws Error {
             yield call ("start_io", build_params_int (acct_id));
         }

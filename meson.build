@@ -23,6 +23,7 @@ sources = files(
   'src/compose_bar.vala',
   'src/chat_info_dialog.vala',
   'src/new_group_dialog.vala',
+  'src/settings_dialog.vala',
 )
 
 executable('deltachat-gnome',
@@ -34,4 +35,9 @@ executable('deltachat-gnome',
 install_data(
   'data/org.deltachat.Gnome.desktop',
   install_dir: get_option('datadir') / 'applications',
+)
+
+install_data(
+  'data/icons/hicolor/scalable/apps/org.deltachat.Gnome.svg',
+  install_dir: get_option('datadir') / 'icons' / 'hicolor' / 'scalable' / 'apps',
 )
