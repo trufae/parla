@@ -42,6 +42,13 @@ namespace Dc {
 
             /* Top row: name + time */
             var top = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 6);
+
+            if (entry.unread_count > 0) {
+                var dot = new Gtk.Label ("\u25CF");
+                dot.add_css_class ("unread-dot");
+                top.append (dot);
+            }
+
             name_label = new Gtk.Label (entry.name);
             name_label.add_css_class ("heading");
             name_label.ellipsize = Pango.EllipsizeMode.END;

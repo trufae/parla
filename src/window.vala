@@ -829,14 +829,6 @@ namespace Dc {
                     });
                     vbox.append (edit_btn);
                 }
-
-                var del_all_btn = new Gtk.Button.with_label ("Delete for everyone");
-                del_all_btn.add_css_class ("flat");
-                del_all_btn.clicked.connect (() => {
-                    popover.popdown ();
-                    do_delete_message.begin (msg_id, true);
-                });
-                vbox.append (del_all_btn);
             }
 
 
@@ -866,6 +858,16 @@ namespace Dc {
                 do_delete_message.begin (msg_id, false);
             });
             vbox.append (del_me_btn);
+
+            if (is_outgoing) {
+                var del_all_btn = new Gtk.Button.with_label ("Delete for everyone");
+                del_all_btn.add_css_class ("flat");
+                del_all_btn.clicked.connect (() => {
+                    popover.popdown ();
+                    do_delete_message.begin (msg_id, true);
+                });
+                vbox.append (del_all_btn);
+            }
 
             popover.child = vbox;
             popover.set_parent (message_listbox);
