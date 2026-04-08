@@ -28,6 +28,7 @@ namespace Dc {
         private int current_chat_id = 0;
         private string? self_email = null;
         private bool listening = false;
+        private bool stick_to_bottom = true;
 
         public Window (Dc.Application app) {
             Object (
@@ -153,6 +154,14 @@ namespace Dc {
             message_scroll = new Gtk.ScrolledWindow ();
             message_scroll.vexpand = true;
             message_scroll.hscrollbar_policy = Gtk.PolicyType.NEVER;
+
+            /* Auto-scroll: keep the user at the bottom when content or
+               viewport size changes, using non-deprecated notify signals. */
+            message_scroll.vadjustment.notify["upper"].connect (() => { maybe_autoscroll (); });
+            message_scroll.vadjustment.notify["page-size"].connect (() => { maybe_autoscroll (); });
+            message_scroll.vadjustment.notify["value"].connect (() => {
+                stick_to_bottom = is_near_bottom ();
+            });
 
             message_listbox = new Gtk.ListBox ();
             message_listbox.selection_mode = Gtk.SelectionMode.NONE;
@@ -372,7 +381,16 @@ namespace Dc {
             var chat_row = row.child as ChatRow;
             if (chat_row == null) return;
 
-            current_chat_id = chat_row.chat_id;
+            int chat_id = chat_row.chat_id;
+
+            /* Already viewing this chat — don't reload (the listener's
+               load_chats rebuild can re-select the same row). */
+            if (chat_id == current_chat_id
+                && content_stack.visible_child_name == "messages") {
+                return;
+            }
+
+            current_chat_id = chat_id;
 
             /* Find name */
             for (uint i = 0; i < chat_store.get_n_items (); i++) {
@@ -403,27 +421,34 @@ namespace Dc {
                 var msg_ids = yield rpc.get_message_ids (rpc.account_id, chat_id);
                 if (msg_ids == null) return;
 
-                /* Clear existing messages */
+                /* Fetch all messages first, then populate in one
+                   synchronous pass to avoid listener interference. */
+                uint start = msg_ids.get_length () > 100
+                    ? msg_ids.get_length () - 100 : 0;
+
+                var messages = new GLib.GenericArray<Message> ();
+                for (uint i = start; i < msg_ids.get_length (); i++) {
+                    int msg_id = (int) msg_ids.get_int_element (i);
+                    var msg_obj = yield rpc.get_message (rpc.account_id, msg_id);
+                    if (msg_obj == null) continue;
+                    messages.add (RpcClient.parse_message (msg_obj, self_email));
+                }
+
+                /* Discard if the user switched chats while fetching. */
+                if (chat_id != current_chat_id) return;
+
+                /* Clear and populate in one synchronous pass.
+                   Messages are already sorted by the RPC, so append(). */
                 message_store.remove_all ();
                 Gtk.ListBoxRow? row;
                 while ((row = message_listbox.get_row_at_index (0)) != null) {
                     message_listbox.remove (row);
                 }
 
-                /* Load messages (last 100 max for performance) */
-                uint start = msg_ids.get_length () > 100
-                    ? msg_ids.get_length () - 100 : 0;
-
-                for (uint i = start; i < msg_ids.get_length (); i++) {
-                    int msg_id = (int) msg_ids.get_int_element (i);
-                    var msg_obj = yield rpc.get_message (rpc.account_id, msg_id);
-                    if (msg_obj == null) continue;
-
-                    var msg = RpcClient.parse_message (msg_obj, self_email);
+                for (uint i = 0; i < messages.length; i++) {
+                    var msg = messages[i];
                     message_store.append (msg);
-
-                    var msg_row = new MessageRow (msg);
-                    message_listbox.append (msg_row);
+                    message_listbox.append (new MessageRow (msg));
                 }
 
                 scroll_to_bottom ();
@@ -432,25 +457,51 @@ namespace Dc {
             }
         }
 
-        private ulong scroll_handler_id = 0;
+        private bool is_near_bottom () {
+            var adj = message_scroll.vadjustment;
+            if (adj.upper <= adj.page_size) return true;
+            return (adj.upper - adj.value - adj.page_size) < 80;
+        }
+
+        private void maybe_autoscroll () {
+            if (!stick_to_bottom) return;
+            var adj = message_scroll.vadjustment;
+            if (adj.upper > adj.page_size) {
+                adj.value = adj.upper - adj.page_size;
+            }
+        }
 
         private void scroll_to_bottom () {
-            var adj = message_scroll.vadjustment;
-            /* If already at bottom or content fits, set directly */
-            if (adj.upper <= adj.page_size) return;
+            stick_to_bottom = true;
+            maybe_autoscroll ();
+        }
 
-            /* Connect a one-shot handler on the adjustment's "changed" signal
-               which fires after the layout pass updates upper/page_size. */
-            if (scroll_handler_id != 0) {
-                adj.disconnect (scroll_handler_id);
+        /* Insert a message row at the correct chronological position. */
+        private void insert_message_sorted (MessageRow row) {
+            /* Fast path: new message is newer than the last row. */
+            int count = (int) message_store.get_n_items ();
+            if (count > 0) {
+                var last = message_listbox.get_row_at_index (count - 1) as MessageRow;
+                if (last != null && (row.timestamp > last.timestamp ||
+                    (row.timestamp == last.timestamp
+                     && row.message_id >= last.message_id))) {
+                    message_listbox.append (row);
+                    return;
+                }
             }
-            scroll_handler_id = adj.changed.connect (() => {
-                adj.value = adj.upper - adj.page_size;
-                adj.disconnect (scroll_handler_id);
-                scroll_handler_id = 0;
-            });
-            /* Also try immediately in case layout is already done */
-            adj.value = adj.upper - adj.page_size;
+            /* Slow path: find the correct position. */
+            int pos = 0;
+            Gtk.ListBoxRow? existing;
+            while ((existing = message_listbox.get_row_at_index (pos)) != null) {
+                var mr = existing as MessageRow;
+                if (mr != null && (mr.timestamp > row.timestamp ||
+                    (mr.timestamp == row.timestamp && mr.message_id > row.message_id))) {
+                    message_listbox.insert (row, pos);
+                    return;
+                }
+                pos++;
+            }
+            message_listbox.append (row);
         }
 
         /* ================================================================
@@ -481,7 +532,7 @@ namespace Dc {
                     if (msg_obj != null) {
                         var msg = RpcClient.parse_message (msg_obj, self_email);
                         message_store.append (msg);
-                        message_listbox.append (new MessageRow (msg));
+                        insert_message_sorted (new MessageRow (msg));
                         scroll_to_bottom ();
                     }
                 }
@@ -547,13 +598,13 @@ namespace Dc {
                         /* Mark as seen */
                         yield rpc.mark_seen_msgs (rpc.account_id, new int[] { msg_id });
 
-                        /* If this message belongs to current chat, append it */
+                        /* If this message belongs to current chat, add it.
+                           Auto-scroll kicks in if user was at bottom. */
                         if (msg.chat_id == current_chat_id) {
                             message_store.append (msg);
                             var row = new MessageRow (msg);
-                            message_listbox.append (row);
+                            insert_message_sorted (row);
                             row.highlight ();
-                            scroll_to_bottom ();
                         }
 
                         /* Refresh chat list to update previews */

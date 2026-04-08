@@ -7,6 +7,7 @@ namespace Dc {
     public class MessageRow : Gtk.ListBoxRow {
 
         public int message_id { get; private set; }
+        public int64 timestamp { get; private set; }
         public bool is_outgoing { get; private set; }
         public string? file_path { get; private set; }
         public string? file_name { get; private set; }
@@ -21,6 +22,7 @@ namespace Dc {
 
         public MessageRow (Message msg) {
             this.message_id = msg.id;
+            this.timestamp = msg.timestamp;
             this.is_outgoing = msg.is_outgoing;
             this.file_path = msg.file_path;
             this.file_name = msg.file_name;
