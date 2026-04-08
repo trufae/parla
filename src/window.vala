@@ -271,8 +271,6 @@ namespace Dc {
                 for (uint i = 0; i < accounts.get_length (); i++) {
                     var acct = accounts.get_object_element (i);
                     int id = (int) acct.get_int_member ("id");
-                    string kind = acct.has_member ("kind")
-                        ? acct.get_string_member ("kind") : "unknown";
                     bool configured = yield rpc.is_configured (id);
                     if (configured) {
                         rpc.account_id = id;

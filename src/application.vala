@@ -1,5 +1,12 @@
 namespace Dc {
 
+    [CCode (cname = "gtk_style_context_add_provider_for_display")]
+    private extern void add_provider_for_display (
+        Gdk.Display display,
+        Gtk.StyleProvider provider,
+        uint priority
+    );
+
     public class Application : Adw.Application {
 
         public RpcClient rpc { get; private set; }
@@ -31,7 +38,7 @@ namespace Dc {
         private void load_css () {
             var provider = new Gtk.CssProvider ();
             provider.load_from_string (CSS);
-            Gtk.StyleContext.add_provider_for_display (
+            add_provider_for_display (
                 Gdk.Display.get_default (),
                 provider,
                 Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION

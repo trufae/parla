@@ -563,6 +563,12 @@ namespace Dc {
             yield call ("set_chat_profile_image", b.get_root ());
         }
 
+        public async void set_chat_ephemeral_timer (int acct_id, int chat_id,
+                                                      int timer) throws Error {
+            yield call ("set_chat_ephemeral_timer",
+                build_params_int3 (acct_id, chat_id, timer));
+        }
+
         /* ---- Parsing helpers ---- */
 
         /**

@@ -101,6 +101,43 @@ namespace Dc {
                 type_lbl.halign = Gtk.Align.CENTER;
                 content.append (type_lbl);
 
+                /* Disappearing messages */
+                int ephemeral_timer = chat.has_member ("ephemeralTimer")
+                    ? (int) chat.get_int_member ("ephemeralTimer") : 0;
+
+                var ephem_row = new Adw.ActionRow ();
+                ephem_row.title = "Disappearing messages";
+
+                int[] timer_values = { 0, 60, 300, 1800, 3600, 21600, 86400, 604800, 2419200 };
+                string[] timer_labels = {
+                    "Off", "1 minute", "5 minutes", "30 minutes",
+                    "1 hour", "6 hours", "1 day", "1 week", "4 weeks"
+                };
+                int active_idx = 0;
+                for (int i = 0; i < timer_values.length; i++) {
+                    if (timer_values[i] == ephemeral_timer) {
+                        active_idx = i;
+                    }
+                }
+                var combo = new Gtk.DropDown.from_strings (timer_labels);
+                combo.selected = active_idx;
+                combo.valign = Gtk.Align.CENTER;
+                combo.notify["selected"].connect (() => {
+                    uint idx = combo.selected;
+                    if (idx < timer_values.length) {
+                        rpc.set_chat_ephemeral_timer.begin (
+                            acct_id, chat_id, timer_values[(int) idx]);
+                    }
+                });
+                ephem_row.add_suffix (combo);
+                ephem_row.activatable_widget = combo;
+
+                var ephem_list = new Gtk.ListBox ();
+                ephem_list.selection_mode = Gtk.SelectionMode.NONE;
+                ephem_list.add_css_class ("boxed-list");
+                ephem_list.append (ephem_row);
+                content.append (ephem_list);
+
                 /* Separator */
                 content.append (new Gtk.Separator (Gtk.Orientation.HORIZONTAL));
 
