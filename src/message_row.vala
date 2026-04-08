@@ -7,6 +7,8 @@ namespace Dc {
     public class MessageRow : Gtk.ListBoxRow {
 
         public int message_id { get; private set; }
+        public string? file_path { get; private set; }
+        public string? file_name { get; private set; }
 
         public void highlight () {
             this.add_css_class ("message-new");
@@ -18,8 +20,12 @@ namespace Dc {
 
         public MessageRow (Message msg) {
             this.message_id = msg.id;
-            this.activatable = false;
+            this.file_path = msg.file_path;
+            this.file_name = msg.file_name;
             this.selectable = false;
+
+            bool has_attachment = (msg.file_path != null && msg.file_path.length > 0);
+            this.activatable = has_attachment;
 
             /* Info messages (system notifications) get centered styling */
             if (msg.is_info) {

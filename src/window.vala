@@ -158,6 +158,7 @@ namespace Dc {
             message_listbox.selection_mode = Gtk.SelectionMode.NONE;
             message_listbox.add_css_class ("boxed-list-separate");
             message_listbox.set_header_func (null);
+            message_listbox.row_activated.connect (on_message_row_activated);
             message_scroll.child = message_listbox;
             msg_box.append (message_scroll);
 
@@ -472,6 +473,36 @@ namespace Dc {
                 }
             } catch (Error e) {
                 show_toast ("Send failed: " + e.message);
+            }
+        }
+
+        /* ================================================================
+         *  Save attachment
+         * ================================================================ */
+
+        private void on_message_row_activated (Gtk.ListBoxRow row) {
+            var msg_row = row as MessageRow;
+            if (msg_row == null || msg_row.file_path == null) return;
+            if (!FileUtils.test (msg_row.file_path, FileTest.EXISTS)) {
+                show_toast ("File not available");
+                return;
+            }
+            save_attachment.begin (msg_row.file_path, msg_row.file_name);
+        }
+
+        private async void save_attachment (string src_path, string? name) {
+            var dialog = new Gtk.FileDialog ();
+            dialog.initial_name = name ?? Path.get_basename (src_path);
+            try {
+                var dest = yield dialog.save (this, null);
+                if (dest == null) return;
+                var src_file = File.new_for_path (src_path);
+                yield src_file.copy_async (dest, FileCopyFlags.OVERWRITE,
+                                           Priority.DEFAULT, null, null);
+                show_toast ("File saved");
+            } catch (Error e) {
+                if (e is IOError.CANCELLED) return;
+                show_toast ("Save failed: " + e.message);
             }
         }
 
