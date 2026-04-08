@@ -168,7 +168,7 @@ namespace Dc {
                 if (row == null) return;
                 var msg_row = row as MessageRow;
                 if (msg_row == null) return;
-                show_message_context_menu (msg_row.message_id, x, y);
+                show_message_context_menu (msg_row.message_id, msg_row.is_outgoing, x, y);
             });
             message_listbox.add_controller (msg_right_click);
 
@@ -687,27 +687,54 @@ namespace Dc {
          *  Message Context Menu (Reactions)
          * ================================================================ */
 
-        private void show_message_context_menu (int msg_id, double x, double y) {
+        private void show_message_context_menu (int msg_id, bool is_outgoing,
+                                                  double x, double y) {
             var popover = new Gtk.Popover ();
 
-            var box = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 2);
-            box.margin_start = 4;
-            box.margin_end = 4;
-            box.margin_top = 4;
-            box.margin_bottom = 4;
+            var vbox = new Gtk.Box (Gtk.Orientation.VERTICAL, 4);
+            vbox.margin_start = 4;
+            vbox.margin_end = 4;
+            vbox.margin_top = 4;
+            vbox.margin_bottom = 4;
 
             string[] emojis = { "👍", "❤️", "😂", "😮", "😢", "👎" };
-            foreach (string emoji in emojis) {
+            var emoji_row1 = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 2);
+            var emoji_row2 = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 2);
+            for (int i = 0; i < emojis.length; i++) {
+                string emoji = emojis[i];
                 var btn = new Gtk.Button.with_label (emoji);
                 btn.add_css_class ("flat");
                 btn.clicked.connect (() => {
                     popover.popdown ();
                     do_send_reaction.begin (msg_id, emoji);
                 });
-                box.append (btn);
+                if (i < 3) emoji_row1.append (btn);
+                else emoji_row2.append (btn);
+            }
+            vbox.append (emoji_row1);
+            vbox.append (emoji_row2);
+
+            vbox.append (new Gtk.Separator (Gtk.Orientation.HORIZONTAL));
+
+            var del_me_btn = new Gtk.Button.with_label ("Delete for me");
+            del_me_btn.add_css_class ("flat");
+            del_me_btn.clicked.connect (() => {
+                popover.popdown ();
+                do_delete_message.begin (msg_id, false);
+            });
+            vbox.append (del_me_btn);
+
+            if (is_outgoing) {
+                var del_all_btn = new Gtk.Button.with_label ("Delete for everyone");
+                del_all_btn.add_css_class ("flat");
+                del_all_btn.clicked.connect (() => {
+                    popover.popdown ();
+                    do_delete_message.begin (msg_id, true);
+                });
+                vbox.append (del_all_btn);
             }
 
-            popover.child = box;
+            popover.child = vbox;
             popover.set_parent (message_listbox);
             popover.set_pointing_to ({ (int) x, (int) y, 1, 1 });
             popover.popup ();
@@ -721,6 +748,38 @@ namespace Dc {
                 yield update_message_row (msg_id);
             } catch (Error e) {
                 show_toast ("Reaction failed: " + e.message);
+            }
+        }
+
+        private async void do_delete_message (int msg_id, bool for_all) {
+            var rpc = ((Dc.Application) this.application).rpc;
+            try {
+                if (for_all) {
+                    yield rpc.delete_messages_for_all (rpc.account_id, new int[] { msg_id });
+                } else {
+                    yield rpc.delete_messages (rpc.account_id, new int[] { msg_id });
+                }
+                /* Remove the row from the UI */
+                int idx = 0;
+                Gtk.ListBoxRow? row;
+                while ((row = message_listbox.get_row_at_index (idx)) != null) {
+                    var mr = row as MessageRow;
+                    if (mr != null && mr.message_id == msg_id) {
+                        message_listbox.remove (row);
+                        /* Also remove from the backing store */
+                        for (uint i = 0; i < message_store.get_n_items (); i++) {
+                            var m = (Message) message_store.get_item (i);
+                            if (m.id == msg_id) {
+                                message_store.remove (i);
+                                break;
+                            }
+                        }
+                        break;
+                    }
+                    idx++;
+                }
+            } catch (Error e) {
+                show_toast ("Delete failed: " + e.message);
             }
         }
 

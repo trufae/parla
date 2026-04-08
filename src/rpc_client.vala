@@ -503,6 +503,28 @@ namespace Dc {
             yield call ("delete_chat", build_params_int2 (acct_id, chat_id));
         }
 
+        public async void delete_messages (int acct_id, int[] msg_ids) throws Error {
+            var b = new Json.Builder ();
+            b.begin_array ();
+            b.add_int_value (acct_id);
+            b.begin_array ();
+            foreach (int mid in msg_ids) b.add_int_value (mid);
+            b.end_array ();
+            b.end_array ();
+            yield call ("delete_messages", b.get_root ());
+        }
+
+        public async void delete_messages_for_all (int acct_id, int[] msg_ids) throws Error {
+            var b = new Json.Builder ();
+            b.begin_array ();
+            b.add_int_value (acct_id);
+            b.begin_array ();
+            foreach (int mid in msg_ids) b.add_int_value (mid);
+            b.end_array ();
+            b.end_array ();
+            yield call ("delete_messages_for_all", b.get_root ());
+        }
+
         public async Json.Object? get_contact (int acct_id, int contact_id) throws Error {
             var result = yield call ("get_contact", build_params_int2 (acct_id, contact_id));
             if (result == null) return null;
