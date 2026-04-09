@@ -8,6 +8,11 @@ namespace Dc {
         private bool is_group = false;
         private Gtk.ListBox? members_list = null;
         private Gtk.Box content;
+        private string chat_name = "";
+        private int[] member_contact_ids = {};
+
+        public signal void chat_deleted (int chat_id);
+        public signal void chat_changed ();
 
         public ChatInfoDialog (RpcClient rpc, int acct_id, int chat_id) {
             this.rpc = rpc;
@@ -64,6 +69,7 @@ namespace Dc {
                     && chat.get_boolean_member ("isEncrypted");
 
                 is_group = chat_type == "Group" || chat_type == "Broadcast";
+                chat_name = name;
 
                 /* Avatar */
                 var avatar = new Adw.Avatar (80, name, true);
@@ -172,6 +178,7 @@ namespace Dc {
 
                     for (uint i = 0; i < ids.get_length (); i++) {
                         int cid = (int) ids.get_int_element (i);
+                        member_contact_ids += cid;
                         var contact = yield rpc.get_contact (acct_id, cid);
                         if (contact == null) continue;
 
@@ -181,6 +188,74 @@ namespace Dc {
 
                     content.append (members_list);
                 }
+
+                /* ---- Destructive Actions ---- */
+                content.append (new Gtk.Separator (Gtk.Orientation.HORIZONTAL));
+
+                var actions_list = new Gtk.ListBox ();
+                actions_list.selection_mode = Gtk.SelectionMode.NONE;
+                actions_list.add_css_class ("boxed-list");
+
+                /* Clear History */
+                var clear_row = new Adw.ActionRow ();
+                clear_row.title = "Clear History";
+                clear_row.subtitle = "Delete all messages";
+
+                var clear_me_btn = new Gtk.Button.with_label ("For Me");
+                clear_me_btn.valign = Gtk.Align.CENTER;
+                clear_me_btn.add_css_class ("flat");
+                clear_me_btn.clicked.connect (() => {
+                    confirm_clear_history.begin (false);
+                });
+                clear_row.add_suffix (clear_me_btn);
+
+                var clear_all_btn = new Gtk.Button.with_label ("For Everyone");
+                clear_all_btn.valign = Gtk.Align.CENTER;
+                clear_all_btn.add_css_class ("flat");
+                clear_all_btn.add_css_class ("error");
+                clear_all_btn.clicked.connect (() => {
+                    confirm_clear_history.begin (true);
+                });
+                clear_row.add_suffix (clear_all_btn);
+
+                actions_list.append (clear_row);
+
+                if (is_group) {
+                    /* Leave Group */
+                    var leave_row = new Adw.ActionRow ();
+                    leave_row.title = "Leave Group";
+                    leave_row.subtitle = "Stop receiving messages";
+                    leave_row.add_prefix (new Gtk.Image.from_icon_name ("system-log-out-symbolic"));
+                    leave_row.activatable = true;
+                    leave_row.activated.connect (() => {
+                        confirm_leave_group.begin ();
+                    });
+                    actions_list.append (leave_row);
+
+                    /* Disband Group */
+                    var disband_row = new Adw.ActionRow ();
+                    disband_row.title = "Disband Group";
+                    disband_row.subtitle = "Remove all members and delete messages";
+                    disband_row.add_prefix (new Gtk.Image.from_icon_name ("edit-delete-symbolic"));
+                    disband_row.activatable = true;
+                    disband_row.activated.connect (() => {
+                        confirm_disband_group.begin ();
+                    });
+                    actions_list.append (disband_row);
+                }
+
+                /* Delete for Me */
+                var del_row = new Adw.ActionRow ();
+                del_row.title = "Delete for Me";
+                del_row.subtitle = "Remove from your chat list";
+                del_row.add_prefix (new Gtk.Image.from_icon_name ("user-trash-symbolic"));
+                del_row.activatable = true;
+                del_row.activated.connect (() => {
+                    confirm_delete_chat.begin ();
+                });
+                actions_list.append (del_row);
+
+                content.append (actions_list);
 
             } catch (Error e) {
                 spinner.visible = false;
@@ -284,6 +359,159 @@ namespace Dc {
                 var err_dialog = new Adw.AlertDialog ("Error", e.message);
                 err_dialog.add_response ("ok", "OK");
                 err_dialog.present (this);
+            }
+        }
+
+        /* ---- Destructive action confirmations ---- */
+
+        private async void confirm_clear_history (bool for_all) {
+            string title = for_all ? "Clear for Everyone" : "Clear History";
+            string body = for_all
+                ? "Delete all messages for all participants? This cannot be undone."
+                : "Delete all messages from your device? This cannot be undone.";
+            string action_label = for_all ? "Clear for Everyone" : "Clear";
+
+            var dialog = new Adw.AlertDialog (title, body);
+            dialog.add_response ("cancel", "Cancel");
+            dialog.add_response ("clear", action_label);
+            dialog.set_response_appearance ("clear", Adw.ResponseAppearance.DESTRUCTIVE);
+            dialog.default_response = "cancel";
+            dialog.response.connect ((resp) => {
+                if (resp == "clear") {
+                    do_clear_history.begin (for_all);
+                }
+            });
+            dialog.present (this);
+        }
+
+        private async void do_clear_history (bool for_all) {
+            try {
+                var msg_ids = yield rpc.get_message_ids (acct_id, chat_id);
+                if (msg_ids == null || msg_ids.get_length () == 0) return;
+
+                int[] ids = new int[msg_ids.get_length ()];
+                for (uint i = 0; i < msg_ids.get_length (); i++) {
+                    ids[i] = (int) msg_ids.get_int_element (i);
+                }
+
+                if (for_all) {
+                    yield rpc.delete_messages_for_all (acct_id, ids);
+                } else {
+                    yield rpc.delete_messages (acct_id, ids);
+                }
+
+                chat_changed ();
+            } catch (Error e) {
+                var err = new Adw.AlertDialog ("Error", e.message);
+                err.add_response ("ok", "OK");
+                err.present (this);
+            }
+        }
+
+        private async void confirm_leave_group () {
+            var dialog = new Adw.AlertDialog (
+                "Leave Group",
+                "Leave \"%s\"? You will stop receiving messages.".printf (chat_name)
+            );
+            dialog.add_response ("cancel", "Cancel");
+            dialog.add_response ("leave", "Leave");
+            dialog.set_response_appearance ("leave", Adw.ResponseAppearance.DESTRUCTIVE);
+            dialog.default_response = "cancel";
+            dialog.response.connect ((resp) => {
+                if (resp == "leave") {
+                    do_leave_group.begin ();
+                }
+            });
+            dialog.present (this);
+        }
+
+        private async void do_leave_group () {
+            try {
+                yield rpc.leave_group (acct_id, chat_id);
+                chat_changed ();
+                this.close ();
+            } catch (Error e) {
+                var err = new Adw.AlertDialog ("Error", e.message);
+                err.add_response ("ok", "OK");
+                err.present (this);
+            }
+        }
+
+        private async void confirm_disband_group () {
+            var dialog = new Adw.AlertDialog (
+                "Disband Group",
+                "Remove all members from \"%s\" and delete all messages? This cannot be undone.".printf (chat_name)
+            );
+            dialog.add_response ("cancel", "Cancel");
+            dialog.add_response ("disband", "Disband");
+            dialog.set_response_appearance ("disband", Adw.ResponseAppearance.DESTRUCTIVE);
+            dialog.default_response = "cancel";
+            dialog.response.connect ((resp) => {
+                if (resp == "disband") {
+                    do_disband_group.begin ();
+                }
+            });
+            dialog.present (this);
+        }
+
+        private async void do_disband_group () {
+            try {
+                /* Remove all members except self */
+                foreach (int cid in member_contact_ids) {
+                    if (cid != 1) {
+                        yield rpc.remove_contact_from_chat (acct_id, chat_id, cid);
+                    }
+                }
+
+                /* Delete all messages for everyone */
+                var msg_ids = yield rpc.get_message_ids (acct_id, chat_id);
+                if (msg_ids != null && msg_ids.get_length () > 0) {
+                    int[] ids = new int[msg_ids.get_length ()];
+                    for (uint i = 0; i < msg_ids.get_length (); i++) {
+                        ids[i] = (int) msg_ids.get_int_element (i);
+                    }
+                    yield rpc.delete_messages_for_all (acct_id, ids);
+                }
+
+                /* Leave and delete the chat */
+                yield rpc.leave_group (acct_id, chat_id);
+                yield rpc.delete_chat (acct_id, chat_id);
+
+                chat_deleted (chat_id);
+                this.close ();
+            } catch (Error e) {
+                var err = new Adw.AlertDialog ("Error", e.message);
+                err.add_response ("ok", "OK");
+                err.present (this);
+            }
+        }
+
+        private async void confirm_delete_chat () {
+            var dialog = new Adw.AlertDialog (
+                "Delete for Me",
+                "Remove \"%s\" from your chat list? You may still receive messages if you are a member.".printf (chat_name)
+            );
+            dialog.add_response ("cancel", "Cancel");
+            dialog.add_response ("delete", "Delete");
+            dialog.set_response_appearance ("delete", Adw.ResponseAppearance.DESTRUCTIVE);
+            dialog.default_response = "cancel";
+            dialog.response.connect ((resp) => {
+                if (resp == "delete") {
+                    do_delete_chat_from_dialog.begin ();
+                }
+            });
+            dialog.present (this);
+        }
+
+        private async void do_delete_chat_from_dialog () {
+            try {
+                yield rpc.delete_chat (acct_id, chat_id);
+                chat_deleted (chat_id);
+                this.close ();
+            } catch (Error e) {
+                var err = new Adw.AlertDialog ("Error", e.message);
+                err.add_response ("ok", "OK");
+                err.present (this);
             }
         }
 

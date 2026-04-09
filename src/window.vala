@@ -850,7 +850,7 @@ namespace Dc {
         private void show_chat_context_menu (int chat_id, double x, double y) {
             var menu = new GLib.Menu ();
             menu.append ("Chat Info", "win.chat-info");
-            menu.append ("Delete Chat", "win.chat-delete");
+            menu.append ("Delete for Me", "win.chat-delete");
 
             /* Set up actions with the chat_id */
             var info_action = new SimpleAction ("chat-info", null);
@@ -1096,6 +1096,23 @@ namespace Dc {
         private async void show_chat_info (int chat_id) {
             var rpc = ((Dc.Application) this.application).rpc;
             var dialog = new ChatInfoDialog (rpc, rpc.account_id, chat_id);
+
+            dialog.chat_deleted.connect ((cid) => {
+                show_toast ("Chat deleted");
+                if (current_chat_id == cid) {
+                    current_chat_id = 0;
+                    content_stack.visible_child_name = "empty";
+                }
+                load_chats.begin ();
+            });
+
+            dialog.chat_changed.connect (() => {
+                load_chats.begin ();
+                if (current_chat_id == chat_id) {
+                    load_messages.begin (chat_id);
+                }
+            });
+
             dialog.present (this);
         }
 
@@ -1111,11 +1128,11 @@ namespace Dc {
             }
 
             var dialog = new Adw.AlertDialog (
-                "Delete Chat",
-                "Delete \"%s\"? This cannot be undone.".printf (chat_name)
+                "Delete for Me",
+                "Remove \"%s\" from your chat list? You may still receive messages if you are a group member.".printf (chat_name)
             );
             dialog.add_response ("cancel", "Cancel");
-            dialog.add_response ("delete", "Delete");
+            dialog.add_response ("delete", "Delete for Me");
             dialog.set_response_appearance ("delete", Adw.ResponseAppearance.DESTRUCTIVE);
             dialog.default_response = "cancel";
 
