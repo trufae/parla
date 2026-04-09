@@ -401,10 +401,11 @@ namespace Dc {
 
             int chat_id = chat_row.chat_id;
 
-            /* Already viewing this chat — don't reload (the listener's
-               load_chats rebuild can re-select the same row). */
+            /* Already viewing this chat — just scroll to bottom and focus input. */
             if (chat_id == current_chat_id
                 && content_stack.visible_child_name == "messages") {
+                scroll_to_bottom ();
+                compose_bar.grab_entry_focus ();
                 return;
             }
 
