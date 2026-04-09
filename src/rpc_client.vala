@@ -465,6 +465,20 @@ namespace Dc {
             return result.get_object ();
         }
 
+        public async Json.Array? get_contact_ids (int acct_id, string? query) throws Error {
+            var b = new Json.Builder ();
+            b.begin_array ();
+            b.add_int_value (acct_id);
+            b.add_int_value (0); /* listFlags: 0 = all known contacts */
+            if (query != null) b.add_string_value (query);
+            else b.add_null_value ();
+            b.end_array ();
+            var result = yield call ("get_contact_ids", b.get_root ());
+            if (result == null || result.get_node_type () != Json.NodeType.ARRAY)
+                return null;
+            return result.get_array ();
+        }
+
         public async int create_contact (int acct_id, string email) throws Error {
             var result = yield call ("create_contact",
                 build_params_int_str2 (acct_id, email, null));

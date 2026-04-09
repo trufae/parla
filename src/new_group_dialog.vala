@@ -7,7 +7,7 @@ namespace Dc {
         private RpcClient rpc;
         private int acct_id;
         private Gtk.Entry name_entry;
-        private Gtk.Entry member_entry;
+        /* member_entry removed — contact picker is used instead */
         private Gtk.ListBox member_listbox;
         private GenericArray<string> member_emails = new GenericArray<string> ();
         private string? avatar_path = null;
@@ -75,20 +75,11 @@ namespace Dc {
             members_header.append (members_lbl);
             content.append (members_header);
 
-            /* Add member entry */
-            var add_box = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 6);
-            member_entry = new Gtk.Entry ();
-            member_entry.placeholder_text = "user@example.com";
-            member_entry.hexpand = true;
-            member_entry.input_purpose = Gtk.InputPurpose.EMAIL;
-            member_entry.activate.connect (on_add_member);
-            add_box.append (member_entry);
-
-            var add_btn = new Gtk.Button.from_icon_name ("list-add-symbolic");
-            add_btn.tooltip_text = "Add member";
-            add_btn.clicked.connect (on_add_member);
-            add_box.append (add_btn);
-            content.append (add_box);
+            /* Add member button — opens contact picker */
+            var add_btn = new Gtk.Button.with_label ("Add Member\u2026");
+            add_btn.add_css_class ("suggested-action");
+            add_btn.clicked.connect (on_pick_member);
+            content.append (add_btn);
 
             /* Member list */
             member_listbox = new Gtk.ListBox ();
@@ -105,8 +96,15 @@ namespace Dc {
             this.child = box;
         }
 
-        private void on_add_member () {
-            string email = member_entry.text.strip ();
+        private void on_pick_member () {
+            var picker = new ContactPickerDialog (rpc, acct_id);
+            picker.contact_picked.connect ((contact_id, email) => {
+                add_member_email (email);
+            });
+            picker.present (this);
+        }
+
+        private void add_member_email (string email) {
             if (email.length == 0 || !email.contains ("@")) return;
 
             /* Avoid duplicates */
@@ -138,8 +136,6 @@ namespace Dc {
             row.add_suffix (remove_btn);
 
             member_listbox.append (row);
-            member_entry.text = "";
-            member_entry.grab_focus ();
         }
 
         private async void do_create () {

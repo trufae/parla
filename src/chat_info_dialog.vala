@@ -219,6 +219,19 @@ namespace Dc {
             }
             row.add_prefix (avatar);
 
+            /* Copy email button */
+            if (addr.length > 0) {
+                var copy_btn = new Gtk.Button.from_icon_name ("edit-copy-symbolic");
+                copy_btn.valign = Gtk.Align.CENTER;
+                copy_btn.add_css_class ("flat");
+                copy_btn.tooltip_text = "Copy email address";
+                copy_btn.clicked.connect (() => {
+                    var clipboard = this.get_clipboard ();
+                    clipboard.set_text (addr);
+                });
+                row.add_suffix (copy_btn);
+            }
+
             /* Remove button for groups (not self, contact_id=1 is self) */
             if (is_group && contact_id != 1) {
                 var remove_btn = new Gtk.Button.from_icon_name ("user-trash-symbolic");
@@ -246,35 +259,11 @@ namespace Dc {
         }
 
         private async void add_member_dialog () {
-            var dialog = new Adw.AlertDialog (
-                "Add Member",
-                "Enter the email address of the member to add."
-            );
-
-            var entry = new Gtk.Entry ();
-            entry.placeholder_text = "user@example.com";
-            entry.input_purpose = Gtk.InputPurpose.EMAIL;
-            dialog.extra_child = entry;
-
-            dialog.add_response ("cancel", "Cancel");
-            dialog.add_response ("add", "Add");
-            dialog.set_response_appearance ("add", Adw.ResponseAppearance.SUGGESTED);
-            dialog.default_response = "add";
-
-            entry.activate.connect (() => {
-                dialog.response ("add");
+            var picker = new ContactPickerDialog (rpc, acct_id);
+            picker.contact_picked.connect ((contact_id, email) => {
+                do_add_member.begin (email);
             });
-
-            dialog.response.connect ((resp) => {
-                if (resp == "add") {
-                    string email = entry.text.strip ();
-                    if (email.length > 0 && email.contains ("@")) {
-                        do_add_member.begin (email);
-                    }
-                }
-            });
-
-            dialog.present (this);
+            picker.present (this);
         }
 
         private async void do_add_member (string email) {

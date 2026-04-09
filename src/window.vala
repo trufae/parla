@@ -788,36 +788,14 @@ namespace Dc {
          * ================================================================ */
 
         private void on_new_chat () {
-            /* Simple dialog to create a new chat by email */
-            var dialog = new Adw.AlertDialog (
-                "New Chat",
-                "Enter the email address of the person you want to chat with."
-            );
+            var rpc = ((Dc.Application) this.application).rpc;
+            if (rpc.account_id <= 0) return;
 
-            var entry = new Gtk.Entry ();
-            entry.placeholder_text = "user@example.com";
-            entry.input_purpose = Gtk.InputPurpose.EMAIL;
-            dialog.extra_child = entry;
-
-            dialog.add_response ("cancel", "Cancel");
-            dialog.add_response ("create", "Create");
-            dialog.set_response_appearance ("create", Adw.ResponseAppearance.SUGGESTED);
-            dialog.default_response = "create";
-
-            entry.activate.connect (() => {
-                dialog.response ("create");
+            var picker = new ContactPickerDialog (rpc, rpc.account_id);
+            picker.contact_picked.connect ((contact_id, email) => {
+                create_chat_by_email.begin (email);
             });
-
-            dialog.response.connect ((resp) => {
-                if (resp == "create") {
-                    string email = entry.text.strip ();
-                    if (email.length > 0 && email.contains ("@")) {
-                        create_chat_by_email.begin (email);
-                    }
-                }
-            });
-
-            dialog.present (this);
+            picker.present (this);
         }
 
         private async void create_chat_by_email (string email) {
