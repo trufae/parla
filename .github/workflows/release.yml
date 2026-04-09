@@ -36,6 +36,10 @@ jobs:
             make \
             dpkg-dev
 
+      - name: Apply Debian 12 patch
+        if: matrix.distro == 'debian-12'
+        run: git apply dist/debian/debian12.patch
+
       - name: Build
         run: make
 

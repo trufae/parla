@@ -1,0 +1,817 @@
+diff --git a/src/chat_info_dialog.vala b/src/chat_info_dialog.vala
+index a1beb99..c2fcaf3 100644
+--- a/src/chat_info_dialog.vala
++++ b/src/chat_info_dialog.vala
+@@ -1,13 +1,13 @@
+ namespace Dc {
+ 
+-    public class ChatInfoDialog : Adw.Dialog {
++    public class ChatInfoDialog : Adw.Window {
+ 
+         private RpcClient rpc;
+         private int acct_id;
+         private int chat_id;
+         private bool is_group = false;
+         private Gtk.ListBox? members_list = null;
+-        private Gtk.Box content;
++        private Gtk.Box content_box;
+         private string chat_name = "";
+         private int[] member_contact_ids = {};
+ 
+@@ -19,34 +19,33 @@ namespace Dc {
+             this.acct_id = acct_id;
+             this.chat_id = chat_id;
+             this.title = "Chat Info";
+-            this.content_width = 360;
+-            this.content_height = 500;
++            this.set_default_size (360, 500);
++            this.modal = true;
+ 
+             var box = new Gtk.Box (Gtk.Orientation.VERTICAL, 0);
+ 
+             var header = new Adw.HeaderBar ();
+-            header.show_end_title_buttons = true;
+             box.append (header);
+ 
+-            content = new Gtk.Box (Gtk.Orientation.VERTICAL, 12);
+-            content.margin_start = 16;
+-            content.margin_end = 16;
+-            content.margin_top = 12;
+-            content.margin_bottom = 16;
++            content_box = new Gtk.Box (Gtk.Orientation.VERTICAL, 12);
++            content_box.margin_start = 16;
++            content_box.margin_end = 16;
++            content_box.margin_top = 12;
++            content_box.margin_bottom = 16;
+ 
+             var spinner = new Gtk.Spinner ();
+             spinner.spinning = true;
+             spinner.halign = Gtk.Align.CENTER;
+             spinner.margin_top = 40;
+-            content.append (spinner);
++            content_box.append (spinner);
+ 
+             var scroll = new Gtk.ScrolledWindow ();
+             scroll.vexpand = true;
+             scroll.hscrollbar_policy = Gtk.PolicyType.NEVER;
+-            scroll.child = content;
++            scroll.child = content_box;
+             box.append (scroll);
+ 
+-            this.child = box;
++            this.content = box;
+ 
+             load_info.begin (spinner);
+         }
+@@ -80,7 +79,7 @@ namespace Dc {
+                     } catch (Error e) { /* fallback */ }
+                 }
+                 avatar.halign = Gtk.Align.CENTER;
+-                content.append (avatar);
++                content_box.append (avatar);
+ 
+                 /* Change avatar button for groups */
+                 if (is_group) {
+@@ -90,14 +89,14 @@ namespace Dc {
+                     change_avatar_btn.clicked.connect (() => {
+                         pick_avatar.begin ();
+                     });
+-                    content.append (change_avatar_btn);
++                    content_box.append (change_avatar_btn);
+                 }
+ 
+                 /* Name */
+                 var name_lbl = new Gtk.Label (name);
+                 name_lbl.add_css_class ("title-1");
+                 name_lbl.halign = Gtk.Align.CENTER;
+-                content.append (name_lbl);
++                content_box.append (name_lbl);
+ 
+                 /* Type + encryption */
+                 string type_str = chat_type;
+@@ -105,7 +104,7 @@ namespace Dc {
+                 var type_lbl = new Gtk.Label (type_str);
+                 type_lbl.add_css_class ("dim-label");
+                 type_lbl.halign = Gtk.Align.CENTER;
+-                content.append (type_lbl);
++                content_box.append (type_lbl);
+ 
+                 /* Disappearing messages */
+                 int ephemeral_timer = chat.has_member ("ephemeralTimer")
+@@ -142,10 +141,10 @@ namespace Dc {
+                 ephem_list.selection_mode = Gtk.SelectionMode.NONE;
+                 ephem_list.add_css_class ("boxed-list");
+                 ephem_list.append (ephem_row);
+-                content.append (ephem_list);
++                content_box.append (ephem_list);
+ 
+                 /* Separator */
+-                content.append (new Gtk.Separator (Gtk.Orientation.HORIZONTAL));
++                content_box.append (new Gtk.Separator (Gtk.Orientation.HORIZONTAL));
+ 
+                 /* Members */
+                 if (chat.has_member ("contactIds")) {
+@@ -170,7 +169,7 @@ namespace Dc {
+                         header_box.append (add_btn);
+                     }
+ 
+-                    content.append (header_box);
++                    content_box.append (header_box);
+ 
+                     members_list = new Gtk.ListBox ();
+                     members_list.selection_mode = Gtk.SelectionMode.NONE;
+@@ -186,11 +185,11 @@ namespace Dc {
+                         members_list.append (row);
+                     }
+ 
+-                    content.append (members_list);
++                    content_box.append (members_list);
+                 }
+ 
+                 /* ---- Destructive Actions ---- */
+-                content.append (new Gtk.Separator (Gtk.Orientation.HORIZONTAL));
++                content_box.append (new Gtk.Separator (Gtk.Orientation.HORIZONTAL));
+ 
+                 var actions_list = new Gtk.ListBox ();
+                 actions_list.selection_mode = Gtk.SelectionMode.NONE;
+@@ -255,14 +254,14 @@ namespace Dc {
+                 });
+                 actions_list.append (del_row);
+ 
+-                content.append (actions_list);
++                content_box.append (actions_list);
+ 
+             } catch (Error e) {
+                 spinner.visible = false;
+                 var err = new Gtk.Label ("Failed to load: " + e.message);
+                 err.add_css_class ("dim-label");
+                 err.wrap = true;
+-                content.append (err);
++                content_box.append (err);
+             }
+         }
+ 
+@@ -338,7 +337,8 @@ namespace Dc {
+             picker.contact_picked.connect ((contact_id, email) => {
+                 do_add_member.begin (email);
+             });
+-            picker.present (this);
++            picker.set_transient_for (this);
++            picker.present ();
+         }
+ 
+         private async void do_add_member (string email) {
+@@ -356,9 +356,9 @@ namespace Dc {
+                     members_list.append (row);
+                 }
+             } catch (Error e) {
+-                var err_dialog = new Adw.AlertDialog ("Error", e.message);
++                var err_dialog = new Adw.MessageDialog (this, "Error", e.message);
+                 err_dialog.add_response ("ok", "OK");
+-                err_dialog.present (this);
++                err_dialog.present ();
+             }
+         }
+ 
+@@ -371,7 +371,7 @@ namespace Dc {
+                 : "Delete all messages from your device? This cannot be undone.";
+             string action_label = for_all ? "Clear for Everyone" : "Clear";
+ 
+-            var dialog = new Adw.AlertDialog (title, body);
++            var dialog = new Adw.MessageDialog (this, title, body);
+             dialog.add_response ("cancel", "Cancel");
+             dialog.add_response ("clear", action_label);
+             dialog.set_response_appearance ("clear", Adw.ResponseAppearance.DESTRUCTIVE);
+@@ -381,7 +381,7 @@ namespace Dc {
+                     do_clear_history.begin (for_all);
+                 }
+             });
+-            dialog.present (this);
++            dialog.present ();
+         }
+ 
+         private async void do_clear_history (bool for_all) {
+@@ -402,14 +402,15 @@ namespace Dc {
+ 
+                 chat_changed ();
+             } catch (Error e) {
+-                var err = new Adw.AlertDialog ("Error", e.message);
++                var err = new Adw.MessageDialog (this, "Error", e.message);
+                 err.add_response ("ok", "OK");
+-                err.present (this);
++                err.present ();
+             }
+         }
+ 
+         private async void confirm_leave_group () {
+-            var dialog = new Adw.AlertDialog (
++            var dialog = new Adw.MessageDialog (
++                this,
+                 "Leave Group",
+                 "Leave \"%s\"? You will stop receiving messages.".printf (chat_name)
+             );
+@@ -422,7 +423,7 @@ namespace Dc {
+                     do_leave_group.begin ();
+                 }
+             });
+-            dialog.present (this);
++            dialog.present ();
+         }
+ 
+         private async void do_leave_group () {
+@@ -431,14 +432,15 @@ namespace Dc {
+                 chat_changed ();
+                 this.close ();
+             } catch (Error e) {
+-                var err = new Adw.AlertDialog ("Error", e.message);
++                var err = new Adw.MessageDialog (this, "Error", e.message);
+                 err.add_response ("ok", "OK");
+-                err.present (this);
++                err.present ();
+             }
+         }
+ 
+         private async void confirm_disband_group () {
+-            var dialog = new Adw.AlertDialog (
++            var dialog = new Adw.MessageDialog (
++                this,
+                 "Disband Group",
+                 "Remove all members from \"%s\" and delete all messages? This cannot be undone.".printf (chat_name)
+             );
+@@ -451,7 +453,7 @@ namespace Dc {
+                     do_disband_group.begin ();
+                 }
+             });
+-            dialog.present (this);
++            dialog.present ();
+         }
+ 
+         private async void do_disband_group () {
+@@ -480,14 +482,15 @@ namespace Dc {
+                 chat_deleted (chat_id);
+                 this.close ();
+             } catch (Error e) {
+-                var err = new Adw.AlertDialog ("Error", e.message);
++                var err = new Adw.MessageDialog (this, "Error", e.message);
+                 err.add_response ("ok", "OK");
+-                err.present (this);
++                err.present ();
+             }
+         }
+ 
+         private async void confirm_delete_chat () {
+-            var dialog = new Adw.AlertDialog (
++            var dialog = new Adw.MessageDialog (
++                this,
+                 "Delete for Me",
+                 "Remove \"%s\" from your chat list? You may still receive messages if you are a member.".printf (chat_name)
+             );
+@@ -500,7 +503,7 @@ namespace Dc {
+                     do_delete_chat_from_dialog.begin ();
+                 }
+             });
+-            dialog.present (this);
++            dialog.present ();
+         }
+ 
+         private async void do_delete_chat_from_dialog () {
+@@ -509,9 +512,9 @@ namespace Dc {
+                 chat_deleted (chat_id);
+                 this.close ();
+             } catch (Error e) {
+-                var err = new Adw.AlertDialog ("Error", e.message);
++                var err = new Adw.MessageDialog (this, "Error", e.message);
+                 err.add_response ("ok", "OK");
+-                err.present (this);
++                err.present ();
+             }
+         }
+ 
+diff --git a/src/contact_picker_dialog.vala b/src/contact_picker_dialog.vala
+index 804c993..b4eff57 100644
+--- a/src/contact_picker_dialog.vala
++++ b/src/contact_picker_dialog.vala
+@@ -1,6 +1,6 @@
+ namespace Dc {
+ 
+-    public class ContactPickerDialog : Adw.Dialog {
++    public class ContactPickerDialog : Adw.Window {
+ 
+         public signal void contact_picked (int contact_id, string email);
+ 
+@@ -23,13 +23,12 @@ namespace Dc {
+             this.rpc = rpc;
+             this.acct_id = acct_id;
+             this.title = "Select Contact";
+-            this.content_width = 360;
+-            this.content_height = 500;
++            this.set_default_size (360, 500);
++            this.modal = true;
+ 
+             var box = new Gtk.Box (Gtk.Orientation.VERTICAL, 0);
+ 
+             var header = new Adw.HeaderBar ();
+-            header.show_end_title_buttons = true;
+             box.append (header);
+ 
+             var content = new Gtk.Box (Gtk.Orientation.VERTICAL, 8);
+@@ -66,7 +65,7 @@ namespace Dc {
+             content.append (scroll);
+ 
+             box.append (content);
+-            this.child = box;
++            this.content = box;
+ 
+             /* Close on Escape */
+             var key_ctrl = new Gtk.EventControllerKey ();
+diff --git a/src/message_row.vala b/src/message_row.vala
+index f84f63a..27bf8ed 100644
+--- a/src/message_row.vala
++++ b/src/message_row.vala
+@@ -129,7 +129,8 @@ namespace Dc {
+                             dw = 260;
+                         }
+                         var texture = Gdk.Texture.for_pixbuf (pixbuf);
+-                        var picture = new Gtk.Picture.for_paintable (texture);
++                        var picture = new Gtk.Picture ();
++                        picture.paintable = texture;
+                         picture.content_fit = Gtk.ContentFit.CONTAIN;
+                         picture.can_shrink = false;
+                         picture.set_size_request (dw, dh);
+diff --git a/src/new_group_dialog.vala b/src/new_group_dialog.vala
+index 90c16cf..630fda6 100644
+--- a/src/new_group_dialog.vala
++++ b/src/new_group_dialog.vala
+@@ -1,6 +1,6 @@
+ namespace Dc {
+ 
+-    public class NewGroupDialog : Adw.Dialog {
++    public class NewGroupDialog : Adw.Window {
+ 
+         public signal void group_created (int chat_id);
+ 
+@@ -17,8 +17,8 @@ namespace Dc {
+             this.rpc = rpc;
+             this.acct_id = acct_id;
+             this.title = "New Group";
+-            this.content_width = 360;
+-            this.content_height = 480;
++            this.set_default_size (360, 480);
++            this.modal = true;
+ 
+             var box = new Gtk.Box (Gtk.Orientation.VERTICAL, 0);
+ 
+@@ -93,7 +93,7 @@ namespace Dc {
+             scroll.child = content;
+             box.append (scroll);
+ 
+-            this.child = box;
++            this.content = box;
+         }
+ 
+         private void on_pick_member () {
+@@ -101,7 +101,8 @@ namespace Dc {
+             picker.contact_picked.connect ((contact_id, email) => {
+                 add_member_email (email);
+             });
+-            picker.present (this);
++            picker.set_transient_for (this);
++            picker.present ();
+         }
+ 
+         private void add_member_email (string email) {
+@@ -175,9 +176,9 @@ namespace Dc {
+                 group_created (new_chat_id);
+                 this.close ();
+             } catch (Error e) {
+-                var err = new Adw.AlertDialog ("Error", e.message);
++                var err = new Adw.MessageDialog (this, "Error", e.message);
+                 err.add_response ("ok", "OK");
+-                err.present (this);
++                err.present ();
+             }
+         }
+ 
+diff --git a/src/profile_dialog.vala b/src/profile_dialog.vala
+index a3f8638..152986d 100644
+--- a/src/profile_dialog.vala
++++ b/src/profile_dialog.vala
+@@ -1,6 +1,6 @@
+ namespace Dc {
+ 
+-    public class ProfileDialog : Adw.Dialog {
++    public class ProfileDialog : Adw.Window {
+ 
+         private RpcClient rpc;
+         private int acct_id;
+@@ -17,8 +17,8 @@ namespace Dc {
+             this.rpc = rpc;
+             this.acct_id = acct_id;
+             this.title = "My Profile";
+-            this.content_width = 360;
+-            this.content_height = 420;
++            this.set_default_size (360, 420);
++            this.modal = true;
+ 
+             var box = new Gtk.Box (Gtk.Orientation.VERTICAL, 0);
+ 
+@@ -94,7 +94,7 @@ namespace Dc {
+             scroll.child = content;
+             box.append (scroll);
+ 
+-            this.child = box;
++            this.content = box;
+ 
+             load_profile.begin ();
+         }
+@@ -138,9 +138,9 @@ namespace Dc {
+                 profile_updated ();
+                 this.close ();
+             } catch (Error e) {
+-                var err = new Adw.AlertDialog ("Error", e.message);
++                var err = new Adw.MessageDialog (this, "Error", e.message);
+                 err.add_response ("ok", "OK");
+-                err.present (this);
++                err.present ();
+             }
+         }
+ 
+diff --git a/src/settings_dialog.vala b/src/settings_dialog.vala
+index 84bc772..97e7ae7 100644
+--- a/src/settings_dialog.vala
++++ b/src/settings_dialog.vala
+@@ -1,10 +1,10 @@
+ namespace Dc {
+ 
+-    public class SettingsDialog : Adw.Dialog {
++    public class SettingsDialog : Adw.Window {
+ 
+         private RpcClient rpc;
+         private Gtk.ListBox accounts_list;
+-        private Gtk.Box content;
++        private Gtk.Box content_box;
+         private unowned Window app_window;
+ 
+         public signal void account_changed ();
+@@ -13,45 +13,44 @@ namespace Dc {
+             this.rpc = rpc;
+             this.app_window = window;
+             this.title = "Settings";
+-            this.content_width = 400;
+-            this.content_height = 480;
++            this.set_default_size (400, 480);
++            this.modal = true;
+ 
+             var box = new Gtk.Box (Gtk.Orientation.VERTICAL, 0);
+ 
+             var header = new Adw.HeaderBar ();
+-            header.show_end_title_buttons = true;
+             box.append (header);
+ 
+-            content = new Gtk.Box (Gtk.Orientation.VERTICAL, 16);
+-            content.margin_start = 16;
+-            content.margin_end = 16;
+-            content.margin_top = 12;
+-            content.margin_bottom = 16;
++            content_box = new Gtk.Box (Gtk.Orientation.VERTICAL, 16);
++            content_box.margin_start = 16;
++            content_box.margin_end = 16;
++            content_box.margin_top = 12;
++            content_box.margin_bottom = 16;
+ 
+             /* Accounts section */
+             var accounts_label = new Gtk.Label ("Accounts");
+             accounts_label.add_css_class ("title-3");
+             accounts_label.halign = Gtk.Align.START;
+-            content.append (accounts_label);
++            content_box.append (accounts_label);
+ 
+             accounts_list = new Gtk.ListBox ();
+             accounts_list.selection_mode = Gtk.SelectionMode.NONE;
+             accounts_list.add_css_class ("boxed-list");
+             accounts_list.row_activated.connect (on_row_activated);
+-            content.append (accounts_list);
++            content_box.append (accounts_list);
+ 
+             /* Add account button */
+             var add_btn = new Gtk.Button.with_label ("Add Account");
+             add_btn.add_css_class ("suggested-action");
+             add_btn.halign = Gtk.Align.START;
+             add_btn.clicked.connect (on_add_account);
+-            content.append (add_btn);
++            content_box.append (add_btn);
+ 
+             /* Behavior section */
+             var behavior_label = new Gtk.Label ("Behavior");
+             behavior_label.add_css_class ("title-3");
+             behavior_label.halign = Gtk.Align.START;
+-            content.append (behavior_label);
++            content_box.append (behavior_label);
+ 
+             var behavior_list = new Gtk.ListBox ();
+             behavior_list.selection_mode = Gtk.SelectionMode.NONE;
+@@ -94,15 +93,15 @@ namespace Dc {
+             md_row.activatable_widget = md_switch;
+ 
+             behavior_list.append (md_row);
+-            content.append (behavior_list);
++            content_box.append (behavior_list);
+ 
+             var scroll = new Gtk.ScrolledWindow ();
+             scroll.vexpand = true;
+             scroll.hscrollbar_policy = Gtk.PolicyType.NEVER;
+-            scroll.child = content;
++            scroll.child = content_box;
+             box.append (scroll);
+ 
+-            this.child = box;
++            this.content = box;
+ 
+             load_accounts.begin ();
+         }
+@@ -211,14 +210,15 @@ namespace Dc {
+                 account_changed ();
+                 yield load_accounts ();
+             } catch (Error e) {
+-                var err_dialog = new Adw.AlertDialog ("Error", e.message);
++                var err_dialog = new Adw.MessageDialog (app_window, "Error", e.message);
+                 err_dialog.add_response ("ok", "OK");
+-                err_dialog.present (app_window);
++                err_dialog.present ();
+             }
+         }
+ 
+         private void on_add_account () {
+-            var dialog = new Adw.AlertDialog (
++            var dialog = new Adw.MessageDialog (
++                app_window,
+                 "Add Account",
+                 "Enter your email and password."
+             );
+@@ -256,7 +256,7 @@ namespace Dc {
+                 }
+             });
+ 
+-            dialog.present (app_window);
++            dialog.present ();
+         }
+ 
+         private async void do_add_account (string email, string password) {
+@@ -269,14 +269,15 @@ namespace Dc {
+                 account_changed ();
+                 yield load_accounts ();
+             } catch (Error e) {
+-                var err_dialog = new Adw.AlertDialog ("Error", e.message);
++                var err_dialog = new Adw.MessageDialog (app_window, "Error", e.message);
+                 err_dialog.add_response ("ok", "OK");
+-                err_dialog.present (app_window);
++                err_dialog.present ();
+             }
+         }
+ 
+         private async void confirm_remove_account (int acct_id, string label) {
+-            var dialog = new Adw.AlertDialog (
++            var dialog = new Adw.MessageDialog (
++                app_window,
+                 "Remove Account",
+                 "Remove \"%s\"? This will delete all local data for this account.".printf (label)
+             );
+@@ -291,7 +292,7 @@ namespace Dc {
+                 }
+             });
+ 
+-            dialog.present (app_window);
++            dialog.present ();
+         }
+ 
+         private async void do_remove_account (int acct_id) {
+@@ -303,9 +304,9 @@ namespace Dc {
+                 account_changed ();
+                 yield load_accounts ();
+             } catch (Error e) {
+-                var err_dialog = new Adw.AlertDialog ("Error", e.message);
++                var err_dialog = new Adw.MessageDialog (app_window, "Error", e.message);
+                 err_dialog.add_response ("ok", "OK");
+-                err_dialog.present (app_window);
++                err_dialog.present ();
+             }
+         }
+     }
+diff --git a/src/window.vala b/src/window.vala
+index fda3f4e..de53bf0 100644
+--- a/src/window.vala
++++ b/src/window.vala
+@@ -4,7 +4,7 @@ namespace Dc {
+ 
+         /* Layout */
+         private Adw.ToastOverlay toast_overlay;
+-        private Adw.NavigationSplitView split_view;
++        private Adw.Leaflet leaflet;
+         private Adw.HeaderBar sidebar_header;
+         private Adw.HeaderBar content_header;
+         private Gtk.Label content_title_label;
+@@ -149,8 +149,6 @@ namespace Dc {
+             chat_scroll.child = chat_listbox;
+             sidebar_box.append (chat_scroll);
+ 
+-            var sidebar_page = new Adw.NavigationPage (sidebar_box, "Chats");
+-
+             /* ---- Content area ---- */
+             var content_box = new Gtk.Box (Gtk.Orientation.VERTICAL, 0);
+ 
+@@ -160,7 +158,10 @@ namespace Dc {
+             content_header.title_widget = content_title_label;
+ 
+             /* Show sidebar on mobile */
+-            content_header.show_back_button = true;
++            var back_btn = new Gtk.Button.from_icon_name ("go-previous-symbolic");
++            back_btn.tooltip_text = "Back to chats";
++            back_btn.visible = false;
++            content_header.pack_start (back_btn);
+ 
+             /* Search/filter button on the right side */
+             var search_btn = new Gtk.Button.from_icon_name ("edit-find-symbolic");
+@@ -314,17 +315,26 @@ namespace Dc {
+             content_stack.visible_child_name = "empty";
+             content_box.append (content_stack);
+ 
+-            var content_page = new Adw.NavigationPage (content_box, "Messages");
+-
+             /* ---- Split view ---- */
+-            split_view = new Adw.NavigationSplitView ();
+-            split_view.sidebar = sidebar_page;
+-            split_view.content = content_page;
+-            split_view.max_sidebar_width = 340;
+-            split_view.min_sidebar_width = 260;
++            leaflet = new Adw.Leaflet ();
++            leaflet.can_navigate_back = true;
++            sidebar_box.width_request = 300;
++            sidebar_box.hexpand = false;
++            leaflet.append (sidebar_box);
++            leaflet.append (new Gtk.Separator (Gtk.Orientation.VERTICAL));
++            content_box.hexpand = true;
++            leaflet.append (content_box);
++
++            /* Show/hide back button based on folded state */
++            back_btn.clicked.connect (() => {
++                leaflet.navigate (Adw.NavigationDirection.BACK);
++            });
++            leaflet.notify["folded"].connect (() => {
++                back_btn.visible = leaflet.folded;
++            });
+ 
+             toast_overlay = new Adw.ToastOverlay ();
+-            toast_overlay.child = split_view;
++            toast_overlay.child = leaflet;
+ 
+             /* Fullscreen image viewer overlay */
+             image_viewer_picture = new Gtk.Picture ();
+@@ -576,7 +586,7 @@ namespace Dc {
+             notice_chat.begin (current_chat_id);
+ 
+             /* On narrow layout, navigate to content */
+-            split_view.show_content = true;
++            leaflet.navigate (Adw.NavigationDirection.FORWARD);
+         }
+ 
+         private async void notice_chat (int chat_id) {
+@@ -1062,7 +1072,8 @@ namespace Dc {
+             dialog.profile_updated.connect (() => {
+                 load_profile_avatar.begin ();
+             });
+-            dialog.present (this);
++            dialog.set_transient_for (this);
++            dialog.present ();
+         }
+ 
+         private async void load_profile_avatar () {
+@@ -1098,7 +1109,8 @@ namespace Dc {
+             picker.contact_picked.connect ((contact_id, email) => {
+                 create_chat_by_email.begin (email);
+             });
+-            picker.present (this);
++            picker.set_transient_for (this);
++            picker.present ();
+         }
+ 
+         private async void create_chat_by_email (string email) {
+@@ -1134,7 +1146,8 @@ namespace Dc {
+             dialog.group_created.connect ((chat_id) => {
+                 after_group_created.begin (chat_id);
+             });
+-            dialog.present (this);
++            dialog.set_transient_for (this);
++            dialog.present ();
+         }
+ 
+         private async void after_group_created (int chat_id) {
+@@ -1612,7 +1625,8 @@ namespace Dc {
+                 }
+             });
+ 
+-            dialog.present (this);
++            dialog.set_transient_for (this);
++            dialog.present ();
+         }
+ 
+         private async void confirm_delete_chat (int chat_id) {
+@@ -1626,7 +1640,8 @@ namespace Dc {
+                 }
+             }
+ 
+-            var dialog = new Adw.AlertDialog (
++            var dialog = new Adw.MessageDialog (
++                this,
+                 "Delete for Me",
+                 "Remove \"%s\" from your chat list? You may still receive messages if you are a group member.".printf (chat_name)
+             );
+@@ -1641,7 +1656,7 @@ namespace Dc {
+                 }
+             });
+ 
+-            dialog.present (this);
++            dialog.present ();
+         }
+ 
+         private async void do_delete_chat (int chat_id) {
+@@ -1730,7 +1745,7 @@ namespace Dc {
+         }
+ 
+         private void show_about_dialog () {
+-            var about = new Adw.AboutDialog ();
++            var about = new Adw.AboutWindow ();
+             about.application_name = "Delta Chat";
+             about.application_icon = "org.deltachat.Gnome";
+             about.version = "0.1.0";
+@@ -1740,7 +1755,8 @@ namespace Dc {
+             about.website = "https://delta.chat";
+             about.issue_url = "https://github.com/nickolay/deltachat-gnome/issues";
+             about.comments = "Native Delta Chat client for GNOME";
+-            about.present (this);
++            about.set_transient_for (this);
++            about.present ();
+         }
+ 
+         private void show_settings_dialog () {
+@@ -1749,7 +1765,8 @@ namespace Dc {
+             dialog.account_changed.connect (() => {
+                 reload_active_account.begin ();
+             });
+-            dialog.present (this);
++            dialog.set_transient_for (this);
++            dialog.present ();
+         }
+ 
+         public async void reload_active_account () {
+@@ -1867,10 +1884,11 @@ namespace Dc {
+             if (rpc.account_id <= 0) return;
+             if (chat_store.get_n_items () == 0) return;
+ 
+-            var dialog = new Adw.Dialog ();
++            var dialog = new Adw.Window ();
+             dialog.title = "Switch Chat";
+-            dialog.content_width = 360;
+-            dialog.content_height = 400;
++            dialog.set_default_size (360, 400);
++            dialog.modal = true;
++            dialog.set_transient_for (this);
+ 
+             var box = new Gtk.Box (Gtk.Orientation.VERTICAL, 0);
+             var header = new Adw.HeaderBar ();
+@@ -1953,8 +1971,8 @@ namespace Dc {
+             });
+ 
+             box.append (inner);
+-            dialog.child = box;
+-            dialog.present (this);
++            dialog.content = box;
++            dialog.present ();
+             entry.grab_focus ();
+         }
+ 
+@@ -1973,10 +1991,11 @@ namespace Dc {
+         }
+ 
+         private void show_keyboard_shortcuts_dialog () {
+-            var dialog = new Adw.Dialog ();
++            var dialog = new Adw.Window ();
+             dialog.title = "Shortcuts";
+-            dialog.content_width = 400;
+-            dialog.content_height = 380;
++            dialog.set_default_size (400, 380);
++            dialog.modal = true;
++            dialog.set_transient_for (this);
+ 
+             var box = new Gtk.Box (Gtk.Orientation.VERTICAL, 0);
+             var header = new Adw.HeaderBar ();
+@@ -2000,8 +2019,8 @@ namespace Dc {
+             add_shortcut_row (list, "Quit application", "<Control>q");
+ 
+             box.append (list);
+-            dialog.child = box;
+-            dialog.present (this);
++            dialog.content = box;
++            dialog.present ();
+         }
+ 
+         private void add_shortcut_row (Gtk.ListBox list, string description,
