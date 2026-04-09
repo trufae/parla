@@ -16,3 +16,6 @@ install:
 
 uninstall:
 	rm -f $(DESTDIR)$(BINDIR)/deltachat-gnome
+
+deb: all
+	$(MAKE) -C dist/debian

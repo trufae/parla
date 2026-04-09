@@ -1,0 +1,4 @@
+PACKAGE=deltachat-gnome
+DEPENDS=libgtk-4-1, libadwaita-1-0, libjson-glib-1.0-0
+
+include ../CONFIG

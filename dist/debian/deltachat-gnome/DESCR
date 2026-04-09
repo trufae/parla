@@ -1,0 +1,3 @@
+Delta Chat native GNOME client
+Lightweight desktop client for Delta Chat built with Vala, GTK4 and libadwaita.
+Uses deltachat-rpc-server for end-to-end encrypted messaging over email.
