@@ -34,6 +34,7 @@ namespace Dc {
             base.startup ();
             load_css ();
             register_icons ();
+            Gtk.Window.set_default_icon_name ("org.deltachat.Gnome");
         }
 
         private void register_icons () {
