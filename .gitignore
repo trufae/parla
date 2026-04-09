@@ -1,0 +1,9 @@
+builddir/
+accounts/
+dist/debian/deltachat-gnome/build/
+dist/debian/deltachat-gnome/control/
+dist/debian/deltachat-gnome/data/
+dist/debian/deltachat-gnome/debian-binary
+dist/debian/deltachat-gnome/root/
+dist/debian/deltachat-gnome/*.deb
+.codex/
