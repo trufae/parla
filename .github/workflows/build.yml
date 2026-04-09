@@ -10,7 +10,7 @@ jobs:
   build:
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install dependencies
         run: |
@@ -29,3 +29,48 @@ jobs:
 
       - name: Build
         run: meson compile -C builddir
+
+  build-deb:
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        include:
+          - distro: ubuntu-24.04
+          - distro: debian-12
+            container: debian:12
+    container: ${{ matrix.container || '' }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install dependencies
+        run: |
+          if [ "$(id -u)" -ne 0 ]; then SUDO=sudo; fi
+          $SUDO apt-get update
+          $SUDO apt-get install -y \
+            meson \
+            ninja-build \
+            valac \
+            libglib2.0-dev \
+            libgtk-4-dev \
+            libadwaita-1-dev \
+            libjson-glib-dev \
+            make \
+            dpkg-dev
+
+      - name: Build
+        run: make
+
+      - name: Package .deb
+        run: make deb
+
+      - name: Rename .deb with distro suffix
+        run: |
+          for f in dist/debian/deltachat-gnome/*.deb; do
+            mv "$f" "${f%.deb}_${{ matrix.distro }}.deb"
+          done
+
+      - name: Upload .deb artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: deltachat-gnome-${{ matrix.distro }}
+          path: dist/debian/deltachat-gnome/*.deb
