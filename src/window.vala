@@ -1329,6 +1329,14 @@ namespace Dc {
             case Gdk.Key.R:
                 refresh_current_chat ();
                 return true;
+            case Gdk.Key.w:
+            case Gdk.Key.W:
+                this.close ();
+                return true;
+            case Gdk.Key.q:
+            case Gdk.Key.Q:
+                this.application.quit ();
+                return true;
             case Gdk.Key.l:
             case Gdk.Key.L:
                 if (current_chat_id > 0) {
@@ -1493,6 +1501,8 @@ namespace Dc {
             add_shortcut_row (list, "Quick switch chat", "<Control>k");
             add_shortcut_row (list, "Refresh messages", "<Control>r");
             add_shortcut_row (list, "Focus message entry", "<Control>l");
+            add_shortcut_row (list, "Close window", "<Control>w");
+            add_shortcut_row (list, "Quit application", "<Control>q");
 
             box.append (list);
             dialog.child = box;
