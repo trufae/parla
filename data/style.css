@@ -85,3 +85,9 @@
 .outgoing .reaction-badge {
     background-color: alpha(white, 0.2);
 }
+
+.scroll-down-btn {
+    opacity: 0.85;
+    min-width: 40px;
+    min-height: 40px;
+}

@@ -19,6 +19,7 @@ namespace Dc {
         private Gtk.ScrolledWindow message_scroll;
         private GLib.ListStore message_store;
         private ComposeBar compose_bar;
+        private Gtk.Button scroll_down_btn;
 
         /* Message search */
         private Gtk.Revealer message_search_revealer;
@@ -178,10 +179,17 @@ namespace Dc {
 
             /* Auto-scroll: keep the user at the bottom when content or
                viewport size changes, using non-deprecated notify signals. */
-            message_scroll.vadjustment.notify["upper"].connect (() => { maybe_autoscroll (); });
-            message_scroll.vadjustment.notify["page-size"].connect (() => { maybe_autoscroll (); });
+            message_scroll.vadjustment.notify["upper"].connect (() => {
+                maybe_autoscroll ();
+                scroll_down_btn.visible = !is_near_bottom ();
+            });
+            message_scroll.vadjustment.notify["page-size"].connect (() => {
+                maybe_autoscroll ();
+                scroll_down_btn.visible = !is_near_bottom ();
+            });
             message_scroll.vadjustment.notify["value"].connect (() => {
                 stick_to_bottom = is_near_bottom ();
+                scroll_down_btn.visible = !stick_to_bottom;
             });
 
             message_listbox = new Gtk.ListBox ();
@@ -252,7 +260,23 @@ namespace Dc {
             pinned_revealer.transition_type = Gtk.RevealerTransitionType.SLIDE_DOWN;
             msg_box.append (pinned_revealer);
 
-            msg_box.append (message_scroll);
+            scroll_down_btn = new Gtk.Button ();
+            scroll_down_btn.icon_name = "go-down-symbolic";
+            scroll_down_btn.add_css_class ("circular");
+            scroll_down_btn.add_css_class ("osd");
+            scroll_down_btn.add_css_class ("scroll-down-btn");
+            scroll_down_btn.halign = Gtk.Align.CENTER;
+            scroll_down_btn.valign = Gtk.Align.END;
+            scroll_down_btn.margin_bottom = 12;
+            scroll_down_btn.visible = false;
+            scroll_down_btn.clicked.connect (() => { scroll_to_bottom (); });
+
+            var scroll_overlay = new Gtk.Overlay ();
+            scroll_overlay.child = message_scroll;
+            scroll_overlay.vexpand = true;
+            scroll_overlay.add_overlay (scroll_down_btn);
+
+            msg_box.append (scroll_overlay);
 
             compose_bar = new ComposeBar ();
             compose_bar.send_message.connect (on_send_message);
