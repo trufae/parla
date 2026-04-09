@@ -70,7 +70,7 @@ jobs:
           done
 
       - name: Upload .deb artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: deltachat-gnome-${{ matrix.distro }}
           path: dist/debian/deltachat-gnome/*.deb
