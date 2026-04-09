@@ -107,11 +107,6 @@ namespace Dc {
             new_group_btn.clicked.connect (on_new_group);
             sidebar_header.pack_start (new_group_btn);
 
-            /* Refresh button */
-            var refresh_btn = new Gtk.Button.from_icon_name ("view-refresh-symbolic");
-            refresh_btn.tooltip_text = "Refresh chats";
-            refresh_btn.clicked.connect (() => { load_chats.begin (); });
-            sidebar_header.pack_end (refresh_btn);
 
             sidebar_box.append (sidebar_header);
 
@@ -1634,6 +1629,14 @@ namespace Dc {
             vbox.margin_end = 4;
             vbox.margin_top = 4;
             vbox.margin_bottom = 4;
+
+            var refresh_btn = new Gtk.Button.with_label ("Refresh");
+            refresh_btn.add_css_class ("flat");
+            refresh_btn.clicked.connect (() => {
+                popover.popdown ();
+                load_chats.begin ();
+            });
+            vbox.append (refresh_btn);
 
             var settings_btn = new Gtk.Button.with_label ("Settings");
             settings_btn.add_css_class ("flat");
