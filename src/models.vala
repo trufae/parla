@@ -12,6 +12,7 @@ namespace Dc {
         public int id { get; set; default = 0; }
         public string name { get; set; default = ""; }
         public string? last_message { get; set; default = null; }
+        public string? summary_prefix { get; set; default = null; }
         public int64 timestamp { get; set; default = 0; }
         public int unread_count { get; set; default = 0; }
         public string? avatar_path { get; set; default = null; }

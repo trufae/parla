@@ -693,12 +693,24 @@ namespace Dc {
             if (obj.has_member ("name")) {
                 entry.name = obj.get_string_member ("name");
             }
-            if (obj.has_member ("lastMessageText") &&
+            if (obj.has_member ("summaryText1") &&
+                !obj.get_member ("summaryText1").is_null ()) {
+                var s1 = obj.get_string_member ("summaryText1");
+                if (s1.length > 0) {
+                    entry.summary_prefix = s1;
+                }
+            }
+            if (obj.has_member ("summaryText2") &&
+                !obj.get_member ("summaryText2").is_null ()) {
+                var s2 = obj.get_string_member ("summaryText2");
+                if (s2.length > 0) {
+                    entry.last_message = s2;
+                }
+            }
+            if (entry.last_message == null &&
+                obj.has_member ("lastMessageText") &&
                 !obj.get_member ("lastMessageText").is_null ()) {
                 entry.last_message = obj.get_string_member ("lastMessageText");
-            } else if (obj.has_member ("summaryText1") &&
-                       !obj.get_member ("summaryText1").is_null ()) {
-                entry.last_message = obj.get_string_member ("summaryText1");
             }
             if (obj.has_member ("freshMessageCounter")) {
                 entry.unread_count = (int) obj.get_int_member ("freshMessageCounter");

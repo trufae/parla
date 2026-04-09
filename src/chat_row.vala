@@ -72,7 +72,7 @@ namespace Dc {
 
             /* Bottom row: preview + badge */
             var bot = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 6);
-            preview_label = new Gtk.Label (entry.last_message ?? "");
+            preview_label = new Gtk.Label (format_preview (entry));
             if (!has_unread) {
                 preview_label.add_css_class ("dim-label");
             }
@@ -107,8 +107,19 @@ namespace Dc {
          */
         public void update (ChatEntry entry) {
             name_label.label = entry.name;
-            preview_label.label = entry.last_message ?? "";
+            preview_label.label = format_preview (entry);
             time_label.label = format_time (entry.timestamp);
+        }
+
+        private static string format_preview (ChatEntry entry) {
+            string preview = entry.last_message ?? "";
+            if (entry.summary_prefix != null && entry.summary_prefix.length > 0) {
+                if (preview.length > 0) {
+                    return "%s: %s".printf (entry.summary_prefix, preview);
+                }
+                return entry.summary_prefix;
+            }
+            return preview;
         }
 
         private static string format_time (int64 timestamp) {
