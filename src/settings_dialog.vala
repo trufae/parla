@@ -47,6 +47,40 @@ namespace Dc {
             add_btn.clicked.connect (on_add_account);
             content.append (add_btn);
 
+            /* Behavior section */
+            var behavior_label = new Gtk.Label ("Behavior");
+            behavior_label.add_css_class ("title-3");
+            behavior_label.halign = Gtk.Align.START;
+            content.append (behavior_label);
+
+            var behavior_list = new Gtk.ListBox ();
+            behavior_list.selection_mode = Gtk.SelectionMode.NONE;
+            behavior_list.add_css_class ("boxed-list");
+
+            var dblclick_row = new Adw.ActionRow ();
+            dblclick_row.title = "Double-click on message";
+            dblclick_row.subtitle = "Action when a message is double-clicked";
+
+            string[] dblclick_labels = {
+                "Reply to message",
+                "React with \xe2\x9d\xa4\xef\xb8\x8f",
+                "React with \xf0\x9f\x91\x8d",
+                "Open user profile",
+                "Do nothing"
+            };
+
+            var dblclick_combo = new Gtk.DropDown.from_strings (dblclick_labels);
+            dblclick_combo.selected = app_window.double_click_action;
+            dblclick_combo.valign = Gtk.Align.CENTER;
+            dblclick_combo.notify["selected"].connect (() => {
+                app_window.save_double_click_action ((int) dblclick_combo.selected);
+            });
+            dblclick_row.add_suffix (dblclick_combo);
+            dblclick_row.activatable_widget = dblclick_combo;
+
+            behavior_list.append (dblclick_row);
+            content.append (behavior_list);
+
             var scroll = new Gtk.ScrolledWindow ();
             scroll.vexpand = true;
             scroll.hscrollbar_policy = Gtk.PolicyType.NEVER;

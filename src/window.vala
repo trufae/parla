@@ -33,6 +33,7 @@ namespace Dc {
         private string? self_email = null;
         private bool listening = false;
         private bool stick_to_bottom = true;
+        public int double_click_action { get; set; default = 0; }
 
         public Window (Dc.Application app) {
             Object (
@@ -48,6 +49,7 @@ namespace Dc {
             message_store = new GLib.ListStore (typeof (Message));
 
             build_ui ();
+            load_settings ();
 
             /* Defer connection until main loop — application property
                may not be available during construct. */
@@ -202,6 +204,19 @@ namespace Dc {
                 show_message_context_menu (msg_row.message_id, msg_row.is_outgoing, x, y);
             });
             message_listbox.add_controller (msg_right_click);
+
+            /* Double-click on messages */
+            var msg_dbl_click = new Gtk.GestureClick ();
+            msg_dbl_click.button = 1;
+            msg_dbl_click.pressed.connect ((n, x, y) => {
+                if (n != 2) return;
+                var dbl_row = message_listbox.get_row_at_y ((int) y);
+                if (dbl_row == null) return;
+                var dbl_msg_row = dbl_row as MessageRow;
+                if (dbl_msg_row == null) return;
+                handle_message_double_click (dbl_msg_row);
+            });
+            message_listbox.add_controller (msg_dbl_click);
 
             message_scroll.child = message_listbox;
 
@@ -1545,6 +1560,90 @@ namespace Dc {
             label.valign = Gtk.Align.CENTER;
             row.add_suffix (label);
             list.append (row);
+        }
+
+        /* ================================================================
+         *  Double-click action
+         * ================================================================ */
+
+        private void handle_message_double_click (MessageRow msg_row) {
+            switch (double_click_action) {
+            case 0: /* Reply */
+                start_replying_message (msg_row.message_id);
+                break;
+            case 1: /* React with heart */
+                do_send_reaction.begin (msg_row.message_id, "\xe2\x9d\xa4\xef\xb8\x8f");
+                break;
+            case 2: /* React with thumbsup */
+                do_send_reaction.begin (msg_row.message_id, "\xf0\x9f\x91\x8d");
+                break;
+            case 3: /* Open user profile */
+                open_sender_profile.begin (msg_row.message_id);
+                break;
+            case 4: /* Nothing */
+                break;
+            }
+        }
+
+        private async void open_sender_profile (int msg_id) {
+            for (uint i = 0; i < message_store.get_n_items (); i++) {
+                var m = (Message) message_store.get_item (i);
+                if (m.id == msg_id) {
+                    if (m.sender_address == null || m.is_outgoing) return;
+                    var rpc = ((Dc.Application) this.application).rpc;
+                    try {
+                        int contact_id = yield rpc.lookup_contact (
+                            rpc.account_id, m.sender_address);
+                        if (contact_id <= 0) return;
+                        int chat_id = yield rpc.get_or_create_chat_by_contact (
+                            rpc.account_id, contact_id);
+                        if (chat_id > 0) {
+                            yield load_chats ();
+                            select_chat_by_id (chat_id);
+                        }
+                    } catch (Error e) {
+                        show_toast ("Could not open profile: " + e.message);
+                    }
+                    return;
+                }
+            }
+        }
+
+        /* ================================================================
+         *  Settings persistence
+         * ================================================================ */
+
+        private static string get_config_path () {
+            return Path.build_filename (
+                Environment.get_user_config_dir (),
+                "deltachat-gnome", "settings.ini");
+        }
+
+        public void save_double_click_action (int action) {
+            double_click_action = action;
+            var kf = new KeyFile ();
+            try {
+                kf.load_from_file (get_config_path (), KeyFileFlags.NONE);
+            } catch (Error e) { /* file may not exist yet */ }
+            kf.set_integer ("General", "double_click_action", action);
+            try {
+                var dir = Path.get_dirname (get_config_path ());
+                DirUtils.create_with_parents (dir, 0755);
+                kf.save_to_file (get_config_path ());
+            } catch (Error e) {
+                warning ("Failed to save settings: %s", e.message);
+            }
+        }
+
+        private void load_settings () {
+            var kf = new KeyFile ();
+            try {
+                kf.load_from_file (get_config_path (), KeyFileFlags.NONE);
+                double_click_action = kf.get_integer (
+                    "General", "double_click_action");
+            } catch (Error e) {
+                double_click_action = 0; /* reply */
+            }
         }
 
         /* ================================================================
