@@ -20,6 +20,10 @@ namespace Dc {
         private GLib.ListStore message_store;
         private ComposeBar compose_bar;
 
+        /* Message search */
+        private Gtk.Revealer message_search_revealer;
+        private Gtk.SearchEntry message_search_entry;
+
         /* Status */
         private Adw.StatusPage empty_status;
         private Gtk.Stack content_stack;
@@ -176,6 +180,15 @@ namespace Dc {
             message_listbox.selection_mode = Gtk.SelectionMode.NONE;
             message_listbox.add_css_class ("boxed-list-separate");
             message_listbox.set_header_func (null);
+            message_listbox.set_filter_func ((row) => {
+                if (!message_search_revealer.reveal_child) return true;
+                string query = message_search_entry.text.strip ().down ();
+                if (query.length == 0) return true;
+                var msg_row = row as MessageRow;
+                if (msg_row == null) return true;
+                return msg_row.message_text != null
+                    && msg_row.message_text.down ().contains (query);
+            });
             message_listbox.row_activated.connect (on_message_row_activated);
 
             /* Right-click context menu for reactions */
@@ -191,6 +204,24 @@ namespace Dc {
             message_listbox.add_controller (msg_right_click);
 
             message_scroll.child = message_listbox;
+
+            /* Message search bar (toggled by Ctrl+F) */
+            message_search_entry = new Gtk.SearchEntry ();
+            message_search_entry.placeholder_text = "Search in conversation\u2026";
+            message_search_entry.hexpand = true;
+            message_search_entry.margin_start = 8;
+            message_search_entry.margin_end = 8;
+            message_search_entry.margin_top = 4;
+            message_search_entry.margin_bottom = 4;
+            message_search_entry.search_changed.connect (() => {
+                message_listbox.invalidate_filter ();
+            });
+            message_search_revealer = new Gtk.Revealer ();
+            message_search_revealer.child = message_search_entry;
+            message_search_revealer.reveal_child = false;
+            message_search_revealer.transition_type = Gtk.RevealerTransitionType.SLIDE_DOWN;
+            msg_box.append (message_search_revealer);
+
             msg_box.append (message_scroll);
 
             compose_bar = new ComposeBar ();
@@ -215,6 +246,12 @@ namespace Dc {
             toast_overlay = new Adw.ToastOverlay ();
             toast_overlay.child = split_view;
             this.content = toast_overlay;
+
+            /* Global keyboard shortcuts */
+            var key_ctrl = new Gtk.EventControllerKey ();
+            key_ctrl.propagation_phase = Gtk.PropagationPhase.CAPTURE;
+            key_ctrl.key_pressed.connect (on_window_key_pressed);
+            ((Gtk.Widget) this).add_controller (key_ctrl);
         }
 
         /* ================================================================
@@ -1183,6 +1220,14 @@ namespace Dc {
             });
             vbox.append (settings_btn);
 
+            var shortcuts_btn = new Gtk.Button.with_label ("Keyboard Shortcuts");
+            shortcuts_btn.add_css_class ("flat");
+            shortcuts_btn.clicked.connect (() => {
+                popover.popdown ();
+                show_keyboard_shortcuts_dialog ();
+            });
+            vbox.append (shortcuts_btn);
+
             var about_btn = new Gtk.Button.with_label ("About");
             about_btn.add_css_class ("flat");
             about_btn.clicked.connect (() => {
@@ -1242,6 +1287,226 @@ namespace Dc {
             if (!listening) {
                 start_listener.begin ();
             }
+        }
+
+        /* ================================================================
+         *  Keyboard Shortcuts
+         * ================================================================ */
+
+        private bool on_window_key_pressed (uint keyval, uint keycode,
+                                            Gdk.ModifierType state) {
+            /* Escape: close message search if active */
+            if (keyval == Gdk.Key.Escape) {
+                if (message_search_revealer.reveal_child) {
+                    message_search_revealer.reveal_child = false;
+                    message_search_entry.text = "";
+                    message_listbox.invalidate_filter ();
+                    return true;
+                }
+                return false;
+            }
+
+            /* All other shortcuts require Ctrl */
+            if ((state & Gdk.ModifierType.CONTROL_MASK) == 0) return false;
+
+            switch (keyval) {
+            case Gdk.Key.n:
+            case Gdk.Key.N:
+                on_new_chat ();
+                return true;
+            case Gdk.Key.comma:
+                show_settings_dialog ();
+                return true;
+            case Gdk.Key.f:
+            case Gdk.Key.F:
+                toggle_message_search ();
+                return true;
+            case Gdk.Key.k:
+            case Gdk.Key.K:
+                show_quick_switch_dialog ();
+                return true;
+            case Gdk.Key.r:
+            case Gdk.Key.R:
+                refresh_current_chat ();
+                return true;
+            case Gdk.Key.l:
+            case Gdk.Key.L:
+                if (current_chat_id > 0) {
+                    scroll_to_bottom ();
+                    compose_bar.grab_entry_focus ();
+                }
+                return true;
+            }
+            return false;
+        }
+
+        private void toggle_message_search () {
+            if (current_chat_id <= 0) return;
+            bool was_active = message_search_revealer.reveal_child;
+            message_search_revealer.reveal_child = !was_active;
+            if (!was_active) {
+                message_search_entry.grab_focus ();
+            } else {
+                message_search_entry.text = "";
+                message_listbox.invalidate_filter ();
+            }
+        }
+
+        private void refresh_current_chat () {
+            load_chats.begin ();
+            if (current_chat_id > 0) {
+                load_messages.begin (current_chat_id);
+            }
+        }
+
+        private void show_quick_switch_dialog () {
+            var rpc = ((Dc.Application) this.application).rpc;
+            if (rpc.account_id <= 0) return;
+            if (chat_store.get_n_items () == 0) return;
+
+            var dialog = new Adw.Dialog ();
+            dialog.title = "Switch Chat";
+            dialog.content_width = 360;
+            dialog.content_height = 400;
+
+            var box = new Gtk.Box (Gtk.Orientation.VERTICAL, 0);
+            var header = new Adw.HeaderBar ();
+            box.append (header);
+
+            var inner = new Gtk.Box (Gtk.Orientation.VERTICAL, 8);
+            inner.margin_start = 12;
+            inner.margin_end = 12;
+            inner.margin_top = 8;
+            inner.margin_bottom = 12;
+
+            var entry = new Gtk.SearchEntry ();
+            entry.placeholder_text = "Type to filter chats\u2026";
+            entry.hexpand = true;
+            inner.append (entry);
+
+            var scroll = new Gtk.ScrolledWindow ();
+            scroll.vexpand = true;
+            scroll.hscrollbar_policy = Gtk.PolicyType.NEVER;
+
+            var listbox = new Gtk.ListBox ();
+            listbox.selection_mode = Gtk.SelectionMode.SINGLE;
+            listbox.add_css_class ("boxed-list");
+            scroll.child = listbox;
+            inner.append (scroll);
+
+            /* Populate with all chats */
+            for (uint i = 0; i < chat_store.get_n_items (); i++) {
+                var chat = (ChatEntry) chat_store.get_item (i);
+                var row = new Adw.ActionRow ();
+                row.title = chat.name;
+                if (chat.last_message != null && chat.last_message.length > 0)
+                    row.subtitle = chat.last_message;
+                row.name = chat.id.to_string ();
+                row.activatable = true;
+                var avatar = new Adw.Avatar (32, chat.name, true);
+                if (chat.avatar_path != null &&
+                    FileUtils.test (chat.avatar_path, FileTest.EXISTS)) {
+                    try {
+                        avatar.custom_image = Gdk.Texture.from_filename (chat.avatar_path);
+                    } catch (Error e) { /* fallback */ }
+                }
+                row.add_prefix (avatar);
+                listbox.append (row);
+            }
+
+            /* Filter */
+            listbox.set_filter_func ((row) => {
+                string query = entry.text.strip ().down ();
+                if (query.length == 0) return true;
+                var action_row = row as Adw.ActionRow;
+                if (action_row == null) return true;
+                return action_row.title.down ().contains (query);
+            });
+
+            entry.search_changed.connect (() => {
+                listbox.invalidate_filter ();
+            });
+
+            /* Enter picks the first matching chat */
+            entry.activate.connect (() => {
+                string query = entry.text.strip ().down ();
+                for (uint i = 0; i < chat_store.get_n_items (); i++) {
+                    var chat = (ChatEntry) chat_store.get_item (i);
+                    if (query.length == 0 || chat.name.down ().contains (query)) {
+                        dialog.close ();
+                        select_chat_by_id (chat.id);
+                        return;
+                    }
+                }
+            });
+
+            /* Click on a row */
+            listbox.row_activated.connect ((row) => {
+                var action_row = row as Adw.ActionRow;
+                if (action_row == null) return;
+                int chat_id = int.parse (action_row.name);
+                dialog.close ();
+                select_chat_by_id (chat_id);
+            });
+
+            box.append (inner);
+            dialog.child = box;
+            dialog.present (this);
+            entry.grab_focus ();
+        }
+
+        private void select_chat_by_id (int chat_id) {
+            int idx = 0;
+            Gtk.ListBoxRow? row;
+            while ((row = chat_listbox.get_row_at_index (idx)) != null) {
+                var chat_row = row.child as ChatRow;
+                if (chat_row != null && chat_row.chat_id == chat_id) {
+                    chat_listbox.select_row (row);
+                    on_chat_selected (row);
+                    return;
+                }
+                idx++;
+            }
+        }
+
+        private void show_keyboard_shortcuts_dialog () {
+            var dialog = new Adw.Dialog ();
+            dialog.title = "Keyboard Shortcuts";
+            dialog.content_width = 400;
+            dialog.content_height = 380;
+
+            var box = new Gtk.Box (Gtk.Orientation.VERTICAL, 0);
+            var header = new Adw.HeaderBar ();
+            box.append (header);
+
+            var list = new Gtk.ListBox ();
+            list.selection_mode = Gtk.SelectionMode.NONE;
+            list.add_css_class ("boxed-list");
+            list.margin_start = 12;
+            list.margin_end = 12;
+            list.margin_top = 12;
+            list.margin_bottom = 12;
+
+            add_shortcut_row (list, "New chat", "<Control>n");
+            add_shortcut_row (list, "Open settings", "<Control>comma");
+            add_shortcut_row (list, "Search in conversation", "<Control>f");
+            add_shortcut_row (list, "Quick switch chat", "<Control>k");
+            add_shortcut_row (list, "Refresh messages", "<Control>r");
+            add_shortcut_row (list, "Focus message entry", "<Control>l");
+
+            box.append (list);
+            dialog.child = box;
+            dialog.present (this);
+        }
+
+        private void add_shortcut_row (Gtk.ListBox list, string description,
+                                       string accel) {
+            var row = new Adw.ActionRow ();
+            row.title = description;
+            var label = new Gtk.ShortcutLabel (accel);
+            label.valign = Gtk.Align.CENTER;
+            row.add_suffix (label);
+            list.append (row);
         }
 
         /* ================================================================

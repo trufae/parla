@@ -11,6 +11,7 @@ namespace Dc {
         public bool is_outgoing { get; private set; }
         public string? file_path { get; private set; }
         public string? file_name { get; private set; }
+        public string? message_text { get; private set; }
         public int quote_msg_id { get; private set; }
 
         public signal void quote_clicked (int quoted_msg_id);
@@ -29,6 +30,7 @@ namespace Dc {
             this.is_outgoing = msg.is_outgoing;
             this.file_path = msg.file_path;
             this.file_name = msg.file_name;
+            this.message_text = msg.text;
             this.quote_msg_id = msg.quote_msg_id;
             this.selectable = false;
 
