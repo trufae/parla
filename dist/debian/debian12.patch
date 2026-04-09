@@ -1,5 +1,18 @@
+diff --git a/src/application.vala b/src/application.vala
+index a96fb67..0030813 100644
+--- a/src/application.vala
++++ b/src/application.vala
+@@ -55,7 +55,7 @@ namespace Dc {
+ 
+         private void load_css () {
+             var provider = new Gtk.CssProvider ();
+-            provider.load_from_string (CSS);
++            provider.load_from_data (CSS.data);
+             add_provider_for_display (
+                 Gdk.Display.get_default (),
+                 provider,
 diff --git a/src/chat_info_dialog.vala b/src/chat_info_dialog.vala
-index a1beb99..c2fcaf3 100644
+index a1beb99..c330aac 100644
 --- a/src/chat_info_dialog.vala
 +++ b/src/chat_info_dialog.vala
 @@ -1,13 +1,13 @@
@@ -72,9 +85,12 @@ index a1beb99..c2fcaf3 100644
  
                  /* Change avatar button for groups */
                  if (is_group) {
-@@ -90,14 +89,14 @@ namespace Dc {
+@@ -88,16 +87,16 @@ namespace Dc {
+                     change_avatar_btn.halign = Gtk.Align.CENTER;
+                     change_avatar_btn.add_css_class ("flat");
                      change_avatar_btn.clicked.connect (() => {
-                         pick_avatar.begin ();
+-                        pick_avatar.begin ();
++                        pick_avatar ();
                      });
 -                    content.append (change_avatar_btn);
 +                    content_box.append (change_avatar_btn);
@@ -275,7 +291,7 @@ index a1beb99..c2fcaf3 100644
          }
  
          private async void do_delete_chat_from_dialog () {
-@@ -509,9 +512,9 @@ namespace Dc {
+@@ -509,32 +512,28 @@ namespace Dc {
                  chat_deleted (chat_id);
                  this.close ();
              } catch (Error e) {
@@ -287,6 +303,73 @@ index a1beb99..c2fcaf3 100644
              }
          }
  
+-        private async void pick_avatar () {
+-            var chooser = new Gtk.FileDialog ();
+-            chooser.title = "Select Avatar Image";
+-
++        private void pick_avatar () {
++            var chooser = new Gtk.FileChooserNative ("Select Avatar Image",
++                this, Gtk.FileChooserAction.OPEN, null, null);
+             var filter = new Gtk.FileFilter ();
+             filter.add_mime_type ("image/*");
+-            filter.name = "Images";
+-            var filters = new ListStore (typeof (Gtk.FileFilter));
+-            filters.append (filter);
+-            chooser.filters = filters;
+-
+-            try {
+-                var file = yield chooser.open ((Gtk.Window) this.get_root (), null);
+-                if (file != null) {
+-                    string path = file.get_path ();
+-                    yield rpc.set_chat_profile_image (acct_id, chat_id, path);
++            chooser.add_filter (filter);
++            chooser.response.connect ((response_id) => {
++                if (response_id == Gtk.ResponseType.ACCEPT) {
++                    var file = chooser.get_file ();
++                    if (file != null) {
++                        string path = file.get_path ();
++                        rpc.set_chat_profile_image.begin (acct_id, chat_id, path);
++                    }
+                 }
+-            } catch (Error e) {
+-                /* cancelled or error */
+-            }
++            });
++            chooser.show ();
+         }
+     }
+ }
+diff --git a/src/compose_bar.vala b/src/compose_bar.vala
+index 5a5325f..a705ccd 100644
+--- a/src/compose_bar.vala
++++ b/src/compose_bar.vala
+@@ -186,20 +186,19 @@ namespace Dc {
+         }
+ 
+         private void on_attach_clicked () {
+-            var dialog = new Gtk.FileDialog ();
+-            dialog.title = "Select file to attach";
+-            var window = (Gtk.Window) get_root ();
+-            dialog.open.begin (window, null, (obj, res) => {
+-                try {
+-                    var file = dialog.open.end (res);
++            var chooser = new Gtk.FileChooserNative ("Select file to attach",
++                (Gtk.Window) get_root (), Gtk.FileChooserAction.OPEN, null, null);
++            chooser.response.connect ((response_id) => {
++                if (response_id == Gtk.ResponseType.ACCEPT) {
++                    var file = chooser.get_file ();
+                     if (file != null) {
+                         var path = file.get_path ();
+                         if (path != null)
+                             set_pending_attachment (path, file.get_basename ());
+                     }
+-                } catch (Error e) {
+                 }
+             });
++            chooser.show ();
+         }
+ 
+         private bool on_entry_key_pressed (uint keyval, uint keycode,
 diff --git a/src/contact_picker_dialog.vala b/src/contact_picker_dialog.vala
 index 804c993..b4eff57 100644
 --- a/src/contact_picker_dialog.vala
@@ -325,21 +408,22 @@ index 804c993..b4eff57 100644
              /* Close on Escape */
              var key_ctrl = new Gtk.EventControllerKey ();
 diff --git a/src/message_row.vala b/src/message_row.vala
-index f84f63a..27bf8ed 100644
+index f84f63a..9e7b61d 100644
 --- a/src/message_row.vala
 +++ b/src/message_row.vala
-@@ -129,7 +129,8 @@ namespace Dc {
+@@ -129,8 +129,8 @@ namespace Dc {
                              dw = 260;
                          }
                          var texture = Gdk.Texture.for_pixbuf (pixbuf);
 -                        var picture = new Gtk.Picture.for_paintable (texture);
+-                        picture.content_fit = Gtk.ContentFit.CONTAIN;
 +                        var picture = new Gtk.Picture ();
 +                        picture.paintable = texture;
-                         picture.content_fit = Gtk.ContentFit.CONTAIN;
                          picture.can_shrink = false;
                          picture.set_size_request (dw, dh);
+                         picture.add_css_class ("message-image");
 diff --git a/src/new_group_dialog.vala b/src/new_group_dialog.vala
-index 90c16cf..630fda6 100644
+index 90c16cf..e6e7f6c 100644
 --- a/src/new_group_dialog.vala
 +++ b/src/new_group_dialog.vala
 @@ -1,6 +1,6 @@
@@ -361,6 +445,15 @@ index 90c16cf..630fda6 100644
  
              var box = new Gtk.Box (Gtk.Orientation.VERTICAL, 0);
  
+@@ -46,7 +46,7 @@ namespace Dc {
+             avatar_btn.halign = Gtk.Align.CENTER;
+             avatar_btn.add_css_class ("flat");
+             avatar_btn.clicked.connect (() => {
+-                pick_avatar.begin ();
++                pick_avatar ();
+             });
+             content.append (avatar_btn);
+ 
 @@ -93,7 +93,7 @@ namespace Dc {
              scroll.child = content;
              box.append (scroll);
@@ -380,7 +473,7 @@ index 90c16cf..630fda6 100644
          }
  
          private void add_member_email (string email) {
-@@ -175,9 +176,9 @@ namespace Dc {
+@@ -175,35 +176,31 @@ namespace Dc {
                  group_created (new_chat_id);
                  this.close ();
              } catch (Error e) {
@@ -392,8 +485,50 @@ index 90c16cf..630fda6 100644
              }
          }
  
+-        private async void pick_avatar () {
+-            var chooser = new Gtk.FileDialog ();
+-            chooser.title = "Select Group Avatar";
+-
++        private void pick_avatar () {
++            var chooser = new Gtk.FileChooserNative ("Select Group Avatar",
++                this, Gtk.FileChooserAction.OPEN, null, null);
+             var filter = new Gtk.FileFilter ();
+             filter.add_mime_type ("image/*");
+-            filter.name = "Images";
+-            var filters = new ListStore (typeof (Gtk.FileFilter));
+-            filters.append (filter);
+-            chooser.filters = filters;
+-
+-            try {
+-                var file = yield chooser.open ((Gtk.Window) this.get_root (), null);
+-                if (file != null) {
+-                    avatar_path = file.get_path ();
+-                    try {
+-                        var texture = Gdk.Texture.from_filename (avatar_path);
+-                        avatar_widget.custom_image = texture;
+-                    } catch (Error e) { /* fallback */ }
++            chooser.add_filter (filter);
++            chooser.response.connect ((response_id) => {
++                if (response_id == Gtk.ResponseType.ACCEPT) {
++                    var file = chooser.get_file ();
++                    if (file != null) {
++                        avatar_path = file.get_path ();
++                        try {
++                            var texture = Gdk.Texture.from_filename (avatar_path);
++                            avatar_widget.custom_image = texture;
++                        } catch (Error e) { /* fallback */ }
++                    }
+                 }
+-            } catch (Error e) {
+-                /* cancelled */
+-            }
++            });
++            chooser.show ();
+         }
+     }
+ }
 diff --git a/src/profile_dialog.vala b/src/profile_dialog.vala
-index a3f8638..152986d 100644
+index a3f8638..9215dd1 100644
 --- a/src/profile_dialog.vala
 +++ b/src/profile_dialog.vala
 @@ -1,6 +1,6 @@
@@ -415,6 +550,15 @@ index a3f8638..152986d 100644
  
              var box = new Gtk.Box (Gtk.Orientation.VERTICAL, 0);
  
+@@ -46,7 +46,7 @@ namespace Dc {
+             avatar_btn.halign = Gtk.Align.CENTER;
+             avatar_btn.add_css_class ("flat");
+             avatar_btn.clicked.connect (() => {
+-                pick_avatar.begin ();
++                pick_avatar ();
+             });
+             content.append (avatar_btn);
+ 
 @@ -94,7 +94,7 @@ namespace Dc {
              scroll.child = content;
              box.append (scroll);
@@ -424,7 +568,7 @@ index a3f8638..152986d 100644
  
              load_profile.begin ();
          }
-@@ -138,9 +138,9 @@ namespace Dc {
+@@ -138,36 +138,32 @@ namespace Dc {
                  profile_updated ();
                  this.close ();
              } catch (Error e) {
@@ -436,6 +580,50 @@ index a3f8638..152986d 100644
              }
          }
  
+-        private async void pick_avatar () {
+-            var chooser = new Gtk.FileDialog ();
+-            chooser.title = "Select Avatar";
+-
++        private void pick_avatar () {
++            var chooser = new Gtk.FileChooserNative ("Select Avatar",
++                this, Gtk.FileChooserAction.OPEN, null, null);
+             var filter = new Gtk.FileFilter ();
+             filter.add_mime_type ("image/*");
+-            filter.name = "Images";
+-            var filters = new ListStore (typeof (Gtk.FileFilter));
+-            filters.append (filter);
+-            chooser.filters = filters;
+-
+-            try {
+-                var file = yield chooser.open ((Gtk.Window) this.get_root (), null);
+-                if (file != null) {
+-                    avatar_path = file.get_path ();
+-                    avatar_changed = true;
+-                    try {
+-                        var texture = Gdk.Texture.from_filename (avatar_path);
+-                        avatar_widget.custom_image = texture;
+-                    } catch (Error e) { /* fallback */ }
++            chooser.add_filter (filter);
++            chooser.response.connect ((response_id) => {
++                if (response_id == Gtk.ResponseType.ACCEPT) {
++                    var file = chooser.get_file ();
++                    if (file != null) {
++                        avatar_path = file.get_path ();
++                        avatar_changed = true;
++                        try {
++                            var texture = Gdk.Texture.from_filename (avatar_path);
++                            avatar_widget.custom_image = texture;
++                        } catch (Error e) { /* fallback */ }
++                    }
+                 }
+-            } catch (Error e) {
+-                /* cancelled */
+-            }
++            });
++            chooser.show ();
+         }
+     }
+ }
 diff --git a/src/settings_dialog.vala b/src/settings_dialog.vala
 index 84bc772..97e7ae7 100644
 --- a/src/settings_dialog.vala
@@ -598,7 +786,7 @@ index 84bc772..97e7ae7 100644
          }
      }
 diff --git a/src/window.vala b/src/window.vala
-index fda3f4e..de53bf0 100644
+index fda3f4e..c9f346a 100644
 --- a/src/window.vala
 +++ b/src/window.vala
 @@ -4,7 +4,7 @@ namespace Dc {
@@ -631,7 +819,7 @@ index fda3f4e..de53bf0 100644
  
              /* Search/filter button on the right side */
              var search_btn = new Gtk.Button.from_icon_name ("edit-find-symbolic");
-@@ -314,17 +315,26 @@ namespace Dc {
+@@ -314,21 +315,29 @@ namespace Dc {
              content_stack.visible_child_name = "empty";
              content_box.append (content_stack);
  
@@ -666,7 +854,11 @@ index fda3f4e..de53bf0 100644
  
              /* Fullscreen image viewer overlay */
              image_viewer_picture = new Gtk.Picture ();
-@@ -576,7 +586,7 @@ namespace Dc {
+-            image_viewer_picture.content_fit = Gtk.ContentFit.CONTAIN;
+             image_viewer_picture.hexpand = true;
+             image_viewer_picture.vexpand = true;
+ 
+@@ -576,7 +585,7 @@ namespace Dc {
              notice_chat.begin (current_chat_id);
  
              /* On narrow layout, navigate to content */
@@ -675,7 +867,87 @@ index fda3f4e..de53bf0 100644
          }
  
          private async void notice_chat (int chat_id) {
-@@ -1062,7 +1072,8 @@ namespace Dc {
+@@ -765,29 +774,7 @@ namespace Dc {
+          * ================================================================ */
+ 
+         private void install_drop_target (Gtk.Widget target_widget) {
+-            var drop = new Gtk.DropTarget (typeof (Gdk.FileList), Gdk.DragAction.COPY);
+-            drop.accept.connect (() => {
+-                return current_chat_id > 0 && compose_bar.can_accept_attachment ();
+-            });
+-            drop.enter.connect ((x, y) => {
+-                target_widget.add_css_class ("chat-drop-active");
+-                return Gdk.DragAction.COPY;
+-            });
+-            drop.leave.connect (() => {
+-                target_widget.remove_css_class ("chat-drop-active");
+-            });
+-            drop.drop.connect ((value, x, y) => {
+-                target_widget.remove_css_class ("chat-drop-active");
+-                if (current_chat_id <= 0 || !compose_bar.can_accept_attachment ())
+-                    return false;
+-                var fl = (Gdk.FileList?) value.get_boxed ();
+-                if (fl == null) return false;
+-                var files = fl.get_files ();
+-                if (files == null || files.data == null) return false;
+-                attach_dropped_file.begin (files.data);
+-                return true;
+-            });
+-            target_widget.add_controller (drop);
++            /* Drag-and-drop requires newer GTK4 VAPI; use attach button instead */
+         }
+ 
+         private async void attach_dropped_file (GLib.File file) {
+@@ -858,22 +845,32 @@ namespace Dc {
+             if (msg_row.is_image) {
+                 show_image_viewer (msg_row.file_path);
+             } else {
+-                save_attachment.begin (msg_row.file_path, msg_row.file_name);
++                save_attachment (msg_row.file_path, msg_row.file_name);
+             }
+         }
+ 
+-        private async void save_attachment (string src_path, string? name) {
+-            var dialog = new Gtk.FileDialog ();
+-            dialog.initial_name = name ?? Path.get_basename (src_path);
++        private void save_attachment (string src_path, string? name) {
++            var chooser = new Gtk.FileChooserNative ("Save File",
++                this, Gtk.FileChooserAction.SAVE, null, null);
++            chooser.set_current_name (name ?? Path.get_basename (src_path));
++            chooser.response.connect ((response_id) => {
++                if (response_id == Gtk.ResponseType.ACCEPT) {
++                    var dest = chooser.get_file ();
++                    if (dest != null) {
++                        do_save_file.begin (src_path, dest);
++                    }
++                }
++            });
++            chooser.show ();
++        }
++
++        private async void do_save_file (string src_path, File dest) {
+             try {
+-                var dest = yield dialog.save (this, null);
+-                if (dest == null) return;
+                 var src_file = File.new_for_path (src_path);
+                 yield src_file.copy_async (dest, FileCopyFlags.OVERWRITE,
+                                            Priority.DEFAULT, null, null);
+                 show_toast ("File saved");
+             } catch (Error e) {
+-                if (e is IOError.CANCELLED) return;
+                 show_toast ("Save failed: " + e.message);
+             }
+         }
+@@ -917,7 +914,7 @@ namespace Dc {
+             save_btn.add_css_class ("flat");
+             save_btn.clicked.connect (() => {
+                 popover.popdown ();
+-                save_attachment.begin (path, Path.get_basename (path));
++                save_attachment (path, Path.get_basename (path));
+             });
+             vbox.append (save_btn);
+ 
+@@ -1062,7 +1059,8 @@ namespace Dc {
              dialog.profile_updated.connect (() => {
                  load_profile_avatar.begin ();
              });
@@ -685,7 +957,7 @@ index fda3f4e..de53bf0 100644
          }
  
          private async void load_profile_avatar () {
-@@ -1098,7 +1109,8 @@ namespace Dc {
+@@ -1098,7 +1096,8 @@ namespace Dc {
              picker.contact_picked.connect ((contact_id, email) => {
                  create_chat_by_email.begin (email);
              });
@@ -695,7 +967,7 @@ index fda3f4e..de53bf0 100644
          }
  
          private async void create_chat_by_email (string email) {
-@@ -1134,7 +1146,8 @@ namespace Dc {
+@@ -1134,7 +1133,8 @@ namespace Dc {
              dialog.group_created.connect ((chat_id) => {
                  after_group_created.begin (chat_id);
              });
@@ -705,7 +977,16 @@ index fda3f4e..de53bf0 100644
          }
  
          private async void after_group_created (int chat_id) {
-@@ -1612,7 +1625,8 @@ namespace Dc {
+@@ -1248,7 +1248,7 @@ namespace Dc {
+                     save_btn.add_css_class ("flat");
+                     save_btn.clicked.connect (() => {
+                         popover.popdown ();
+-                        save_attachment.begin (fpath, fname);
++                        save_attachment (fpath, fname);
+                     });
+                     vbox.append (save_btn);
+                     break;
+@@ -1612,7 +1612,8 @@ namespace Dc {
                  }
              });
  
@@ -715,7 +996,7 @@ index fda3f4e..de53bf0 100644
          }
  
          private async void confirm_delete_chat (int chat_id) {
-@@ -1626,7 +1640,8 @@ namespace Dc {
+@@ -1626,7 +1627,8 @@ namespace Dc {
                  }
              }
  
@@ -725,7 +1006,7 @@ index fda3f4e..de53bf0 100644
                  "Delete for Me",
                  "Remove \"%s\" from your chat list? You may still receive messages if you are a group member.".printf (chat_name)
              );
-@@ -1641,7 +1656,7 @@ namespace Dc {
+@@ -1641,7 +1643,7 @@ namespace Dc {
                  }
              });
  
@@ -734,7 +1015,7 @@ index fda3f4e..de53bf0 100644
          }
  
          private async void do_delete_chat (int chat_id) {
-@@ -1730,7 +1745,7 @@ namespace Dc {
+@@ -1730,7 +1732,7 @@ namespace Dc {
          }
  
          private void show_about_dialog () {
@@ -743,7 +1024,7 @@ index fda3f4e..de53bf0 100644
              about.application_name = "Delta Chat";
              about.application_icon = "org.deltachat.Gnome";
              about.version = "0.1.0";
-@@ -1740,7 +1755,8 @@ namespace Dc {
+@@ -1740,7 +1742,8 @@ namespace Dc {
              about.website = "https://delta.chat";
              about.issue_url = "https://github.com/nickolay/deltachat-gnome/issues";
              about.comments = "Native Delta Chat client for GNOME";
@@ -753,7 +1034,7 @@ index fda3f4e..de53bf0 100644
          }
  
          private void show_settings_dialog () {
-@@ -1749,7 +1765,8 @@ namespace Dc {
+@@ -1749,7 +1752,8 @@ namespace Dc {
              dialog.account_changed.connect (() => {
                  reload_active_account.begin ();
              });
@@ -763,7 +1044,7 @@ index fda3f4e..de53bf0 100644
          }
  
          public async void reload_active_account () {
-@@ -1867,10 +1884,11 @@ namespace Dc {
+@@ -1867,10 +1871,11 @@ namespace Dc {
              if (rpc.account_id <= 0) return;
              if (chat_store.get_n_items () == 0) return;
  
@@ -778,7 +1059,7 @@ index fda3f4e..de53bf0 100644
  
              var box = new Gtk.Box (Gtk.Orientation.VERTICAL, 0);
              var header = new Adw.HeaderBar ();
-@@ -1953,8 +1971,8 @@ namespace Dc {
+@@ -1953,8 +1958,8 @@ namespace Dc {
              });
  
              box.append (inner);
@@ -789,7 +1070,7 @@ index fda3f4e..de53bf0 100644
              entry.grab_focus ();
          }
  
-@@ -1973,10 +1991,11 @@ namespace Dc {
+@@ -1973,10 +1978,11 @@ namespace Dc {
          }
  
          private void show_keyboard_shortcuts_dialog () {
@@ -804,7 +1085,7 @@ index fda3f4e..de53bf0 100644
  
              var box = new Gtk.Box (Gtk.Orientation.VERTICAL, 0);
              var header = new Adw.HeaderBar ();
-@@ -2000,8 +2019,8 @@ namespace Dc {
+@@ -2000,8 +2006,8 @@ namespace Dc {
              add_shortcut_row (list, "Quit application", "<Control>q");
  
              box.append (list);
