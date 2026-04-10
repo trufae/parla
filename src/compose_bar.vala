@@ -9,7 +9,9 @@ namespace Dc {
         public signal void send_message (string text, string? file_path, string? file_name, int quote_msg_id);
         public signal void edit_message (int msg_id, string new_text);
 
-        private Gtk.Entry text_entry;
+        private Gtk.TextView text_view;
+        private Gtk.Label placeholder_label;
+        private string placeholder_default = "Type a message…";
         private Gtk.Button send_button;
         private Gtk.Button attach_button;
         private Gtk.Button cancel_attach_button;
@@ -84,16 +86,49 @@ namespace Dc {
             cancel_edit_button.clicked.connect (cancel_edit);
             input_row.append (cancel_edit_button);
 
-            /* Text entry with paste handler */
-            text_entry = new Gtk.Entry ();
-            text_entry.hexpand = true;
-            text_entry.placeholder_text = "Type a message…";
-            text_entry.add_css_class ("compose-entry");
-            text_entry.activate.connect (on_send);
-            var paste_ctrl = new Gtk.EventControllerKey ();
-            paste_ctrl.key_pressed.connect (on_entry_key_pressed);
-            text_entry.add_controller (paste_ctrl);
-            input_row.append (text_entry);
+            /* Multi-line text view with paste handler.
+               Wrapped in a ScrolledWindow that grows up to a max height,
+               and overlaid with a manual placeholder label since
+               Gtk.TextView has no built-in placeholder support. */
+            text_view = new Gtk.TextView ();
+            text_view.wrap_mode = Gtk.WrapMode.WORD_CHAR;
+            text_view.accepts_tab = false;
+            text_view.top_margin = 7;
+            text_view.bottom_margin = 3;
+            text_view.left_margin = 12;
+            text_view.right_margin = 12;
+            text_view.pixels_above_lines = 0;
+            text_view.pixels_below_lines = 0;
+            text_view.pixels_inside_wrap = 0;
+            text_view.hexpand = true;
+            text_view.vexpand = false;
+            text_view.add_css_class ("compose-entry");
+
+            /* Placeholder is anchored to the top with the exact same
+               top margin as the text view, so its baseline matches the
+               first line of typed text instead of relying on valign. */
+            placeholder_label = new Gtk.Label (placeholder_default);
+            placeholder_label.add_css_class ("compose-placeholder");
+            placeholder_label.halign = Gtk.Align.START;
+            placeholder_label.valign = Gtk.Align.START;
+            placeholder_label.margin_start = 12;
+            placeholder_label.margin_top = 7;
+            placeholder_label.can_target = false;
+            placeholder_label.ellipsize = Pango.EllipsizeMode.END;
+
+            var entry_overlay = new Gtk.Overlay ();
+            entry_overlay.child = text_view;
+            entry_overlay.add_overlay (placeholder_label);
+            entry_overlay.hexpand = true;
+            entry_overlay.valign = Gtk.Align.CENTER;
+
+            text_view.buffer.changed.connect (update_placeholder);
+            update_placeholder ();
+
+            var key_ctrl = new Gtk.EventControllerKey ();
+            key_ctrl.key_pressed.connect (on_entry_key_pressed);
+            text_view.add_controller (key_ctrl);
+            input_row.append (entry_overlay);
 
             /* Send button */
             send_button = new Gtk.Button.from_icon_name ("go-up-symbolic");
@@ -108,16 +143,34 @@ namespace Dc {
         }
 
         public void grab_entry_focus () {
-            /* Use grab_focus_without_selecting so that text the user is
-               currently typing is not selected (and thus replaced on the
-               next keystroke) when async events — e.g. an incoming message
-               triggering a chatlist reload — steal focus back to the entry. */
-            text_entry.grab_focus_without_selecting ();
+            /* Gtk.TextView does not select text on grab_focus the way
+               Gtk.Entry does, so a plain grab_focus is safe here.
+               Defer to idle so focus lands after the current event
+               (e.g. a global Ctrl+L shortcut) has finished dispatching. */
+            text_view.grab_focus ();
+            GLib.Idle.add (() => {
+                text_view.grab_focus ();
+                return GLib.Source.REMOVE;
+            });
         }
 
         public void clear () {
-            text_entry.text = "";
+            text_view.buffer.text = "";
             clear_attachment ();
+        }
+
+        private string get_text () {
+            Gtk.TextIter start, end;
+            text_view.buffer.get_bounds (out start, out end);
+            return text_view.buffer.get_text (start, end, false);
+        }
+
+        private void set_placeholder (string s) {
+            placeholder_label.label = s;
+        }
+
+        private void update_placeholder () {
+            placeholder_label.visible = text_view.buffer.get_char_count () == 0;
         }
 
         public bool can_accept_attachment () {
@@ -127,8 +180,8 @@ namespace Dc {
         public void set_pending_attachment (string file_path, string? file_name = null) {
             pending_file = file_path;
             pending_file_name = file_name ?? Path.get_basename (file_path);
-            text_entry.text = "";
-            text_entry.placeholder_text = "📎 %s — Type a caption…".printf (pending_file_name);
+            text_view.buffer.text = "";
+            set_placeholder ("📎 %s — Type a caption…".printf (pending_file_name));
             cancel_attach_button.visible = true;
         }
 
@@ -136,11 +189,11 @@ namespace Dc {
             pending_file = null;
             pending_file_name = null;
             cancel_attach_button.visible = false;
-            text_entry.placeholder_text = "Type a message…";
+            set_placeholder (placeholder_default);
         }
 
         private void on_send () {
-            string text = text_entry.text.strip ();
+            string text = get_text ().strip ();
             if (editing_msg_id > 0) {
                 if (text.length == 0) return;
                 edit_message (editing_msg_id, text);
@@ -159,7 +212,7 @@ namespace Dc {
             replying_msg_id = msg_id;
             reply_label.label = "%s: %s".printf (sender_name, preview);
             reply_bar.visible = true;
-            text_entry.grab_focus_without_selecting ();
+            text_view.grab_focus ();
         }
 
         private void cancel_reply () {
@@ -173,19 +226,21 @@ namespace Dc {
             cancel_reply ();
             clear_attachment ();
             editing_msg_id = msg_id;
-            text_entry.text = current_text;
-            text_entry.placeholder_text = "Edit message…";
+            text_view.buffer.text = current_text;
+            set_placeholder ("Edit message…");
             cancel_edit_button.visible = true;
             attach_button.sensitive = false;
-            text_entry.grab_focus_without_selecting ();
-            text_entry.set_position (-1);
+            text_view.grab_focus ();
+            Gtk.TextIter end_iter;
+            text_view.buffer.get_end_iter (out end_iter);
+            text_view.buffer.place_cursor (end_iter);
         }
 
         private void cancel_edit () {
             if (editing_msg_id == 0) return;
             editing_msg_id = 0;
-            text_entry.text = "";
-            text_entry.placeholder_text = "Type a message…";
+            text_view.buffer.text = "";
+            set_placeholder (placeholder_default);
             cancel_edit_button.visible = false;
             attach_button.sensitive = true;
         }
@@ -209,11 +264,19 @@ namespace Dc {
 
         private bool on_entry_key_pressed (uint keyval, uint keycode,
                                            Gdk.ModifierType state) {
+            bool shift = (state & Gdk.ModifierType.SHIFT_MASK) != 0;
+            if (keyval == Gdk.Key.Return
+                || keyval == Gdk.Key.KP_Enter
+                || keyval == Gdk.Key.ISO_Enter) {
+                if (shift) return false; /* let TextView insert a newline */
+                on_send ();
+                return true;
+            }
+
             if (!can_accept_attachment ()) return false;
             bool ctrl_v = (state & Gdk.ModifierType.CONTROL_MASK) != 0
                         && (keyval == Gdk.Key.v || keyval == Gdk.Key.V);
-            if (!ctrl_v && !((state & Gdk.ModifierType.SHIFT_MASK) != 0
-                             && keyval == Gdk.Key.Insert)) return false;
+            if (!ctrl_v && !(shift && keyval == Gdk.Key.Insert)) return false;
 
             var clipboard = get_display ().get_clipboard ();
             var formats = clipboard.get_formats ();
