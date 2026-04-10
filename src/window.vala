@@ -1952,6 +1952,19 @@ namespace Dc {
                 select_chat_by_id (chat_id);
             });
 
+            /* Escape dismisses the dialog (SearchEntry would otherwise
+             * swallow the key to clear its text). */
+            var key_ctrl = new Gtk.EventControllerKey ();
+            key_ctrl.propagation_phase = Gtk.PropagationPhase.CAPTURE;
+            key_ctrl.key_pressed.connect ((keyval, keycode, state) => {
+                if (keyval == Gdk.Key.Escape) {
+                    dialog.close ();
+                    return true;
+                }
+                return false;
+            });
+            box.add_controller (key_ctrl);
+
             box.append (inner);
             dialog.child = box;
             dialog.present (this);
