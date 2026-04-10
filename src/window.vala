@@ -41,6 +41,7 @@ namespace Dc {
         private Json.Array? all_msg_ids = null;
         private uint loaded_start_index = 0;
         private bool loading_more = false;
+        private bool loading_chat = false;
         public int double_click_action { get; set; default = 0; }
         public bool markdown_rendering { get; set; default = false; }
 
@@ -199,6 +200,7 @@ namespace Dc {
                 scroll_down_btn.visible = !is_near_bottom ();
             });
             message_scroll.vadjustment.notify["value"].connect (() => {
+                if (loading_chat) return;
                 stick_to_bottom = is_near_bottom ();
                 scroll_down_btn.visible = !stick_to_bottom;
                 if (is_near_top () && !loading_more && loaded_start_index > 0) {
@@ -619,7 +621,11 @@ namespace Dc {
                 pinned_msg_ids = load_pinned_for_chat (chat_id);
 
                 /* Clear and populate in one synchronous pass.
-                   Messages are already sorted by the RPC, so append(). */
+                   Messages are already sorted by the RPC, so append().
+                   Guard against the value-notify handler flipping
+                   stick_to_bottom while rows are lazily realized. */
+                loading_chat = true;
+                stick_to_bottom = true;
                 message_store.remove_all ();
                 Gtk.ListBoxRow? row;
                 while ((row = message_listbox.get_row_at_index (0)) != null) {
@@ -637,9 +643,14 @@ namespace Dc {
 
                 /* Defer scroll until GTK has laid out the new rows,
                    otherwise the adjustment upper is stale. */
-                stick_to_bottom = true;
                 Idle.add (() => {
                     scroll_to_bottom ();
+                    Timeout.add (50, () => {
+                        scroll_to_bottom ();
+                        loading_chat = false;
+                        scroll_down_btn.visible = !is_near_bottom ();
+                        return Source.REMOVE;
+                    });
                     return Source.REMOVE;
                 });
 
