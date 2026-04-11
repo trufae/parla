@@ -109,6 +109,21 @@ namespace Dc {
             shift_row.activatable_widget = shift_switch;
 
             behavior_list.append (shift_row);
+
+            var notif_row = new Adw.ActionRow ();
+            notif_row.title = "Desktop notifications";
+            notif_row.subtitle = "Notify on incoming messages when the window is not focused";
+
+            var notif_switch = new Gtk.Switch ();
+            notif_switch.active = app_window.notifications_enabled;
+            notif_switch.valign = Gtk.Align.CENTER;
+            notif_switch.notify["active"].connect (() => {
+                app_window.save_notifications_enabled (notif_switch.active);
+            });
+            notif_row.add_suffix (notif_switch);
+            notif_row.activatable_widget = notif_switch;
+
+            behavior_list.append (notif_row);
             content.append (behavior_list);
 
             var scroll = new Gtk.ScrolledWindow ();

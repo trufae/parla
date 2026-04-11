@@ -45,6 +45,7 @@ namespace Dc {
         public int double_click_action { get; set; default = 0; }
         public bool markdown_rendering { get; set; default = false; }
         public bool shift_enter_sends { get; set; default = false; }
+        public bool notifications_enabled { get; set; default = true; }
 
         /* Pinned messages */
         private Gtk.Revealer pinned_revealer;
@@ -1049,14 +1050,59 @@ namespace Dc {
                         insert_message_sorted (row);
                         row.highlight ();
                     }
-                    yield rpc.mark_seen_msgs (rpc.account_id, new int[] { msg_id });
+                    if (this.is_active) {
+                        yield rpc.mark_seen_msgs (rpc.account_id, new int[] { msg_id });
+                    }
                 } catch (Error e) {
                     warning ("Failed to handle incoming msg: %s", e.message);
                 }
             }
+            if (notifications_enabled && !this.is_active) {
+                /* App is in background — send a desktop notification */
+                yield notify_incoming_msg (chat_id, msg_id);
+            }
             /* For all incoming messages (current chat or not), refresh the
                chat list to update preview text and unread counters. */
             yield load_chats ();
+        }
+
+        private async void notify_incoming_msg (int chat_id, int msg_id) {
+            var rpc = ((Dc.Application) this.application).rpc;
+            try {
+                var msg_obj = yield rpc.get_message (rpc.account_id, msg_id);
+                if (msg_obj == null) return;
+                var msg = RpcClient.parse_message (msg_obj, self_email);
+                if (msg.is_outgoing || msg.is_info) return;
+
+                string title = msg.sender_name ?? msg.sender_address ?? "New message";
+                try {
+                    var chat_obj = yield rpc.get_full_chat_by_id (rpc.account_id, chat_id);
+                    if (chat_obj != null && chat_obj.has_member ("name")) {
+                        string chat_name = chat_obj.get_string_member ("name");
+                        if (chat_name != null && chat_name.length > 0
+                            && chat_name != title) {
+                            title = "%s (%s)".printf (title, chat_name);
+                        }
+                    }
+                } catch (Error e) { /* ignore — fall back to sender */ }
+
+                string body;
+                if (msg.text != null && msg.text.length > 0) {
+                    body = msg.text;
+                } else if (msg.file_name != null && msg.file_name.length > 0) {
+                    body = msg.file_name;
+                } else {
+                    body = "New message";
+                }
+
+                var n = new GLib.Notification (title);
+                n.set_body (body);
+                n.set_priority (GLib.NotificationPriority.NORMAL);
+                this.application.send_notification (
+                    "dc-msg-%d".printf (msg_id), n);
+            } catch (Error e) {
+                warning ("Failed to send notification: %s", e.message);
+            }
         }
 
         /* ================================================================
@@ -2111,6 +2157,13 @@ namespace Dc {
             });
         }
 
+        public void save_notifications_enabled (bool enabled) {
+            notifications_enabled = enabled;
+            save_setting_to_file ((kf) => {
+                kf.set_boolean ("General", "notifications_enabled", enabled);
+            });
+        }
+
         private delegate void SettingWriter (KeyFile kf);
 
         private void save_setting_to_file (SettingWriter writer) {
@@ -2138,6 +2191,7 @@ namespace Dc {
                 Markdown.enabled = false;
                 shift_enter_sends = false;
                 ComposeBar.shift_enter_sends = false;
+                notifications_enabled = true;
                 return;
             }
             try {
@@ -2160,6 +2214,12 @@ namespace Dc {
                 shift_enter_sends = false;
             }
             ComposeBar.shift_enter_sends = shift_enter_sends;
+            try {
+                notifications_enabled = kf.get_boolean (
+                    "General", "notifications_enabled");
+            } catch (Error e) {
+                notifications_enabled = true;
+            }
         }
 
         /* ================================================================
