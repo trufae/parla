@@ -92,14 +92,6 @@ namespace Dc {
             var title_widget = new Adw.WindowTitle ("Delta Chat", "");
             sidebar_header.title_widget = title_widget;
 
-            /* Click on title to show app menu (Settings / About) */
-            var title_click = new Gtk.GestureClick ();
-            title_click.button = 0; /* any button */
-            title_click.pressed.connect ((n, x, y) => {
-                show_app_menu (title_widget, x, y);
-            });
-            title_widget.add_controller (title_click);
-
             /* Profile avatar button in header */
             profile_avatar = new Adw.Avatar (24, "", true);
             var avatar_button = new Gtk.Button ();
@@ -109,6 +101,14 @@ namespace Dc {
             avatar_button.tooltip_text = "My profile";
             avatar_button.clicked.connect (on_show_profile);
             sidebar_header.pack_start (avatar_button);
+
+            /* Hamburger menu button on the right */
+            var menu_button = new Gtk.MenuButton ();
+            menu_button.icon_name = "open-menu-symbolic";
+            menu_button.tooltip_text = "Main Menu";
+            menu_button.add_css_class ("flat");
+            menu_button.popover = build_app_menu_popover ();
+            sidebar_header.pack_end (menu_button);
 
 
             sidebar_box.append (sidebar_header);
@@ -415,9 +415,6 @@ namespace Dc {
                 yield load_chats ();
                 yield load_profile_avatar ();
                 start_listener.begin ();
-
-                var title = (Adw.WindowTitle) sidebar_header.title_widget;
-                title.subtitle = self_email ?? "Connected";
             }
         }
 
@@ -1677,7 +1674,7 @@ namespace Dc {
          *  App Menu (Settings / About)
          * ================================================================ */
 
-        private void show_app_menu (Gtk.Widget anchor, double x, double y) {
+        private Gtk.Popover build_app_menu_popover () {
             var popover = new Gtk.Popover ();
 
             var vbox = new Gtk.Box (Gtk.Orientation.VERTICAL, 4);
@@ -1737,8 +1734,7 @@ namespace Dc {
             vbox.append (about_btn);
 
             popover.child = vbox;
-            popover.set_parent (anchor);
-            popover.popup ();
+            return popover;
         }
 
         private void show_about_dialog () {
@@ -1768,8 +1764,6 @@ namespace Dc {
             var rpc = ((Dc.Application) this.application).rpc;
             if (rpc.account_id <= 0) {
                 self_email = null;
-                var title = (Adw.WindowTitle) sidebar_header.title_widget;
-                title.subtitle = "";
                 content_stack.visible_child_name = "empty";
                 current_chat_id = 0;
                 return;
@@ -1779,8 +1773,6 @@ namespace Dc {
             } catch (Error e) {
                 self_email = null;
             }
-            var title = (Adw.WindowTitle) sidebar_header.title_widget;
-            title.subtitle = self_email ?? "Connected";
             current_chat_id = 0;
             content_stack.visible_child_name = "empty";
             yield load_chats ();
