@@ -358,5 +358,63 @@ namespace Dc {
             }
             return path;
         }
+
+        /**
+         * Find and activate a configured account, or create one from
+         * credentials. Returns the account id (>0) on success, or 0 with
+         * a human-readable status in `out description`.
+         */
+        public static async int ensure_configured (RpcClient rpc,
+                out string? description, out string? toast_msg) {
+            description = null;
+            toast_msg = null;
+            try {
+                var accounts_node = yield rpc.get_all_accounts ();
+                if (accounts_node == null) return 0;
+                var accounts = accounts_node.get_array ();
+
+                for (uint i = 0; i < accounts.get_length (); i++) {
+                    var acct = accounts.get_object_element (i);
+                    int id = (int) acct.get_int_member ("id");
+                    if (yield rpc.is_configured (id)) {
+                        rpc.account_id = id;
+                        yield rpc.select_account (id);
+                        yield rpc.start_io (id);
+                        return id;
+                    }
+                }
+
+                var creds = get_credentials_from_config ();
+                if (creds != null && creds.email.length > 0 && creds.password.length > 0) {
+                    int acct_id = yield rpc.add_account ();
+                    yield rpc.add_or_update_transport (acct_id, creds.email, creds.password);
+                    yield rpc.select_account (acct_id);
+                    yield rpc.start_io (acct_id);
+                    rpc.account_id = acct_id;
+                    toast_msg = "Configured account: " + creds.email;
+                    return acct_id;
+                }
+
+                var installations = find_installations ();
+                if (installations.length > 0) {
+                    var sb = new StringBuilder ("Found installations:\n");
+                    for (int j = 0; j < installations.length; j++) {
+                        var inst = installations[j];
+                        sb.append ("\xe2\x80\xa2 %s".printf (inst.label));
+                        if (inst.email != null) sb.append (" (%s)".printf (inst.email));
+                        sb.append ("\n");
+                    }
+                    description = sb.str +
+                        "\nCreate a deltachat-config.json with email/password to connect.";
+                } else {
+                    description =
+                        "No Delta Chat accounts found.\n" +
+                        "Create deltachat-config.json with your credentials.";
+                }
+            } catch (Error e) {
+                toast_msg = "Account setup error: " + e.message;
+            }
+            return 0;
+        }
     }
 }
