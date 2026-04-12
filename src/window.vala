@@ -783,12 +783,7 @@ namespace Dc {
                 show_toast ("File not available");
                 return;
             }
-            bool is_img = (msg.file_mime != null && msg.file_mime.has_prefix ("image/"));
-            if (!is_img && msg.view_type != null) {
-                var vt = msg.view_type.down ();
-                is_img = (vt == "image" || vt == "gif" || vt == "sticker");
-            }
-            if (is_img) {
+            if (MessageRow.is_image_file (msg)) {
                 image_viewer.show (msg.file_path);
             } else {
                 save_attachment.begin (msg.file_path, msg.file_name);

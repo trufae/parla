@@ -211,7 +211,7 @@ namespace Dc {
             this.append (label);
         }
 
-        private static bool is_image_file (Message msg) {
+        public static bool is_image_file (Message msg) {
             if (msg.file_mime != null && msg.file_mime.has_prefix ("image/"))
                 return true;
             if (msg.view_type != null) {
