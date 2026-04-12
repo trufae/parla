@@ -9,15 +9,7 @@ namespace Dc {
         private Gtk.SearchEntry search_entry;
         private Gtk.ListBox contact_listbox;
         private Gtk.Button use_email_btn;
-        private GenericArray<ContactInfo?> all_contacts = new GenericArray<ContactInfo?> ();
-
-        private struct ContactInfo {
-            public int id;
-            public string display_name;
-            public string address;
-            public string? profile_image;
-            public bool is_verified;
-        }
+        private GenericArray<Contact> all_contacts = new GenericArray<Contact> ();
 
         public ContactPickerDialog (RpcClient rpc, int acct_id) {
             this.rpc = rpc;
@@ -95,19 +87,7 @@ namespace Dc {
                     var obj = yield rpc.get_contact (acct_id, cid);
                     if (obj == null) continue;
 
-                    ContactInfo ci = ContactInfo ();
-                    ci.id = cid;
-                    ci.display_name = obj.has_member ("displayName")
-                        && !obj.get_member ("displayName").is_null ()
-                        ? obj.get_string_member ("displayName") : "";
-                    ci.address = obj.has_member ("address")
-                        ? obj.get_string_member ("address") : "";
-                    ci.profile_image = obj.has_member ("profileImage")
-                        && !obj.get_member ("profileImage").is_null ()
-                        ? obj.get_string_member ("profileImage") : null;
-                    ci.is_verified = obj.has_member ("isVerified")
-                        && obj.get_boolean_member ("isVerified");
-
+                    var ci = RpcClient.parse_contact (cid, obj);
                     if (ci.address.length == 0) continue;
 
                     all_contacts.add (ci);
@@ -132,8 +112,7 @@ namespace Dc {
             string q = query.strip ().down ();
 
             for (uint i = 0; i < all_contacts.length; i++) {
-                ContactInfo? ci = all_contacts[i];
-                if (ci == null) continue;
+                var ci = all_contacts[i];
 
                 if (q.length > 0) {
                     bool matches = ci.display_name.down ().contains (q)
@@ -146,7 +125,7 @@ namespace Dc {
             }
         }
 
-        private Adw.ActionRow build_contact_row (ContactInfo ci) {
+        private Adw.ActionRow build_contact_row (Contact ci) {
             string title = ci.display_name.length > 0 ? ci.display_name : ci.address;
             string subtitle = ci.display_name.length > 0 ? ci.address : "";
             if (ci.is_verified && subtitle.length > 0) subtitle += " (verified)";
@@ -181,8 +160,8 @@ namespace Dc {
             if (text.contains ("@") && text.length > 3) {
                 bool already_listed = false;
                 for (uint i = 0; i < all_contacts.length; i++) {
-                    ContactInfo? ci = all_contacts[i];
-                    if (ci != null && ci.address.down () == text.down ()) {
+                    var ci = all_contacts[i];
+                    if (ci.address.down () == text.down ()) {
                         already_listed = true;
                         break;
                     }

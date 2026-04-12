@@ -44,6 +44,14 @@ namespace Dc {
         public bool is_pinned { get; set; default = false; }
     }
 
+    public class Contact : Object {
+        public int id { get; set; default = 0; }
+        public string display_name { get; set; default = ""; }
+        public string address { get; set; default = ""; }
+        public string? profile_image { get; set; default = null; }
+        public bool is_verified { get; set; default = false; }
+    }
+
     public class FoundInstallation : Object {
         public string label { get; set; default = ""; }
         public string data_path { get; set; default = ""; }

@@ -34,9 +34,12 @@ namespace Dc {
         private Adw.Avatar profile_avatar;
 
         /* State */
+        private unowned RpcClient rpc;
         private int current_chat_id = 0;
         private string? self_email = null;
         private bool listening = false;
+        private uint chats_reload_timer = 0;
+        private uint messages_reload_timer = 0;
         private bool stick_to_bottom = true;
         private Json.Array? all_msg_ids = null;
         private uint loaded_start_index = 0;
@@ -69,7 +72,6 @@ namespace Dc {
         construct {
             chat_store = new GLib.ListStore (typeof (ChatEntry));
             message_store = new GLib.ListStore (typeof (Message));
-
             build_ui ();
             load_settings ();
 
@@ -373,7 +375,7 @@ namespace Dc {
          * ================================================================ */
 
         private async void try_connect () {
-            var app = (Dc.Application) this.application;
+            rpc = ((Dc.Application) this.application).rpc;
 
             /* Find the RPC server binary */
             string[]? rpc_cmd = AccountFinder.find_rpc_server ();
@@ -389,7 +391,7 @@ namespace Dc {
 
             /* Try to connect */
             try {
-                yield app.rpc.start (rpc_cmd, data_dir, accounts_path);
+                yield rpc.start (rpc_cmd, data_dir, accounts_path);
             } catch (Error e) {
                 string msg = e.message;
                 if ("already running" in msg.down () || "accounts.lock" in msg.down ()) {
@@ -405,11 +407,11 @@ namespace Dc {
             }
 
             /* Ensure we have an account */
-            yield ensure_account (app.rpc);
+            yield ensure_account (rpc);
 
-            if (app.rpc.account_id > 0) {
+            if (rpc.account_id > 0) {
                 try {
-                    self_email = yield app.rpc.get_config (app.rpc.account_id, "addr");
+                    self_email = yield rpc.get_config (rpc.account_id, "addr");
                 } catch (Error ce) {
                     self_email = null;
                 }
@@ -478,20 +480,15 @@ namespace Dc {
          * ================================================================ */
 
         private async void load_chats () {
-            var rpc = ((Dc.Application) this.application).rpc;
             if (rpc.account_id <= 0) return;
 
             try {
                 var entries = yield rpc.get_chatlist_entries (rpc.account_id);
                 if (entries == null) return;
 
-                /* Get details for all entries */
                 var items = yield rpc.get_chatlist_items_by_entries (rpc.account_id, entries);
 
-                /* Clear and rebuild chat list */
                 chat_store.remove_all ();
-
-                /* Remove old rows */
                 Gtk.ListBoxRow? row;
                 while ((row = chat_listbox.get_row_at_index (0)) != null) {
                     chat_listbox.remove (row);
@@ -516,7 +513,6 @@ namespace Dc {
                     }
                 }
 
-                /* Re-select the active chat so it stays highlighted */
                 if (reselect_row != null) {
                     chat_listbox.select_row (reselect_row);
                 }
@@ -532,12 +528,9 @@ namespace Dc {
             var chat_row = row.child as ChatRow;
             if (chat_row == null) return true;
 
-            /* Find matching ChatEntry in store */
-            for (uint i = 0; i < chat_store.get_n_items (); i++) {
-                var entry = (ChatEntry) chat_store.get_item (i);
-                if (entry.id == chat_row.chat_id) {
-                    return entry.name.down ().contains (query);
-                }
+            var entry = find_chat_entry (chat_store, chat_row.chat_id);
+            if (entry != null) {
+                return entry.name.down ().contains (query);
             }
             return true;
         }
@@ -561,12 +554,9 @@ namespace Dc {
             current_chat_id = chat_id;
 
             /* Find name */
-            for (uint i = 0; i < chat_store.get_n_items (); i++) {
-                var entry = (ChatEntry) chat_store.get_item (i);
-                if (entry.id == current_chat_id) {
-                    content_title_label.label = entry.name;
-                    break;
-                }
+            var entry = find_chat_entry (chat_store, current_chat_id);
+            if (entry != null) {
+                content_title_label.label = entry.name;
             }
 
             content_stack.visible_child_name = "messages";
@@ -581,7 +571,6 @@ namespace Dc {
         }
 
         private async void notice_chat (int chat_id) {
-            var rpc = ((Dc.Application) this.application).rpc;
             try {
                 yield rpc.marknoticed_chat (rpc.account_id, chat_id);
             } catch (Error e) {
@@ -594,35 +583,22 @@ namespace Dc {
          * ================================================================ */
 
         private async void load_messages (int chat_id) {
-            var rpc = ((Dc.Application) this.application).rpc;
             if (rpc.account_id <= 0) return;
 
             try {
                 all_msg_ids = yield rpc.get_message_ids (rpc.account_id, chat_id);
                 if (all_msg_ids == null) return;
 
-                /* Only fetch the last N messages for fast initial load. */
                 loaded_start_index = all_msg_ids.get_length () > 100
                     ? all_msg_ids.get_length () - 100 : 0;
 
-                var messages = new GLib.GenericArray<Message> ();
-                for (uint i = loaded_start_index; i < all_msg_ids.get_length (); i++) {
-                    int msg_id = (int) all_msg_ids.get_int_element (i);
-                    var msg_obj = yield rpc.get_message (rpc.account_id, msg_id);
-                    if (msg_obj == null) continue;
-                    messages.add (RpcClient.parse_message (msg_obj, self_email));
-                }
+                var messages = yield fetch_messages_batch (
+                    loaded_start_index, all_msg_ids.get_length ());
 
-                /* Discard if the user switched chats while fetching. */
                 if (chat_id != current_chat_id) return;
 
-                /* Load pinned message IDs for this chat */
                 pinned_msg_ids = load_pinned_for_chat (chat_id);
 
-                /* Clear and populate in one synchronous pass.
-                   Messages are already sorted by the RPC, so append().
-                   Guard against the value-notify handler flipping
-                   stick_to_bottom while rows are lazily realized. */
                 loading_chat = true;
                 stick_to_bottom = true;
                 message_store.remove_all ();
@@ -640,8 +616,6 @@ namespace Dc {
 
                 load_more_btn.visible = (loaded_start_index > 0);
 
-                /* Defer scroll until GTK has laid out the new rows,
-                   otherwise the adjustment upper is stale. */
                 Idle.add (() => {
                     scroll_to_bottom ();
                     Timeout.add (50, () => {
@@ -653,7 +627,6 @@ namespace Dc {
                     return Source.REMOVE;
                 });
 
-                /* Update pinned messages bar */
                 update_pinned_bar ();
             } catch (Error e) {
                 show_toast ("Failed to load messages: " + e.message);
@@ -671,34 +644,42 @@ namespace Dc {
             return adj.value < 80;
         }
 
+        private async GLib.GenericArray<Message> fetch_messages_batch (
+                uint start, uint end) throws Error {
+            int[] ids = {};
+            for (uint i = start; i < end; i++) {
+                ids += (int) all_msg_ids.get_int_element (i);
+            }
+            var map = yield rpc.get_messages (rpc.account_id, ids);
+            var result = new GLib.GenericArray<Message> ();
+            if (map != null) {
+                foreach (int mid in ids) {
+                    string k = mid.to_string ();
+                    if (map.has_member (k)) {
+                        result.add (RpcClient.parse_message (
+                            map.get_object_member (k), self_email));
+                    }
+                }
+            }
+            return result;
+        }
+
         private async void load_earlier_messages () {
             if (loading_more || all_msg_ids == null || loaded_start_index == 0) return;
             loading_more = true;
-
-            var rpc = ((Dc.Application) this.application).rpc;
             int chat_id = current_chat_id;
 
-            uint batch = 100;
-            uint new_start = loaded_start_index > batch
-                ? loaded_start_index - batch : 0;
+            uint new_start = loaded_start_index > 100
+                ? loaded_start_index - 100 : 0;
 
             try {
-                var messages = new GLib.GenericArray<Message> ();
-                for (uint i = new_start; i < loaded_start_index; i++) {
-                    int msg_id = (int) all_msg_ids.get_int_element (i);
-                    var msg_obj = yield rpc.get_message (rpc.account_id, msg_id);
-                    if (msg_obj == null) continue;
-                    messages.add (RpcClient.parse_message (msg_obj, self_email));
-                }
-
+                var messages = yield fetch_messages_batch (new_start, loaded_start_index);
                 if (chat_id != current_chat_id) { loading_more = false; return; }
 
-                /* Record scroll state before prepending. */
                 var adj = message_scroll.vadjustment;
                 double old_upper = adj.upper;
                 double old_value = adj.value;
 
-                /* Prepend older messages in chronological order. */
                 for (uint i = 0; i < messages.length; i++) {
                     var msg = messages[i];
                     msg.is_pinned = is_msg_pinned (msg.id);
@@ -709,8 +690,6 @@ namespace Dc {
                 loaded_start_index = new_start;
                 load_more_btn.visible = (loaded_start_index > 0);
 
-                /* Restore scroll position so the user sees the same
-                   content after older messages are prepended above. */
                 Idle.add (() => {
                     var a = message_scroll.vadjustment;
                     a.value = old_value + (a.upper - old_upper);
@@ -829,7 +808,6 @@ namespace Dc {
         }
 
         private async void do_send (string text, string? file_path, string? file_name, int quote_msg_id) {
-            var rpc = ((Dc.Application) this.application).rpc;
             try {
                 string? send_text = text.length > 0 ? text : null;
                 string? send_file = file_path;
@@ -945,7 +923,6 @@ namespace Dc {
             if (listening) return;
             listening = true;
 
-            var rpc = ((Dc.Application) this.application).rpc;
 
             while (rpc.is_connected) {
                 try {
@@ -959,7 +936,7 @@ namespace Dc {
                     if (event == null) continue;
 
                     string kind = event.get_string_member ("kind");
-                    yield handle_event (kind, event);
+                    handle_event (kind, event);
                 } catch (Error e) {
                     if (rpc.is_connected) {
                         warning ("Event loop error: %s", e.message);
@@ -971,73 +948,64 @@ namespace Dc {
             listening = false;
         }
 
-        private async void handle_event (string kind, Json.Object event) {
+        private void reload_chats () {
+            if (chats_reload_timer > 0) return;
+            chats_reload_timer = Timeout.add (150, () => {
+                chats_reload_timer = 0;
+                load_chats.begin ();
+                return Source.REMOVE;
+            });
+        }
+
+        private void reload_messages () {
+            if (messages_reload_timer > 0 || current_chat_id <= 0) return;
+            messages_reload_timer = Timeout.add (150, () => {
+                messages_reload_timer = 0;
+                if (current_chat_id > 0) load_messages.begin (current_chat_id);
+                return Source.REMOVE;
+            });
+        }
+
+        private void handle_event (string kind, Json.Object event) {
             switch (kind) {
             case "IncomingMsg":
                 int chat_id = (int) event.get_int_member ("chatId");
                 int msg_id = (int) event.get_int_member ("msgId");
-                yield on_incoming_msg (chat_id, msg_id);
+                on_incoming_msg.begin (chat_id, msg_id);
                 break;
 
             case "MsgsChanged":
                 int changed_chat = (int) event.get_int_member ("chatId");
-                /* Broad change or change in the current chat — reload messages */
                 if (changed_chat == 0 || changed_chat == current_chat_id) {
-                    if (current_chat_id > 0) {
-                        yield load_messages (current_chat_id);
-                    }
+                    reload_messages ();
                 }
                 break;
 
             case "MsgDelivered":
             case "MsgRead":
             case "MsgFailed":
-                int state_chat = (int) event.get_int_member ("chatId");
-                if (state_chat == current_chat_id && current_chat_id > 0) {
-                    yield load_messages (current_chat_id);
-                }
-                break;
-
             case "MsgDeleted":
-                int del_chat = (int) event.get_int_member ("chatId");
-                if (del_chat == current_chat_id && current_chat_id > 0) {
-                    yield load_messages (current_chat_id);
+            case "ReactionsChanged":
+                int msg_chat = (int) event.get_int_member ("chatId");
+                if (msg_chat == current_chat_id) {
+                    reload_messages ();
                 }
                 break;
 
             case "ChatlistChanged":
-                yield load_chats ();
-                break;
-
             case "ChatlistItemChanged":
-                /* Could do selective update, but full reload is simple and correct */
-                yield load_chats ();
-                break;
-
             case "MsgsNoticed":
-                yield load_chats ();
-                break;
-
             case "ChatModified":
             case "ChatDeleted":
-                yield load_chats ();
-                break;
-
-            case "ReactionsChanged":
-                int rx_chat = (int) event.get_int_member ("chatId");
-                if (rx_chat == current_chat_id && current_chat_id > 0) {
-                    yield load_messages (current_chat_id);
-                }
+                reload_chats ();
                 break;
 
             default:
-                /* Info, Warning, ConnectivityChanged, etc. — ignore */
                 break;
             }
         }
 
         private async void on_incoming_msg (int chat_id, int msg_id) {
-            var rpc = ((Dc.Application) this.application).rpc;
 
             if (chat_id == current_chat_id && current_chat_id > 0) {
                 /* Message is in the active chat — show it and mark seen */
@@ -1061,13 +1029,11 @@ namespace Dc {
                 /* App is in background — send a desktop notification */
                 yield notify_incoming_msg (chat_id, msg_id);
             }
-            /* For all incoming messages (current chat or not), refresh the
-               chat list to update preview text and unread counters. */
-            yield load_chats ();
+            /* Refresh chat list to update preview text and unread counters. */
+            reload_chats ();
         }
 
         private async void notify_incoming_msg (int chat_id, int msg_id) {
-            var rpc = ((Dc.Application) this.application).rpc;
             try {
                 var msg_obj = yield rpc.get_message (rpc.account_id, msg_id);
                 if (msg_obj == null) return;
@@ -1110,7 +1076,6 @@ namespace Dc {
          * ================================================================ */
 
         private void on_show_profile () {
-            var rpc = ((Dc.Application) this.application).rpc;
             if (rpc.account_id <= 0) return;
 
             var dialog = new ProfileDialog (rpc, rpc.account_id);
@@ -1121,7 +1086,6 @@ namespace Dc {
         }
 
         private async void load_profile_avatar () {
-            var rpc = ((Dc.Application) this.application).rpc;
             if (rpc.account_id <= 0) return;
 
             try {
@@ -1146,7 +1110,6 @@ namespace Dc {
         }
 
         private void on_new_chat () {
-            var rpc = ((Dc.Application) this.application).rpc;
             if (rpc.account_id <= 0) return;
 
             var picker = new ContactPickerDialog (rpc, rpc.account_id);
@@ -1157,7 +1120,6 @@ namespace Dc {
         }
 
         private async void create_chat_by_email (string email) {
-            var rpc = ((Dc.Application) this.application).rpc;
             if (rpc.account_id <= 0) return;
 
             try {
@@ -1182,7 +1144,6 @@ namespace Dc {
         }
 
         private void on_new_group () {
-            var rpc = ((Dc.Application) this.application).rpc;
             if (rpc.account_id <= 0) return;
 
             var dialog = new NewGroupDialog (rpc, rpc.account_id);
@@ -1207,12 +1168,9 @@ namespace Dc {
         private void show_chat_context_menu (int chat_id, double x, double y) {
             /* Look up pinned state from chat_store */
             bool is_pinned = false;
-            for (uint i = 0; i < chat_store.get_n_items (); i++) {
-                var entry = (ChatEntry) chat_store.get_item (i);
-                if (entry.id == chat_id) {
-                    is_pinned = entry.is_pinned;
-                    break;
-                }
+            var entry = find_chat_entry (chat_store, chat_id);
+            if (entry != null) {
+                is_pinned = entry.is_pinned;
             }
 
             var menu = new GLib.Menu ();
@@ -1250,7 +1208,6 @@ namespace Dc {
         }
 
         private async void toggle_chat_pin (int chat_id, bool currently_pinned) {
-            var rpc = ((Dc.Application) this.application).rpc;
             try {
                 string visibility = currently_pinned ? "Normal" : "Pinned";
                 yield rpc.set_chat_visibility (rpc.account_id, chat_id, visibility);
@@ -1294,31 +1251,25 @@ namespace Dc {
             vbox.append (pin_btn);
 
             /* Save file (for messages with attachments) */
-            for (uint i = 0; i < message_store.get_n_items (); i++) {
-                var m = (Message) message_store.get_item (i);
-                if (m.id == msg_id && m.file_path != null && m.file_path.length > 0) {
-                    string fpath = m.file_path;
-                    string? fname = m.file_name;
-                    var save_btn = new Gtk.Button.with_label ("Save file");
-                    save_btn.add_css_class ("flat");
-                    save_btn.clicked.connect (() => {
-                        popover.popdown ();
-                        save_attachment.begin (fpath, fname);
-                    });
-                    vbox.append (save_btn);
-                    break;
-                }
+            var m_save = find_message (message_store, msg_id);
+            if (m_save != null && m_save.file_path != null && m_save.file_path.length > 0) {
+                string fpath = m_save.file_path;
+                string? fname = m_save.file_name;
+                var save_btn = new Gtk.Button.with_label ("Save file");
+                save_btn.add_css_class ("flat");
+                save_btn.clicked.connect (() => {
+                    popover.popdown ();
+                    save_attachment.begin (fpath, fname);
+                });
+                vbox.append (save_btn);
             }
 
             if (is_outgoing) {
                 /* Allow editing only if the message has text */
                 bool has_text = false;
-                for (uint i = 0; i < message_store.get_n_items (); i++) {
-                    var m = (Message) message_store.get_item (i);
-                    if (m.id == msg_id) {
-                        has_text = (m.text != null && m.text.strip ().length > 0);
-                        break;
-                    }
+                var m_edit = find_message (message_store, msg_id);
+                if (m_edit != null) {
+                    has_text = (m_edit.text != null && m_edit.text.strip ().length > 0);
                 }
                 if (has_text) {
                     var edit_btn = new Gtk.Button.with_label ("Edit");
@@ -1376,7 +1327,6 @@ namespace Dc {
         }
 
         private async void do_send_reaction (int msg_id, string emoji) {
-            var rpc = ((Dc.Application) this.application).rpc;
             try {
                 yield rpc.send_reaction (rpc.account_id, msg_id,
                                           new string[] { emoji });
@@ -1387,31 +1337,18 @@ namespace Dc {
         }
 
         private async void do_delete_message (int msg_id, bool for_all) {
-            var rpc = ((Dc.Application) this.application).rpc;
             try {
                 if (for_all) {
                     yield rpc.delete_messages_for_all (rpc.account_id, new int[] { msg_id });
                 } else {
                     yield rpc.delete_messages (rpc.account_id, new int[] { msg_id });
                 }
-                /* Remove the row from the UI */
-                int idx = 0;
-                Gtk.ListBoxRow? row;
-                while ((row = message_listbox.get_row_at_index (idx)) != null) {
-                    var mr = row as MessageRow;
-                    if (mr != null && mr.message_id == msg_id) {
-                        message_listbox.remove (row);
-                        /* Also remove from the backing store */
-                        for (uint i = 0; i < message_store.get_n_items (); i++) {
-                            var m = (Message) message_store.get_item (i);
-                            if (m.id == msg_id) {
-                                message_store.remove (i);
-                                break;
-                            }
-                        }
-                        break;
-                    }
-                    idx++;
+                int idx = find_message_row_index (message_listbox, msg_id);
+                if (idx >= 0) {
+                    var row = message_listbox.get_row_at_index (idx);
+                    if (row != null) message_listbox.remove (row);
+                    int mi = find_message_index (message_store, msg_id);
+                    if (mi >= 0) message_store.remove (mi);
                 }
             } catch (Error e) {
                 show_toast ("Delete failed: " + e.message);
@@ -1440,7 +1377,14 @@ namespace Dc {
                 pinned_msg_ids += msg_id;
             }
             save_pinned_for_chat (current_chat_id, pinned_msg_ids);
-            load_messages.begin (current_chat_id);
+
+            var m = find_message (message_store, msg_id);
+            if (m != null) {
+                m.is_pinned = is_msg_pinned (msg_id);
+                int idx = find_message_row_index (message_listbox, msg_id);
+                if (idx >= 0) replace_message_row (message_listbox, idx, create_message_row (m));
+            }
+            update_pinned_bar ();
         }
 
         private void update_pinned_bar () {
@@ -1460,13 +1404,10 @@ namespace Dc {
                 string? sender = null;
 
                 /* Find the message in the backing store */
-                for (uint j = 0; j < message_store.get_n_items (); j++) {
-                    var m = (Message) message_store.get_item (j);
-                    if (m.id == pin_id) {
-                        text = m.text;
-                        sender = m.is_outgoing ? "You" : (m.sender_name ?? "");
-                        break;
-                    }
+                var m = find_message (message_store, pin_id);
+                if (m != null) {
+                    text = m.text;
+                    sender = m.is_outgoing ? "You" : (m.sender_name ?? "");
                 }
 
                 if (text == null && sender == null) continue;
@@ -1561,52 +1502,41 @@ namespace Dc {
         }
 
         private void start_editing_message (int msg_id) {
-            /* Find the message text from the backing store */
-            for (uint i = 0; i < message_store.get_n_items (); i++) {
-                var m = (Message) message_store.get_item (i);
-                if (m.id == msg_id) {
-                    compose_bar.begin_edit (msg_id, m.text ?? "");
-                    return;
-                }
+            var m = find_message (message_store, msg_id);
+            if (m != null) {
+                compose_bar.begin_edit (msg_id, m.text ?? "");
             }
         }
 
         private void start_replying_message (int msg_id) {
-            for (uint i = 0; i < message_store.get_n_items (); i++) {
-                var m = (Message) message_store.get_item (i);
-                if (m.id == msg_id) {
-                    string sender = m.is_outgoing ? "You" : (m.sender_name ?? "");
-                    string preview = m.text ?? "(attachment)";
-                    compose_bar.begin_reply (msg_id, sender, preview);
-                    return;
-                }
+            var m = find_message (message_store, msg_id);
+            if (m != null) {
+                string sender = m.is_outgoing ? "You" : (m.sender_name ?? "");
+                string preview = m.text ?? "(attachment)";
+                compose_bar.begin_reply (msg_id, sender, preview);
             }
         }
 
         private void scroll_to_message (int msg_id) {
-            int idx = 0;
-            Gtk.ListBoxRow? row;
-            while ((row = message_listbox.get_row_at_index (idx)) != null) {
-                var mr = row as MessageRow;
-                if (mr != null && mr.message_id == msg_id) {
-                    /* Scroll so the row is visible, then highlight it */
-                    int row_y;
-                    Graphene.Point pt;
-                    if (row.compute_point (message_listbox, { 0, 0 }, out pt)) {
-                        row_y = (int) pt.y;
-                    } else {
-                        row_y = idx * 60; /* rough fallback */
-                    }
-                    var adj = message_scroll.vadjustment;
-                    double target = double.min (row_y, adj.upper - adj.page_size);
-                    if (target < 0) target = 0;
-                    adj.value = target;
-                    stick_to_bottom = is_near_bottom ();
-                    mr.highlight ();
-                    return;
-                }
-                idx++;
+            int idx = find_message_row_index (message_listbox, msg_id);
+            if (idx < 0) return;
+            var row = message_listbox.get_row_at_index (idx);
+            var mr = row as MessageRow;
+            if (mr == null) return;
+
+            int row_y;
+            Graphene.Point pt;
+            if (row.compute_point (message_listbox, { 0, 0 }, out pt)) {
+                row_y = (int) pt.y;
+            } else {
+                row_y = idx * 60;
             }
+            var adj = message_scroll.vadjustment;
+            double target = double.min (row_y, adj.upper - adj.page_size);
+            if (target < 0) target = 0;
+            adj.value = target;
+            stick_to_bottom = is_near_bottom ();
+            mr.highlight ();
         }
 
         private void on_edit_message (int msg_id, string new_text) {
@@ -1614,7 +1544,6 @@ namespace Dc {
         }
 
         private async void do_edit_message (int msg_id, string new_text) {
-            var rpc = ((Dc.Application) this.application).rpc;
             try {
                 yield rpc.send_edit_request (rpc.account_id, msg_id, new_text);
                 yield update_message_row (msg_id);
@@ -1624,31 +1553,18 @@ namespace Dc {
         }
 
         private async void update_message_row (int msg_id) {
-            var rpc = ((Dc.Application) this.application).rpc;
             try {
                 var msg_obj = yield rpc.get_message (rpc.account_id, msg_id);
                 if (msg_obj == null) return;
                 var msg = RpcClient.parse_message (msg_obj, self_email);
-
-                int idx = 0;
-                Gtk.ListBoxRow? row;
-                while ((row = message_listbox.get_row_at_index (idx)) != null) {
-                    var mr = row as MessageRow;
-                    if (mr != null && mr.message_id == msg_id) {
-                        message_listbox.remove (row);
-                        var new_row = create_message_row (msg);
-                        message_listbox.insert (new_row, idx);
-                        return;
-                    }
-                    idx++;
-                }
+                int idx = find_message_row_index (message_listbox, msg_id);
+                if (idx >= 0) replace_message_row (message_listbox, idx, create_message_row (msg));
             } catch (Error e) {
                 /* Reaction will appear on next message reload */
             }
         }
 
         private async void show_chat_info (int chat_id) {
-            var rpc = ((Dc.Application) this.application).rpc;
             var dialog = new ChatInfoDialog (rpc, rpc.account_id, chat_id);
 
             dialog.chat_deleted.connect ((cid) => {
@@ -1657,13 +1573,13 @@ namespace Dc {
                     current_chat_id = 0;
                     content_stack.visible_child_name = "empty";
                 }
-                load_chats.begin ();
+                reload_chats ();
             });
 
             dialog.chat_changed.connect (() => {
-                load_chats.begin ();
+                reload_chats ();
                 if (current_chat_id == chat_id) {
-                    load_messages.begin (chat_id);
+                    reload_messages ();
                 }
             });
 
@@ -1673,12 +1589,9 @@ namespace Dc {
         private async void confirm_delete_chat (int chat_id) {
             /* Find chat name */
             string chat_name = "this chat";
-            for (uint i = 0; i < chat_store.get_n_items (); i++) {
-                var entry = (ChatEntry) chat_store.get_item (i);
-                if (entry.id == chat_id) {
-                    chat_name = entry.name;
-                    break;
-                }
+            var entry = find_chat_entry (chat_store, chat_id);
+            if (entry != null) {
+                chat_name = entry.name;
             }
 
             var dialog = new Adw.AlertDialog (
@@ -1700,7 +1613,6 @@ namespace Dc {
         }
 
         private async void do_delete_chat (int chat_id) {
-            var rpc = ((Dc.Application) this.application).rpc;
             try {
                 yield rpc.delete_chat (rpc.account_id, chat_id);
                 show_toast ("Chat deleted");
@@ -1798,7 +1710,6 @@ namespace Dc {
         }
 
         private void show_settings_dialog () {
-            var rpc = ((Dc.Application) this.application).rpc;
             var dialog = new SettingsDialog (rpc, this);
             dialog.account_changed.connect (() => {
                 reload_active_account.begin ();
@@ -1807,7 +1718,6 @@ namespace Dc {
         }
 
         public async void reload_active_account () {
-            var rpc = ((Dc.Application) this.application).rpc;
             if (rpc.account_id <= 0) {
                 self_email = null;
                 content_stack.visible_child_name = "empty";
@@ -1906,14 +1816,13 @@ namespace Dc {
         }
 
         private void refresh_current_chat () {
-            load_chats.begin ();
+            reload_chats ();
             if (current_chat_id > 0) {
-                load_messages.begin (current_chat_id);
+                reload_messages ();
             }
         }
 
         private void show_quick_switch_dialog () {
-            var rpc = ((Dc.Application) this.application).rpc;
             if (rpc.account_id <= 0) return;
             if (chat_store.get_n_items () == 0) return;
 
@@ -2101,26 +2010,20 @@ namespace Dc {
         }
 
         private async void open_sender_profile (int msg_id) {
-            for (uint i = 0; i < message_store.get_n_items (); i++) {
-                var m = (Message) message_store.get_item (i);
-                if (m.id == msg_id) {
-                    if (m.sender_address == null || m.is_outgoing) return;
-                    var rpc = ((Dc.Application) this.application).rpc;
-                    try {
-                        int contact_id = yield rpc.lookup_contact (
-                            rpc.account_id, m.sender_address);
-                        if (contact_id <= 0) return;
-                        int chat_id = yield rpc.get_or_create_chat_by_contact (
-                            rpc.account_id, contact_id);
-                        if (chat_id > 0) {
-                            yield load_chats ();
-                            select_chat_by_id (chat_id);
-                        }
-                    } catch (Error e) {
-                        show_toast ("Could not open profile: " + e.message);
-                    }
-                    return;
+            var m = find_message (message_store, msg_id);
+            if (m == null || m.sender_address == null || m.is_outgoing) return;
+            try {
+                int contact_id = yield rpc.lookup_contact (
+                    rpc.account_id, m.sender_address);
+                if (contact_id <= 0) return;
+                int chat_id = yield rpc.get_or_create_chat_by_contact (
+                    rpc.account_id, contact_id);
+                if (chat_id > 0) {
+                    yield load_chats ();
+                    select_chat_by_id (chat_id);
                 }
+            } catch (Error e) {
+                show_toast ("Could not open profile: " + e.message);
             }
         }
 

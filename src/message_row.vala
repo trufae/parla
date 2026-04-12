@@ -104,14 +104,6 @@ namespace Dc {
             bool has_file = (msg.file_name != null && msg.file_name.length > 0)
                          || (msg.file_path != null && msg.file_path.length > 0);
             if (has_file) {
-                /* Debug: log what the RPC gave us */
-                stderr.printf ("MSG %d: file_path=%s file_name=%s file_mime=%s view_type=%s\n",
-                    msg.id,
-                    msg.file_path ?? "(null)",
-                    msg.file_name ?? "(null)",
-                    msg.file_mime ?? "(null)",
-                    msg.view_type ?? "(null)");
-
                 bool image_shown = false;
 
                 /* Try to show inline image preview */

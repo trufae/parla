@@ -18,6 +18,7 @@ sources = files(
   'src/rpc_client.vala',
   'src/account_finder.vala',
   'src/models.vala',
+  'src/store.vala',
   'src/chat_row.vala',
   'src/markdown.vala',
   'src/message_row.vala',

@@ -179,10 +179,11 @@ namespace Dc {
                     for (uint i = 0; i < ids.get_length (); i++) {
                         int cid = (int) ids.get_int_element (i);
                         member_contact_ids += cid;
-                        var contact = yield rpc.get_contact (acct_id, cid);
-                        if (contact == null) continue;
+                        var contact_obj = yield rpc.get_contact (acct_id, cid);
+                        if (contact_obj == null) continue;
+                        var contact = RpcClient.parse_contact (cid, contact_obj);
 
-                        var row = build_contact_row (contact, cid);
+                        var row = build_contact_row (contact);
                         members_list.append (row);
                     }
 
@@ -266,36 +267,29 @@ namespace Dc {
             }
         }
 
-        private Adw.ActionRow build_contact_row (Json.Object contact, int contact_id) {
-            string display = contact.has_member ("displayName")
-                && !contact.get_member ("displayName").is_null ()
-                ? contact.get_string_member ("displayName") : "";
-            string addr = contact.has_member ("address")
-                ? contact.get_string_member ("address") : "";
-            string? img = contact.has_member ("profileImage")
-                && !contact.get_member ("profileImage").is_null ()
-                ? contact.get_string_member ("profileImage") : null;
-            bool verified = contact.has_member ("isVerified")
-                && contact.get_boolean_member ("isVerified");
-
-            string title = display.length > 0 ? display : addr;
-            string subtitle = display.length > 0 ? addr : "";
-            if (verified) subtitle += " (verified)";
+        private Adw.ActionRow build_contact_row (Contact contact) {
+            string title = contact.display_name.length > 0
+                ? contact.display_name : contact.address;
+            string subtitle = contact.display_name.length > 0
+                ? contact.address : "";
+            if (contact.is_verified) subtitle += " (verified)";
 
             var row = new Adw.ActionRow ();
             row.title = title;
             row.subtitle = subtitle;
 
             var avatar = new Adw.Avatar (32, title, true);
-            if (img != null && FileUtils.test (img, FileTest.EXISTS)) {
+            if (contact.profile_image != null &&
+                FileUtils.test (contact.profile_image, FileTest.EXISTS)) {
                 try {
-                    avatar.custom_image = Gdk.Texture.from_filename (img);
+                    avatar.custom_image = Gdk.Texture.from_filename (contact.profile_image);
                 } catch (Error e) { /* fallback */ }
             }
             row.add_prefix (avatar);
 
             /* Copy email button */
-            if (addr.length > 0) {
+            if (contact.address.length > 0) {
+                string addr = contact.address;
                 var copy_btn = new Gtk.Button.from_icon_name ("edit-copy-symbolic");
                 copy_btn.valign = Gtk.Align.CENTER;
                 copy_btn.add_css_class ("flat");
@@ -308,14 +302,15 @@ namespace Dc {
             }
 
             /* Remove button for groups (not self, contact_id=1 is self) */
-            if (is_group && contact_id != 1) {
+            if (is_group && contact.id != 1) {
+                int cid = contact.id;
                 var remove_btn = new Gtk.Button.from_icon_name ("user-trash-symbolic");
                 remove_btn.valign = Gtk.Align.CENTER;
                 remove_btn.add_css_class ("flat");
                 remove_btn.add_css_class ("error");
                 remove_btn.tooltip_text = "Remove from group";
                 remove_btn.clicked.connect (() => {
-                    remove_member.begin (contact_id, row);
+                    remove_member.begin (cid, row);
                 });
                 row.add_suffix (remove_btn);
             }
@@ -350,9 +345,10 @@ namespace Dc {
                 yield rpc.add_contact_to_chat (acct_id, chat_id, contact_id);
 
                 /* Refresh the member list */
-                var contact = yield rpc.get_contact (acct_id, contact_id);
-                if (contact != null && members_list != null) {
-                    var row = build_contact_row (contact, contact_id);
+                var contact_obj = yield rpc.get_contact (acct_id, contact_id);
+                if (contact_obj != null && members_list != null) {
+                    var contact = RpcClient.parse_contact (contact_id, contact_obj);
+                    var row = build_contact_row (contact);
                     members_list.append (row);
                 }
             } catch (Error e) {

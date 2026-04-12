@@ -385,6 +385,21 @@ namespace Dc {
             return result.get_object ();
         }
 
+        public async Json.Object? get_messages (int acct_id, int[] msg_ids) throws Error {
+            var b = new Json.Builder ();
+            b.begin_array ();
+            b.add_int_value (acct_id);
+            b.begin_array ();
+            foreach (int id in msg_ids) {
+                b.add_int_value (id);
+            }
+            b.end_array ();
+            b.end_array ();
+            var result = yield call ("get_messages", b.get_root ());
+            if (result == null) return null;
+            return result.get_object ();
+        }
+
         public async int send_msg (int acct_id, int chat_id, string? text,
                                     string? file_path = null,
                                     string? file_name = null,
@@ -605,6 +620,25 @@ namespace Dc {
         }
 
         /* ---- Parsing helpers ---- */
+
+        /**
+         * Parse a JSON contact object into a Dc.Contact model.
+         */
+        public static Contact parse_contact (int contact_id, Json.Object obj) {
+            var c = new Contact ();
+            c.id = contact_id;
+            c.display_name = obj.has_member ("displayName")
+                && !obj.get_member ("displayName").is_null ()
+                ? obj.get_string_member ("displayName") : "";
+            c.address = obj.has_member ("address")
+                ? obj.get_string_member ("address") : "";
+            c.profile_image = obj.has_member ("profileImage")
+                && !obj.get_member ("profileImage").is_null ()
+                ? obj.get_string_member ("profileImage") : null;
+            c.is_verified = obj.has_member ("isVerified")
+                && obj.get_boolean_member ("isVerified");
+            return c;
+        }
 
         /**
          * Parse a JSON message object into a Dc.Message model.
