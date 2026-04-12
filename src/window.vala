@@ -586,8 +586,8 @@ namespace Dc {
                 all_msg_ids = yield rpc.get_message_ids (rpc.account_id, chat_id);
                 if (all_msg_ids == null) return;
 
-                loaded_start_index = all_msg_ids.get_length () > 100
-                    ? all_msg_ids.get_length () - 100 : 0;
+                loaded_start_index = all_msg_ids.get_length () > 30
+                    ? all_msg_ids.get_length () - 30 : 0;
 
                 var messages = yield fetch_messages_batch (
                     loaded_start_index, all_msg_ids.get_length ());
