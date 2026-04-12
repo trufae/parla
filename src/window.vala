@@ -311,6 +311,8 @@ namespace Dc {
             msg_box.append (scroll_overlay);
 
             compose_bar = new ComposeBar ();
+            settings.bind_property ("shift-enter-sends", compose_bar,
+                                    "shift-enter-sends", BindingFlags.SYNC_CREATE);
             compose_bar.send_message.connect (on_send_message);
             compose_bar.edit_message.connect ((msg_id, new_text) => {
                 if (msg_actions != null)

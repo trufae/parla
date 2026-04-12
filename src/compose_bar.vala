@@ -8,7 +8,7 @@ namespace Dc {
 
         /* When false (default), Return sends and Shift+Return inserts a
            newline. When true, the roles are swapped. */
-        public static bool shift_enter_sends = false;
+        public bool shift_enter_sends { get; set; default = false; }
 
         public signal void send_message (string text, string? file_path, string? file_name, int quote_msg_id);
         public signal void edit_message (int msg_id, string new_text);

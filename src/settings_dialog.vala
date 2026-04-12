@@ -23,7 +23,6 @@ namespace Dc {
             markdown_rendering = kf_bool (kf, "markdown_rendering", false);
             Markdown.enabled = markdown_rendering;
             shift_enter_sends = kf_bool (kf, "shift_enter_sends", false);
-            ComposeBar.shift_enter_sends = shift_enter_sends;
             notifications_enabled = kf_bool (kf, "notifications_enabled", true);
         }
 
@@ -46,7 +45,7 @@ namespace Dc {
         }
 
         public void save_shift_enter_sends (bool v) {
-            shift_enter_sends = v; ComposeBar.shift_enter_sends = v;
+            shift_enter_sends = v;
             save_to_file ((kf) => { kf.set_boolean ("General", "shift_enter_sends", v); });
         }
 
