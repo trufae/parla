@@ -598,13 +598,13 @@ namespace Dc {
 
                 loading_chat = true;
                 stick_to_bottom = true;
-                message_store.remove_all ();
 
+                var batch = new GLib.Object[messages.length];
                 for (uint i = 0; i < messages.length; i++) {
-                    var msg = messages[i];
-                    msg.is_pinned = is_msg_pinned (msg.id);
-                    message_store.append (msg);
+                    messages[i].is_pinned = is_msg_pinned (messages[i].id);
+                    batch[i] = messages[i];
                 }
+                message_store.splice (0, message_store.get_n_items (), batch);
 
                 Idle.add (() => {
                     scroll_to_bottom ();
@@ -636,9 +636,10 @@ namespace Dc {
 
         private async GLib.GenericArray<Message> fetch_messages_batch (
                 uint start, uint end) throws Error {
-            int[] ids = {};
-            for (uint i = start; i < end; i++) {
-                ids += (int) all_msg_ids.get_int_element (i);
+            uint count = end - start;
+            int[] ids = new int[count];
+            for (uint i = 0; i < count; i++) {
+                ids[i] = (int) all_msg_ids.get_int_element (start + i);
             }
             var map = yield rpc.get_messages (rpc.account_id, ids);
             var result = new GLib.GenericArray<Message> ();
