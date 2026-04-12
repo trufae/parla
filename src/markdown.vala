@@ -9,6 +9,28 @@ namespace Dc {
 
         public static bool enabled = false;
 
+        /* Compiled regexes — built once on first use */
+        private static Regex? cb_re = null;
+        private static Regex? ic_re = null;
+        private static Regex? bold_re = null;
+        private static Regex? italic_re = null;
+        private static Regex? italic2_re = null;
+        private static Regex? strike_re = null;
+        private static Regex? heading_re = null;
+        private static Regex? link_re = null;
+
+        private static void ensure_regexes () throws RegexError {
+            if (cb_re != null) return;
+            cb_re = new Regex ("```(?:[a-zA-Z]*)\\n?([\\s\\S]*?)```");
+            ic_re = new Regex ("`([^`\\n]+)`");
+            bold_re = new Regex ("(\\*\\*|__)(.+?)\\1");
+            italic_re = new Regex ("\\*([^\\*\\n]+)\\*");
+            italic2_re = new Regex ("(?<!\\w)_([^_\\n]+)_(?!\\w)");
+            strike_re = new Regex ("~~(.+?)~~");
+            heading_re = new Regex ("^(#{1,3}) +(.+)$", RegexCompileFlags.MULTILINE);
+            link_re = new Regex ("(https?://[^\\s<>\"]+)");
+        }
+
         /**
          * Format message text. Always linkifies URLs.
          * When enabled, also converts markdown syntax to Pango markup.
@@ -26,40 +48,42 @@ namespace Dc {
         }
 
         private static string format_markdown (string escaped) throws RegexError {
+            ensure_regexes ();
             var segments = new GenericArray<string> ();
             string work = escaped;
 
             /* Code blocks: ```lang\ncontent``` — extract first to protect contents */
-            var cb_re = new Regex ("```(?:[a-zA-Z]*)\\n?([\\s\\S]*?)```");
             work = extract_code (cb_re, work, segments);
 
             /* Inline code: `content` */
-            var ic_re = new Regex ("`([^`\\n]+)`");
             work = extract_code (ic_re, work, segments);
 
-            /* Bold: **text** and __text__ */
-            var bold_re = new Regex ("\\*\\*(.+?)\\*\\*");
-            work = bold_re.replace (work, -1, 0, "<b>\\1</b>");
-            var bold2_re = new Regex ("__(.+?)__");
-            work = bold2_re.replace (work, -1, 0, "<b>\\1</b>");
+            /* Bold: **text** and __text__ (backreference ensures matching delimiters) */
+            work = bold_re.replace (work, -1, 0, "<b>\\2</b>");
 
-            /* Italic: *text* and _text_ (after bold is consumed) */
-            var italic_re = new Regex ("\\*([^\\*\\n]+)\\*");
+            /* Italic: *text* and _text_ (underscore variant requires word boundaries) */
             work = italic_re.replace (work, -1, 0, "<i>\\1</i>");
-            var italic2_re = new Regex ("(?<!\\w)_([^_\\n]+)_(?!\\w)");
             work = italic2_re.replace (work, -1, 0, "<i>\\1</i>");
 
             /* Strikethrough: ~~text~~ */
-            var strike_re = new Regex ("~~(.+?)~~");
             work = strike_re.replace (work, -1, 0, "<s>\\1</s>");
 
-            /* Headings — process ### before ## before # */
-            var h3_re = new Regex ("^### +(.+)$", RegexCompileFlags.MULTILINE);
-            work = h3_re.replace (work, -1, 0, "<b>\\1</b>");
-            var h2_re = new Regex ("^## +(.+)$", RegexCompileFlags.MULTILINE);
-            work = h2_re.replace (work, -1, 0, "<span size=\"large\"><b>\\1</b></span>");
-            var h1_re = new Regex ("^# +(.+)$", RegexCompileFlags.MULTILINE);
-            work = h1_re.replace (work, -1, 0, "<span size=\"x-large\"><b>\\1</b></span>");
+            /* Headings: #, ##, ### */
+            work = heading_re.replace_eval (work, -1, 0, 0, (mi, sb) => {
+                var text = mi.fetch (2);
+                switch (mi.fetch (1).length) {
+                    case 1:
+                        sb.append ("<span size=\"x-large\"><b>" + text + "</b></span>");
+                        break;
+                    case 2:
+                        sb.append ("<span size=\"large\"><b>" + text + "</b></span>");
+                        break;
+                    default:
+                        sb.append ("<b>" + text + "</b>");
+                        break;
+                }
+                return false;
+            });
 
             /* Linkify URLs */
             work = linkify (work);
@@ -88,8 +112,8 @@ namespace Dc {
 
         private static string linkify (string escaped) {
             try {
-                var re = new Regex ("(https?://[^\\s<>\"]+)");
-                return re.replace_eval (escaped, -1, 0, 0, (mi, sb) => {
+                ensure_regexes ();
+                return link_re.replace_eval (escaped, -1, 0, 0, (mi, sb) => {
                     var url = mi.fetch (0);
                     sb.append ("<a href=\"");
                     sb.append (url);
