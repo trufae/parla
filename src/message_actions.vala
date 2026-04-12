@@ -55,12 +55,13 @@ namespace Dc {
             });
             vbox.append (pin_btn);
 
+            var msg = find_message (message_store, msg_id);
+
             /* Save file (for messages with attachments) */
-            var m_save = find_message (message_store, msg_id);
-            if (m_save != null && m_save.file_path != null &&
-                m_save.file_path.length > 0) {
-                string fpath = m_save.file_path;
-                string? fname = m_save.file_name;
+            if (msg != null && msg.file_path != null &&
+                msg.file_path.length > 0) {
+                string fpath = msg.file_path;
+                string? fname = msg.file_name;
                 var save_btn = new Gtk.Button.with_label ("Save file");
                 save_btn.add_css_class ("flat");
                 save_btn.clicked.connect (() => {
@@ -73,10 +74,9 @@ namespace Dc {
             if (is_outgoing) {
                 /* Allow editing only if the message has text */
                 bool has_text = false;
-                var m_edit = find_message (message_store, msg_id);
-                if (m_edit != null) {
-                    has_text = (m_edit.text != null &&
-                                m_edit.text.strip ().length > 0);
+                if (msg != null) {
+                    has_text = (msg.text != null &&
+                                msg.text.strip ().length > 0);
                 }
                 if (has_text) {
                     var edit_btn = new Gtk.Button.with_label ("Edit");
