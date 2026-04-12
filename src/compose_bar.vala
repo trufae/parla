@@ -268,6 +268,10 @@ namespace Dc {
 
         private bool on_entry_key_pressed (uint keyval, uint keycode,
                                            Gdk.ModifierType state) {
+            if (keyval == Gdk.Key.Escape && replying_msg_id != 0) {
+                cancel_reply ();
+                return true;
+            }
             bool shift = (state & Gdk.ModifierType.SHIFT_MASK) != 0;
             if (keyval == Gdk.Key.Return
                 || keyval == Gdk.Key.KP_Enter
