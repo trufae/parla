@@ -237,7 +237,7 @@ namespace Dc {
                 var rc = new Gtk.GestureClick ();
                 rc.button = 3;
                 rc.pressed.connect ((n, x, y) => {
-                    show_message_context_menu (msg.id, msg.is_outgoing, x, y);
+                    show_message_context_menu (msg.id, msg.is_outgoing, x, y, row);
                 });
                 row.add_controller (rc);
 
@@ -1203,7 +1203,8 @@ namespace Dc {
          * ================================================================ */
 
         private void show_message_context_menu (int msg_id, bool is_outgoing,
-                                                  double x, double y) {
+                                                  double x, double y,
+                                                  Gtk.Widget parent) {
             var popover = new Gtk.Popover ();
 
             var vbox = new Gtk.Box (Gtk.Orientation.VERTICAL, 4);
@@ -1302,7 +1303,7 @@ namespace Dc {
             }
 
             popover.child = vbox;
-            popover.set_parent (message_listview);
+            popover.set_parent (parent);
             popover.set_pointing_to ({ (int) x, (int) y, 1, 1 });
             popover.popup ();
         }
