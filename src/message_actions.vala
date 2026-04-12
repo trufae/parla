@@ -1,0 +1,245 @@
+namespace Dc {
+
+    public class MessageActions : Object {
+
+        private unowned RpcClient rpc;
+        private unowned GLib.ListStore message_store;
+        private unowned PinnedMessagesManager pinned;
+        private unowned ComposeBar compose_bar;
+        private unowned SettingsManager settings;
+
+        public string? self_email { get; set; default = null; }
+
+        public signal void toast (string message);
+        public signal void save_file_requested (string path, string? name);
+        public signal void reload_chats_requested ();
+        public signal void select_chat_requested (int chat_id);
+
+        public MessageActions (RpcClient rpc,
+                               GLib.ListStore message_store,
+                               PinnedMessagesManager pinned,
+                               ComposeBar compose_bar,
+                               SettingsManager settings) {
+            this.rpc = rpc;
+            this.message_store = message_store;
+            this.pinned = pinned;
+            this.compose_bar = compose_bar;
+            this.settings = settings;
+        }
+
+        public void show_context_menu (int msg_id, bool is_outgoing,
+                                       double x, double y,
+                                       Gtk.Widget parent) {
+            var popover = new Gtk.Popover ();
+
+            var vbox = new Gtk.Box (Gtk.Orientation.VERTICAL, 4);
+            vbox.margin_start = 4;
+            vbox.margin_end = 4;
+            vbox.margin_top = 4;
+            vbox.margin_bottom = 4;
+
+            /* Reply button (for all messages) */
+            var reply_btn = new Gtk.Button.with_label ("Reply");
+            reply_btn.add_css_class ("flat");
+            reply_btn.clicked.connect (() => {
+                popover.popdown ();
+                start_replying (msg_id);
+            });
+            vbox.append (reply_btn);
+
+            /* Pin / Unpin */
+            bool msg_is_pinned = pinned.is_pinned (msg_id);
+            var pin_btn = new Gtk.Button.with_label (
+                msg_is_pinned ? "Unpin" : "Pin");
+            pin_btn.add_css_class ("flat");
+            pin_btn.clicked.connect (() => {
+                popover.popdown ();
+                pinned.toggle_pin (msg_id);
+            });
+            vbox.append (pin_btn);
+
+            /* Save file (for messages with attachments) */
+            var m_save = find_message (message_store, msg_id);
+            if (m_save != null && m_save.file_path != null &&
+                m_save.file_path.length > 0) {
+                string fpath = m_save.file_path;
+                string? fname = m_save.file_name;
+                var save_btn = new Gtk.Button.with_label ("Save file");
+                save_btn.add_css_class ("flat");
+                save_btn.clicked.connect (() => {
+                    popover.popdown ();
+                    save_file_requested (fpath, fname);
+                });
+                vbox.append (save_btn);
+            }
+
+            if (is_outgoing) {
+                /* Allow editing only if the message has text */
+                bool has_text = false;
+                var m_edit = find_message (message_store, msg_id);
+                if (m_edit != null) {
+                    has_text = (m_edit.text != null &&
+                                m_edit.text.strip ().length > 0);
+                }
+                if (has_text) {
+                    var edit_btn = new Gtk.Button.with_label ("Edit");
+                    edit_btn.add_css_class ("flat");
+                    edit_btn.clicked.connect (() => {
+                        popover.popdown ();
+                        start_editing (msg_id);
+                    });
+                    vbox.append (edit_btn);
+                }
+            }
+
+            string[] emojis = { "\xf0\x9f\x91\x8d", "\xe2\x9d\xa4\xef\xb8\x8f",
+                                 "\xf0\x9f\x98\x82", "\xf0\x9f\x98\xae",
+                                 "\xf0\x9f\x98\xa2", "\xf0\x9f\x91\x8e" };
+            var emoji_row1 = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 2);
+            var emoji_row2 = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 2);
+            for (int i = 0; i < emojis.length; i++) {
+                string emoji = emojis[i];
+                var btn = new Gtk.Button.with_label (emoji);
+                btn.add_css_class ("flat");
+                btn.clicked.connect (() => {
+                    popover.popdown ();
+                    send_reaction.begin (msg_id, emoji);
+                });
+                if (i < 3) emoji_row1.append (btn);
+                else emoji_row2.append (btn);
+            }
+            vbox.append (emoji_row1);
+            vbox.append (emoji_row2);
+
+            vbox.append (new Gtk.Separator (Gtk.Orientation.HORIZONTAL));
+
+            var del_me_btn = new Gtk.Button.with_label ("Delete for me");
+            del_me_btn.add_css_class ("flat");
+            del_me_btn.clicked.connect (() => {
+                popover.popdown ();
+                delete_message.begin (msg_id, false);
+            });
+            vbox.append (del_me_btn);
+
+            if (is_outgoing) {
+                var del_all_btn = new Gtk.Button.with_label (
+                    "Delete for everyone");
+                del_all_btn.add_css_class ("flat");
+                del_all_btn.clicked.connect (() => {
+                    popover.popdown ();
+                    delete_message.begin (msg_id, true);
+                });
+                vbox.append (del_all_btn);
+            }
+
+            popover.child = vbox;
+            popover.set_parent (parent);
+            popover.set_pointing_to ({ (int) x, (int) y, 1, 1 });
+            popover.popup ();
+        }
+
+        public async void send_reaction (int msg_id, string emoji) {
+            try {
+                yield rpc.send_reaction (rpc.account_id, msg_id,
+                                          new string[] { emoji });
+                yield update_row (msg_id);
+            } catch (Error e) {
+                toast ("Reaction failed: " + e.message);
+            }
+        }
+
+        public async void delete_message (int msg_id, bool for_all) {
+            try {
+                if (for_all) {
+                    yield rpc.delete_messages_for_all (
+                        rpc.account_id, new int[] { msg_id });
+                } else {
+                    yield rpc.delete_messages (
+                        rpc.account_id, new int[] { msg_id });
+                }
+                int idx = find_message_index (message_store, msg_id);
+                if (idx >= 0) message_store.remove (idx);
+            } catch (Error e) {
+                toast ("Delete failed: " + e.message);
+            }
+        }
+
+        public void start_editing (int msg_id) {
+            var m = find_message (message_store, msg_id);
+            if (m != null) {
+                compose_bar.begin_edit (msg_id, m.text ?? "");
+            }
+        }
+
+        public void start_replying (int msg_id) {
+            var m = find_message (message_store, msg_id);
+            if (m != null) {
+                string sender = m.is_outgoing ? "You" : (m.sender_name ?? "");
+                string preview = m.text ?? "(attachment)";
+                compose_bar.begin_reply (msg_id, sender, preview);
+            }
+        }
+
+        public async void edit_message (int msg_id, string new_text) {
+            try {
+                yield rpc.send_edit_request (rpc.account_id, msg_id, new_text);
+                yield update_row (msg_id);
+            } catch (Error e) {
+                toast ("Edit failed: " + e.message);
+            }
+        }
+
+        public async void update_row (int msg_id) {
+            try {
+                var msg_obj = yield rpc.get_message (rpc.account_id, msg_id);
+                if (msg_obj == null) return;
+                var msg = RpcClient.parse_message (msg_obj, self_email);
+                int idx = find_message_index (message_store, msg_id);
+                if (idx >= 0) {
+                    message_store.remove (idx);
+                    message_store.insert (idx, msg);
+                }
+            } catch (Error e) {
+                /* Reaction will appear on next message reload */
+            }
+        }
+
+        public void handle_double_click (int msg_id) {
+            switch (settings.double_click_action) {
+            case 0: /* Reply */
+                start_replying (msg_id);
+                break;
+            case 1: /* React with heart */
+                send_reaction.begin (msg_id, "\xe2\x9d\xa4\xef\xb8\x8f");
+                break;
+            case 2: /* React with thumbsup */
+                send_reaction.begin (msg_id, "\xf0\x9f\x91\x8d");
+                break;
+            case 3: /* Open user profile */
+                open_sender_profile.begin (msg_id);
+                break;
+            case 4: /* Nothing */
+                break;
+            }
+            compose_bar.grab_entry_focus ();
+        }
+
+        public async void open_sender_profile (int msg_id) {
+            var m = find_message (message_store, msg_id);
+            if (m == null || m.sender_address == null || m.is_outgoing) return;
+            try {
+                int contact_id = yield rpc.lookup_contact (
+                    rpc.account_id, m.sender_address);
+                if (contact_id <= 0) return;
+                int chat_id = yield rpc.get_or_create_chat_by_contact (
+                    rpc.account_id, contact_id);
+                if (chat_id > 0) {
+                    reload_chats_requested ();
+                    select_chat_requested (chat_id);
+                }
+            } catch (Error e) {
+                toast ("Could not open profile: " + e.message);
+            }
+        }
+    }
+}

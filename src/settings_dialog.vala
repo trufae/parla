@@ -70,10 +70,10 @@ namespace Dc {
             };
 
             var dblclick_combo = new Gtk.DropDown.from_strings (dblclick_labels);
-            dblclick_combo.selected = app_window.double_click_action;
+            dblclick_combo.selected = app_window.settings.double_click_action;
             dblclick_combo.valign = Gtk.Align.CENTER;
             dblclick_combo.notify["selected"].connect (() => {
-                app_window.save_double_click_action ((int) dblclick_combo.selected);
+                app_window.settings.save_double_click_action ((int) dblclick_combo.selected);
             });
             dblclick_row.add_suffix (dblclick_combo);
             dblclick_row.activatable_widget = dblclick_combo;
@@ -88,7 +88,7 @@ namespace Dc {
             md_switch.active = Markdown.enabled;
             md_switch.valign = Gtk.Align.CENTER;
             md_switch.notify["active"].connect (() => {
-                app_window.save_markdown_rendering (md_switch.active);
+                app_window.settings.save_markdown_rendering (md_switch.active);
             });
             md_row.add_suffix (md_switch);
             md_row.activatable_widget = md_switch;
@@ -100,10 +100,10 @@ namespace Dc {
             shift_row.subtitle = "When on, Return inserts a newline and Shift+Return sends";
 
             var shift_switch = new Gtk.Switch ();
-            shift_switch.active = app_window.shift_enter_sends;
+            shift_switch.active = app_window.settings.shift_enter_sends;
             shift_switch.valign = Gtk.Align.CENTER;
             shift_switch.notify["active"].connect (() => {
-                app_window.save_shift_enter_sends (shift_switch.active);
+                app_window.settings.save_shift_enter_sends (shift_switch.active);
             });
             shift_row.add_suffix (shift_switch);
             shift_row.activatable_widget = shift_switch;
@@ -115,10 +115,10 @@ namespace Dc {
             notif_row.subtitle = "Notify on incoming messages when the window is not focused";
 
             var notif_switch = new Gtk.Switch ();
-            notif_switch.active = app_window.notifications_enabled;
+            notif_switch.active = app_window.settings.notifications_enabled;
             notif_switch.valign = Gtk.Align.CENTER;
             notif_switch.notify["active"].connect (() => {
-                app_window.save_notifications_enabled (notif_switch.active);
+                app_window.settings.save_notifications_enabled (notif_switch.active);
             });
             notif_row.add_suffix (notif_switch);
             notif_row.activatable_widget = notif_switch;

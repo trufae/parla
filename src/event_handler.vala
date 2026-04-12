@@ -1,0 +1,112 @@
+namespace Dc {
+
+    public class EventHandler : Object {
+
+        private unowned RpcClient rpc;
+        private bool _listening = false;
+        private uint chats_reload_timer = 0;
+        private uint messages_reload_timer = 0;
+
+        public int active_chat_id { get; set; default = 0; }
+
+        public signal void chats_reload_fired ();
+        public signal void messages_reload_fired ();
+        public signal void incoming_msg_received (int chat_id, int msg_id);
+
+        public EventHandler (RpcClient rpc) {
+            this.rpc = rpc;
+        }
+
+        public bool is_listening { get { return _listening; } }
+
+        public async void start () {
+            if (_listening) return;
+            _listening = true;
+
+            while (rpc.is_connected) {
+                try {
+                    var ev = yield rpc.get_next_event ();
+                    if (ev == null) continue;
+
+                    int ctx = (int) ev.get_int_member ("contextId");
+                    if (ctx != rpc.account_id) continue;
+
+                    var event = ev.get_object_member ("event");
+                    if (event == null) continue;
+
+                    string kind = event.get_string_member ("kind");
+                    dispatch (kind, event);
+                } catch (Error e) {
+                    if (rpc.is_connected) {
+                        warning ("Event loop error: %s", e.message);
+                        yield nap (1000);
+                    }
+                }
+            }
+
+            _listening = false;
+        }
+
+        public void schedule_chats_reload () {
+            if (chats_reload_timer > 0) return;
+            chats_reload_timer = Timeout.add (150, () => {
+                chats_reload_timer = 0;
+                chats_reload_fired ();
+                return Source.REMOVE;
+            });
+        }
+
+        public void schedule_messages_reload () {
+            if (messages_reload_timer > 0 || active_chat_id <= 0) return;
+            messages_reload_timer = Timeout.add (150, () => {
+                messages_reload_timer = 0;
+                messages_reload_fired ();
+                return Source.REMOVE;
+            });
+        }
+
+        private void dispatch (string kind, Json.Object event) {
+            switch (kind) {
+            case "IncomingMsg":
+                int chat_id = (int) event.get_int_member ("chatId");
+                int msg_id = (int) event.get_int_member ("msgId");
+                incoming_msg_received (chat_id, msg_id);
+                break;
+
+            case "MsgsChanged":
+                int changed_chat = (int) event.get_int_member ("chatId");
+                if (changed_chat == 0 || changed_chat == active_chat_id) {
+                    schedule_messages_reload ();
+                }
+                break;
+
+            case "MsgDelivered":
+            case "MsgRead":
+            case "MsgFailed":
+            case "MsgDeleted":
+            case "ReactionsChanged":
+                int msg_chat = (int) event.get_int_member ("chatId");
+                if (msg_chat == active_chat_id) {
+                    schedule_messages_reload ();
+                }
+                break;
+
+            case "ChatlistChanged":
+            case "ChatlistItemChanged":
+            case "MsgsNoticed":
+            case "ChatModified":
+            case "ChatDeleted":
+                schedule_chats_reload ();
+                break;
+
+            default:
+                break;
+            }
+        }
+
+        private async void nap (uint ms) {
+            Timeout.add (ms, nap.callback);
+            yield;
+        }
+    }
+}
