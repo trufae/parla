@@ -62,6 +62,7 @@ namespace Dc {
 
             /* Close on Escape */
             var key_ctrl = new Gtk.EventControllerKey ();
+            key_ctrl.propagation_phase = Gtk.PropagationPhase.CAPTURE;
             key_ctrl.key_pressed.connect ((keyval, keycode, state) => {
                 if (keyval == Gdk.Key.Escape) {
                     this.close ();
