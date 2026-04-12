@@ -4,13 +4,12 @@ namespace Dc {
 
         public Gtk.Revealer revealer { get; private set; }
 
+        private unowned Window? window = null;
         private Gtk.Box bar_content;
         private int[] msg_ids = {};
         private int current_chat_id = 0;
         private unowned GLib.ListStore message_store;
         private unowned SettingsManager settings;
-
-        public signal void scroll_requested (int msg_id);
 
         public PinnedMessagesManager (GLib.ListStore message_store,
                                       SettingsManager settings) {
@@ -24,6 +23,8 @@ namespace Dc {
             revealer.reveal_child = false;
             revealer.transition_type = Gtk.RevealerTransitionType.SLIDE_DOWN;
         }
+
+        public void set_window (Window w) { this.window = w; }
 
         public void load_for_chat (int chat_id) {
             current_chat_id = chat_id;
@@ -126,7 +127,7 @@ namespace Dc {
 
                 int captured_id = pin_id;
                 row_btn.clicked.connect (() => {
-                    scroll_requested (captured_id);
+                    if (window != null) window.scroll_to_message (captured_id);
                 });
 
                 var outer = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 0);

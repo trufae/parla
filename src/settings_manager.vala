@@ -17,73 +17,42 @@ namespace Dc {
 
         public void load () {
             var kf = new KeyFile ();
-            try {
-                kf.load_from_file (get_config_path (), KeyFileFlags.NONE);
-            } catch (Error e) {
-                double_click_action = 0;
-                markdown_rendering = false;
-                Markdown.enabled = false;
-                shift_enter_sends = false;
-                ComposeBar.shift_enter_sends = false;
-                notifications_enabled = true;
-                return;
-            }
-            try {
-                double_click_action = kf.get_integer (
-                    "General", "double_click_action");
-            } catch (Error e) {
-                double_click_action = 0;
-            }
-            try {
-                markdown_rendering = kf.get_boolean (
-                    "General", "markdown_rendering");
-            } catch (Error e) {
-                markdown_rendering = false;
-            }
+            try { kf.load_from_file (get_config_path (), KeyFileFlags.NONE); }
+            catch (Error e) { /* file may not exist — helpers return defaults */ }
+            double_click_action = kf_int (kf, "double_click_action", 0);
+            markdown_rendering = kf_bool (kf, "markdown_rendering", false);
             Markdown.enabled = markdown_rendering;
-            try {
-                shift_enter_sends = kf.get_boolean (
-                    "General", "shift_enter_sends");
-            } catch (Error e) {
-                shift_enter_sends = false;
-            }
+            shift_enter_sends = kf_bool (kf, "shift_enter_sends", false);
             ComposeBar.shift_enter_sends = shift_enter_sends;
-            try {
-                notifications_enabled = kf.get_boolean (
-                    "General", "notifications_enabled");
-            } catch (Error e) {
-                notifications_enabled = true;
-            }
+            notifications_enabled = kf_bool (kf, "notifications_enabled", true);
         }
 
-        public void save_double_click_action (int action) {
-            double_click_action = action;
-            save_to_file ((kf) => {
-                kf.set_integer ("General", "double_click_action", action);
-            });
+        private static int kf_int (KeyFile kf, string k, int d) {
+            try { return kf.get_integer ("General", k); } catch { return d; }
         }
 
-        public void save_markdown_rendering (bool enabled) {
-            markdown_rendering = enabled;
-            Markdown.enabled = enabled;
-            save_to_file ((kf) => {
-                kf.set_boolean ("General", "markdown_rendering", enabled);
-            });
+        private static bool kf_bool (KeyFile kf, string k, bool d) {
+            try { return kf.get_boolean ("General", k); } catch { return d; }
         }
 
-        public void save_shift_enter_sends (bool enabled) {
-            shift_enter_sends = enabled;
-            ComposeBar.shift_enter_sends = enabled;
-            save_to_file ((kf) => {
-                kf.set_boolean ("General", "shift_enter_sends", enabled);
-            });
+        public void save_double_click_action (int v) {
+            double_click_action = v;
+            save_to_file ((kf) => { kf.set_integer ("General", "double_click_action", v); });
         }
 
-        public void save_notifications_enabled (bool enabled) {
-            notifications_enabled = enabled;
-            save_to_file ((kf) => {
-                kf.set_boolean ("General", "notifications_enabled", enabled);
-            });
+        public void save_markdown_rendering (bool v) {
+            markdown_rendering = v; Markdown.enabled = v;
+            save_to_file ((kf) => { kf.set_boolean ("General", "markdown_rendering", v); });
+        }
+
+        public void save_shift_enter_sends (bool v) {
+            shift_enter_sends = v; ComposeBar.shift_enter_sends = v;
+            save_to_file ((kf) => { kf.set_boolean ("General", "shift_enter_sends", v); });
+        }
+
+        public void save_notifications_enabled (bool v) {
+            notifications_enabled = v;
+            save_to_file ((kf) => { kf.set_boolean ("General", "notifications_enabled", v); });
         }
 
         public void save_to_file (SettingWriter writer) {

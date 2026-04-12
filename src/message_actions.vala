@@ -2,6 +2,7 @@ namespace Dc {
 
     public class MessageActions : Object {
 
+        private unowned Window window;
         private unowned RpcClient rpc;
         private unowned GLib.ListStore message_store;
         private unowned PinnedMessagesManager pinned;
@@ -10,16 +11,12 @@ namespace Dc {
 
         public string? self_email { get; set; default = null; }
 
-        public signal void toast (string message);
-        public signal void save_file_requested (string path, string? name);
-        public signal void reload_chats_requested ();
-        public signal void select_chat_requested (int chat_id);
-
-        public MessageActions (RpcClient rpc,
+        public MessageActions (Window window, RpcClient rpc,
                                GLib.ListStore message_store,
                                PinnedMessagesManager pinned,
                                ComposeBar compose_bar,
                                SettingsManager settings) {
+            this.window = window;
             this.rpc = rpc;
             this.message_store = message_store;
             this.pinned = pinned;
@@ -68,7 +65,7 @@ namespace Dc {
                 save_btn.add_css_class ("flat");
                 save_btn.clicked.connect (() => {
                     popover.popdown ();
-                    save_file_requested (fpath, fname);
+                    window.save_attachment.begin (fpath, fname);
                 });
                 vbox.append (save_btn);
             }
@@ -144,7 +141,7 @@ namespace Dc {
                                           new string[] { emoji });
                 yield update_row (msg_id);
             } catch (Error e) {
-                toast ("Reaction failed: " + e.message);
+                window.show_toast ("Reaction failed: " + e.message);
             }
         }
 
@@ -160,7 +157,7 @@ namespace Dc {
                 int idx = find_message_index (message_store, msg_id);
                 if (idx >= 0) message_store.remove (idx);
             } catch (Error e) {
-                toast ("Delete failed: " + e.message);
+                window.show_toast ("Delete failed: " + e.message);
             }
         }
 
@@ -185,7 +182,7 @@ namespace Dc {
                 yield rpc.send_edit_request (rpc.account_id, msg_id, new_text);
                 yield update_row (msg_id);
             } catch (Error e) {
-                toast ("Edit failed: " + e.message);
+                window.show_toast ("Edit failed: " + e.message);
             }
         }
 
@@ -234,11 +231,11 @@ namespace Dc {
                 int chat_id = yield rpc.get_or_create_chat_by_contact (
                     rpc.account_id, contact_id);
                 if (chat_id > 0) {
-                    reload_chats_requested ();
-                    select_chat_requested (chat_id);
+                    window.request_reload_chats ();
+                    window.select_chat_by_id (chat_id);
                 }
             } catch (Error e) {
-                toast ("Could not open profile: " + e.message);
+                window.show_toast ("Could not open profile: " + e.message);
             }
         }
     }

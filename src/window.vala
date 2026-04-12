@@ -38,9 +38,9 @@ namespace Dc {
         /* State */
         private unowned RpcClient rpc;
         private int _current_chat_id = 0;
-        private int current_chat_id {
+        public int current_chat_id {
             get { return _current_chat_id; }
-            set {
+            private set {
                 _current_chat_id = value;
                 if (events != null) events.active_chat_id = value;
             }
@@ -58,6 +58,7 @@ namespace Dc {
         private PinnedMessagesManager pinned;
         private EventHandler events;
         private MessageActions msg_actions;
+        private ChatContextMenu chat_menu;
 
         /* Modal dialog guard – only one at a time */
         private Adw.Dialog? active_modal = null;
@@ -76,14 +77,9 @@ namespace Dc {
             message_store = new GLib.ListStore (typeof (Message));
             settings = new SettingsManager ();
             image_viewer = new ImageViewer ();
-            image_viewer.save_requested.connect ((path, name) => {
-                save_attachment.begin (path, name);
-            });
-            image_viewer.toast_requested.connect ((msg) => { show_toast (msg); });
+            image_viewer.set_window (this);
             pinned = new PinnedMessagesManager (message_store, settings);
-            pinned.scroll_requested.connect ((msg_id) => {
-                scroll_to_message (msg_id);
-            });
+            pinned.set_window (this);
             build_ui ();
             settings.load ();
 
@@ -159,7 +155,8 @@ namespace Dc {
                 if (row == null) return;
                 var chat_row = row.child as ChatRow;
                 if (chat_row == null) return;
-                show_chat_context_menu (chat_row.chat_id, x, y);
+                if (chat_menu != null)
+                    chat_menu.show (chat_row.chat_id, x, y, chat_listbox);
             });
             chat_listbox.add_controller (right_click);
 
@@ -390,10 +387,14 @@ namespace Dc {
             }
 
             /* Ensure we have an account */
-            yield ensure_account (rpc);
+            string? acct_desc, acct_toast;
+            yield AccountFinder.ensure_configured (rpc, out acct_desc, out acct_toast);
+            if (acct_toast != null) show_toast (acct_toast);
+            if (acct_desc != null) empty_status.description = acct_desc;
 
             /* Create event handler and message actions now that rpc is ready */
             events = new EventHandler (rpc);
+            events.set_app (this.application);
             events.chats_reload_fired.connect (() => { load_chats.begin (); });
             events.messages_reload_fired.connect (() => {
                 if (current_chat_id > 0)
@@ -403,24 +404,16 @@ namespace Dc {
                 on_incoming_msg.begin (chat_id, msg_id);
             });
 
-            msg_actions = new MessageActions (rpc, message_store, pinned,
+            chat_menu = new ChatContextMenu (this, rpc, chat_store);
+            msg_actions = new MessageActions (this, rpc, message_store, pinned,
                                               compose_bar, settings);
             msg_actions.self_email = self_email;
-            msg_actions.toast.connect ((msg) => { show_toast (msg); });
-            msg_actions.save_file_requested.connect ((path, name) => {
-                save_attachment.begin (path, name);
-            });
-            msg_actions.reload_chats_requested.connect (() => {
-                load_chats.begin ();
-            });
-            msg_actions.select_chat_requested.connect ((chat_id) => {
-                select_chat_by_id (chat_id);
-            });
 
             if (rpc.account_id > 0) {
                 try {
                     self_email = yield rpc.get_config (rpc.account_id, "addr");
                     msg_actions.self_email = self_email;
+                    events.self_email = self_email;
                 } catch (Error ce) {
                     self_email = null;
                 }
@@ -430,65 +423,20 @@ namespace Dc {
             }
         }
 
-        private async void ensure_account (RpcClient rpc) {
-            try {
-                var accounts_node = yield rpc.get_all_accounts ();
-                if (accounts_node == null) return;
-
-                var accounts = accounts_node.get_array ();
-
-                /* Look for an already configured account */
-                for (uint i = 0; i < accounts.get_length (); i++) {
-                    var acct = accounts.get_object_element (i);
-                    int id = (int) acct.get_int_member ("id");
-                    bool configured = yield rpc.is_configured (id);
-                    if (configured) {
-                        rpc.account_id = id;
-                        yield rpc.select_account (id);
-                        yield rpc.start_io (id);
-                        return;
-                    }
-                }
-
-                /* No configured account — try to get credentials from openclaw config */
-                var creds = AccountFinder.get_credentials_from_config ();
-                if (creds != null && creds.email.length > 0 && creds.password.length > 0) {
-                    int acct_id = yield rpc.add_account ();
-                    yield rpc.add_or_update_transport (acct_id, creds.email, creds.password);
-                    yield rpc.select_account (acct_id);
-                    yield rpc.start_io (acct_id);
-                    rpc.account_id = acct_id;
-                    show_toast ("Configured account: " + creds.email);
-                    return;
-                }
-
-                /* No credentials found — show available installations */
-                var installations = AccountFinder.find_installations ();
-                if (installations.length > 0) {
-                    var sb = new StringBuilder ("Found installations:\n");
-                    for (int j = 0; j < installations.length; j++) {
-                        var inst = installations[j];
-                        sb.append ("• %s".printf (inst.label));
-                        if (inst.email != null) sb.append (" (%s)".printf (inst.email));
-                        sb.append ("\n");
-                    }
-                    empty_status.description = sb.str +
-                        "\nCreate a deltachat-config.json with email/password to connect.";
-                } else {
-                    empty_status.description =
-                        "No Delta Chat accounts found.\n" +
-                        "Create deltachat-config.json with your credentials.";
-                }
-            } catch (Error e) {
-                show_toast ("Account setup error: " + e.message);
-            }
-        }
-
         /* ================================================================
          *  Chat List
          * ================================================================ */
 
-        private async void load_chats () {
+        public void clear_chat_view () {
+            current_chat_id = 0;
+            content_stack.visible_child_name = "empty";
+        }
+
+        public void request_messages_reload () {
+            request_messages_reload ();
+        }
+
+        public async void load_chats () {
             if (rpc.account_id <= 0) return;
 
             try {
@@ -844,7 +792,7 @@ namespace Dc {
             }
         }
 
-        private async void save_attachment (string src_path, string? name) {
+        public async void save_attachment (string src_path, string? name) {
             var dialog = new Gtk.FileDialog ();
             dialog.initial_name = name ?? Path.get_basename (src_path);
             try {
@@ -864,13 +812,10 @@ namespace Dc {
          *  Event Loop (delegates to EventHandler)
          * ================================================================ */
 
-        private void reload_chats () {
+        public void request_reload_chats () {
             if (events != null) events.schedule_chats_reload ();
         }
 
-        private void reload_messages () {
-            if (events != null) events.schedule_messages_reload ();
-        }
 
         private async void on_incoming_msg (int chat_id, int msg_id) {
 
@@ -891,49 +836,9 @@ namespace Dc {
                 }
             }
             if (settings.notifications_enabled && !this.is_active) {
-                /* App is in background — send a desktop notification */
-                yield notify_incoming_msg (chat_id, msg_id);
+                yield events.send_notification (chat_id, msg_id);
             }
-            /* Refresh chat list to update preview text and unread counters. */
-            reload_chats ();
-        }
-
-        private async void notify_incoming_msg (int chat_id, int msg_id) {
-            try {
-                var msg_obj = yield rpc.get_message (rpc.account_id, msg_id);
-                if (msg_obj == null) return;
-                var msg = RpcClient.parse_message (msg_obj, self_email);
-                if (msg.is_outgoing || msg.is_info) return;
-
-                string title = msg.sender_name ?? msg.sender_address ?? "New message";
-                try {
-                    var chat_obj = yield rpc.get_full_chat_by_id (rpc.account_id, chat_id);
-                    if (chat_obj != null && chat_obj.has_member ("name")) {
-                        string chat_name = chat_obj.get_string_member ("name");
-                        if (chat_name != null && chat_name.length > 0
-                            && chat_name != title) {
-                            title = "%s (%s)".printf (title, chat_name);
-                        }
-                    }
-                } catch (Error e) { /* ignore — fall back to sender */ }
-
-                string body;
-                if (msg.text != null && msg.text.length > 0) {
-                    body = msg.text;
-                } else if (msg.file_name != null && msg.file_name.length > 0) {
-                    body = msg.file_name;
-                } else {
-                    body = "New message";
-                }
-
-                var n = new GLib.Notification (title);
-                n.set_body (body);
-                n.set_priority (GLib.NotificationPriority.NORMAL);
-                this.application.send_notification (
-                    "dc-msg-%d".printf (msg_id), n);
-            } catch (Error e) {
-                warning ("Failed to send notification: %s", e.message);
-            }
+            request_reload_chats ();
         }
 
         /* ================================================================
@@ -1032,137 +937,17 @@ namespace Dc {
             show_toast ("Group created");
         }
 
-        /* ================================================================
-         *  Chat Context Menu
-         * ================================================================ */
-
-        private void show_chat_context_menu (int chat_id, double x, double y) {
-            /* Look up pinned state from chat_store */
-            bool is_pinned = false;
-            var entry = find_chat_entry (chat_store, chat_id);
-            if (entry != null) {
-                is_pinned = entry.is_pinned;
-            }
-
-            var menu = new GLib.Menu ();
-            menu.append (is_pinned ? "Unpin" : "Pin", "win.chat-pin");
-            menu.append ("Chat Info", "win.chat-info");
-            menu.append ("Delete for Me", "win.chat-delete");
-
-            /* Set up actions with the chat_id */
-            var pin_action = new SimpleAction ("chat-pin", null);
-            pin_action.activate.connect (() => {
-                toggle_chat_pin.begin (chat_id, is_pinned);
-            });
-
-            var info_action = new SimpleAction ("chat-info", null);
-            info_action.activate.connect (() => {
-                show_chat_info.begin (chat_id);
-            });
-
-            var delete_action = new SimpleAction ("chat-delete", null);
-            delete_action.activate.connect (() => {
-                confirm_delete_chat.begin (chat_id);
-            });
-
-            /* Replace actions each time (context changes) */
-            add_action (pin_action);
-            add_action (info_action);
-            add_action (delete_action);
-
-            var popover = new Gtk.PopoverMenu.from_model (menu);
-            popover.set_parent (chat_listbox);
-            popover.set_pointing_to ({ (int) x, (int) y, 1, 1 });
-            popover.popup ();
-        }
-
-        private async void toggle_chat_pin (int chat_id, bool currently_pinned) {
-            try {
-                string visibility = currently_pinned ? "Normal" : "Pinned";
-                yield rpc.set_chat_visibility (rpc.account_id, chat_id, visibility);
-                yield load_chats ();
-            } catch (Error e) {
-                show_toast ("Failed to update pin: " + e.message);
-            }
-        }
-
-        private void scroll_to_message (int msg_id) {
-            /* Find position in the filtered model */
+        public void scroll_to_message (int msg_id) {
             int pos = -1;
             for (uint i = 0; i < filtered_message_store.get_n_items (); i++) {
                 var m = (Message) filtered_message_store.get_item (i);
                 if (m.id == msg_id) { pos = (int) i; break; }
             }
             if (pos < 0) return;
-
             var msg = (Message) filtered_message_store.get_item (pos);
             msg.highlighted = true;
             message_listview.scroll_to (pos, Gtk.ListScrollFlags.FOCUS, null);
             stick_to_bottom = is_near_bottom ();
-        }
-
-        private async void show_chat_info (int chat_id) {
-            var dialog = new ChatInfoDialog (rpc, rpc.account_id, chat_id);
-
-            dialog.chat_deleted.connect ((cid) => {
-                show_toast ("Chat deleted");
-                if (current_chat_id == cid) {
-                    current_chat_id = 0;
-                    content_stack.visible_child_name = "empty";
-                }
-                reload_chats ();
-            });
-
-            dialog.chat_changed.connect (() => {
-                reload_chats ();
-                if (current_chat_id == chat_id) {
-                    reload_messages ();
-                }
-            });
-
-            dialog.present (this);
-        }
-
-        private async void confirm_delete_chat (int chat_id) {
-            /* Find chat name */
-            string chat_name = "this chat";
-            var entry = find_chat_entry (chat_store, chat_id);
-            if (entry != null) {
-                chat_name = entry.name;
-            }
-
-            var dialog = new Adw.AlertDialog (
-                "Delete for Me",
-                "Remove \"%s\" from your chat list? You may still receive messages if you are a group member.".printf (chat_name)
-            );
-            dialog.add_response ("cancel", "Cancel");
-            dialog.add_response ("delete", "Delete for Me");
-            dialog.set_response_appearance ("delete", Adw.ResponseAppearance.DESTRUCTIVE);
-            dialog.default_response = "cancel";
-
-            dialog.response.connect ((resp) => {
-                if (resp == "delete") {
-                    do_delete_chat.begin (chat_id);
-                }
-            });
-
-            dialog.present (this);
-        }
-
-        private async void do_delete_chat (int chat_id) {
-            try {
-                yield rpc.delete_chat (rpc.account_id, chat_id);
-                show_toast ("Chat deleted");
-
-                if (current_chat_id == chat_id) {
-                    current_chat_id = 0;
-                    content_stack.visible_child_name = "empty";
-                }
-
-                yield load_chats ();
-            } catch (Error e) {
-                show_toast ("Delete failed: " + e.message);
-            }
         }
 
         /* ================================================================
@@ -1170,46 +955,33 @@ namespace Dc {
          * ================================================================ */
 
         private GLib.MenuModel build_app_menu () {
-            var a_new_chat = new SimpleAction ("new-chat", null);
-            a_new_chat.activate.connect (() => { on_new_chat (); });
-            add_action (a_new_chat);
+            SimpleAction a;
+            a = new SimpleAction ("new-chat", null);
+            a.activate.connect (() => { on_new_chat (); }); add_action (a);
+            a = new SimpleAction ("new-group", null);
+            a.activate.connect (() => { on_new_group (); }); add_action (a);
+            a = new SimpleAction ("refresh", null);
+            a.activate.connect (() => { load_chats.begin (); }); add_action (a);
+            a = new SimpleAction ("settings", null);
+            a.activate.connect (() => { show_settings_dialog (); }); add_action (a);
+            a = new SimpleAction ("shortcuts", null);
+            a.activate.connect (() => { show_keyboard_shortcuts_dialog (); }); add_action (a);
+            a = new SimpleAction ("about", null);
+            a.activate.connect (() => { show_about_dialog (); }); add_action (a);
 
-            var a_new_group = new SimpleAction ("new-group", null);
-            a_new_group.activate.connect (() => { on_new_group (); });
-            add_action (a_new_group);
-
-            var a_refresh = new SimpleAction ("refresh", null);
-            a_refresh.activate.connect (() => { load_chats.begin (); });
-            add_action (a_refresh);
-
-            var a_settings = new SimpleAction ("settings", null);
-            a_settings.activate.connect (() => { show_settings_dialog (); });
-            add_action (a_settings);
-
-            var a_shortcuts = new SimpleAction ("shortcuts", null);
-            a_shortcuts.activate.connect (() => { show_keyboard_shortcuts_dialog (); });
-            add_action (a_shortcuts);
-
-            var a_about = new SimpleAction ("about", null);
-            a_about.activate.connect (() => { show_about_dialog (); });
-            add_action (a_about);
-
-            var section1 = new GLib.Menu ();
-            section1.append ("New Chat", "win.new-chat");
-            section1.append ("New Group", "win.new-group");
-
-            var section2 = new GLib.Menu ();
-            // section2.append ("Refresh", "win.refresh");
-            section2.append ("Settings", "win.settings");
-            var section3 = new GLib.Menu ();
-            section3.append ("Shortcuts", "win.shortcuts");
-            section3.append ("About", "win.about");
+            var s1 = new GLib.Menu ();
+            s1.append ("New Chat", "win.new-chat");
+            s1.append ("New Group", "win.new-group");
+            var s2 = new GLib.Menu ();
+            s2.append ("Settings", "win.settings");
+            var s3 = new GLib.Menu ();
+            s3.append ("Shortcuts", "win.shortcuts");
+            s3.append ("About", "win.about");
 
             var menu = new GLib.Menu ();
-            menu.append_section (null, section1);
-            menu.append_section (null, section2);
-            menu.append_section (null, section3);
-
+            menu.append_section (null, s1);
+            menu.append_section (null, s2);
+            menu.append_section (null, s3);
             return menu;
         }
 
@@ -1253,6 +1025,7 @@ namespace Dc {
                 self_email = null;
             }
             if (msg_actions != null) msg_actions.self_email = self_email;
+            if (events != null) events.self_email = self_email;
             current_chat_id = 0;
             content_stack.visible_child_name = "empty";
             yield load_chats ();
@@ -1351,9 +1124,9 @@ namespace Dc {
         }
 
         private void refresh_current_chat () {
-            reload_chats ();
+            request_reload_chats ();
             if (current_chat_id > 0) {
-                reload_messages ();
+                request_messages_reload ();
             }
         }
 
@@ -1372,7 +1145,7 @@ namespace Dc {
             dialog.focus_entry ();
         }
 
-        private void select_chat_by_id (int chat_id) {
+        public void select_chat_by_id (int chat_id) {
             int idx = 0;
             Gtk.ListBoxRow? row;
             while ((row = chat_listbox.get_row_at_index (idx)) != null) {
@@ -1386,6 +1159,18 @@ namespace Dc {
             }
         }
 
+        private const string[] SHORTCUTS = {
+            "New chat",              "<Control>n",
+            "New group",             "<Control>g",
+            "Open settings",         "<Control>comma",
+            "Search in conversation","<Control>f",
+            "Quick switch chat",     "<Control>k",
+            "Refresh messages",      "<Control>r",
+            "Focus message entry",   "<Control>l",
+            "Close window",          "<Control>w",
+            "Quit application",      "<Control>q",
+        };
+
         private void show_keyboard_shortcuts_dialog () {
             if (active_modal != null) return;
 
@@ -1395,26 +1180,21 @@ namespace Dc {
             dialog.content_height = 380;
 
             var box = new Gtk.Box (Gtk.Orientation.VERTICAL, 0);
-            var header = new Adw.HeaderBar ();
-            box.append (header);
+            box.append (new Adw.HeaderBar ());
 
             var list = new Gtk.ListBox ();
             list.selection_mode = Gtk.SelectionMode.NONE;
             list.add_css_class ("boxed-list");
-            list.margin_start = 12;
-            list.margin_end = 12;
-            list.margin_top = 12;
-            list.margin_bottom = 12;
+            list.margin_start = list.margin_end = list.margin_top = list.margin_bottom = 12;
 
-            add_shortcut_row (list, "New chat", "<Control>n");
-            add_shortcut_row (list, "New group", "<Control>g");
-            add_shortcut_row (list, "Open settings", "<Control>comma");
-            add_shortcut_row (list, "Search in conversation", "<Control>f");
-            add_shortcut_row (list, "Quick switch chat", "<Control>k");
-            add_shortcut_row (list, "Refresh messages", "<Control>r");
-            add_shortcut_row (list, "Focus message entry", "<Control>l");
-            add_shortcut_row (list, "Close window", "<Control>w");
-            add_shortcut_row (list, "Quit application", "<Control>q");
+            for (int i = 0; i + 1 < SHORTCUTS.length; i += 2) {
+                var row = new Adw.ActionRow ();
+                row.title = SHORTCUTS[i];
+                var lbl = new Gtk.ShortcutLabel (SHORTCUTS[i + 1]);
+                lbl.valign = Gtk.Align.CENTER;
+                row.add_suffix (lbl);
+                list.append (row);
+            }
 
             box.append (list);
             dialog.child = box;
@@ -1423,21 +1203,11 @@ namespace Dc {
             dialog.present (this);
         }
 
-        private void add_shortcut_row (Gtk.ListBox list, string description,
-                                       string accel) {
-            var row = new Adw.ActionRow ();
-            row.title = description;
-            var label = new Gtk.ShortcutLabel (accel);
-            label.valign = Gtk.Align.CENTER;
-            row.add_suffix (label);
-            list.append (row);
-        }
-
         /* ================================================================
          *  Utilities
          * ================================================================ */
 
-        private void show_toast (string message) {
+        public void show_toast (string message) {
             var toast = new Adw.Toast (message);
             toast.timeout = 4;
 

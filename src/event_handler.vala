@@ -3,11 +3,13 @@ namespace Dc {
     public class EventHandler : Object {
 
         private unowned RpcClient rpc;
+        private unowned GLib.Application? app = null;
         private bool _listening = false;
         private uint chats_reload_timer = 0;
         private uint messages_reload_timer = 0;
 
         public int active_chat_id { get; set; default = 0; }
+        public string? self_email { get; set; default = null; }
 
         public signal void chats_reload_fired ();
         public signal void messages_reload_fired ();
@@ -16,6 +18,8 @@ namespace Dc {
         public EventHandler (RpcClient rpc) {
             this.rpc = rpc;
         }
+
+        public void set_app (GLib.Application a) { this.app = a; }
 
         public bool is_listening { get { return _listening; } }
 
@@ -101,6 +105,39 @@ namespace Dc {
 
             default:
                 break;
+            }
+        }
+
+        public async void send_notification (int chat_id, int msg_id) {
+            if (app == null) return;
+            try {
+                var msg_obj = yield rpc.get_message (rpc.account_id, msg_id);
+                if (msg_obj == null) return;
+                var msg = RpcClient.parse_message (msg_obj, self_email);
+                if (msg.is_outgoing || msg.is_info) return;
+
+                string title = msg.sender_name ?? msg.sender_address ?? "New message";
+                try {
+                    var chat_obj = yield rpc.get_full_chat_by_id (rpc.account_id, chat_id);
+                    if (chat_obj != null && chat_obj.has_member ("name")) {
+                        string chat_name = chat_obj.get_string_member ("name");
+                        if (chat_name != null && chat_name.length > 0
+                            && chat_name != title) {
+                            title = "%s (%s)".printf (title, chat_name);
+                        }
+                    }
+                } catch (Error e) { /* fall back to sender */ }
+
+                string body = (msg.text != null && msg.text.length > 0) ? msg.text
+                    : (msg.file_name != null && msg.file_name.length > 0) ? msg.file_name
+                    : "New message";
+
+                var n = new GLib.Notification (title);
+                n.set_body (body);
+                n.set_priority (GLib.NotificationPriority.NORMAL);
+                app.send_notification ("dc-msg-%d".printf (msg_id), n);
+            } catch (Error e) {
+                warning ("Failed to send notification: %s", e.message);
             }
         }
 

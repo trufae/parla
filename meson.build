@@ -34,6 +34,7 @@ sources = files(
   'src/quick_switch_dialog.vala',
   'src/event_handler.vala',
   'src/message_actions.vala',
+  'src/chat_context_menu.vala',
 )
 
 executable('deltachat-gnome',

@@ -4,11 +4,9 @@ namespace Dc {
 
         public Gtk.Box widget { get; private set; }
 
+        private unowned Window? window = null;
         private Gtk.Picture picture;
         private string? current_path = null;
-
-        public signal void save_requested (string path, string name);
-        public signal void toast_requested (string message);
 
         public bool visible {
             get { return widget.visible; }
@@ -40,6 +38,8 @@ namespace Dc {
             widget.add_controller (right_click);
         }
 
+        public void set_window (Window w) { this.window = w; }
+
         public void show (string path) {
             try {
                 var texture = Gdk.Texture.from_filename (path);
@@ -48,7 +48,7 @@ namespace Dc {
                 widget.visible = true;
                 widget.grab_focus ();
             } catch (Error e) {
-                toast_requested ("Cannot open image: " + e.message);
+                if (window != null) window.show_toast ("Cannot open image: " + e.message);
             }
         }
 
@@ -73,7 +73,7 @@ namespace Dc {
             save_btn.add_css_class ("flat");
             save_btn.clicked.connect (() => {
                 popover.popdown ();
-                save_requested (path, Path.get_basename (path));
+                if (window != null) window.save_attachment.begin (path, Path.get_basename (path));
             });
             vbox.append (save_btn);
 
