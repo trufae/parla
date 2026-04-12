@@ -433,7 +433,7 @@ namespace Dc {
         }
 
         public void request_messages_reload () {
-            request_messages_reload ();
+            if (events != null) events.schedule_messages_reload ();
         }
 
         public async void load_chats () {
