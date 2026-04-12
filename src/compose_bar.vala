@@ -25,6 +25,7 @@ namespace Dc {
         private Gtk.Box reply_bar;
         private string? pending_file = null;
         private string? pending_file_name = null;
+        private bool pending_file_is_temp = false;
         private int editing_msg_id = 0;
         private int replying_msg_id = 0;
 
@@ -184,14 +185,23 @@ namespace Dc {
         public void set_pending_attachment (string file_path, string? file_name = null) {
             pending_file = file_path;
             pending_file_name = file_name ?? Path.get_basename (file_path);
+            pending_file_is_temp = false;
             text_view.buffer.text = "";
             set_placeholder ("📎 %s — Type a caption…".printf (pending_file_name));
             cancel_attach_button.visible = true;
         }
 
         private void clear_attachment () {
+            if (pending_file_is_temp && pending_file != null) {
+                try {
+                    var f = GLib.File.new_for_path (pending_file);
+                    f.@delete ();
+                } catch (Error e) {
+                }
+            }
             pending_file = null;
             pending_file_name = null;
+            pending_file_is_temp = false;
             cancel_attach_button.visible = false;
             set_placeholder (placeholder_default);
         }
@@ -325,8 +335,10 @@ namespace Dc {
                 var tmp = GLib.File.new_tmp ("deltachat-gnome-XXXXXX.png", out stream);
                 stream.close ();
                 string path = tmp.get_path ();
-                if (texture.save_to_png (path))
+                if (texture.save_to_png (path)) {
                     set_pending_attachment (path, "pasted-image.png");
+                    pending_file_is_temp = true;
+                }
             } catch (Error e) {
             }
         }
