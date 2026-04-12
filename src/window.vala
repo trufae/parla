@@ -1185,11 +1185,9 @@ namespace Dc {
             });
 
             /* Replace actions each time (context changes) */
-            var group = new SimpleActionGroup ();
-            group.add_action (pin_action);
-            group.add_action (info_action);
-            group.add_action (delete_action);
-            this.insert_action_group ("win", group);
+            add_action (pin_action);
+            add_action (info_action);
+            add_action (delete_action);
 
             var popover = new Gtk.PopoverMenu.from_model (menu);
             popover.set_parent (chat_listbox);
@@ -1652,14 +1650,16 @@ namespace Dc {
             section1.append ("New Group", "win.new-group");
 
             var section2 = new GLib.Menu ();
-            section2.append ("Refresh", "win.refresh");
+            // section2.append ("Refresh", "win.refresh");
             section2.append ("Settings", "win.settings");
-            section2.append ("Shortcuts", "win.shortcuts");
-            section2.append ("About", "win.about");
+            var section3 = new GLib.Menu ();
+            section3.append ("Shortcuts", "win.shortcuts");
+            section3.append ("About", "win.about");
 
             var menu = new GLib.Menu ();
             menu.append_section (null, section1);
             menu.append_section (null, section2);
+            menu.append_section (null, section3);
 
             return menu;
         }
