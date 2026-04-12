@@ -1,0 +1,26 @@
+{
+    "id": "org.deltachat.Gnome",
+    "runtime": "org.gnome.Platform",
+    "runtime-version": "47",
+    "sdk": "org.gnome.Sdk",
+    "command": "deltachat-gnome",
+    "finish-args": [
+        "--share=ipc",
+        "--share=network",
+        "--socket=fallback-x11",
+        "--socket=wayland",
+        "--device=dri"
+    ],
+    "modules": [
+        {
+            "name": "deltachat-gnome",
+            "buildsystem": "meson",
+            "sources": [
+                {
+                    "type": "dir",
+                    "path": "../.."
+                }
+            ]
+        }
+    ]
+}

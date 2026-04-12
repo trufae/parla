@@ -10,6 +10,7 @@
 
 <p align="center">
   <a href="https://github.com/trufae/deltachat-gnome/actions/workflows/build.yml"><img alt="CI" src="https://github.com/trufae/deltachat-gnome/actions/workflows/build.yml/badge.svg"/></a>
+  <a href="https://github.com/trufae/deltachat-gnome/releases/latest"><img alt="Flatpak" src="https://img.shields.io/badge/Flatpak-download-4a86cf?style=flat-square&logo=flatpak&logoColor=white"/></a>
   <img alt="License" src="https://img.shields.io/badge/license-GPLv3-blue?style=flat-square"/>
   <img alt="GTK4 + libadwaita" src="https://img.shields.io/badge/GTK4-libadwaita-4a86cf?style=flat-square&logo=gnome&logoColor=white"/>
   <img alt="Vala" src="https://img.shields.io/badge/lang-Vala-a56de2?style=flat-square"/>

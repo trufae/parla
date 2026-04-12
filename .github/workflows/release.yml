@@ -38,3 +38,21 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: dist/debian/deltachat-gnome/*.deb
+
+  build-flatpak:
+    runs-on: ubuntu-24.04
+    container:
+      image: bilelmoussaoui/flatpak-github-actions:gnome-47
+      options: --privileged
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
+        with:
+          manifest-path: dist/flatpak/org.deltachat.Gnome.json
+          bundle: deltachat-gnome.flatpak
+
+      - name: Upload .flatpak to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: deltachat-gnome.flatpak
