@@ -175,24 +175,11 @@ namespace Dc {
         }
 
         private async void pick_avatar () {
-            var chooser = new Gtk.FileDialog ();
-            chooser.title = "Select Group Avatar";
-
-            var filter = new Gtk.FileFilter ();
-            filter.add_mime_type ("image/*");
-            filter.name = "Images";
-            var filters = new ListStore (typeof (Gtk.FileFilter));
-            filters.append (filter);
-            chooser.filters = filters;
-
-            try {
-                var file = yield chooser.open ((Gtk.Window) this.get_root (), null);
-                if (file != null) {
-                    avatar_path = file.get_path ();
-                    avatar_widget.custom_image = load_avatar (avatar_path);
-                }
-            } catch (Error e) {
-                /* cancelled */
+            string? path = yield pick_image_file (
+                (Gtk.Window) this.get_root (), "Select Group Avatar");
+            if (path != null) {
+                avatar_path = path;
+                avatar_widget.custom_image = load_avatar (path);
             }
         }
     }

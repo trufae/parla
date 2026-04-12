@@ -209,11 +209,7 @@ namespace Dc {
         }
 
         private async void load_accounts () {
-            /* Clear list */
-            Gtk.ListBoxRow? row;
-            while ((row = accounts_list.get_row_at_index (0)) != null) {
-                accounts_list.remove (row);
-            }
+            clear_listbox (accounts_list);
 
             try {
                 var accounts_node = yield rpc.get_all_accounts ();
@@ -230,8 +226,8 @@ namespace Dc {
                     string? display_name = null;
                     if (configured) {
                         try {
-                            email = yield rpc.get_config (id, "addr");
-                            display_name = yield rpc.get_config (id, "displayname");
+                            email = yield rpc.get_config ("addr", id);
+                            display_name = yield rpc.get_config ("displayname", id);
                         } catch (Error ce) { /* ignore */ }
                     }
 

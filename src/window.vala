@@ -409,7 +409,7 @@ namespace Dc {
                                               compose_bar, settings);
             if (rpc.account_id > 0) {
                 try {
-                    rpc.self_email = yield rpc.get_config (rpc.account_id, "addr");
+                    rpc.self_email = yield rpc.get_config ("addr");
                 } catch (Error ce) {
                     rpc.self_email = null;
                 }
@@ -442,10 +442,7 @@ namespace Dc {
                 var items = yield rpc.get_chatlist_items_by_entries (entries);
 
                 chat_store.remove_all ();
-                Gtk.ListBoxRow? row;
-                while ((row = chat_listbox.get_row_at_index (0)) != null) {
-                    chat_listbox.remove (row);
-                }
+                clear_listbox (chat_listbox);
 
                 Gtk.ListBoxRow? reselect_row = null;
                 for (uint i = 0; i < entries.get_length (); i++) {
@@ -756,9 +753,8 @@ namespace Dc {
 
                 /* Append the sent message directly instead of reloading all */
                 if (msg_id > 0) {
-                    var msg_obj = yield rpc.get_message (msg_id);
-                    if (msg_obj != null) {
-                        var msg = RpcClient.parse_message (msg_obj, rpc.self_email);
+                    var msg = yield rpc.fetch_message (msg_id);
+                    if (msg != null) {
                         insert_message_sorted (msg);
                         scroll_to_bottom ();
                     }
@@ -815,9 +811,8 @@ namespace Dc {
             if (chat_id == current_chat_id && current_chat_id > 0) {
                 /* Message is in the active chat — show it and mark seen */
                 try {
-                    var msg_obj = yield rpc.get_message (msg_id);
-                    if (msg_obj != null) {
-                        var msg = RpcClient.parse_message (msg_obj, rpc.self_email);
+                    var msg = yield rpc.fetch_message (msg_id);
+                    if (msg != null) {
                         msg.highlighted = true;
                         insert_message_sorted (msg);
                     }
@@ -852,8 +847,8 @@ namespace Dc {
             if (rpc.account_id <= 0) return;
 
             try {
-                string? name = yield rpc.get_config (rpc.account_id, "displayname");
-                string? avatar = yield rpc.get_config (rpc.account_id, "selfavatar");
+                string? name = yield rpc.get_config ("displayname");
+                string? avatar = yield rpc.get_config ("selfavatar");
 
                 profile_avatar.text = name ?? "";
                 profile_avatar.custom_image = load_avatar (avatar);
@@ -998,7 +993,7 @@ namespace Dc {
                 return;
             }
             try {
-                rpc.self_email = yield rpc.get_config (rpc.account_id, "addr");
+                rpc.self_email = yield rpc.get_config ("addr");
             } catch (Error e) {
                 rpc.self_email = null;
             }

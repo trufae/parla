@@ -56,15 +56,10 @@ namespace Dc {
 
                 spinner.visible = false;
 
-                string name = chat.has_member ("name")
-                    ? chat.get_string_member ("name") : "Chat";
-                string chat_type = chat.has_member ("chatType")
-                    ? chat.get_string_member ("chatType") : "";
-                string? profile_image = chat.has_member ("profileImage")
-                    && !chat.get_member ("profileImage").is_null ()
-                    ? chat.get_string_member ("profileImage") : null;
-                bool encrypted = chat.has_member ("isEncrypted")
-                    && chat.get_boolean_member ("isEncrypted");
+                string name = json_str (chat, "name") ?? "Chat";
+                string chat_type = json_str (chat, "chatType") ?? "";
+                string? profile_image = json_str (chat, "profileImage");
+                bool encrypted = json_bool (chat, "isEncrypted");
 
                 is_group = chat_type == "Group" || chat_type == "Broadcast";
                 chat_name = name;
@@ -101,8 +96,7 @@ namespace Dc {
                 content.append (type_lbl);
 
                 /* Disappearing messages */
-                int ephemeral_timer = chat.has_member ("ephemeralTimer")
-                    ? (int) chat.get_int_member ("ephemeralTimer") : 0;
+                int ephemeral_timer = (int) json_int (chat, "ephemeralTimer");
 
                 var ephem_row = new Adw.ActionRow ();
                 ephem_row.title = "Disappearing messages";
@@ -261,19 +255,7 @@ namespace Dc {
         }
 
         private Adw.ActionRow build_contact_row (Contact contact) {
-            string title = contact.display_name.length > 0
-                ? contact.display_name : contact.address;
-            string subtitle = contact.display_name.length > 0
-                ? contact.address : "";
-            if (contact.is_verified) subtitle += " (verified)";
-
-            var row = new Adw.ActionRow ();
-            row.title = title;
-            row.subtitle = subtitle;
-
-            var avatar = new Adw.Avatar (32, title, true);
-            avatar.custom_image = load_avatar (contact.profile_image);
-            row.add_prefix (avatar);
+            var row = contact_row (contact);
 
             /* Copy email button */
             if (contact.address.length > 0) {
@@ -359,10 +341,7 @@ namespace Dc {
                 var msg_ids = yield rpc.get_message_ids (chat_id);
                 if (msg_ids == null || msg_ids.get_length () == 0) return;
 
-                int[] ids = new int[msg_ids.get_length ()];
-                for (uint i = 0; i < msg_ids.get_length (); i++) {
-                    ids[i] = (int) msg_ids.get_int_element (i);
-                }
+                int[] ids = json_ints (msg_ids);
 
                 if (for_all) {
                     yield rpc.delete_messages_for_all (ids);
@@ -410,11 +389,7 @@ namespace Dc {
                 /* Delete all messages for everyone */
                 var msg_ids = yield rpc.get_message_ids (chat_id);
                 if (msg_ids != null && msg_ids.get_length () > 0) {
-                    int[] ids = new int[msg_ids.get_length ()];
-                    for (uint i = 0; i < msg_ids.get_length (); i++) {
-                        ids[i] = (int) msg_ids.get_int_element (i);
-                    }
-                    yield rpc.delete_messages_for_all (ids);
+                    yield rpc.delete_messages_for_all (json_ints (msg_ids));
                 }
 
                 /* Leave and delete the chat */
@@ -445,25 +420,12 @@ namespace Dc {
         }
 
         private async void pick_avatar () {
-            var chooser = new Gtk.FileDialog ();
-            chooser.title = "Select Avatar Image";
-
-            var filter = new Gtk.FileFilter ();
-            filter.add_mime_type ("image/*");
-            filter.name = "Images";
-            var filters = new ListStore (typeof (Gtk.FileFilter));
-            filters.append (filter);
-            chooser.filters = filters;
-
+            string? path = yield pick_image_file (
+                (Gtk.Window) this.get_root (), "Select Avatar Image");
+            if (path == null) return;
             try {
-                var file = yield chooser.open ((Gtk.Window) this.get_root (), null);
-                if (file != null) {
-                    string path = file.get_path ();
-                    yield rpc.set_chat_profile_image (chat_id, path);
-                }
-            } catch (Error e) {
-                /* cancelled or error */
-            }
+                yield rpc.set_chat_profile_image (chat_id, path);
+            } catch (Error e) { /* ignore */ }
         }
     }
 }

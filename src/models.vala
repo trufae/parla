@@ -41,6 +41,79 @@ namespace Dc {
         return null;
     }
 
+    /* ---- JSON helpers ---- */
+
+    public static string? json_str (Json.Object obj, string key) {
+        if (!obj.has_member (key)) return null;
+        var m = obj.get_member (key);
+        if (m == null || m.is_null ()) return null;
+        return obj.get_string_member (key);
+    }
+
+    public static int64 json_int (Json.Object obj, string key, int64 fallback = 0) {
+        if (!obj.has_member (key)) return fallback;
+        var m = obj.get_member (key);
+        if (m == null || m.is_null ()) return fallback;
+        return obj.get_int_member (key);
+    }
+
+    public static bool json_bool (Json.Object obj, string key) {
+        if (!obj.has_member (key)) return false;
+        var m = obj.get_member (key);
+        if (m == null || m.is_null ()) return false;
+        return obj.get_boolean_member (key);
+    }
+
+    public static int[] json_ints (Json.Array arr) {
+        int[] r = new int[arr.get_length ()];
+        for (uint i = 0; i < arr.get_length (); i++) {
+            r[i] = (int) arr.get_int_element (i);
+        }
+        return r;
+    }
+
+    /* ---- Widget helpers ---- */
+
+    public static void clear_listbox (Gtk.ListBox lb) {
+        Gtk.ListBoxRow? row;
+        while ((row = lb.get_row_at_index (0)) != null) {
+            lb.remove (row);
+        }
+    }
+
+    public static async string? pick_image_file (Gtk.Window parent, string title) {
+        var chooser = new Gtk.FileDialog ();
+        chooser.title = title;
+        var filter = new Gtk.FileFilter ();
+        filter.add_mime_type ("image/*");
+        filter.name = "Images";
+        var filters = new ListStore (typeof (Gtk.FileFilter));
+        filters.append (filter);
+        chooser.filters = filters;
+        try {
+            var file = yield chooser.open (parent, null);
+            if (file != null) return file.get_path ();
+        } catch (Error e) { /* cancelled */ }
+        return null;
+    }
+
+    public static Adw.ActionRow contact_row (Contact c, bool activatable = false) {
+        string title = c.display_name.length > 0 ? c.display_name : c.address;
+        string subtitle = c.display_name.length > 0 ? c.address : "";
+        if (c.is_verified && subtitle.length > 0) subtitle += " (verified)";
+        else if (c.is_verified) subtitle = "(verified)";
+
+        var row = new Adw.ActionRow ();
+        row.title = title;
+        row.subtitle = subtitle;
+        row.activatable = activatable;
+
+        var avatar = new Adw.Avatar (32, title, true);
+        avatar.custom_image = load_avatar (c.profile_image);
+        row.add_prefix (avatar);
+        return row;
+    }
+
     public class Account : Object {
         public int id { get; set; default = 0; }
         public string email { get; set; default = ""; }

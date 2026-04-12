@@ -93,11 +93,7 @@ namespace Dc {
         }
 
         private void rebuild_list (string query) {
-            /* Remove all rows */
-            Gtk.ListBoxRow? row;
-            while ((row = contact_listbox.get_row_at_index (0)) != null) {
-                contact_listbox.remove (row);
-            }
+            clear_listbox (contact_listbox);
 
             string q = query.strip ().down ();
 
@@ -116,23 +112,9 @@ namespace Dc {
         }
 
         private Adw.ActionRow build_contact_row (Contact ci) {
-            string title = ci.display_name.length > 0 ? ci.display_name : ci.address;
-            string subtitle = ci.display_name.length > 0 ? ci.address : "";
-            if (ci.is_verified && subtitle.length > 0) subtitle += " (verified)";
-            else if (ci.is_verified) subtitle = "(verified)";
-
-            var row = new Adw.ActionRow ();
-            row.title = title;
-            row.subtitle = subtitle;
-            row.activatable = true;
-
-            var avatar = new Adw.Avatar (32, title, true);
-            avatar.custom_image = load_avatar (ci.profile_image);
-            row.add_prefix (avatar);
-
+            var row = contact_row (ci, true);
             /* Store contact_id and email in row name for retrieval */
             row.name = "%d\n%s".printf (ci.id, ci.address);
-
             return row;
         }
 

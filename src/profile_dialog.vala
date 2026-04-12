@@ -99,10 +99,10 @@ namespace Dc {
 
         private async void load_profile () {
             try {
-                string? name = yield rpc.get_config (rpc.account_id, "displayname");
-                string? status = yield rpc.get_config (rpc.account_id, "selfstatus");
-                string? email = yield rpc.get_config (rpc.account_id, "addr");
-                string? avatar = yield rpc.get_config (rpc.account_id, "selfavatar");
+                string? name = yield rpc.get_config ("displayname");
+                string? status = yield rpc.get_config ("selfstatus");
+                string? email = yield rpc.get_config ("addr");
+                string? avatar = yield rpc.get_config ("selfavatar");
 
                 if (name != null) {
                     name_entry.text = name;
@@ -135,25 +135,12 @@ namespace Dc {
         }
 
         private async void pick_avatar () {
-            var chooser = new Gtk.FileDialog ();
-            chooser.title = "Select Avatar";
-
-            var filter = new Gtk.FileFilter ();
-            filter.add_mime_type ("image/*");
-            filter.name = "Images";
-            var filters = new ListStore (typeof (Gtk.FileFilter));
-            filters.append (filter);
-            chooser.filters = filters;
-
-            try {
-                var file = yield chooser.open ((Gtk.Window) this.get_root (), null);
-                if (file != null) {
-                    avatar_path = file.get_path ();
-                    avatar_changed = true;
-                    avatar_widget.custom_image = load_avatar (avatar_path);
-                }
-            } catch (Error e) {
-                /* cancelled */
+            string? path = yield pick_image_file (
+                (Gtk.Window) this.get_root (), "Select Avatar");
+            if (path != null) {
+                avatar_path = path;
+                avatar_changed = true;
+                avatar_widget.custom_image = load_avatar (path);
             }
         }
     }

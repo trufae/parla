@@ -110,9 +110,8 @@ namespace Dc {
         public async void send_notification (int chat_id, int msg_id) {
             if (app == null) return;
             try {
-                var msg_obj = yield rpc.get_message (msg_id);
-                if (msg_obj == null) return;
-                var msg = RpcClient.parse_message (msg_obj, rpc.self_email);
+                var msg = yield rpc.fetch_message (msg_id);
+                if (msg == null) return;
                 if (msg.is_outgoing || msg.is_info) return;
 
                 string title = msg.sender_name ?? msg.sender_address ?? "New message";

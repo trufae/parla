@@ -184,9 +184,8 @@ namespace Dc {
 
         public async void update_row (int msg_id) {
             try {
-                var msg_obj = yield rpc.get_message (msg_id);
-                if (msg_obj == null) return;
-                var msg = RpcClient.parse_message (msg_obj, rpc.self_email);
+                var msg = yield rpc.fetch_message (msg_id);
+                if (msg == null) return;
                 int idx = find_message_index (message_store, msg_id);
                 if (idx >= 0) {
                     Object[] replacements = { msg };

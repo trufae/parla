@@ -319,8 +319,9 @@ namespace Dc {
             yield call ("batch_set_config", b.get_root ());
         }
 
-        public async string? get_config (int acct_id, string key) throws Error {
-            var result = yield call ("get_config", build_params_int_str (acct_id, key));
+        public async string? get_config (string key, int acct_id = 0) throws Error {
+            int id = acct_id > 0 ? acct_id : account_id;
+            var result = yield call ("get_config", build_params_int_str (id, key));
             if (result == null || result.is_null ()) return null;
             return result.get_string ();
         }
@@ -376,6 +377,12 @@ namespace Dc {
             var result = yield call ("get_message", build_params_int2 (account_id, msg_id));
             if (result == null) return null;
             return result.get_object ();
+        }
+
+        public async Message? fetch_message (int msg_id) throws Error {
+            var obj = yield get_message (msg_id);
+            if (obj == null) return null;
+            return parse_message (obj, self_email);
         }
 
         public async Json.Object? get_messages (int[] msg_ids) throws Error {
@@ -604,16 +611,10 @@ namespace Dc {
         public static Contact parse_contact (int contact_id, Json.Object obj) {
             var c = new Contact ();
             c.id = contact_id;
-            c.display_name = obj.has_member ("displayName")
-                && !obj.get_member ("displayName").is_null ()
-                ? obj.get_string_member ("displayName") : "";
-            c.address = obj.has_member ("address")
-                ? obj.get_string_member ("address") : "";
-            c.profile_image = obj.has_member ("profileImage")
-                && !obj.get_member ("profileImage").is_null ()
-                ? obj.get_string_member ("profileImage") : null;
-            c.is_verified = obj.has_member ("isVerified")
-                && obj.get_boolean_member ("isVerified");
+            c.display_name = json_str (obj, "displayName") ?? "";
+            c.address = json_str (obj, "address") ?? "";
+            c.profile_image = json_str (obj, "profileImage");
+            c.is_verified = json_bool (obj, "isVerified");
             return c;
         }
 
@@ -622,36 +623,23 @@ namespace Dc {
          */
         public static Message parse_message (Json.Object obj, string? self_email = null) {
             var msg = new Message ();
-            msg.id = obj.has_member ("id") ? (int) obj.get_int_member ("id") : 0;
-            msg.chat_id = obj.has_member ("chatId") ? (int) obj.get_int_member ("chatId") : 0;
-            msg.text = obj.has_member ("text") && !obj.get_member ("text").is_null ()
-                ? obj.get_string_member ("text") : null;
-            msg.timestamp = obj.has_member ("timestamp")
-                ? obj.get_int_member ("timestamp") : 0;
-            msg.is_info = obj.has_member ("isInfo") && obj.get_boolean_member ("isInfo");
+            msg.id = (int) json_int (obj, "id");
+            msg.chat_id = (int) json_int (obj, "chatId");
+            msg.text = json_str (obj, "text");
+            msg.timestamp = json_int (obj, "timestamp");
+            msg.is_info = json_bool (obj, "isInfo");
 
-            msg.file_path = obj.has_member ("file") && !obj.get_member ("file").is_null ()
-                ? obj.get_string_member ("file") : null;
-            msg.file_name = obj.has_member ("fileName") && !obj.get_member ("fileName").is_null ()
-                ? obj.get_string_member ("fileName") : null;
-            msg.file_mime = obj.has_member ("fileMime") && !obj.get_member ("fileMime").is_null ()
-                ? obj.get_string_member ("fileMime") : null;
-            msg.file_bytes = obj.has_member ("fileBytes")
-                ? (int) obj.get_int_member ("fileBytes") : 0;
-            msg.view_type = obj.has_member ("viewType") && !obj.get_member ("viewType").is_null ()
-                ? obj.get_string_member ("viewType") : null;
+            msg.file_path = json_str (obj, "file");
+            msg.file_name = json_str (obj, "fileName");
+            msg.file_mime = json_str (obj, "fileMime");
+            msg.file_bytes = (int) json_int (obj, "fileBytes");
+            msg.view_type = json_str (obj, "viewType");
 
             if (obj.has_member ("sender") && !obj.get_member ("sender").is_null ()) {
                 var sender = obj.get_object_member ("sender");
-                msg.sender_address = sender.has_member ("address")
-                    ? sender.get_string_member ("address") : null;
-                msg.sender_name = sender.has_member ("displayName")
-                    && !sender.get_member ("displayName").is_null ()
-                    ? sender.get_string_member ("displayName") : null;
-                if (msg.sender_name == null && sender.has_member ("name")
-                    && !sender.get_member ("name").is_null ()) {
-                    msg.sender_name = sender.get_string_member ("name");
-                }
+                msg.sender_address = json_str (sender, "address");
+                msg.sender_name = json_str (sender, "displayName")
+                    ?? json_str (sender, "name");
             }
 
             /* Determine outgoing status */
@@ -707,13 +695,9 @@ namespace Dc {
             /* Quote / reply */
             if (obj.has_member ("quote") && !obj.get_member ("quote").is_null ()) {
                 var quote = obj.get_object_member ("quote");
-                if (quote.has_member ("text") && !quote.get_member ("text").is_null ())
-                    msg.quote_text = quote.get_string_member ("text");
-                if (quote.has_member ("authorDisplayName") &&
-                    !quote.get_member ("authorDisplayName").is_null ())
-                    msg.quote_sender_name = quote.get_string_member ("authorDisplayName");
-                if (quote.has_member ("messageId"))
-                    msg.quote_msg_id = (int) quote.get_int_member ("messageId");
+                msg.quote_text = json_str (quote, "text");
+                msg.quote_sender_name = json_str (quote, "authorDisplayName");
+                msg.quote_msg_id = (int) json_int (quote, "messageId");
             }
 
             return msg;
@@ -725,52 +709,25 @@ namespace Dc {
         public static ChatEntry parse_chat_item (int chat_id, Json.Object obj) {
             var entry = new ChatEntry ();
             entry.id = chat_id;
+            entry.name = json_str (obj, "name") ?? "";
 
-            if (obj.has_member ("name")) {
-                entry.name = obj.get_string_member ("name");
-            }
-            if (obj.has_member ("summaryText1") &&
-                !obj.get_member ("summaryText1").is_null ()) {
-                var s1 = obj.get_string_member ("summaryText1");
-                if (s1.length > 0) {
-                    entry.summary_prefix = s1;
-                }
-            }
-            if (obj.has_member ("summaryText2") &&
-                !obj.get_member ("summaryText2").is_null ()) {
-                var s2 = obj.get_string_member ("summaryText2");
-                if (s2.length > 0) {
-                    entry.last_message = s2;
-                }
-            }
-            if (entry.last_message == null &&
-                obj.has_member ("lastMessageText") &&
-                !obj.get_member ("lastMessageText").is_null ()) {
-                entry.last_message = obj.get_string_member ("lastMessageText");
-            }
-            if (obj.has_member ("freshMessageCounter")) {
-                entry.unread_count = (int) obj.get_int_member ("freshMessageCounter");
-            }
-            if (obj.has_member ("lastMessageTimestamp")) {
-                entry.timestamp = obj.get_int_member ("lastMessageTimestamp");
-            }
-            if (obj.has_member ("avatarPath") &&
-                !obj.get_member ("avatarPath").is_null ()) {
-                entry.avatar_path = obj.get_string_member ("avatarPath");
-            }
-            if (obj.has_member ("isMuted")) {
-                entry.is_muted = obj.get_boolean_member ("isMuted");
-            }
-            if (obj.has_member ("isContactRequest")) {
-                entry.is_contact_request = obj.get_boolean_member ("isContactRequest");
-            }
-            if (obj.has_member ("isArchived")) {
-                entry.is_archived = obj.get_boolean_member ("isArchived");
-            }
-            if (obj.has_member ("isPinned")) {
-                entry.is_pinned = obj.get_boolean_member ("isPinned");
+            var s1 = json_str (obj, "summaryText1");
+            if (s1 != null && s1.length > 0) entry.summary_prefix = s1;
+
+            var s2 = json_str (obj, "summaryText2");
+            if (s2 != null && s2.length > 0) entry.last_message = s2;
+
+            if (entry.last_message == null) {
+                entry.last_message = json_str (obj, "lastMessageText");
             }
 
+            entry.unread_count = (int) json_int (obj, "freshMessageCounter");
+            entry.timestamp = json_int (obj, "lastMessageTimestamp");
+            entry.avatar_path = json_str (obj, "avatarPath");
+            entry.is_muted = json_bool (obj, "isMuted");
+            entry.is_contact_request = json_bool (obj, "isContactRequest");
+            entry.is_archived = json_bool (obj, "isArchived");
+            entry.is_pinned = json_bool (obj, "isPinned");
             return entry;
         }
     }

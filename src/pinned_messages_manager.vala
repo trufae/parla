@@ -100,9 +100,8 @@ namespace Dc {
                 /* Fetch from RPC if not in the loaded batch */
                 if (text == null && sender == null && rpc != null) {
                     try {
-                        var msg_obj = yield rpc.get_message (pin_id);
-                        if (msg_obj != null) {
-                            var fetched = RpcClient.parse_message (msg_obj, rpc.self_email);
+                        var fetched = yield rpc.fetch_message (pin_id);
+                        if (fetched != null) {
                             text = fetched.text;
                             sender = fetched.is_outgoing ? "You" : (fetched.sender_name ?? "");
                         }
