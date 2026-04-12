@@ -61,16 +61,7 @@ namespace Dc {
             this.child = box;
 
             /* Close on Escape */
-            var key_ctrl = new Gtk.EventControllerKey ();
-            key_ctrl.propagation_phase = Gtk.PropagationPhase.CAPTURE;
-            key_ctrl.key_pressed.connect ((keyval, keycode, state) => {
-                if (keyval == Gdk.Key.Escape) {
-                    this.close ();
-                    return true;
-                }
-                return false;
-            });
-            ((Gtk.Widget) this).add_controller (key_ctrl);
+            install_escape_close (this);
 
             /* Load contacts */
             load_contacts.begin ();

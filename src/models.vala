@@ -1,5 +1,36 @@
 namespace Dc {
 
+    public delegate void VoidFunc ();
+
+    public static void show_error (Gtk.Widget parent, string message) {
+        var d = new Adw.AlertDialog ("Error", message);
+        d.add_response ("ok", "OK");
+        d.present (parent);
+    }
+
+    public static void confirm_action (Gtk.Widget parent, string title,
+                                        string body, string action_id,
+                                        string action_label,
+                                        owned VoidFunc on_confirm) {
+        var d = new Adw.AlertDialog (title, body);
+        d.add_response ("cancel", "Cancel");
+        d.add_response (action_id, action_label);
+        d.set_response_appearance (action_id, Adw.ResponseAppearance.DESTRUCTIVE);
+        d.default_response = "cancel";
+        d.response.connect ((r) => { if (r == action_id) on_confirm (); });
+        d.present (parent);
+    }
+
+    public static void install_escape_close (Adw.Dialog dialog) {
+        var kc = new Gtk.EventControllerKey ();
+        kc.propagation_phase = Gtk.PropagationPhase.CAPTURE;
+        kc.key_pressed.connect ((kv, kc, st) => {
+            if (kv == Gdk.Key.Escape) { dialog.close (); return true; }
+            return false;
+        });
+        ((Gtk.Widget) dialog).add_controller (kc);
+    }
+
     public static Gdk.Texture? load_avatar (string? path) {
         if (path != null && path.length > 0 &&
             FileUtils.test (path, FileTest.EXISTS)) {

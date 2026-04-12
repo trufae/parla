@@ -339,9 +339,7 @@ namespace Dc {
                     members_list.append (row);
                 }
             } catch (Error e) {
-                var err_dialog = new Adw.AlertDialog ("Error", e.message);
-                err_dialog.add_response ("ok", "OK");
-                err_dialog.present (this);
+                show_error (this, e.message);
             }
         }
 
@@ -353,18 +351,9 @@ namespace Dc {
                 ? "Delete all messages for all participants? This cannot be undone."
                 : "Delete all messages from your device? This cannot be undone.";
             string action_label = for_all ? "Clear for Everyone" : "Clear";
-
-            var dialog = new Adw.AlertDialog (title, body);
-            dialog.add_response ("cancel", "Cancel");
-            dialog.add_response ("clear", action_label);
-            dialog.set_response_appearance ("clear", Adw.ResponseAppearance.DESTRUCTIVE);
-            dialog.default_response = "cancel";
-            dialog.response.connect ((resp) => {
-                if (resp == "clear") {
-                    do_clear_history.begin (for_all);
-                }
+            confirm_action (this, title, body, "clear", action_label, () => {
+                do_clear_history.begin (for_all);
             });
-            dialog.present (this);
         }
 
         private async void do_clear_history (bool for_all) {
@@ -385,27 +374,14 @@ namespace Dc {
 
                 chat_changed ();
             } catch (Error e) {
-                var err = new Adw.AlertDialog ("Error", e.message);
-                err.add_response ("ok", "OK");
-                err.present (this);
+                show_error (this, e.message);
             }
         }
 
         private async void confirm_leave_group () {
-            var dialog = new Adw.AlertDialog (
-                "Leave Group",
-                "Leave \"%s\"? You will stop receiving messages.".printf (chat_name)
-            );
-            dialog.add_response ("cancel", "Cancel");
-            dialog.add_response ("leave", "Leave");
-            dialog.set_response_appearance ("leave", Adw.ResponseAppearance.DESTRUCTIVE);
-            dialog.default_response = "cancel";
-            dialog.response.connect ((resp) => {
-                if (resp == "leave") {
-                    do_leave_group.begin ();
-                }
-            });
-            dialog.present (this);
+            confirm_action (this, "Leave Group",
+                "Leave \"%s\"? You will stop receiving messages.".printf (chat_name),
+                "leave", "Leave", () => { do_leave_group.begin (); });
         }
 
         private async void do_leave_group () {
@@ -414,27 +390,14 @@ namespace Dc {
                 chat_changed ();
                 this.close ();
             } catch (Error e) {
-                var err = new Adw.AlertDialog ("Error", e.message);
-                err.add_response ("ok", "OK");
-                err.present (this);
+                show_error (this, e.message);
             }
         }
 
         private async void confirm_disband_group () {
-            var dialog = new Adw.AlertDialog (
-                "Disband Group",
-                "Remove all members from \"%s\" and delete all messages? This cannot be undone.".printf (chat_name)
-            );
-            dialog.add_response ("cancel", "Cancel");
-            dialog.add_response ("disband", "Disband");
-            dialog.set_response_appearance ("disband", Adw.ResponseAppearance.DESTRUCTIVE);
-            dialog.default_response = "cancel";
-            dialog.response.connect ((resp) => {
-                if (resp == "disband") {
-                    do_disband_group.begin ();
-                }
-            });
-            dialog.present (this);
+            confirm_action (this, "Disband Group",
+                "Remove all members from \"%s\" and delete all messages? This cannot be undone.".printf (chat_name),
+                "disband", "Disband", () => { do_disband_group.begin (); });
         }
 
         private async void do_disband_group () {
@@ -463,27 +426,14 @@ namespace Dc {
                 chat_deleted (chat_id);
                 this.close ();
             } catch (Error e) {
-                var err = new Adw.AlertDialog ("Error", e.message);
-                err.add_response ("ok", "OK");
-                err.present (this);
+                show_error (this, e.message);
             }
         }
 
         private async void confirm_delete_chat () {
-            var dialog = new Adw.AlertDialog (
-                "Delete for Me",
-                "Remove \"%s\" from your chat list? You may still receive messages if you are a member.".printf (chat_name)
-            );
-            dialog.add_response ("cancel", "Cancel");
-            dialog.add_response ("delete", "Delete");
-            dialog.set_response_appearance ("delete", Adw.ResponseAppearance.DESTRUCTIVE);
-            dialog.default_response = "cancel";
-            dialog.response.connect ((resp) => {
-                if (resp == "delete") {
-                    do_delete_chat_from_dialog.begin ();
-                }
-            });
-            dialog.present (this);
+            confirm_action (this, "Delete for Me",
+                "Remove \"%s\" from your chat list? You may still receive messages if you are a member.".printf (chat_name),
+                "delete", "Delete", () => { do_delete_chat_from_dialog.begin (); });
         }
 
         private async void do_delete_chat_from_dialog () {
@@ -492,9 +442,7 @@ namespace Dc {
                 chat_deleted (chat_id);
                 this.close ();
             } catch (Error e) {
-                var err = new Adw.AlertDialog ("Error", e.message);
-                err.add_response ("ok", "OK");
-                err.present (this);
+                show_error (this, e.message);
             }
         }
 

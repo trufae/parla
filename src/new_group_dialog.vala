@@ -172,9 +172,7 @@ namespace Dc {
                 group_created (new_chat_id);
                 this.close ();
             } catch (Error e) {
-                var err = new Adw.AlertDialog ("Error", e.message);
-                err.add_response ("ok", "OK");
-                err.present (this);
+                show_error (this, e.message);
             }
         }
 

@@ -228,20 +228,9 @@ namespace Dc {
             var entry = find_chat_entry (chat_store, chat_id);
             if (entry != null) chat_name = entry.name;
 
-            var dialog = new Adw.AlertDialog (
-                "Delete for Me",
-                "Remove \"%s\" from your chat list? You may still receive messages if you are a group member.".printf (chat_name)
-            );
-            dialog.add_response ("cancel", "Cancel");
-            dialog.add_response ("delete", "Delete for Me");
-            dialog.set_response_appearance ("delete", Adw.ResponseAppearance.DESTRUCTIVE);
-            dialog.default_response = "cancel";
-
-            dialog.response.connect ((resp) => {
-                if (resp == "delete") do_delete.begin (chat_id);
-            });
-
-            dialog.present (window);
+            confirm_action (window, "Delete for Me",
+                "Remove \"%s\" from your chat list? You may still receive messages if you are a group member.".printf (chat_name),
+                "delete", "Delete for Me", () => { do_delete.begin (chat_id); });
         }
 
         private async void do_delete (int chat_id) {

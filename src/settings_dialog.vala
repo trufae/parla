@@ -312,9 +312,7 @@ namespace Dc {
                 account_changed ();
                 yield load_accounts ();
             } catch (Error e) {
-                var err_dialog = new Adw.AlertDialog ("Error", e.message);
-                err_dialog.add_response ("ok", "OK");
-                err_dialog.present (app_window);
+                show_error (app_window, e.message);
             }
         }
 
@@ -370,29 +368,14 @@ namespace Dc {
                 account_changed ();
                 yield load_accounts ();
             } catch (Error e) {
-                var err_dialog = new Adw.AlertDialog ("Error", e.message);
-                err_dialog.add_response ("ok", "OK");
-                err_dialog.present (app_window);
+                show_error (app_window, e.message);
             }
         }
 
         private async void confirm_remove_account (int acct_id, string label) {
-            var dialog = new Adw.AlertDialog (
-                "Remove Account",
-                "Remove \"%s\"? This will delete all local data for this account.".printf (label)
-            );
-            dialog.add_response ("cancel", "Cancel");
-            dialog.add_response ("remove", "Remove");
-            dialog.set_response_appearance ("remove", Adw.ResponseAppearance.DESTRUCTIVE);
-            dialog.default_response = "cancel";
-
-            dialog.response.connect ((resp) => {
-                if (resp == "remove") {
-                    do_remove_account.begin (acct_id);
-                }
-            });
-
-            dialog.present (app_window);
+            confirm_action (app_window, "Remove Account",
+                "Remove \"%s\"? This will delete all local data for this account.".printf (label),
+                "remove", "Remove", () => { do_remove_account.begin (acct_id); });
         }
 
         private async void do_remove_account (int acct_id) {
@@ -404,9 +387,7 @@ namespace Dc {
                 account_changed ();
                 yield load_accounts ();
             } catch (Error e) {
-                var err_dialog = new Adw.AlertDialog ("Error", e.message);
-                err_dialog.add_response ("ok", "OK");
-                err_dialog.present (app_window);
+                show_error (app_window, e.message);
             }
         }
     }
