@@ -122,6 +122,7 @@ namespace Dc {
 
             chat_listbox = new Gtk.ListBox ();
             chat_listbox.selection_mode = Gtk.SelectionMode.SINGLE;
+            chat_listbox.can_focus = false;
             chat_listbox.add_css_class ("navigation-sidebar");
             chat_listbox.set_filter_func (filter_chats);
             chat_listbox.row_selected.connect (on_chat_selected);
@@ -129,11 +130,13 @@ namespace Dc {
             /* Right-click context menu */
             var right_click = new Gtk.GestureClick ();
             right_click.button = 3; /* secondary button */
+            right_click.propagation_phase = Gtk.PropagationPhase.CAPTURE;
             right_click.pressed.connect ((n, x, y) => {
                 var row = chat_listbox.get_row_at_y ((int) y);
                 if (row == null) return;
                 var chat_row = row.child as ChatRow;
                 if (chat_row == null) return;
+                right_click.set_state (Gtk.EventSequenceState.CLAIMED);
                 if (chat_menu != null)
                     chat_menu.show (chat_row.chat_id, x, y, chat_listbox);
             });

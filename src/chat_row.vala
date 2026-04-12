@@ -152,38 +152,46 @@ namespace Dc {
             var entry = find_chat_entry (chat_store, chat_id);
             if (entry != null) is_pinned = entry.is_pinned;
 
-            var menu = new GLib.Menu ();
-            menu.append (is_pinned ? "Unpin" : "Pin", "win.chat-pin");
-            menu.append ("Chat Info", "win.chat-info");
-            menu.append ("Delete for Me", "win.chat-delete");
-
-            var pin_action = new SimpleAction ("chat-pin", null);
-            pin_action.activate.connect (() => {
-                toggle_pin.begin (chat_id, is_pinned);
-            });
-            var info_action = new SimpleAction ("chat-info", null);
-            info_action.activate.connect (() => {
-                show_info.begin (chat_id);
-            });
-            var delete_action = new SimpleAction ("chat-delete", null);
-            delete_action.activate.connect (() => {
-                confirm_delete.begin (chat_id);
-            });
-
-            window.add_action (pin_action);
-            window.add_action (info_action);
-            window.add_action (delete_action);
-
-            var popover = new Gtk.PopoverMenu.from_model (menu);
+            var popover = new Gtk.Popover ();
+            popover.has_arrow = false;
             popover.set_parent (parent);
             popover.set_pointing_to ({ (int) x, (int) y, 1, 1 });
-            popover.closed.connect (() => {
-                window.remove_action ("chat-pin");
-                window.remove_action ("chat-info");
-                window.remove_action ("chat-delete");
-                popover.unparent ();
+
+            var box = new Gtk.Box (Gtk.Orientation.VERTICAL, 0);
+            box.add_css_class ("menu");
+
+            var pin_btn = make_menu_button (is_pinned ? "Unpin" : "Pin");
+            pin_btn.clicked.connect (() => {
+                popover.popdown ();
+                toggle_pin.begin (chat_id, is_pinned);
             });
+            box.append (pin_btn);
+
+            var info_btn = make_menu_button ("Chat Info");
+            info_btn.clicked.connect (() => {
+                popover.popdown ();
+                show_info.begin (chat_id);
+            });
+            box.append (info_btn);
+
+            var del_btn = make_menu_button ("Delete for Me");
+            del_btn.clicked.connect (() => {
+                popover.popdown ();
+                confirm_delete.begin (chat_id);
+            });
+            box.append (del_btn);
+
+            popover.child = box;
+            popover.closed.connect (() => { popover.unparent (); });
             popover.popup ();
+        }
+
+        private static Gtk.Button make_menu_button (string label) {
+            var btn = new Gtk.Button.with_label (label);
+            btn.add_css_class ("flat");
+            ((Gtk.Label) btn.child).xalign = 0;
+            ((Gtk.Label) btn.child).halign = Gtk.Align.START;
+            return btn;
         }
 
         private async void toggle_pin (int chat_id, bool currently_pinned) {
