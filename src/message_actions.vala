@@ -9,7 +9,6 @@ namespace Dc {
         private unowned ComposeBar compose_bar;
         private unowned SettingsManager settings;
 
-        public string? self_email { get; set; default = null; }
 
         public MessageActions (Window window, RpcClient rpc,
                                GLib.ListStore message_store,
@@ -190,7 +189,7 @@ namespace Dc {
             try {
                 var msg_obj = yield rpc.get_message (rpc.account_id, msg_id);
                 if (msg_obj == null) return;
-                var msg = RpcClient.parse_message (msg_obj, self_email);
+                var msg = RpcClient.parse_message (msg_obj, rpc.self_email);
                 int idx = find_message_index (message_store, msg_id);
                 if (idx >= 0) {
                     message_store.remove (idx);

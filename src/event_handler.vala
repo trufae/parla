@@ -9,7 +9,6 @@ namespace Dc {
         private uint messages_reload_timer = 0;
 
         public int active_chat_id { get; set; default = 0; }
-        public string? self_email { get; set; default = null; }
 
         public signal void chats_reload_fired ();
         public signal void messages_reload_fired ();
@@ -113,7 +112,7 @@ namespace Dc {
             try {
                 var msg_obj = yield rpc.get_message (rpc.account_id, msg_id);
                 if (msg_obj == null) return;
-                var msg = RpcClient.parse_message (msg_obj, self_email);
+                var msg = RpcClient.parse_message (msg_obj, rpc.self_email);
                 if (msg.is_outgoing || msg.is_info) return;
 
                 string title = msg.sender_name ?? msg.sender_address ?? "New message";

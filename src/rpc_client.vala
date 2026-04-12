@@ -17,6 +17,7 @@ namespace Dc {
 
         public bool is_connected { get; private set; default = false; }
         public int account_id { get; set; default = 0; }
+        public string? self_email { get; set; default = null; }
 
         /* ---- Connection lifecycle ---- */
 

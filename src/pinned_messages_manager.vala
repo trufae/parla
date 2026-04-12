@@ -12,7 +12,6 @@ namespace Dc {
         private unowned GLib.ListStore message_store;
         private unowned SettingsManager settings;
 
-        public string? self_email { get; set; default = null; }
 
         public PinnedMessagesManager (GLib.ListStore message_store,
                                       SettingsManager settings) {
@@ -103,7 +102,7 @@ namespace Dc {
                     try {
                         var msg_obj = yield rpc.get_message (rpc.account_id, pin_id);
                         if (msg_obj != null) {
-                            var fetched = RpcClient.parse_message (msg_obj, self_email);
+                            var fetched = RpcClient.parse_message (msg_obj, rpc.self_email);
                             text = fetched.text;
                             sender = fetched.is_outgoing ? "You" : (fetched.sender_name ?? "");
                         }

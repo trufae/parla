@@ -45,7 +45,6 @@ namespace Dc {
                 if (events != null) events.active_chat_id = value;
             }
         }
-        private string? self_email = null;
         private bool stick_to_bottom = true;
         private Json.Array? all_msg_ids = null;
         private uint loaded_start_index = 0;
@@ -408,17 +407,11 @@ namespace Dc {
             chat_menu = new ChatContextMenu (this, rpc, chat_store);
             msg_actions = new MessageActions (this, rpc, message_store, pinned,
                                               compose_bar, settings);
-            msg_actions.self_email = self_email;
-            pinned.self_email = self_email;
-
             if (rpc.account_id > 0) {
                 try {
-                    self_email = yield rpc.get_config (rpc.account_id, "addr");
-                    msg_actions.self_email = self_email;
-                    pinned.self_email = self_email;
-                    events.self_email = self_email;
+                    rpc.self_email = yield rpc.get_config (rpc.account_id, "addr");
                 } catch (Error ce) {
-                    self_email = null;
+                    rpc.self_email = null;
                 }
                 yield load_chats ();
                 yield load_profile_avatar ();
@@ -611,7 +604,7 @@ namespace Dc {
                     string k = mid.to_string ();
                     if (map.has_member (k)) {
                         result.add (RpcClient.parse_message (
-                            map.get_object_member (k), self_email));
+                            map.get_object_member (k), rpc.self_email));
                     }
                 }
             }
@@ -763,7 +756,7 @@ namespace Dc {
                 if (msg_id > 0) {
                     var msg_obj = yield rpc.get_message (rpc.account_id, msg_id);
                     if (msg_obj != null) {
-                        var msg = RpcClient.parse_message (msg_obj, self_email);
+                        var msg = RpcClient.parse_message (msg_obj, rpc.self_email);
                         insert_message_sorted (msg);
                         scroll_to_bottom ();
                     }
@@ -822,7 +815,7 @@ namespace Dc {
                 try {
                     var msg_obj = yield rpc.get_message (rpc.account_id, msg_id);
                     if (msg_obj != null) {
-                        var msg = RpcClient.parse_message (msg_obj, self_email);
+                        var msg = RpcClient.parse_message (msg_obj, rpc.self_email);
                         msg.highlighted = true;
                         insert_message_sorted (msg);
                     }
@@ -1011,21 +1004,16 @@ namespace Dc {
 
         public async void reload_active_account () {
             if (rpc.account_id <= 0) {
-                self_email = null;
-                if (msg_actions != null) msg_actions.self_email = null;
-                pinned.self_email = null;
+                rpc.self_email = null;
                 content_stack.visible_child_name = "empty";
                 current_chat_id = 0;
                 return;
             }
             try {
-                self_email = yield rpc.get_config (rpc.account_id, "addr");
+                rpc.self_email = yield rpc.get_config (rpc.account_id, "addr");
             } catch (Error e) {
-                self_email = null;
+                rpc.self_email = null;
             }
-            if (msg_actions != null) msg_actions.self_email = self_email;
-            pinned.self_email = self_email;
-            if (events != null) events.self_email = self_email;
             current_chat_id = 0;
             content_stack.visible_child_name = "empty";
             yield load_chats ();
