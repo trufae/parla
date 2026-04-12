@@ -94,7 +94,7 @@ namespace Dc {
             }
 
             int id = next_id++;
-            send_request (id, method, params);
+            yield send_request (id, method, params);
 
             var pc = new PendingCall (id);
             pc.callback = call.callback;
@@ -110,7 +110,7 @@ namespace Dc {
             return pc.result;
         }
 
-        private void send_request (int id, string method, Json.Node params) throws Error {
+        private async void send_request (int id, string method, Json.Node params) throws Error {
             var b = new Json.Builder ();
             b.begin_object ();
             b.set_member_name ("jsonrpc"); b.add_string_value ("2.0");
@@ -126,8 +126,8 @@ namespace Dc {
             string line = json + "\n";
 
             size_t written;
-            writer.write_all (line.data, out written);
-            writer.flush ();
+            yield writer.write_all_async (line.data, Priority.DEFAULT, null, out written);
+            yield writer.flush_async (Priority.DEFAULT, null);
         }
 
         private async void read_loop () {
