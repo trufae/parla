@@ -1,5 +1,15 @@
 namespace Dc {
 
+    public static Gdk.Texture? load_avatar (string? path) {
+        if (path != null && path.length > 0 &&
+            FileUtils.test (path, FileTest.EXISTS)) {
+            try {
+                return Gdk.Texture.from_filename (path);
+            } catch (Error e) { /* fallback */ }
+        }
+        return null;
+    }
+
     public class Account : Object {
         public int id { get; set; default = 0; }
         public string email { get; set; default = ""; }

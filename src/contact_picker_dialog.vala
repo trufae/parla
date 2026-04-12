@@ -138,12 +138,7 @@ namespace Dc {
             row.activatable = true;
 
             var avatar = new Adw.Avatar (32, title, true);
-            if (ci.profile_image != null &&
-                FileUtils.test (ci.profile_image, FileTest.EXISTS)) {
-                try {
-                    avatar.custom_image = Gdk.Texture.from_filename (ci.profile_image);
-                } catch (Error e) { /* fallback */ }
-            }
+            avatar.custom_image = load_avatar (ci.profile_image);
             row.add_prefix (avatar);
 
             /* Store contact_id and email in row name for retrieval */

@@ -856,17 +856,7 @@ namespace Dc {
                 string? avatar = yield rpc.get_config (rpc.account_id, "selfavatar");
 
                 profile_avatar.text = name ?? "";
-                if (avatar != null && avatar.length > 0 &&
-                    FileUtils.test (avatar, FileTest.EXISTS)) {
-                    try {
-                        var texture = Gdk.Texture.from_filename (avatar);
-                        profile_avatar.custom_image = texture;
-                    } catch (Error e) {
-                        profile_avatar.custom_image = null;
-                    }
-                } else {
-                    profile_avatar.custom_image = null;
-                }
+                profile_avatar.custom_image = load_avatar (avatar);
             } catch (Error e) {
                 /* ignore */
             }
@@ -889,10 +879,7 @@ namespace Dc {
             if (rpc.account_id <= 0) return;
 
             try {
-                int contact_id = yield rpc.lookup_contact (rpc.account_id, email);
-                if (contact_id == 0) {
-                    contact_id = yield rpc.create_contact (rpc.account_id, email);
-                }
+                int contact_id = yield rpc.get_or_create_contact (rpc.account_id, email);
                 int chat_id = yield rpc.get_or_create_chat_by_contact (
                     rpc.account_id, contact_id);
 

@@ -508,6 +508,14 @@ namespace Dc {
             return (int) result.get_int ();
         }
 
+        public async int get_or_create_contact (int acct_id, string email) throws Error {
+            int contact_id = yield lookup_contact (acct_id, email);
+            if (contact_id == 0) {
+                contact_id = yield create_contact (acct_id, email);
+            }
+            return contact_id;
+        }
+
         public async int get_or_create_chat_by_contact (int acct_id,
                                                          int contact_id) throws Error {
             var result = yield call ("get_chat_id_by_contact_id",

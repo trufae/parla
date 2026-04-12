@@ -115,11 +115,8 @@ namespace Dc {
                 if (avatar != null && avatar.length > 0 &&
                     FileUtils.test (avatar, FileTest.EXISTS)) {
                     avatar_path = avatar;
-                    try {
-                        var texture = Gdk.Texture.from_filename (avatar);
-                        avatar_widget.custom_image = texture;
-                    } catch (Error e) { /* fallback to initials */ }
                 }
+                avatar_widget.custom_image = load_avatar (avatar);
             } catch (Error e) {
                 /* ignore */
             }
@@ -160,10 +157,7 @@ namespace Dc {
                 if (file != null) {
                     avatar_path = file.get_path ();
                     avatar_changed = true;
-                    try {
-                        var texture = Gdk.Texture.from_filename (avatar_path);
-                        avatar_widget.custom_image = texture;
-                    } catch (Error e) { /* fallback */ }
+                    avatar_widget.custom_image = load_avatar (avatar_path);
                 }
             } catch (Error e) {
                 /* cancelled */

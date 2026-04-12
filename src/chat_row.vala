@@ -24,15 +24,7 @@ namespace Dc {
 
             /* Avatar circle */
             var avatar = new Adw.Avatar (40, entry.name, true);
-            if (entry.avatar_path != null && entry.avatar_path.length > 0 &&
-                FileUtils.test (entry.avatar_path, FileTest.EXISTS)) {
-                try {
-                    var texture = Gdk.Texture.from_filename (entry.avatar_path);
-                    avatar.custom_image = texture;
-                } catch (Error e) {
-                    /* fallback to initials */
-                }
-            }
+            avatar.custom_image = load_avatar (entry.avatar_path);
             append (avatar);
 
             /* Middle: name + preview */

@@ -73,12 +73,7 @@ namespace Dc {
 
                 /* Avatar */
                 var avatar = new Adw.Avatar (80, name, true);
-                if (profile_image != null &&
-                    FileUtils.test (profile_image, FileTest.EXISTS)) {
-                    try {
-                        avatar.custom_image = Gdk.Texture.from_filename (profile_image);
-                    } catch (Error e) { /* fallback */ }
-                }
+                avatar.custom_image = load_avatar (profile_image);
                 avatar.halign = Gtk.Align.CENTER;
                 content.append (avatar);
 
@@ -279,12 +274,7 @@ namespace Dc {
             row.subtitle = subtitle;
 
             var avatar = new Adw.Avatar (32, title, true);
-            if (contact.profile_image != null &&
-                FileUtils.test (contact.profile_image, FileTest.EXISTS)) {
-                try {
-                    avatar.custom_image = Gdk.Texture.from_filename (contact.profile_image);
-                } catch (Error e) { /* fallback */ }
-            }
+            avatar.custom_image = load_avatar (contact.profile_image);
             row.add_prefix (avatar);
 
             /* Copy email button */
@@ -338,10 +328,7 @@ namespace Dc {
 
         private async void do_add_member (string email) {
             try {
-                int contact_id = yield rpc.lookup_contact (acct_id, email);
-                if (contact_id == 0) {
-                    contact_id = yield rpc.create_contact (acct_id, email);
-                }
+                int contact_id = yield rpc.get_or_create_contact (acct_id, email);
                 yield rpc.add_contact_to_chat (acct_id, chat_id, contact_id);
 
                 /* Refresh the member list */

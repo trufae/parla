@@ -49,13 +49,7 @@ namespace Dc {
                 row.name = chat.id.to_string ();
                 row.activatable = true;
                 var avatar = new Adw.Avatar (32, chat.name, true);
-                if (chat.avatar_path != null &&
-                    FileUtils.test (chat.avatar_path, FileTest.EXISTS)) {
-                    try {
-                        avatar.custom_image = Gdk.Texture.from_filename (
-                            chat.avatar_path);
-                    } catch (Error e) { /* fallback */ }
-                }
+                avatar.custom_image = load_avatar (chat.avatar_path);
                 row.add_prefix (avatar);
                 listbox.append (row);
             }

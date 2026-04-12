@@ -162,10 +162,7 @@ namespace Dc {
                 for (uint i = 0; i < member_emails.length; i++) {
                     string email = member_emails[i];
                     try {
-                        int contact_id = yield rpc.lookup_contact (acct_id, email);
-                        if (contact_id == 0) {
-                            contact_id = yield rpc.create_contact (acct_id, email);
-                        }
+                        int contact_id = yield rpc.get_or_create_contact (acct_id, email);
                         yield rpc.add_contact_to_chat (acct_id, new_chat_id, contact_id);
                     } catch (Error me) {
                         /* skip failed member, continue */
@@ -196,10 +193,7 @@ namespace Dc {
                 var file = yield chooser.open ((Gtk.Window) this.get_root (), null);
                 if (file != null) {
                     avatar_path = file.get_path ();
-                    try {
-                        var texture = Gdk.Texture.from_filename (avatar_path);
-                        avatar_widget.custom_image = texture;
-                    } catch (Error e) { /* fallback */ }
+                    avatar_widget.custom_image = load_avatar (avatar_path);
                 }
             } catch (Error e) {
                 /* cancelled */
