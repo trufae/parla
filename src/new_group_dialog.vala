@@ -5,7 +5,6 @@ namespace Dc {
         public signal void group_created (int chat_id);
 
         private RpcClient rpc;
-        private int acct_id;
         private Gtk.Entry name_entry;
         /* member_entry removed — contact picker is used instead */
         private Gtk.ListBox member_listbox;
@@ -13,9 +12,8 @@ namespace Dc {
         private string? avatar_path = null;
         private Adw.Avatar avatar_widget;
 
-        public NewGroupDialog (RpcClient rpc, int acct_id) {
+        public NewGroupDialog (RpcClient rpc) {
             this.rpc = rpc;
-            this.acct_id = acct_id;
             this.title = "New Group";
             this.content_width = 360;
             this.content_height = 480;
@@ -97,7 +95,7 @@ namespace Dc {
         }
 
         private void on_pick_member () {
-            var picker = new ContactPickerDialog (rpc, acct_id);
+            var picker = new ContactPickerDialog (rpc);
             picker.contact_picked.connect ((contact_id, email) => {
                 add_member_email (email);
             });
@@ -147,12 +145,12 @@ namespace Dc {
             name_entry.remove_css_class ("error");
 
             try {
-                int new_chat_id = yield rpc.create_group (acct_id, name, true);
+                int new_chat_id = yield rpc.create_group (name, true);
 
                 /* Set avatar if picked */
                 if (avatar_path != null) {
                     try {
-                        yield rpc.set_chat_profile_image (acct_id, new_chat_id, avatar_path);
+                        yield rpc.set_chat_profile_image (new_chat_id, avatar_path);
                     } catch (Error ae) {
                         /* non-fatal */
                     }
@@ -162,8 +160,8 @@ namespace Dc {
                 for (uint i = 0; i < member_emails.length; i++) {
                     string email = member_emails[i];
                     try {
-                        int contact_id = yield rpc.get_or_create_contact (acct_id, email);
-                        yield rpc.add_contact_to_chat (acct_id, new_chat_id, contact_id);
+                        int contact_id = yield rpc.get_or_create_contact (email);
+                        yield rpc.add_contact_to_chat (new_chat_id, contact_id);
                     } catch (Error me) {
                         /* skip failed member, continue */
                     }

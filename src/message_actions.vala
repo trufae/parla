@@ -136,8 +136,7 @@ namespace Dc {
 
         public async void send_reaction (int msg_id, string emoji) {
             try {
-                yield rpc.send_reaction (rpc.account_id, msg_id,
-                                          new string[] { emoji });
+                yield rpc.send_reaction (msg_id, new string[] { emoji });
                 yield update_row (msg_id);
             } catch (Error e) {
                 window.show_toast ("Reaction failed: " + e.message);
@@ -147,11 +146,9 @@ namespace Dc {
         public async void delete_message (int msg_id, bool for_all) {
             try {
                 if (for_all) {
-                    yield rpc.delete_messages_for_all (
-                        rpc.account_id, new int[] { msg_id });
+                    yield rpc.delete_messages_for_all (new int[] { msg_id });
                 } else {
-                    yield rpc.delete_messages (
-                        rpc.account_id, new int[] { msg_id });
+                    yield rpc.delete_messages (new int[] { msg_id });
                 }
                 int idx = find_message_index (message_store, msg_id);
                 if (idx >= 0) message_store.remove (idx);
@@ -178,7 +175,7 @@ namespace Dc {
 
         public async void edit_message (int msg_id, string new_text) {
             try {
-                yield rpc.send_edit_request (rpc.account_id, msg_id, new_text);
+                yield rpc.send_edit_request (msg_id, new_text);
                 yield update_row (msg_id);
             } catch (Error e) {
                 window.show_toast ("Edit failed: " + e.message);
@@ -187,7 +184,7 @@ namespace Dc {
 
         public async void update_row (int msg_id) {
             try {
-                var msg_obj = yield rpc.get_message (rpc.account_id, msg_id);
+                var msg_obj = yield rpc.get_message (msg_id);
                 if (msg_obj == null) return;
                 var msg = RpcClient.parse_message (msg_obj, rpc.self_email);
                 int idx = find_message_index (message_store, msg_id);
@@ -224,11 +221,9 @@ namespace Dc {
             var m = find_message (message_store, msg_id);
             if (m == null || m.sender_address == null || m.is_outgoing) return;
             try {
-                int contact_id = yield rpc.lookup_contact (
-                    rpc.account_id, m.sender_address);
+                int contact_id = yield rpc.lookup_contact (m.sender_address);
                 if (contact_id <= 0) return;
-                int chat_id = yield rpc.get_or_create_chat_by_contact (
-                    rpc.account_id, contact_id);
+                int chat_id = yield rpc.get_or_create_chat_by_contact (contact_id);
                 if (chat_id > 0) {
                     window.request_reload_chats ();
                     window.select_chat_by_id (chat_id);

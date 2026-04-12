@@ -3,7 +3,6 @@ namespace Dc {
     public class ProfileDialog : Adw.Dialog {
 
         private RpcClient rpc;
-        private int acct_id;
         private Adw.Avatar avatar_widget;
         private Gtk.Entry name_entry;
         private Gtk.Entry status_entry;
@@ -13,9 +12,8 @@ namespace Dc {
 
         public signal void profile_updated ();
 
-        public ProfileDialog (RpcClient rpc, int acct_id) {
+        public ProfileDialog (RpcClient rpc) {
             this.rpc = rpc;
-            this.acct_id = acct_id;
             this.title = "My Profile";
             this.content_width = 360;
             this.content_height = 420;
@@ -101,10 +99,10 @@ namespace Dc {
 
         private async void load_profile () {
             try {
-                string? name = yield rpc.get_config (acct_id, "displayname");
-                string? status = yield rpc.get_config (acct_id, "selfstatus");
-                string? email = yield rpc.get_config (acct_id, "addr");
-                string? avatar = yield rpc.get_config (acct_id, "selfavatar");
+                string? name = yield rpc.get_config (rpc.account_id, "displayname");
+                string? status = yield rpc.get_config (rpc.account_id, "selfstatus");
+                string? email = yield rpc.get_config (rpc.account_id, "addr");
+                string? avatar = yield rpc.get_config (rpc.account_id, "selfavatar");
 
                 if (name != null) {
                     name_entry.text = name;
@@ -124,13 +122,10 @@ namespace Dc {
 
         private async void do_save () {
             try {
-                yield rpc.batch_set_config (acct_id,
-                    "displayname", name_entry.text.strip ());
-                yield rpc.batch_set_config (acct_id,
-                    "selfstatus", status_entry.text.strip ());
+                yield rpc.batch_set_config ("displayname", name_entry.text.strip ());
+                yield rpc.batch_set_config ("selfstatus", status_entry.text.strip ());
                 if (avatar_changed && avatar_path != null) {
-                    yield rpc.batch_set_config (acct_id,
-                        "selfavatar", avatar_path);
+                    yield rpc.batch_set_config ("selfavatar", avatar_path);
                 }
                 profile_updated ();
                 this.close ();

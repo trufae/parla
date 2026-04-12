@@ -164,7 +164,6 @@ namespace Dc {
                         pc.result = (result_member != null) ? result_member.copy () : null;
                     }
 
-                    pc.completed = true;
                     if (pc.callback != null) {
                         var cb = (owned) pc.callback;
                         pc.callback = null;
@@ -273,10 +272,6 @@ namespace Dc {
             return result.get_boolean ();
         }
 
-        public async Json.Node? get_account_info (int acct_id) throws Error {
-            return yield call ("get_account_info", build_params_int (acct_id));
-        }
-
         public async void remove_account (int acct_id) throws Error {
             yield call ("remove_account", build_params_int (acct_id));
         }
@@ -285,8 +280,8 @@ namespace Dc {
             yield call ("start_io", build_params_int (acct_id));
         }
 
-        public async void stop_io (int acct_id) throws Error {
-            yield call ("stop_io", build_params_int (acct_id));
+        public async void stop_io () throws Error {
+            yield call ("stop_io", build_params_int (account_id));
         }
 
         public async void add_or_update_transport (int acct_id, string email,
@@ -313,11 +308,10 @@ namespace Dc {
             yield call ("add_or_update_transport", b.get_root ());
         }
 
-        public async void batch_set_config (int acct_id,
-                                             string key, string val) throws Error {
+        public async void batch_set_config (string key, string val) throws Error {
             var b = new Json.Builder ();
             b.begin_array ();
-            b.add_int_value (acct_id);
+            b.add_int_value (account_id);
             b.begin_object ();
             b.set_member_name (key); b.add_string_value (val);
             b.end_object ();
@@ -331,11 +325,10 @@ namespace Dc {
             return result.get_string ();
         }
 
-        public async Json.Array? get_chatlist_entries (int acct_id,
-                                                        string? query = null) throws Error {
+        public async Json.Array? get_chatlist_entries (string? query = null) throws Error {
             var b = new Json.Builder ();
             b.begin_array ();
-            b.add_int_value (acct_id);
+            b.add_int_value (account_id);
             b.add_null_value (); /* listFlags */
             if (query != null) b.add_string_value (query);
             else b.add_null_value ();
@@ -346,11 +339,10 @@ namespace Dc {
             return result.get_array ();
         }
 
-        public async Json.Object? get_chatlist_items_by_entries (int acct_id,
-                                                                  Json.Array entries) throws Error {
+        public async Json.Object? get_chatlist_items_by_entries (Json.Array entries) throws Error {
             var b = new Json.Builder ();
             b.begin_array ();
-            b.add_int_value (acct_id);
+            b.add_int_value (account_id);
             var entries_node = new Json.Node (Json.NodeType.ARRAY);
             entries_node.set_array (entries);
             b.add_value (entries_node);
@@ -360,17 +352,17 @@ namespace Dc {
             return result.get_object ();
         }
 
-        public async Json.Object? get_full_chat_by_id (int acct_id, int chat_id) throws Error {
-            var result = yield call ("get_full_chat_by_id", build_params_int2 (acct_id, chat_id));
+        public async Json.Object? get_full_chat_by_id (int chat_id) throws Error {
+            var result = yield call ("get_full_chat_by_id", build_params_int2 (account_id, chat_id));
             if (result == null) return null;
             return result.get_object ();
         }
 
-        public async Json.Array? get_message_ids (int acct_id, int chat_id,
+        public async Json.Array? get_message_ids (int chat_id,
                                                     bool info_only = false) throws Error {
             var b = new Json.Builder ();
             b.begin_array ();
-            b.add_int_value (acct_id);
+            b.add_int_value (account_id);
             b.add_int_value (chat_id);
             b.add_boolean_value (info_only);
             b.add_boolean_value (false); /* addDayMarker */
@@ -380,16 +372,16 @@ namespace Dc {
             return result.get_array ();
         }
 
-        public async Json.Object? get_message (int acct_id, int msg_id) throws Error {
-            var result = yield call ("get_message", build_params_int2 (acct_id, msg_id));
+        public async Json.Object? get_message (int msg_id) throws Error {
+            var result = yield call ("get_message", build_params_int2 (account_id, msg_id));
             if (result == null) return null;
             return result.get_object ();
         }
 
-        public async Json.Object? get_messages (int acct_id, int[] msg_ids) throws Error {
+        public async Json.Object? get_messages (int[] msg_ids) throws Error {
             var b = new Json.Builder ();
             b.begin_array ();
-            b.add_int_value (acct_id);
+            b.add_int_value (account_id);
             b.begin_array ();
             foreach (int id in msg_ids) {
                 b.add_int_value (id);
@@ -401,13 +393,13 @@ namespace Dc {
             return result.get_object ();
         }
 
-        public async int send_msg (int acct_id, int chat_id, string? text,
+        public async int send_msg (int chat_id, string? text,
                                     string? file_path = null,
                                     string? file_name = null,
                                     int quoted_msg_id = 0) throws Error {
             var b = new Json.Builder ();
             b.begin_array ();
-            b.add_int_value (acct_id);
+            b.add_int_value (account_id);
             b.add_int_value (chat_id);
             if (text != null) b.add_string_value (text);
             else b.add_null_value ();
@@ -430,22 +422,20 @@ namespace Dc {
             return 0;
         }
 
-        public async void send_edit_request (int acct_id, int msg_id,
-                                              string new_text) throws Error {
+        public async void send_edit_request (int msg_id, string new_text) throws Error {
             var b = new Json.Builder ();
             b.begin_array ();
-            b.add_int_value (acct_id);
+            b.add_int_value (account_id);
             b.add_int_value (msg_id);
             b.add_string_value (new_text);
             b.end_array ();
             yield call ("send_edit_request", b.get_root ());
         }
 
-        public async void send_reaction (int acct_id, int msg_id,
-                                          string[] emojis) throws Error {
+        public async void send_reaction (int msg_id, string[] emojis) throws Error {
             var b = new Json.Builder ();
             b.begin_array ();
-            b.add_int_value (acct_id);
+            b.add_int_value (account_id);
             b.add_int_value (msg_id);
             b.begin_array ();
             foreach (string e in emojis) b.add_string_value (e);
@@ -454,14 +444,14 @@ namespace Dc {
             yield call ("send_reaction", b.get_root ());
         }
 
-        public async void marknoticed_chat (int acct_id, int chat_id) throws Error {
-            yield call ("marknoticed_chat", build_params_int2 (acct_id, chat_id));
+        public async void marknoticed_chat (int chat_id) throws Error {
+            yield call ("marknoticed_chat", build_params_int2 (account_id, chat_id));
         }
 
-        public async void mark_seen_msgs (int acct_id, int[] msg_ids) throws Error {
+        public async void mark_seen_msgs (int[] msg_ids) throws Error {
             var b = new Json.Builder ();
             b.begin_array ();
-            b.add_int_value (acct_id);
+            b.add_int_value (account_id);
             b.begin_array ();
             foreach (int mid in msg_ids) b.add_int_value (mid);
             b.end_array ();
@@ -481,10 +471,10 @@ namespace Dc {
             return result.get_object ();
         }
 
-        public async Json.Array? get_contact_ids (int acct_id, string? query) throws Error {
+        public async Json.Array? get_contact_ids (string? query) throws Error {
             var b = new Json.Builder ();
             b.begin_array ();
-            b.add_int_value (acct_id);
+            b.add_int_value (account_id);
             b.add_int_value (0); /* listFlags: 0 = all known contacts */
             if (query != null) b.add_string_value (query);
             else b.add_null_value ();
@@ -495,43 +485,41 @@ namespace Dc {
             return result.get_array ();
         }
 
-        public async int create_contact (int acct_id, string email) throws Error {
+        public async int create_contact (string email) throws Error {
             var result = yield call ("create_contact",
-                build_params_int_str2 (acct_id, email, null));
+                build_params_int_str2 (account_id, email, null));
             return (int) result.get_int ();
         }
 
-        public async int lookup_contact (int acct_id, string email) throws Error {
+        public async int lookup_contact (string email) throws Error {
             var result = yield call ("lookup_contact_id_by_addr",
-                build_params_int_str (acct_id, email));
+                build_params_int_str (account_id, email));
             if (result == null || result.is_null ()) return 0;
             return (int) result.get_int ();
         }
 
-        public async int get_or_create_contact (int acct_id, string email) throws Error {
-            int contact_id = yield lookup_contact (acct_id, email);
+        public async int get_or_create_contact (string email) throws Error {
+            int contact_id = yield lookup_contact (email);
             if (contact_id == 0) {
-                contact_id = yield create_contact (acct_id, email);
+                contact_id = yield create_contact (email);
             }
             return contact_id;
         }
 
-        public async int get_or_create_chat_by_contact (int acct_id,
-                                                         int contact_id) throws Error {
+        public async int get_or_create_chat_by_contact (int contact_id) throws Error {
             var result = yield call ("get_chat_id_by_contact_id",
-                build_params_int2 (acct_id, contact_id));
+                build_params_int2 (account_id, contact_id));
             if (result != null && !result.is_null () && result.get_int () > 0)
                 return (int) result.get_int ();
             result = yield call ("create_chat_by_contact_id",
-                build_params_int2 (acct_id, contact_id));
+                build_params_int2 (account_id, contact_id));
             return (int) result.get_int ();
         }
 
-        public async int create_group (int acct_id, string name,
-                                        bool protect = true) throws Error {
+        public async int create_group (string name, bool protect = true) throws Error {
             var b = new Json.Builder ();
             b.begin_array ();
-            b.add_int_value (acct_id);
+            b.add_int_value (account_id);
             b.add_string_value (name);
             b.add_boolean_value (protect);
             b.end_array ();
@@ -539,44 +527,28 @@ namespace Dc {
             return (int) result.get_int ();
         }
 
-        public async void accept_chat (int acct_id, int chat_id) throws Error {
-            yield call ("accept_chat", build_params_int2 (acct_id, chat_id));
+        public async void leave_group (int chat_id) throws Error {
+            yield call ("leave_group", build_params_int2 (account_id, chat_id));
         }
 
-        public async void leave_group (int acct_id, int chat_id) throws Error {
-            yield call ("leave_group", build_params_int2 (acct_id, chat_id));
+        public async void delete_chat (int chat_id) throws Error {
+            yield call ("delete_chat", build_params_int2 (account_id, chat_id));
         }
 
-        public async void set_chat_name (int acct_id, int chat_id,
-                                          string name) throws Error {
+        public async void set_chat_visibility (int chat_id, string visibility) throws Error {
             var b = new Json.Builder ();
             b.begin_array ();
-            b.add_int_value (acct_id);
-            b.add_int_value (chat_id);
-            b.add_string_value (name);
-            b.end_array ();
-            yield call ("set_chat_name", b.get_root ());
-        }
-
-        public async void delete_chat (int acct_id, int chat_id) throws Error {
-            yield call ("delete_chat", build_params_int2 (acct_id, chat_id));
-        }
-
-        public async void set_chat_visibility (int acct_id, int chat_id,
-                                                string visibility) throws Error {
-            var b = new Json.Builder ();
-            b.begin_array ();
-            b.add_int_value (acct_id);
+            b.add_int_value (account_id);
             b.add_int_value (chat_id);
             b.add_string_value (visibility);
             b.end_array ();
             yield call ("set_chat_visibility", b.get_root ());
         }
 
-        public async void delete_messages (int acct_id, int[] msg_ids) throws Error {
+        public async void delete_messages (int[] msg_ids) throws Error {
             var b = new Json.Builder ();
             b.begin_array ();
-            b.add_int_value (acct_id);
+            b.add_int_value (account_id);
             b.begin_array ();
             foreach (int mid in msg_ids) b.add_int_value (mid);
             b.end_array ();
@@ -584,10 +556,10 @@ namespace Dc {
             yield call ("delete_messages", b.get_root ());
         }
 
-        public async void delete_messages_for_all (int acct_id, int[] msg_ids) throws Error {
+        public async void delete_messages_for_all (int[] msg_ids) throws Error {
             var b = new Json.Builder ();
             b.begin_array ();
-            b.add_int_value (acct_id);
+            b.add_int_value (account_id);
             b.begin_array ();
             foreach (int mid in msg_ids) b.add_int_value (mid);
             b.end_array ();
@@ -595,37 +567,33 @@ namespace Dc {
             yield call ("delete_messages_for_all", b.get_root ());
         }
 
-        public async Json.Object? get_contact (int acct_id, int contact_id) throws Error {
-            var result = yield call ("get_contact", build_params_int2 (acct_id, contact_id));
+        public async Json.Object? get_contact (int contact_id) throws Error {
+            var result = yield call ("get_contact", build_params_int2 (account_id, contact_id));
             if (result == null) return null;
             return result.get_object ();
         }
 
-        public async void add_contact_to_chat (int acct_id, int chat_id,
-                                                 int contact_id) throws Error {
-            yield call ("add_contact_to_chat", build_params_int3 (acct_id, chat_id, contact_id));
+        public async void add_contact_to_chat (int chat_id, int contact_id) throws Error {
+            yield call ("add_contact_to_chat", build_params_int3 (account_id, chat_id, contact_id));
         }
 
-        public async void remove_contact_from_chat (int acct_id, int chat_id,
-                                                      int contact_id) throws Error {
-            yield call ("remove_contact_from_chat", build_params_int3 (acct_id, chat_id, contact_id));
+        public async void remove_contact_from_chat (int chat_id, int contact_id) throws Error {
+            yield call ("remove_contact_from_chat", build_params_int3 (account_id, chat_id, contact_id));
         }
 
-        public async void set_chat_profile_image (int acct_id, int chat_id,
-                                                    string image_path) throws Error {
+        public async void set_chat_profile_image (int chat_id, string image_path) throws Error {
             var b = new Json.Builder ();
             b.begin_array ();
-            b.add_int_value (acct_id);
+            b.add_int_value (account_id);
             b.add_int_value (chat_id);
             b.add_string_value (image_path);
             b.end_array ();
             yield call ("set_chat_profile_image", b.get_root ());
         }
 
-        public async void set_chat_ephemeral_timer (int acct_id, int chat_id,
-                                                      int timer) throws Error {
+        public async void set_chat_ephemeral_timer (int chat_id, int timer) throws Error {
             yield call ("set_chat_ephemeral_timer",
-                build_params_int3 (acct_id, chat_id, timer));
+                build_params_int3 (account_id, chat_id, timer));
         }
 
         /* ---- Parsing helpers ---- */
@@ -813,7 +781,6 @@ namespace Dc {
         public SourceFunc? callback = null;
         public Json.Node? result = null;
         public string? error_msg = null;
-        public bool completed = false;
 
         public PendingCall (int id) {
             this.id = id;

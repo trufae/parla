@@ -101,14 +101,6 @@ namespace Dc {
             append (mid);
         }
 
-        /**
-         * Update the row contents when the chat entry changes.
-         */
-        public void update (ChatEntry entry) {
-            name_label.label = entry.name;
-            preview_label.label = format_preview (entry);
-            time_label.label = format_time (entry.timestamp);
-        }
 
         private static string format_preview (ChatEntry entry) {
             string preview = entry.last_message ?? "";
@@ -197,7 +189,7 @@ namespace Dc {
         private async void toggle_pin (int chat_id, bool currently_pinned) {
             try {
                 string visibility = currently_pinned ? "Normal" : "Pinned";
-                yield rpc.set_chat_visibility (rpc.account_id, chat_id, visibility);
+                yield rpc.set_chat_visibility (chat_id, visibility);
                 yield window.load_chats ();
             } catch (Error e) {
                 window.show_toast ("Failed to update pin: " + e.message);
@@ -205,7 +197,7 @@ namespace Dc {
         }
 
         private async void show_info (int chat_id) {
-            var dialog = new ChatInfoDialog (rpc, rpc.account_id, chat_id);
+            var dialog = new ChatInfoDialog (rpc, chat_id);
 
             dialog.chat_deleted.connect ((cid) => {
                 window.show_toast ("Chat deleted");
@@ -235,7 +227,7 @@ namespace Dc {
 
         private async void do_delete (int chat_id) {
             try {
-                yield rpc.delete_chat (rpc.account_id, chat_id);
+                yield rpc.delete_chat (chat_id);
                 window.show_toast ("Chat deleted");
                 if (window.current_chat_id == chat_id)
                     window.clear_chat_view ();

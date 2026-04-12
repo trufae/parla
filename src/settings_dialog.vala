@@ -304,7 +304,7 @@ namespace Dc {
             try {
                 /* Stop IO on current account if any */
                 if (rpc.account_id > 0) {
-                    yield rpc.stop_io (rpc.account_id);
+                    yield rpc.stop_io ();
                 }
                 yield rpc.select_account (acct_id);
                 yield rpc.start_io (acct_id);

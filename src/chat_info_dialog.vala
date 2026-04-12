@@ -3,7 +3,6 @@ namespace Dc {
     public class ChatInfoDialog : Adw.Dialog {
 
         private RpcClient rpc;
-        private int acct_id;
         private int chat_id;
         private bool is_group = false;
         private Gtk.ListBox? members_list = null;
@@ -14,9 +13,8 @@ namespace Dc {
         public signal void chat_deleted (int chat_id);
         public signal void chat_changed ();
 
-        public ChatInfoDialog (RpcClient rpc, int acct_id, int chat_id) {
+        public ChatInfoDialog (RpcClient rpc, int chat_id) {
             this.rpc = rpc;
-            this.acct_id = acct_id;
             this.chat_id = chat_id;
             this.title = "Chat Info";
             this.content_width = 360;
@@ -53,7 +51,7 @@ namespace Dc {
 
         private async void load_info (Gtk.Spinner spinner) {
             try {
-                var chat = yield rpc.get_full_chat_by_id (acct_id, chat_id);
+                var chat = yield rpc.get_full_chat_by_id (chat_id);
                 if (chat == null) return;
 
                 spinner.visible = false;
@@ -127,7 +125,7 @@ namespace Dc {
                     uint idx = combo.selected;
                     if (idx < timer_values.length) {
                         rpc.set_chat_ephemeral_timer.begin (
-                            acct_id, chat_id, timer_values[(int) idx]);
+                            chat_id, timer_values[(int) idx]);
                     }
                 });
                 ephem_row.add_suffix (combo);
@@ -174,7 +172,7 @@ namespace Dc {
                     for (uint i = 0; i < ids.get_length (); i++) {
                         int cid = (int) ids.get_int_element (i);
                         member_contact_ids += cid;
-                        var contact_obj = yield rpc.get_contact (acct_id, cid);
+                        var contact_obj = yield rpc.get_contact (cid);
                         if (contact_obj == null) continue;
                         var contact = RpcClient.parse_contact (cid, contact_obj);
 
@@ -310,7 +308,7 @@ namespace Dc {
 
         private async void remove_member (int contact_id, Adw.ActionRow row) {
             try {
-                yield rpc.remove_contact_from_chat (acct_id, chat_id, contact_id);
+                yield rpc.remove_contact_from_chat (chat_id, contact_id);
                 members_list.remove (row);
             } catch (Error e) {
                 /* show inline error */
@@ -319,7 +317,7 @@ namespace Dc {
         }
 
         private async void add_member_dialog () {
-            var picker = new ContactPickerDialog (rpc, acct_id);
+            var picker = new ContactPickerDialog (rpc);
             picker.contact_picked.connect ((contact_id, email) => {
                 do_add_member.begin (email);
             });
@@ -328,11 +326,11 @@ namespace Dc {
 
         private async void do_add_member (string email) {
             try {
-                int contact_id = yield rpc.get_or_create_contact (acct_id, email);
-                yield rpc.add_contact_to_chat (acct_id, chat_id, contact_id);
+                int contact_id = yield rpc.get_or_create_contact (email);
+                yield rpc.add_contact_to_chat (chat_id, contact_id);
 
                 /* Refresh the member list */
-                var contact_obj = yield rpc.get_contact (acct_id, contact_id);
+                var contact_obj = yield rpc.get_contact (contact_id);
                 if (contact_obj != null && members_list != null) {
                     var contact = RpcClient.parse_contact (contact_id, contact_obj);
                     var row = build_contact_row (contact);
@@ -358,7 +356,7 @@ namespace Dc {
 
         private async void do_clear_history (bool for_all) {
             try {
-                var msg_ids = yield rpc.get_message_ids (acct_id, chat_id);
+                var msg_ids = yield rpc.get_message_ids (chat_id);
                 if (msg_ids == null || msg_ids.get_length () == 0) return;
 
                 int[] ids = new int[msg_ids.get_length ()];
@@ -367,9 +365,9 @@ namespace Dc {
                 }
 
                 if (for_all) {
-                    yield rpc.delete_messages_for_all (acct_id, ids);
+                    yield rpc.delete_messages_for_all (ids);
                 } else {
-                    yield rpc.delete_messages (acct_id, ids);
+                    yield rpc.delete_messages (ids);
                 }
 
                 chat_changed ();
@@ -386,7 +384,7 @@ namespace Dc {
 
         private async void do_leave_group () {
             try {
-                yield rpc.leave_group (acct_id, chat_id);
+                yield rpc.leave_group (chat_id);
                 chat_changed ();
                 this.close ();
             } catch (Error e) {
@@ -405,23 +403,23 @@ namespace Dc {
                 /* Remove all members except self */
                 foreach (int cid in member_contact_ids) {
                     if (cid != 1) {
-                        yield rpc.remove_contact_from_chat (acct_id, chat_id, cid);
+                        yield rpc.remove_contact_from_chat (chat_id, cid);
                     }
                 }
 
                 /* Delete all messages for everyone */
-                var msg_ids = yield rpc.get_message_ids (acct_id, chat_id);
+                var msg_ids = yield rpc.get_message_ids (chat_id);
                 if (msg_ids != null && msg_ids.get_length () > 0) {
                     int[] ids = new int[msg_ids.get_length ()];
                     for (uint i = 0; i < msg_ids.get_length (); i++) {
                         ids[i] = (int) msg_ids.get_int_element (i);
                     }
-                    yield rpc.delete_messages_for_all (acct_id, ids);
+                    yield rpc.delete_messages_for_all (ids);
                 }
 
                 /* Leave and delete the chat */
-                yield rpc.leave_group (acct_id, chat_id);
-                yield rpc.delete_chat (acct_id, chat_id);
+                yield rpc.leave_group (chat_id);
+                yield rpc.delete_chat (chat_id);
 
                 chat_deleted (chat_id);
                 this.close ();
@@ -438,7 +436,7 @@ namespace Dc {
 
         private async void do_delete_chat_from_dialog () {
             try {
-                yield rpc.delete_chat (acct_id, chat_id);
+                yield rpc.delete_chat (chat_id);
                 chat_deleted (chat_id);
                 this.close ();
             } catch (Error e) {
@@ -461,7 +459,7 @@ namespace Dc {
                 var file = yield chooser.open ((Gtk.Window) this.get_root (), null);
                 if (file != null) {
                     string path = file.get_path ();
-                    yield rpc.set_chat_profile_image (acct_id, chat_id, path);
+                    yield rpc.set_chat_profile_image (chat_id, path);
                 }
             } catch (Error e) {
                 /* cancelled or error */

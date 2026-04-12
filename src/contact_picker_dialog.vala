@@ -5,15 +5,13 @@ namespace Dc {
         public signal void contact_picked (int contact_id, string email);
 
         private RpcClient rpc;
-        private int acct_id;
         private Gtk.SearchEntry search_entry;
         private Gtk.ListBox contact_listbox;
         private Gtk.Button use_email_btn;
         private GenericArray<Contact> all_contacts = new GenericArray<Contact> ();
 
-        public ContactPickerDialog (RpcClient rpc, int acct_id) {
+        public ContactPickerDialog (RpcClient rpc) {
             this.rpc = rpc;
-            this.acct_id = acct_id;
             this.title = "Select Contact";
             this.content_width = 360;
             this.content_height = 500;
@@ -69,14 +67,14 @@ namespace Dc {
 
         private async void load_contacts () {
             try {
-                var ids = yield rpc.get_contact_ids (acct_id, null);
+                var ids = yield rpc.get_contact_ids (null);
                 if (ids == null) return;
 
                 for (uint i = 0; i < ids.get_length (); i++) {
                     int cid = (int) ids.get_int_element (i);
                     if (cid <= 1) continue; /* skip self (1) and special IDs */
 
-                    var obj = yield rpc.get_contact (acct_id, cid);
+                    var obj = yield rpc.get_contact (cid);
                     if (obj == null) continue;
 
                     var ci = RpcClient.parse_contact (cid, obj);

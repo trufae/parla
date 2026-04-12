@@ -436,10 +436,10 @@ namespace Dc {
             if (rpc.account_id <= 0) return;
 
             try {
-                var entries = yield rpc.get_chatlist_entries (rpc.account_id);
+                var entries = yield rpc.get_chatlist_entries ();
                 if (entries == null) return;
 
-                var items = yield rpc.get_chatlist_items_by_entries (rpc.account_id, entries);
+                var items = yield rpc.get_chatlist_items_by_entries (entries);
 
                 chat_store.remove_all ();
                 Gtk.ListBoxRow? row;
@@ -525,7 +525,7 @@ namespace Dc {
 
         private async void notice_chat (int chat_id) {
             try {
-                yield rpc.marknoticed_chat (rpc.account_id, chat_id);
+                yield rpc.marknoticed_chat (chat_id);
             } catch (Error e) {
                 /* non-critical */
             }
@@ -539,7 +539,7 @@ namespace Dc {
             if (rpc.account_id <= 0) return;
 
             try {
-                all_msg_ids = yield rpc.get_message_ids (rpc.account_id, chat_id);
+                all_msg_ids = yield rpc.get_message_ids (chat_id);
                 if (all_msg_ids == null) return;
 
                 loaded_start_index = all_msg_ids.get_length () > 30
@@ -599,7 +599,7 @@ namespace Dc {
             for (uint i = 0; i < count; i++) {
                 ids[i] = (int) all_msg_ids.get_int_element (start + i);
             }
-            var map = yield rpc.get_messages (rpc.account_id, ids);
+            var map = yield rpc.get_messages (ids);
             var result = new GLib.GenericArray<Message> ();
             if (map != null) {
                 foreach (int mid in ids) {
@@ -750,13 +750,13 @@ namespace Dc {
                 string? send_file = file_path;
                 string? send_name = file_name;
 
-                int msg_id = yield rpc.send_msg (rpc.account_id, current_chat_id,
+                int msg_id = yield rpc.send_msg (current_chat_id,
                                                   send_text, send_file, send_name,
                                                   quote_msg_id);
 
                 /* Append the sent message directly instead of reloading all */
                 if (msg_id > 0) {
-                    var msg_obj = yield rpc.get_message (rpc.account_id, msg_id);
+                    var msg_obj = yield rpc.get_message (msg_id);
                     if (msg_obj != null) {
                         var msg = RpcClient.parse_message (msg_obj, rpc.self_email);
                         insert_message_sorted (msg);
@@ -815,14 +815,14 @@ namespace Dc {
             if (chat_id == current_chat_id && current_chat_id > 0) {
                 /* Message is in the active chat — show it and mark seen */
                 try {
-                    var msg_obj = yield rpc.get_message (rpc.account_id, msg_id);
+                    var msg_obj = yield rpc.get_message (msg_id);
                     if (msg_obj != null) {
                         var msg = RpcClient.parse_message (msg_obj, rpc.self_email);
                         msg.highlighted = true;
                         insert_message_sorted (msg);
                     }
                     if (this.is_active) {
-                        yield rpc.mark_seen_msgs (rpc.account_id, new int[] { msg_id });
+                        yield rpc.mark_seen_msgs (new int[] { msg_id });
                     }
                 } catch (Error e) {
                     warning ("Failed to handle incoming msg: %s", e.message);
@@ -841,7 +841,7 @@ namespace Dc {
         private void on_show_profile () {
             if (rpc.account_id <= 0) return;
 
-            var dialog = new ProfileDialog (rpc, rpc.account_id);
+            var dialog = new ProfileDialog (rpc);
             dialog.profile_updated.connect (() => {
                 load_profile_avatar.begin ();
             });
@@ -866,7 +866,7 @@ namespace Dc {
             if (rpc.account_id <= 0) return;
             if (active_modal != null) return;
 
-            var picker = new ContactPickerDialog (rpc, rpc.account_id);
+            var picker = new ContactPickerDialog (rpc);
             active_modal = picker;
             picker.closed.connect (() => { active_modal = null; });
             picker.contact_picked.connect ((contact_id, email) => {
@@ -879,9 +879,8 @@ namespace Dc {
             if (rpc.account_id <= 0) return;
 
             try {
-                int contact_id = yield rpc.get_or_create_contact (rpc.account_id, email);
-                int chat_id = yield rpc.get_or_create_chat_by_contact (
-                    rpc.account_id, contact_id);
+                int contact_id = yield rpc.get_or_create_contact (email);
+                int chat_id = yield rpc.get_or_create_chat_by_contact (contact_id);
 
                 yield load_chats ();
 
@@ -900,7 +899,7 @@ namespace Dc {
             if (rpc.account_id <= 0) return;
             if (active_modal != null) return;
 
-            var dialog = new NewGroupDialog (rpc, rpc.account_id);
+            var dialog = new NewGroupDialog (rpc);
             active_modal = dialog;
             dialog.closed.connect (() => { active_modal = null; });
             dialog.group_created.connect ((chat_id) => {
