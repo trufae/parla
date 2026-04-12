@@ -14,19 +14,8 @@ namespace Dc {
         private Gtk.ListBox chat_listbox;
         private GLib.ListStore chat_store;
 
-        /* Message view */
-        private Gtk.ListView message_listview;
-        private Gtk.ScrolledWindow message_scroll;
-        private GLib.ListStore message_store;
-        private Gtk.FilterListModel filtered_message_store;
-        private Gtk.CustomFilter message_filter;
-        private ComposeBar compose_bar;
-        private Gtk.Button scroll_down_btn;
-
-        /* Message search */
-        private Gtk.Revealer message_search_revealer;
-        private Gtk.SearchEntry message_search_entry;
-        private bool search_toggling;
+        /* Per-chat cached views */
+        private HashTable<int, ConversationView> views;
 
         /* Status */
         private Adw.StatusPage empty_status;
@@ -45,18 +34,11 @@ namespace Dc {
                 if (events != null) events.active_chat_id = value;
             }
         }
-        private bool stick_to_bottom = true;
-        private Json.Array? all_msg_ids = null;
-        private uint loaded_start_index = 0;
-        private bool loading_more = false;
-        private bool loading_chat = false;
 
         /* Extracted managers */
         public SettingsManager settings;
         private ImageViewer image_viewer;
-        private PinnedMessagesManager pinned;
         private EventHandler events;
-        private MessageActions msg_actions;
         private ChatContextMenu chat_menu;
 
         /* Modal dialog guard – only one at a time */
@@ -73,12 +55,10 @@ namespace Dc {
 
         construct {
             chat_store = new GLib.ListStore (typeof (ChatEntry));
-            message_store = new GLib.ListStore (typeof (Message));
+            views = new HashTable<int, ConversationView> (direct_hash, direct_equal);
             settings = new SettingsManager ();
             image_viewer = new ImageViewer ();
             image_viewer.set_window (this);
-            pinned = new PinnedMessagesManager (message_store, settings);
-            pinned.set_window (this);
             build_ui ();
             settings.load ();
 
@@ -183,145 +163,15 @@ namespace Dc {
 
             content_box.append (content_header);
 
-            /* Stack: empty status vs message view */
+            /* Stack: empty status + one child per chat view (added lazily) */
             content_stack = new Gtk.Stack ();
             content_stack.vexpand = true;
 
-            /* Empty state */
             empty_status = new Adw.StatusPage ();
             empty_status.icon_name = "mail-send-receive-symbolic";
             empty_status.title = "Delta Chat";
             empty_status.description = "Select a chat to start messaging,\nor wait for the connection…";
             content_stack.add_named (empty_status, "empty");
-
-            /* Message view */
-            var msg_box = new Gtk.Box (Gtk.Orientation.VERTICAL, 0);
-
-            message_scroll = new Gtk.ScrolledWindow ();
-            message_scroll.vexpand = true;
-            message_scroll.hscrollbar_policy = Gtk.PolicyType.NEVER;
-
-            /* Auto-scroll: keep the user at the bottom when content or
-               viewport size changes, using non-deprecated notify signals. */
-            message_scroll.vadjustment.notify["upper"].connect (() => {
-                if (loading_chat) return;
-                maybe_autoscroll ();
-                scroll_down_btn.visible = !is_near_bottom ();
-            });
-            message_scroll.vadjustment.notify["page-size"].connect (() => {
-                if (loading_chat) return;
-                maybe_autoscroll ();
-                scroll_down_btn.visible = !is_near_bottom ();
-            });
-            message_scroll.vadjustment.notify["value"].connect (() => {
-                if (loading_chat) return;
-                stick_to_bottom = is_near_bottom ();
-                scroll_down_btn.visible = !stick_to_bottom;
-                if (is_near_top () && !loading_more && loaded_start_index > 0) {
-                    load_earlier_messages.begin ();
-                }
-            });
-
-            /* Filter for message search */
-            message_filter = new Gtk.CustomFilter ((item) => {
-                if (!message_search_revealer.reveal_child) return true;
-                string query = message_search_entry.text.strip ().down ();
-                if (query.length == 0) return true;
-                var msg = (Message) item;
-                return msg.text != null && msg.text.down ().contains (query);
-            });
-            filtered_message_store = new Gtk.FilterListModel (message_store, message_filter);
-
-            var factory = new Gtk.SignalListItemFactory ();
-            factory.bind.connect ((obj) => {
-                var li = (Gtk.ListItem) obj;
-                var msg = (Message) li.item;
-                var row = new MessageRow (msg);
-                row.quote_clicked.connect ((qid) => { scroll_to_message (qid); });
-
-                /* Right-click context menu */
-                var rc = new Gtk.GestureClick ();
-                rc.button = 3;
-                rc.pressed.connect ((n, x, y) => {
-                    if (msg_actions != null)
-                        msg_actions.show_context_menu (msg.id, msg.is_outgoing, x, y, row);
-                });
-                row.add_controller (rc);
-
-                /* Double-click and single-click activation */
-                var dc = new Gtk.GestureClick ();
-                dc.button = 1;
-                dc.pressed.connect ((n, x, y) => {
-                    if (n == 2 && msg_actions != null)
-                        msg_actions.handle_double_click (msg.id);
-                    else if (n == 1) on_message_activated (msg);
-                });
-                row.add_controller (dc);
-
-                /* Highlight for newly arrived messages */
-                if (msg.highlighted) {
-                    msg.highlighted = false;
-                    row.highlight ();
-                }
-
-                li.child = row;
-            });
-
-            var selection = new Gtk.NoSelection (filtered_message_store);
-            message_listview = new Gtk.ListView (selection, factory);
-            message_listview.add_css_class ("boxed-list-separate");
-            message_scroll.child = message_listview;
-
-            /* Message search bar (toggled by Ctrl+F) */
-            message_search_entry = new Gtk.SearchEntry ();
-            message_search_entry.placeholder_text = "Search in conversation\u2026";
-            message_search_entry.hexpand = true;
-            message_search_entry.margin_start = 8;
-            message_search_entry.margin_end = 8;
-            message_search_entry.margin_top = 4;
-            message_search_entry.margin_bottom = 4;
-            message_search_entry.search_changed.connect (() => {
-                message_filter.changed (Gtk.FilterChange.DIFFERENT);
-            });
-            message_search_revealer = new Gtk.Revealer ();
-            message_search_revealer.child = message_search_entry;
-            message_search_revealer.reveal_child = false;
-            message_search_revealer.transition_type = Gtk.RevealerTransitionType.SLIDE_DOWN;
-            msg_box.append (message_search_revealer);
-
-            /* Pinned messages bar */
-            msg_box.append (pinned.revealer);
-
-            scroll_down_btn = new Gtk.Button ();
-            scroll_down_btn.icon_name = "go-down-symbolic";
-            scroll_down_btn.add_css_class ("circular");
-            scroll_down_btn.add_css_class ("osd");
-            scroll_down_btn.add_css_class ("scroll-down-btn");
-            scroll_down_btn.halign = Gtk.Align.CENTER;
-            scroll_down_btn.valign = Gtk.Align.END;
-            scroll_down_btn.margin_bottom = 12;
-            scroll_down_btn.visible = false;
-            scroll_down_btn.clicked.connect (() => { scroll_to_bottom (); });
-
-            var scroll_overlay = new Gtk.Overlay ();
-            scroll_overlay.child = message_scroll;
-            scroll_overlay.vexpand = true;
-            scroll_overlay.add_overlay (scroll_down_btn);
-
-            msg_box.append (scroll_overlay);
-
-            compose_bar = new ComposeBar ();
-            settings.bind_property ("shift-enter-sends", compose_bar,
-                                    "shift-enter-sends", BindingFlags.SYNC_CREATE);
-            compose_bar.send_message.connect (on_send_message);
-            compose_bar.edit_message.connect ((msg_id, new_text) => {
-                if (msg_actions != null)
-                    msg_actions.edit_message.begin (msg_id, new_text);
-            });
-            msg_box.append (compose_bar);
-            install_drop_target (msg_box);
-
-            content_stack.add_named (msg_box, "messages");
             content_stack.visible_child_name = "empty";
             content_box.append (content_stack);
 
@@ -357,7 +207,6 @@ namespace Dc {
 
         private async void try_connect () {
             rpc = ((Dc.Application) this.application).rpc;
-            pinned.set_rpc (rpc);
 
             /* Find the RPC server binary */
             string[]? rpc_cmd = AccountFinder.find_rpc_server ();
@@ -399,16 +248,14 @@ namespace Dc {
             events.set_app (this.application);
             events.chats_reload_fired.connect (() => { load_chats.begin (); });
             events.messages_reload_fired.connect (() => {
-                if (current_chat_id > 0)
-                    load_messages.begin (current_chat_id);
+                var v = current_view ();
+                if (v != null) v.reload_messages.begin ();
             });
             events.incoming_msg_received.connect ((chat_id, msg_id) => {
                 on_incoming_msg.begin (chat_id, msg_id);
             });
 
             chat_menu = new ChatContextMenu (this, rpc, chat_store);
-            msg_actions = new MessageActions (this, rpc, message_store, pinned,
-                                              compose_bar, settings);
             if (rpc.account_id > 0) {
                 try {
                     rpc.self_email = yield rpc.get_config ("addr");
@@ -428,6 +275,20 @@ namespace Dc {
         public void clear_chat_view () {
             current_chat_id = 0;
             content_stack.visible_child_name = "empty";
+        }
+
+        private ConversationView? current_view () {
+            if (current_chat_id <= 0) return null;
+            return views.lookup (current_chat_id);
+        }
+
+        private ConversationView get_or_create_view (int chat_id) {
+            var v = views.lookup (chat_id);
+            if (v != null) return v;
+            v = new ConversationView (chat_id, this, rpc, settings);
+            views.insert (chat_id, v);
+            content_stack.add_named (v, "chat_%d".printf (chat_id));
+            return v;
         }
 
         public void request_messages_reload () {
@@ -495,30 +356,25 @@ namespace Dc {
 
             int chat_id = chat_row.chat_id;
 
-            /* Already viewing this chat — just scroll to bottom and focus input. */
-            if (chat_id == current_chat_id
-                && content_stack.visible_child_name == "messages") {
-                scroll_to_bottom ();
-                compose_bar.grab_entry_focus ();
+            if (chat_id == current_chat_id) {
+                var v = current_view ();
+                if (v != null) v.on_reselected ();
                 return;
             }
 
+            var view = get_or_create_view (chat_id);
             current_chat_id = chat_id;
 
-            /* Find name */
             var entry = find_chat_entry (chat_store, current_chat_id);
             if (entry != null) {
                 content_title_label.label = entry.name;
             }
 
-            content_stack.visible_child_name = "messages";
-            load_messages.begin (current_chat_id);
-            compose_bar.grab_entry_focus ();
+            content_stack.visible_child_name = "chat_%d".printf (chat_id);
+            view.on_activated ();
 
-            /* Mark chat as noticed (clears fresh counter without sending read receipts) */
             notice_chat.begin (current_chat_id);
 
-            /* On narrow layout, navigate to content */
             split_view.show_content = true;
         }
 
@@ -531,256 +387,11 @@ namespace Dc {
         }
 
         /* ================================================================
-         *  Messages
+         *  Attachments (save / image viewer)
          * ================================================================ */
 
-        private async void load_messages (int chat_id) {
-            if (rpc.account_id <= 0) return;
-
-            try {
-                all_msg_ids = yield rpc.get_message_ids (chat_id);
-                if (all_msg_ids == null) return;
-
-                loaded_start_index = all_msg_ids.get_length () > 30
-                    ? all_msg_ids.get_length () - 30 : 0;
-
-                var messages = yield fetch_messages_batch (
-                    loaded_start_index, all_msg_ids.get_length ());
-
-                if (chat_id != current_chat_id) return;
-
-                pinned.load_for_chat (chat_id);
-
-                loading_chat = true;
-                stick_to_bottom = true;
-
-                var batch = new GLib.Object[messages.length];
-                for (uint i = 0; i < messages.length; i++) {
-                    messages[i].is_pinned = pinned.is_pinned (messages[i].id);
-                    batch[i] = messages[i];
-                }
-                message_store.splice (0, message_store.get_n_items (), batch);
-
-                if (messages.length == 0) {
-                    loading_chat = false;
-                    scroll_down_btn.visible = !is_near_bottom ();
-                } else {
-                    ulong scroll_handler_id = 0;
-                    scroll_handler_id = message_scroll.vadjustment.notify["upper"].connect (() => {
-                        scroll_to_bottom ();
-                        loading_chat = false;
-                        scroll_down_btn.visible = !is_near_bottom ();
-                        SignalHandler.disconnect (message_scroll.vadjustment, scroll_handler_id);
-                    });
-                }
-
-                pinned.update_bar.begin ();
-            } catch (Error e) {
-                show_toast ("Failed to load messages: " + e.message);
-            }
-        }
-
-        private bool is_near_bottom () {
-            var adj = message_scroll.vadjustment;
-            if (adj.upper <= adj.page_size) return true;
-            return (adj.upper - adj.value - adj.page_size) < 80;
-        }
-
-        private bool is_near_top () {
-            var adj = message_scroll.vadjustment;
-            return adj.value < 80;
-        }
-
-        private async GLib.GenericArray<Message> fetch_messages_batch (
-                uint start, uint end) throws Error {
-            uint count = end - start;
-            int[] ids = new int[count];
-            for (uint i = 0; i < count; i++) {
-                ids[i] = (int) all_msg_ids.get_int_element (start + i);
-            }
-            var map = yield rpc.get_messages (ids);
-            var result = new GLib.GenericArray<Message> ();
-            if (map != null) {
-                foreach (int mid in ids) {
-                    string k = mid.to_string ();
-                    if (map.has_member (k)) {
-                        result.add (RpcClient.parse_message (
-                            map.get_object_member (k), rpc.self_email));
-                    }
-                }
-            }
-            return result;
-        }
-
-        private async void load_earlier_messages () {
-            if (loading_more || all_msg_ids == null || loaded_start_index == 0) return;
-            loading_more = true;
-            int chat_id = current_chat_id;
-
-            uint new_start = loaded_start_index > 100
-                ? loaded_start_index - 100 : 0;
-
-            try {
-                var messages = yield fetch_messages_batch (new_start, loaded_start_index);
-                if (chat_id != current_chat_id) { loading_more = false; return; }
-
-                var adj = message_scroll.vadjustment;
-                double old_upper = adj.upper;
-                double old_value = adj.value;
-
-                for (uint i = 0; i < messages.length; i++) {
-                    var msg = messages[i];
-                    msg.is_pinned = pinned.is_pinned (msg.id);
-                    message_store.insert ((int) i, msg);
-                }
-
-                loaded_start_index = new_start;
-
-                Idle.add (() => {
-                    var a = message_scroll.vadjustment;
-                    a.value = old_value + (a.upper - old_upper);
-                    loading_more = false;
-                    return Source.REMOVE;
-                });
-            } catch (Error e) {
-                loading_more = false;
-                show_toast ("Failed to load earlier messages: " + e.message);
-            }
-        }
-
-        private void maybe_autoscroll () {
-            if (!stick_to_bottom) return;
-            var adj = message_scroll.vadjustment;
-            if (adj.upper > adj.page_size) {
-                adj.value = adj.upper - adj.page_size;
-            }
-        }
-
-        private void scroll_to_bottom () {
-            stick_to_bottom = true;
-            maybe_autoscroll ();
-        }
-
-        /* Insert a message into the store at the correct chronological position. */
-        private void insert_message_sorted (Message msg) {
-            int count = (int) message_store.get_n_items ();
-            /* Fast path: new message is newest. */
-            if (count > 0) {
-                var last = (Message) message_store.get_item (count - 1);
-                if (msg.timestamp > last.timestamp ||
-                    (msg.timestamp == last.timestamp && msg.id >= last.id)) {
-                    message_store.append (msg);
-                    return;
-                }
-            }
-            /* Slow path: find the correct position. */
-            for (uint i = 0; i < message_store.get_n_items (); i++) {
-                var m = (Message) message_store.get_item (i);
-                if (m.timestamp > msg.timestamp ||
-                    (m.timestamp == msg.timestamp && m.id > msg.id)) {
-                    message_store.insert ((int) i, msg);
-                    return;
-                }
-            }
-            message_store.append (msg);
-        }
-
-        /* ================================================================
-         *  Attachments (drag-and-drop)
-         * ================================================================ */
-
-        private void install_drop_target (Gtk.Widget target_widget) {
-            var drop = new Gtk.DropTarget (typeof (Gdk.FileList), Gdk.DragAction.COPY);
-            drop.accept.connect (() => {
-                return current_chat_id > 0 && compose_bar.can_accept_attachment ();
-            });
-            drop.enter.connect ((x, y) => {
-                target_widget.add_css_class ("chat-drop-active");
-                return Gdk.DragAction.COPY;
-            });
-            drop.leave.connect (() => {
-                target_widget.remove_css_class ("chat-drop-active");
-            });
-            drop.drop.connect ((value, x, y) => {
-                target_widget.remove_css_class ("chat-drop-active");
-                if (current_chat_id <= 0 || !compose_bar.can_accept_attachment ())
-                    return false;
-                var fl = (Gdk.FileList?) value.get_boxed ();
-                if (fl == null) return false;
-                var files = fl.get_files ();
-                if (files == null || files.data == null) return false;
-                attach_dropped_file.begin (files.data);
-                return true;
-            });
-            target_widget.add_controller (drop);
-        }
-
-        private async void attach_dropped_file (GLib.File file) {
-            try {
-                string? path = file.get_path ();
-                string name = file.get_basename () ?? "attachment";
-                if (path == null) {
-                    GLib.FileIOStream stream;
-                    var tmp = GLib.File.new_tmp ("deltachat-gnome-XXXXXX", out stream);
-                    stream.close ();
-                    yield file.copy_async (tmp, FileCopyFlags.OVERWRITE,
-                                           Priority.DEFAULT, null, null);
-                    path = tmp.get_path ();
-                }
-                compose_bar.set_pending_attachment (path, name);
-                compose_bar.grab_entry_focus ();
-            } catch (Error e) {
-                show_toast ("Attach failed: " + e.message);
-            }
-        }
-
-        /* ================================================================
-         *  Sending
-         * ================================================================ */
-
-        private void on_send_message (string text, string? file_path, string? file_name, int quote_msg_id) {
-            if (current_chat_id <= 0) return;
-            do_send.begin (text, file_path, file_name, quote_msg_id);
-        }
-
-        private async void do_send (string text, string? file_path, string? file_name, int quote_msg_id) {
-            try {
-                string? send_text = text.length > 0 ? text : null;
-                string? send_file = file_path;
-                string? send_name = file_name;
-
-                int msg_id = yield rpc.send_msg (current_chat_id,
-                                                  send_text, send_file, send_name,
-                                                  quote_msg_id);
-
-                /* Append the sent message directly instead of reloading all */
-                if (msg_id > 0) {
-                    var msg = yield rpc.fetch_message (msg_id);
-                    if (msg != null) {
-                        insert_message_sorted (msg);
-                        scroll_to_bottom ();
-                    }
-                }
-            } catch (Error e) {
-                show_toast ("Send failed: " + e.message);
-            }
-        }
-
-        /* ================================================================
-         *  Save attachment
-         * ================================================================ */
-
-        private void on_message_activated (Message msg) {
-            if (msg.file_path == null || msg.file_path.length == 0) return;
-            if (!FileUtils.test (msg.file_path, FileTest.EXISTS)) {
-                show_toast ("File not available");
-                return;
-            }
-            if (MessageRow.is_image_file (msg)) {
-                image_viewer.show (msg.file_path);
-            } else {
-                save_attachment.begin (msg.file_path, msg.file_name);
-            }
+        public void show_image (string path) {
+            image_viewer.show (path);
         }
 
         public async void save_attachment (string src_path, string? name) {
@@ -809,21 +420,9 @@ namespace Dc {
 
 
         private async void on_incoming_msg (int chat_id, int msg_id) {
-
-            if (chat_id == current_chat_id && current_chat_id > 0) {
-                /* Message is in the active chat — show it and mark seen */
-                try {
-                    var msg = yield rpc.fetch_message (msg_id);
-                    if (msg != null) {
-                        msg.highlighted = true;
-                        insert_message_sorted (msg);
-                    }
-                    if (this.is_active) {
-                        yield rpc.mark_seen_msgs (new int[] { msg_id });
-                    }
-                } catch (Error e) {
-                    warning ("Failed to handle incoming msg: %s", e.message);
-                }
+            var view = views.lookup (chat_id);
+            if (view != null) {
+                yield view.handle_incoming_msg (msg_id);
             }
             if (settings.notifications_enabled && !this.is_active) {
                 yield events.send_notification (chat_id, msg_id);
@@ -880,11 +479,7 @@ namespace Dc {
                 int chat_id = yield rpc.get_or_create_chat_by_contact (contact_id);
 
                 yield load_chats ();
-
-                /* Select the new chat */
-                current_chat_id = chat_id;
-                content_stack.visible_child_name = "messages";
-                yield load_messages (chat_id);
+                select_chat_by_id (chat_id);
 
                 show_toast ("Chat created with " + email);
             } catch (Error e) {
@@ -907,23 +502,13 @@ namespace Dc {
 
         private async void after_group_created (int chat_id) {
             yield load_chats ();
-            current_chat_id = chat_id;
-            content_stack.visible_child_name = "messages";
-            yield load_messages (chat_id);
+            select_chat_by_id (chat_id);
             show_toast ("Group created");
         }
 
         public void scroll_to_message (int msg_id) {
-            int pos = -1;
-            for (uint i = 0; i < filtered_message_store.get_n_items (); i++) {
-                var m = (Message) filtered_message_store.get_item (i);
-                if (m.id == msg_id) { pos = (int) i; break; }
-            }
-            if (pos < 0) return;
-            var msg = (Message) filtered_message_store.get_item (pos);
-            msg.highlighted = true;
-            message_listview.scroll_to (pos, Gtk.ListScrollFlags.FOCUS, null);
-            stick_to_bottom = is_near_bottom ();
+            var v = current_view ();
+            if (v != null) v.scroll_to_message (msg_id);
         }
 
         /* ================================================================
@@ -988,6 +573,7 @@ namespace Dc {
         }
 
         public async void reload_active_account () {
+            discard_all_views ();
             if (rpc.account_id <= 0) {
                 rpc.self_email = null;
                 content_stack.visible_child_name = "empty";
@@ -1008,6 +594,16 @@ namespace Dc {
             }
         }
 
+        private void discard_all_views () {
+            var iter = HashTableIter<int, ConversationView> (views);
+            int k;
+            ConversationView v;
+            while (iter.next (out k, out v)) {
+                content_stack.remove (v);
+            }
+            views.remove_all ();
+        }
+
         /* ================================================================
          *  Keyboard Shortcuts
          * ================================================================ */
@@ -1022,11 +618,8 @@ namespace Dc {
 
             /* Escape: close message search if active */
             if (keyval == Gdk.Key.Escape) {
-                if (message_search_revealer.reveal_child) {
-                    message_search_revealer.reveal_child = false;
-                    message_search_entry.text = "";
-                    return true;
-                }
+                var v = current_view ();
+                if (v != null && v.close_search_if_active ()) return true;
                 return false;
             }
 
@@ -1067,9 +660,9 @@ namespace Dc {
                 return true;
             case Gdk.Key.l:
             case Gdk.Key.L:
-                if (current_chat_id > 0) {
-                    scroll_to_bottom ();
-                    compose_bar.grab_entry_focus ();
+                {
+                    var v = current_view ();
+                    if (v != null) v.on_reselected ();
                 }
                 return true;
             }
@@ -1077,23 +670,8 @@ namespace Dc {
         }
 
         private void toggle_message_search () {
-            if (current_chat_id <= 0 || search_toggling) return;
-            search_toggling = true;
-            bool was_active = message_search_revealer.reveal_child;
-            message_search_revealer.reveal_child = !was_active;
-            if (!was_active) {
-                Idle.add (() => {
-                    message_search_entry.grab_focus ();
-                    search_toggling = false;
-                    return Source.REMOVE;
-                });
-            } else {
-                message_search_entry.text = "";
-                Idle.add (() => {
-                    search_toggling = false;
-                    return Source.REMOVE;
-                });
-            }
+            var v = current_view ();
+            if (v != null) v.toggle_search ();
         }
 
         private void refresh_current_chat () {

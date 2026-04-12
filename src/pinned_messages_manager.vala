@@ -4,7 +4,8 @@ namespace Dc {
 
         public Gtk.Revealer revealer { get; private set; }
 
-        private unowned Window? window = null;
+        public signal void scroll_requested (int msg_id);
+
         private unowned RpcClient? rpc = null;
         private Gtk.Box bar_content;
         private int[] msg_ids = {};
@@ -26,7 +27,6 @@ namespace Dc {
             revealer.transition_type = Gtk.RevealerTransitionType.SLIDE_DOWN;
         }
 
-        public void set_window (Window w) { this.window = w; }
         public void set_rpc (RpcClient r) { this.rpc = r; }
 
         public void load_for_chat (int chat_id) {
@@ -141,7 +141,7 @@ namespace Dc {
 
                 int captured_id = pin_id;
                 row_btn.clicked.connect (() => {
-                    if (window != null) window.scroll_to_message (captured_id);
+                    scroll_requested (captured_id);
                 });
 
                 var outer = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 0);

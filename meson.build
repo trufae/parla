@@ -22,6 +22,7 @@ sources = files(
   'src/markdown.vala',
   'src/message_row.vala',
   'src/compose_bar.vala',
+  'src/conversation_view.vala',
   'src/chat_info_dialog.vala',
   'src/contact_picker_dialog.vala',
   'src/new_group_dialog.vala',
