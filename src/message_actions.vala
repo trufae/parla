@@ -192,8 +192,8 @@ namespace Dc {
                 var msg = RpcClient.parse_message (msg_obj, rpc.self_email);
                 int idx = find_message_index (message_store, msg_id);
                 if (idx >= 0) {
-                    message_store.remove (idx);
-                    message_store.insert (idx, msg);
+                    Object[] replacements = { msg };
+                    message_store.splice (idx, 1, replacements);
                 }
             } catch (Error e) {
                 /* Reaction will appear on next message reload */

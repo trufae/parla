@@ -188,8 +188,8 @@ namespace Dc {
             int idx = find_message_index (message_store, msg_id);
             if (idx < 0) return;
             var m = (Message) message_store.get_item (idx);
-            message_store.remove (idx);
-            message_store.insert (idx, m);
+            Object[] replacements = { m };
+            message_store.splice (idx, 1, replacements);
         }
     }
 }
