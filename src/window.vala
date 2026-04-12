@@ -553,7 +553,7 @@ namespace Dc {
             var about = new Adw.AboutDialog ();
             about.application_name = "Delta Chat";
             about.application_icon = "org.deltachat.Gnome";
-            about.version = "0.1.0";
+            about.version = "0.2.0";
             about.developer_name = "pancake";
             about.developers = { "pancake" };
             about.license_type = Gtk.License.GPL_3_0;
