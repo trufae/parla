@@ -42,6 +42,7 @@ namespace Dc {
         public string? quote_text { get; set; default = null; }
         public string? quote_sender_name { get; set; default = null; }
         public bool is_pinned { get; set; default = false; }
+        public bool highlighted { get; set; default = false; }
     }
 
     public class Contact : Object {

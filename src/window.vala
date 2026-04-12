@@ -15,12 +15,13 @@ namespace Dc {
         private GLib.ListStore chat_store;
 
         /* Message view */
-        private Gtk.ListBox message_listbox;
+        private Gtk.ListView message_listview;
         private Gtk.ScrolledWindow message_scroll;
         private GLib.ListStore message_store;
+        private Gtk.FilterListModel filtered_message_store;
+        private Gtk.CustomFilter message_filter;
         private ComposeBar compose_bar;
         private Gtk.Button scroll_down_btn;
-        private Gtk.Button load_more_btn;
 
         /* Message search */
         private Gtk.Revealer message_search_revealer;
@@ -196,10 +197,12 @@ namespace Dc {
             /* Auto-scroll: keep the user at the bottom when content or
                viewport size changes, using non-deprecated notify signals. */
             message_scroll.vadjustment.notify["upper"].connect (() => {
+                if (loading_chat) return;
                 maybe_autoscroll ();
                 scroll_down_btn.visible = !is_near_bottom ();
             });
             message_scroll.vadjustment.notify["page-size"].connect (() => {
+                if (loading_chat) return;
                 maybe_autoscroll ();
                 scroll_down_btn.visible = !is_near_bottom ();
             });
@@ -212,59 +215,53 @@ namespace Dc {
                 }
             });
 
-            message_listbox = new Gtk.ListBox ();
-            message_listbox.selection_mode = Gtk.SelectionMode.NONE;
-            message_listbox.add_css_class ("boxed-list-separate");
-            message_listbox.set_header_func (null);
-            message_listbox.set_filter_func ((row) => {
+            /* Filter for message search */
+            message_filter = new Gtk.CustomFilter ((item) => {
                 if (!message_search_revealer.reveal_child) return true;
                 string query = message_search_entry.text.strip ().down ();
                 if (query.length == 0) return true;
-                var msg_row = row as MessageRow;
-                if (msg_row == null) return true;
-                return msg_row.message_text != null
-                    && msg_row.message_text.down ().contains (query);
+                var msg = (Message) item;
+                return msg.text != null && msg.text.down ().contains (query);
             });
-            message_listbox.row_activated.connect (on_message_row_activated);
+            filtered_message_store = new Gtk.FilterListModel (message_store, message_filter);
 
-            /* Right-click context menu for reactions */
-            var msg_right_click = new Gtk.GestureClick ();
-            msg_right_click.button = 3;
-            msg_right_click.pressed.connect ((n, x, y) => {
-                var row = message_listbox.get_row_at_y ((int) y);
-                if (row == null) return;
-                var msg_row = row as MessageRow;
-                if (msg_row == null) return;
-                show_message_context_menu (msg_row.message_id, msg_row.is_outgoing, x, y);
+            var factory = new Gtk.SignalListItemFactory ();
+            factory.bind.connect ((obj) => {
+                var li = (Gtk.ListItem) obj;
+                var msg = (Message) li.item;
+                var row = new MessageRow (msg);
+                row.quote_clicked.connect ((qid) => { scroll_to_message (qid); });
+
+                /* Right-click context menu */
+                var rc = new Gtk.GestureClick ();
+                rc.button = 3;
+                rc.pressed.connect ((n, x, y) => {
+                    show_message_context_menu (msg.id, msg.is_outgoing, x, y);
+                });
+                row.add_controller (rc);
+
+                /* Double-click and single-click activation */
+                var dc = new Gtk.GestureClick ();
+                dc.button = 1;
+                dc.pressed.connect ((n, x, y) => {
+                    if (n == 2) handle_message_double_click_id (msg.id);
+                    else if (n == 1) on_message_activated (msg);
+                });
+                row.add_controller (dc);
+
+                /* Highlight for newly arrived messages */
+                if (msg.highlighted) {
+                    msg.highlighted = false;
+                    row.highlight ();
+                }
+
+                li.child = row;
             });
-            message_listbox.add_controller (msg_right_click);
 
-            /* Double-click on messages */
-            var msg_dbl_click = new Gtk.GestureClick ();
-            msg_dbl_click.button = 1;
-            msg_dbl_click.pressed.connect ((n, x, y) => {
-                if (n != 2) return;
-                var dbl_row = message_listbox.get_row_at_y ((int) y);
-                if (dbl_row == null) return;
-                var dbl_msg_row = dbl_row as MessageRow;
-                if (dbl_msg_row == null) return;
-                handle_message_double_click (dbl_msg_row);
-            });
-            message_listbox.add_controller (msg_dbl_click);
-
-            load_more_btn = new Gtk.Button.with_label ("Load earlier messages\u2026");
-            load_more_btn.add_css_class ("dim-label");
-            load_more_btn.add_css_class ("flat");
-            load_more_btn.halign = Gtk.Align.CENTER;
-            load_more_btn.margin_top = 8;
-            load_more_btn.margin_bottom = 4;
-            load_more_btn.visible = false;
-            load_more_btn.clicked.connect (() => { load_earlier_messages.begin (); });
-
-            var message_vbox = new Gtk.Box (Gtk.Orientation.VERTICAL, 0);
-            message_vbox.append (load_more_btn);
-            message_vbox.append (message_listbox);
-            message_scroll.child = message_vbox;
+            var selection = new Gtk.NoSelection (filtered_message_store);
+            message_listview = new Gtk.ListView (selection, factory);
+            message_listview.add_css_class ("boxed-list-separate");
+            message_scroll.child = message_listview;
 
             /* Message search bar (toggled by Ctrl+F) */
             message_search_entry = new Gtk.SearchEntry ();
@@ -275,7 +272,7 @@ namespace Dc {
             message_search_entry.margin_top = 4;
             message_search_entry.margin_bottom = 4;
             message_search_entry.search_changed.connect (() => {
-                message_listbox.invalidate_filter ();
+                message_filter.changed (Gtk.FilterChange.DIFFERENT);
             });
             message_search_revealer = new Gtk.Revealer ();
             message_search_revealer.child = message_search_entry;
@@ -602,19 +599,12 @@ namespace Dc {
                 loading_chat = true;
                 stick_to_bottom = true;
                 message_store.remove_all ();
-                Gtk.ListBoxRow? row;
-                while ((row = message_listbox.get_row_at_index (0)) != null) {
-                    message_listbox.remove (row);
-                }
 
                 for (uint i = 0; i < messages.length; i++) {
                     var msg = messages[i];
                     msg.is_pinned = is_msg_pinned (msg.id);
                     message_store.append (msg);
-                    message_listbox.append (create_message_row (msg));
                 }
-
-                load_more_btn.visible = (loaded_start_index > 0);
 
                 Idle.add (() => {
                     scroll_to_bottom ();
@@ -684,11 +674,9 @@ namespace Dc {
                     var msg = messages[i];
                     msg.is_pinned = is_msg_pinned (msg.id);
                     message_store.insert ((int) i, msg);
-                    message_listbox.insert (create_message_row (msg), (int) i);
                 }
 
                 loaded_start_index = new_start;
-                load_more_btn.visible = (loaded_start_index > 0);
 
                 Idle.add (() => {
                     var a = message_scroll.vadjustment;
@@ -715,38 +703,28 @@ namespace Dc {
             maybe_autoscroll ();
         }
 
-        private MessageRow create_message_row (Message msg) {
-            var row = new MessageRow (msg);
-            row.quote_clicked.connect ((qid) => { scroll_to_message (qid); });
-            return row;
-        }
-
-        /* Insert a message row at the correct chronological position. */
-        private void insert_message_sorted (MessageRow row) {
-            /* Fast path: new message is newer than the last row. */
+        /* Insert a message into the store at the correct chronological position. */
+        private void insert_message_sorted (Message msg) {
             int count = (int) message_store.get_n_items ();
+            /* Fast path: new message is newest. */
             if (count > 0) {
-                var last = message_listbox.get_row_at_index (count - 1) as MessageRow;
-                if (last != null && (row.timestamp > last.timestamp ||
-                    (row.timestamp == last.timestamp
-                     && row.message_id >= last.message_id))) {
-                    message_listbox.append (row);
+                var last = (Message) message_store.get_item (count - 1);
+                if (msg.timestamp > last.timestamp ||
+                    (msg.timestamp == last.timestamp && msg.id >= last.id)) {
+                    message_store.append (msg);
                     return;
                 }
             }
             /* Slow path: find the correct position. */
-            int pos = 0;
-            Gtk.ListBoxRow? existing;
-            while ((existing = message_listbox.get_row_at_index (pos)) != null) {
-                var mr = existing as MessageRow;
-                if (mr != null && (mr.timestamp > row.timestamp ||
-                    (mr.timestamp == row.timestamp && mr.message_id > row.message_id))) {
-                    message_listbox.insert (row, pos);
+            for (uint i = 0; i < message_store.get_n_items (); i++) {
+                var m = (Message) message_store.get_item (i);
+                if (m.timestamp > msg.timestamp ||
+                    (m.timestamp == msg.timestamp && m.id > msg.id)) {
+                    message_store.insert ((int) i, msg);
                     return;
                 }
-                pos++;
             }
-            message_listbox.append (row);
+            message_store.append (msg);
         }
 
         /* ================================================================
@@ -822,8 +800,7 @@ namespace Dc {
                     var msg_obj = yield rpc.get_message (rpc.account_id, msg_id);
                     if (msg_obj != null) {
                         var msg = RpcClient.parse_message (msg_obj, self_email);
-                        message_store.append (msg);
-                        insert_message_sorted (create_message_row (msg));
+                        insert_message_sorted (msg);
                         scroll_to_bottom ();
                     }
                 }
@@ -836,17 +813,21 @@ namespace Dc {
          *  Save attachment
          * ================================================================ */
 
-        private void on_message_row_activated (Gtk.ListBoxRow row) {
-            var msg_row = row as MessageRow;
-            if (msg_row == null || msg_row.file_path == null) return;
-            if (!FileUtils.test (msg_row.file_path, FileTest.EXISTS)) {
+        private void on_message_activated (Message msg) {
+            if (msg.file_path == null || msg.file_path.length == 0) return;
+            if (!FileUtils.test (msg.file_path, FileTest.EXISTS)) {
                 show_toast ("File not available");
                 return;
             }
-            if (msg_row.is_image) {
-                show_image_viewer (msg_row.file_path);
+            bool is_img = (msg.file_mime != null && msg.file_mime.has_prefix ("image/"));
+            if (!is_img && msg.view_type != null) {
+                var vt = msg.view_type.down ();
+                is_img = (vt == "image" || vt == "gif" || vt == "sticker");
+            }
+            if (is_img) {
+                show_image_viewer (msg.file_path);
             } else {
-                save_attachment.begin (msg_row.file_path, msg_row.file_name);
+                save_attachment.begin (msg.file_path, msg.file_name);
             }
         }
 
@@ -1013,10 +994,8 @@ namespace Dc {
                     var msg_obj = yield rpc.get_message (rpc.account_id, msg_id);
                     if (msg_obj != null) {
                         var msg = RpcClient.parse_message (msg_obj, self_email);
-                        message_store.append (msg);
-                        var row = create_message_row (msg);
-                        insert_message_sorted (row);
-                        row.highlight ();
+                        msg.highlighted = true;
+                        insert_message_sorted (msg);
                     }
                     if (this.is_active) {
                         yield rpc.mark_seen_msgs (rpc.account_id, new int[] { msg_id });
@@ -1321,7 +1300,7 @@ namespace Dc {
             }
 
             popover.child = vbox;
-            popover.set_parent (message_listbox);
+            popover.set_parent (message_listview);
             popover.set_pointing_to ({ (int) x, (int) y, 1, 1 });
             popover.popup ();
         }
@@ -1343,13 +1322,8 @@ namespace Dc {
                 } else {
                     yield rpc.delete_messages (rpc.account_id, new int[] { msg_id });
                 }
-                int idx = find_message_row_index (message_listbox, msg_id);
-                if (idx >= 0) {
-                    var row = message_listbox.get_row_at_index (idx);
-                    if (row != null) message_listbox.remove (row);
-                    int mi = find_message_index (message_store, msg_id);
-                    if (mi >= 0) message_store.remove (mi);
-                }
+                int idx = find_message_index (message_store, msg_id);
+                if (idx >= 0) message_store.remove (idx);
             } catch (Error e) {
                 show_toast ("Delete failed: " + e.message);
             }
@@ -1381,8 +1355,7 @@ namespace Dc {
             var m = find_message (message_store, msg_id);
             if (m != null) {
                 m.is_pinned = is_msg_pinned (msg_id);
-                int idx = find_message_row_index (message_listbox, msg_id);
-                if (idx >= 0) replace_message_row (message_listbox, idx, create_message_row (m));
+                refresh_message_in_store (msg_id);
             }
             update_pinned_bar ();
         }
@@ -1518,25 +1491,18 @@ namespace Dc {
         }
 
         private void scroll_to_message (int msg_id) {
-            int idx = find_message_row_index (message_listbox, msg_id);
-            if (idx < 0) return;
-            var row = message_listbox.get_row_at_index (idx);
-            var mr = row as MessageRow;
-            if (mr == null) return;
-
-            int row_y;
-            Graphene.Point pt;
-            if (row.compute_point (message_listbox, { 0, 0 }, out pt)) {
-                row_y = (int) pt.y;
-            } else {
-                row_y = idx * 60;
+            /* Find position in the filtered model */
+            int pos = -1;
+            for (uint i = 0; i < filtered_message_store.get_n_items (); i++) {
+                var m = (Message) filtered_message_store.get_item (i);
+                if (m.id == msg_id) { pos = (int) i; break; }
             }
-            var adj = message_scroll.vadjustment;
-            double target = double.min (row_y, adj.upper - adj.page_size);
-            if (target < 0) target = 0;
-            adj.value = target;
+            if (pos < 0) return;
+
+            var msg = (Message) filtered_message_store.get_item (pos);
+            msg.highlighted = true;
+            message_listview.scroll_to (pos, Gtk.ListScrollFlags.FOCUS, null);
             stick_to_bottom = is_near_bottom ();
-            mr.highlight ();
         }
 
         private void on_edit_message (int msg_id, string new_text) {
@@ -1557,11 +1523,23 @@ namespace Dc {
                 var msg_obj = yield rpc.get_message (rpc.account_id, msg_id);
                 if (msg_obj == null) return;
                 var msg = RpcClient.parse_message (msg_obj, self_email);
-                int idx = find_message_row_index (message_listbox, msg_id);
-                if (idx >= 0) replace_message_row (message_listbox, idx, create_message_row (msg));
+                int idx = find_message_index (message_store, msg_id);
+                if (idx >= 0) {
+                    message_store.remove (idx);
+                    message_store.insert (idx, msg);
+                }
             } catch (Error e) {
                 /* Reaction will appear on next message reload */
             }
+        }
+
+        /* Notify the ListView to rebind a message by removing and reinserting it. */
+        private void refresh_message_in_store (int msg_id) {
+            int idx = find_message_index (message_store, msg_id);
+            if (idx < 0) return;
+            var m = (Message) message_store.get_item (idx);
+            message_store.remove (idx);
+            message_store.insert (idx, m);
         }
 
         private async void show_chat_info (int chat_id) {
@@ -1755,7 +1733,7 @@ namespace Dc {
                 if (message_search_revealer.reveal_child) {
                     message_search_revealer.reveal_child = false;
                     message_search_entry.text = "";
-                    message_listbox.invalidate_filter ();
+                    message_filter.changed (Gtk.FilterChange.DIFFERENT);
                     return true;
                 }
                 return false;
@@ -1811,7 +1789,7 @@ namespace Dc {
                 message_search_entry.grab_focus ();
             } else {
                 message_search_entry.text = "";
-                message_listbox.invalidate_filter ();
+                message_filter.changed (Gtk.FilterChange.DIFFERENT);
             }
         }
 
@@ -1990,19 +1968,19 @@ namespace Dc {
          *  Double-click action
          * ================================================================ */
 
-        private void handle_message_double_click (MessageRow msg_row) {
+        private void handle_message_double_click_id (int msg_id) {
             switch (double_click_action) {
             case 0: /* Reply */
-                start_replying_message (msg_row.message_id);
+                start_replying_message (msg_id);
                 break;
             case 1: /* React with heart */
-                do_send_reaction.begin (msg_row.message_id, "\xe2\x9d\xa4\xef\xb8\x8f");
+                do_send_reaction.begin (msg_id, "❤️");
                 break;
             case 2: /* React with thumbsup */
-                do_send_reaction.begin (msg_row.message_id, "\xf0\x9f\x91\x8d");
+                do_send_reaction.begin (msg_id, "👍");
                 break;
             case 3: /* Open user profile */
-                open_sender_profile.begin (msg_row.message_id);
+                open_sender_profile.begin (msg_id);
                 break;
             case 4: /* Nothing */
                 break;

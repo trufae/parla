@@ -23,23 +23,4 @@ namespace Dc {
         }
         return -1;
     }
-
-    /* Find the ListBoxRow index for a given message ID. Returns -1 if not found. */
-    public int find_message_row_index (Gtk.ListBox listbox, int msg_id) {
-        int idx = 0;
-        Gtk.ListBoxRow? row;
-        while ((row = listbox.get_row_at_index (idx)) != null) {
-            var mr = row as MessageRow;
-            if (mr != null && mr.message_id == msg_id) return idx;
-            idx++;
-        }
-        return -1;
-    }
-
-    /* Remove and re-insert a message row at the same position. */
-    public void replace_message_row (Gtk.ListBox listbox, int idx, Gtk.Widget new_row) {
-        var old = listbox.get_row_at_index (idx);
-        if (old != null) listbox.remove (old);
-        listbox.insert (new_row, idx);
-    }
 }

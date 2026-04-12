@@ -63,8 +63,8 @@ namespace Dc {
 
             string[] dblclick_labels = {
                 "Reply to message",
-                "React with \xe2\x9d\xa4\xef\xb8\x8f",
-                "React with \xf0\x9f\x91\x8d",
+                "React with ❤️",
+                "React with 👍",
                 "Open user profile",
                 "Do nothing"
             };

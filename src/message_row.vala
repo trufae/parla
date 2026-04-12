@@ -4,7 +4,7 @@ namespace Dc {
      * A single message bubble in the conversation view.
      * Incoming messages are left-aligned, outgoing messages right-aligned.
      */
-    public class MessageRow : Gtk.ListBoxRow {
+    public class MessageRow : Gtk.Box {
 
         public int message_id { get; private set; }
         public int64 timestamp { get; private set; }
@@ -26,6 +26,7 @@ namespace Dc {
         }
 
         public MessageRow (Message msg) {
+            Object (orientation: Gtk.Orientation.HORIZONTAL, spacing: 0);
             this.message_id = msg.id;
             this.timestamp = msg.timestamp;
             this.is_outgoing = msg.is_outgoing;
@@ -33,10 +34,6 @@ namespace Dc {
             this.file_name = msg.file_name;
             this.message_text = msg.text;
             this.quote_msg_id = msg.quote_msg_id;
-            this.selectable = false;
-
-            bool has_attachment = (msg.file_path != null && msg.file_path.length > 0);
-            this.activatable = has_attachment;
 
             /* Info messages (system notifications) get centered styling */
             if (msg.is_info) {
@@ -46,12 +43,11 @@ namespace Dc {
 
             bool outgoing = msg.is_outgoing;
 
-            /* Outer container for alignment */
-            var outer = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 0);
-            outer.margin_start = 8;
-            outer.margin_end = 8;
-            outer.margin_top = 2;
-            outer.margin_bottom = 2;
+            /* Margins (applied to this box directly) */
+            this.margin_start = 8;
+            this.margin_end = 8;
+            this.margin_top = 2;
+            this.margin_bottom = 2;
 
             /* Bubble */
             var bubble = new Gtk.Box (Gtk.Orientation.VERTICAL, 2);
@@ -194,16 +190,14 @@ namespace Dc {
             if (outgoing) {
                 var spacer = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 0);
                 spacer.hexpand = true;
-                outer.append (spacer);
+                this.append (spacer);
             }
-            outer.append (bubble);
+            this.append (bubble);
             if (!outgoing) {
                 var spacer = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 0);
                 spacer.hexpand = true;
-                outer.append (spacer);
+                this.append (spacer);
             }
-
-            this.child = outer;
         }
 
         private void build_info_row (Message msg) {
@@ -214,7 +208,7 @@ namespace Dc {
             label.margin_top = 4;
             label.margin_bottom = 4;
             label.wrap = true;
-            this.child = label;
+            this.append (label);
         }
 
         private static bool is_image_file (Message msg) {
