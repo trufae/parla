@@ -200,7 +200,7 @@ namespace Dc {
                 /* Clear History */
                 var clear_row = new Adw.ActionRow ();
                 clear_row.title = "Clear History";
-                clear_row.subtitle = "Delete all messages";
+                // clear_row.subtitle = "Delete all messages";
 
                 var clear_me_btn = new Gtk.Button.with_label ("For Me");
                 clear_me_btn.valign = Gtk.Align.CENTER;
