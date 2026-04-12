@@ -26,6 +26,7 @@ namespace Dc {
         /* Message search */
         private Gtk.Revealer message_search_revealer;
         private Gtk.SearchEntry message_search_entry;
+        private bool search_toggling;
 
         /* Status */
         private Adw.StatusPage empty_status;
@@ -1734,7 +1735,6 @@ namespace Dc {
                 if (message_search_revealer.reveal_child) {
                     message_search_revealer.reveal_child = false;
                     message_search_entry.text = "";
-                    message_filter.changed (Gtk.FilterChange.DIFFERENT);
                     return true;
                 }
                 return false;
@@ -1783,14 +1783,22 @@ namespace Dc {
         }
 
         private void toggle_message_search () {
-            if (current_chat_id <= 0) return;
+            if (current_chat_id <= 0 || search_toggling) return;
+            search_toggling = true;
             bool was_active = message_search_revealer.reveal_child;
             message_search_revealer.reveal_child = !was_active;
             if (!was_active) {
-                message_search_entry.grab_focus ();
+                Idle.add (() => {
+                    message_search_entry.grab_focus ();
+                    search_toggling = false;
+                    return Source.REMOVE;
+                });
             } else {
                 message_search_entry.text = "";
-                message_filter.changed (Gtk.FilterChange.DIFFERENT);
+                Idle.add (() => {
+                    search_toggling = false;
+                    return Source.REMOVE;
+                });
             }
         }
 
