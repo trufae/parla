@@ -112,7 +112,7 @@ namespace Dc {
             menu_button.icon_name = "open-menu-symbolic";
             menu_button.tooltip_text = "Main Menu";
             menu_button.add_css_class ("flat");
-            menu_button.popover = build_app_menu_popover ();
+            menu_button.menu_model = build_app_menu ();
             sidebar_header.pack_end (menu_button);
 
 
@@ -1613,67 +1613,46 @@ namespace Dc {
          *  App Menu (Settings / About)
          * ================================================================ */
 
-        private Gtk.Popover build_app_menu_popover () {
-            var popover = new Gtk.Popover ();
+        private GLib.MenuModel build_app_menu () {
+            var a_new_chat = new SimpleAction ("new-chat", null);
+            a_new_chat.activate.connect (() => { on_new_chat (); });
+            add_action (a_new_chat);
 
-            var vbox = new Gtk.Box (Gtk.Orientation.VERTICAL, 4);
-            vbox.margin_start = 4;
-            vbox.margin_end = 4;
-            vbox.margin_top = 4;
-            vbox.margin_bottom = 4;
+            var a_new_group = new SimpleAction ("new-group", null);
+            a_new_group.activate.connect (() => { on_new_group (); });
+            add_action (a_new_group);
 
-            var new_chat_btn = new Gtk.Button.with_label ("New Chat");
-            new_chat_btn.add_css_class ("flat");
-            new_chat_btn.clicked.connect (() => {
-                popover.popdown ();
-                on_new_chat ();
-            });
-            vbox.append (new_chat_btn);
+            var a_refresh = new SimpleAction ("refresh", null);
+            a_refresh.activate.connect (() => { load_chats.begin (); });
+            add_action (a_refresh);
 
-            var new_group_btn = new Gtk.Button.with_label ("New Group");
-            new_group_btn.add_css_class ("flat");
-            new_group_btn.clicked.connect (() => {
-                popover.popdown ();
-                on_new_group ();
-            });
-            vbox.append (new_group_btn);
+            var a_settings = new SimpleAction ("settings", null);
+            a_settings.activate.connect (() => { show_settings_dialog (); });
+            add_action (a_settings);
 
-            vbox.append (new Gtk.Separator (Gtk.Orientation.HORIZONTAL));
+            var a_shortcuts = new SimpleAction ("shortcuts", null);
+            a_shortcuts.activate.connect (() => { show_keyboard_shortcuts_dialog (); });
+            add_action (a_shortcuts);
 
-            var refresh_btn = new Gtk.Button.with_label ("Refresh");
-            refresh_btn.add_css_class ("flat");
-            refresh_btn.clicked.connect (() => {
-                popover.popdown ();
-                load_chats.begin ();
-            });
-            vbox.append (refresh_btn);
+            var a_about = new SimpleAction ("about", null);
+            a_about.activate.connect (() => { show_about_dialog (); });
+            add_action (a_about);
 
-            var settings_btn = new Gtk.Button.with_label ("Settings");
-            settings_btn.add_css_class ("flat");
-            settings_btn.clicked.connect (() => {
-                popover.popdown ();
-                show_settings_dialog ();
-            });
-            vbox.append (settings_btn);
+            var section1 = new GLib.Menu ();
+            section1.append ("New Chat", "win.new-chat");
+            section1.append ("New Group", "win.new-group");
 
-            var shortcuts_btn = new Gtk.Button.with_label ("Shortcuts");
-            shortcuts_btn.add_css_class ("flat");
-            shortcuts_btn.clicked.connect (() => {
-                popover.popdown ();
-                show_keyboard_shortcuts_dialog ();
-            });
-            vbox.append (shortcuts_btn);
+            var section2 = new GLib.Menu ();
+            section2.append ("Refresh", "win.refresh");
+            section2.append ("Settings", "win.settings");
+            section2.append ("Shortcuts", "win.shortcuts");
+            section2.append ("About", "win.about");
 
-            var about_btn = new Gtk.Button.with_label ("About");
-            about_btn.add_css_class ("flat");
-            about_btn.clicked.connect (() => {
-                popover.popdown ();
-                show_about_dialog ();
-            });
-            vbox.append (about_btn);
+            var menu = new GLib.Menu ();
+            menu.append_section (null, section1);
+            menu.append_section (null, section2);
 
-            popover.child = vbox;
-            return popover;
+            return menu;
         }
 
         private void show_about_dialog () {

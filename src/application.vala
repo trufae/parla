@@ -35,6 +35,10 @@ namespace Dc {
             load_css ();
             register_icons ();
             Gtk.Window.set_default_icon_name ("org.deltachat.Gnome");
+
+            set_accels_for_action ("win.new-chat", {"<Control>n"});
+            set_accels_for_action ("win.refresh", {"<Control>r"});
+            set_accels_for_action ("win.settings", {"<Control>comma"});
         }
 
         private void register_icons () {
