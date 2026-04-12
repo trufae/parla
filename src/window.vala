@@ -356,6 +356,7 @@ namespace Dc {
 
         private async void try_connect () {
             rpc = ((Dc.Application) this.application).rpc;
+            pinned.set_rpc (rpc);
 
             /* Find the RPC server binary */
             string[]? rpc_cmd = AccountFinder.find_rpc_server ();
@@ -408,11 +409,13 @@ namespace Dc {
             msg_actions = new MessageActions (this, rpc, message_store, pinned,
                                               compose_bar, settings);
             msg_actions.self_email = self_email;
+            pinned.self_email = self_email;
 
             if (rpc.account_id > 0) {
                 try {
                     self_email = yield rpc.get_config (rpc.account_id, "addr");
                     msg_actions.self_email = self_email;
+                    pinned.self_email = self_email;
                     events.self_email = self_email;
                 } catch (Error ce) {
                     self_email = null;
@@ -577,7 +580,7 @@ namespace Dc {
                     return Source.REMOVE;
                 });
 
-                pinned.update_bar ();
+                pinned.update_bar.begin ();
             } catch (Error e) {
                 show_toast ("Failed to load messages: " + e.message);
             }
@@ -1015,6 +1018,7 @@ namespace Dc {
             if (rpc.account_id <= 0) {
                 self_email = null;
                 if (msg_actions != null) msg_actions.self_email = null;
+                pinned.self_email = null;
                 content_stack.visible_child_name = "empty";
                 current_chat_id = 0;
                 return;
@@ -1025,6 +1029,7 @@ namespace Dc {
                 self_email = null;
             }
             if (msg_actions != null) msg_actions.self_email = self_email;
+            pinned.self_email = self_email;
             if (events != null) events.self_email = self_email;
             current_chat_id = 0;
             content_stack.visible_child_name = "empty";

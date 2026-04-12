@@ -5,11 +5,14 @@ namespace Dc {
         public Gtk.Revealer revealer { get; private set; }
 
         private unowned Window? window = null;
+        private unowned RpcClient? rpc = null;
         private Gtk.Box bar_content;
         private int[] msg_ids = {};
         private int current_chat_id = 0;
         private unowned GLib.ListStore message_store;
         private unowned SettingsManager settings;
+
+        public string? self_email { get; set; default = null; }
 
         public PinnedMessagesManager (GLib.ListStore message_store,
                                       SettingsManager settings) {
@@ -25,6 +28,7 @@ namespace Dc {
         }
 
         public void set_window (Window w) { this.window = w; }
+        public void set_rpc (RpcClient r) { this.rpc = r; }
 
         public void load_for_chat (int chat_id) {
             current_chat_id = chat_id;
@@ -68,10 +72,10 @@ namespace Dc {
                 m.is_pinned = is_pinned (msg_id);
                 refresh_in_store (msg_id);
             }
-            update_bar ();
+            update_bar.begin ();
         }
 
-        public void update_bar () {
+        public async void update_bar () {
             /* Clear existing pinned entries */
             Gtk.Widget? child;
             while ((child = bar_content.get_first_child ()) != null) {
@@ -92,6 +96,18 @@ namespace Dc {
                 if (m != null) {
                     text = m.text;
                     sender = m.is_outgoing ? "You" : (m.sender_name ?? "");
+                }
+
+                /* Fetch from RPC if not in the loaded batch */
+                if (text == null && sender == null && rpc != null) {
+                    try {
+                        var msg_obj = yield rpc.get_message (rpc.account_id, pin_id);
+                        if (msg_obj != null) {
+                            var fetched = RpcClient.parse_message (msg_obj, self_email);
+                            text = fetched.text;
+                            sender = fetched.is_outgoing ? "You" : (fetched.sender_name ?? "");
+                        }
+                    } catch (Error e) { /* skip on error */ }
                 }
 
                 if (text == null && sender == null) continue;
