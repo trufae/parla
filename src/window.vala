@@ -57,6 +57,9 @@ namespace Dc {
         private Gtk.Box pinned_bar_content;
         private int[] pinned_msg_ids = {};
 
+        /* Modal dialog guard – only one at a time */
+        private Adw.Dialog? active_modal = null;
+
         /* Fullscreen image viewer */
         private Gtk.Overlay image_viewer_overlay;
         private Gtk.Picture image_viewer_picture;
@@ -1092,8 +1095,11 @@ namespace Dc {
 
         private void on_new_chat () {
             if (rpc.account_id <= 0) return;
+            if (active_modal != null) return;
 
             var picker = new ContactPickerDialog (rpc, rpc.account_id);
+            active_modal = picker;
+            picker.closed.connect (() => { active_modal = null; });
             picker.contact_picked.connect ((contact_id, email) => {
                 create_chat_by_email.begin (email);
             });
@@ -1126,8 +1132,11 @@ namespace Dc {
 
         private void on_new_group () {
             if (rpc.account_id <= 0) return;
+            if (active_modal != null) return;
 
             var dialog = new NewGroupDialog (rpc, rpc.account_id);
+            active_modal = dialog;
+            dialog.closed.connect (() => { active_modal = null; });
             dialog.group_created.connect ((chat_id) => {
                 after_group_created.begin (chat_id);
             });
@@ -1670,7 +1679,11 @@ namespace Dc {
         }
 
         private void show_settings_dialog () {
+            if (active_modal != null) return;
+
             var dialog = new SettingsDialog (rpc, this);
+            active_modal = dialog;
+            dialog.closed.connect (() => { active_modal = null; });
             dialog.account_changed.connect (() => {
                 reload_active_account.begin ();
             });
@@ -1727,6 +1740,10 @@ namespace Dc {
             case Gdk.Key.n:
             case Gdk.Key.N:
                 on_new_chat ();
+                return true;
+            case Gdk.Key.g:
+            case Gdk.Key.G:
+                on_new_group ();
                 return true;
             case Gdk.Key.comma:
                 show_settings_dialog ();
@@ -1792,6 +1809,7 @@ namespace Dc {
         private void show_quick_switch_dialog () {
             if (rpc.account_id <= 0) return;
             if (chat_store.get_n_items () == 0) return;
+            if (active_modal != null) return;
 
             var dialog = new Adw.Dialog ();
             dialog.title = "Switch Chat";
@@ -1893,6 +1911,8 @@ namespace Dc {
 
             box.append (inner);
             dialog.child = box;
+            active_modal = dialog;
+            dialog.closed.connect (() => { active_modal = null; });
             dialog.present (this);
             entry.grab_focus ();
         }
@@ -1912,6 +1932,8 @@ namespace Dc {
         }
 
         private void show_keyboard_shortcuts_dialog () {
+            if (active_modal != null) return;
+
             var dialog = new Adw.Dialog ();
             dialog.title = "Shortcuts";
             dialog.content_width = 400;
@@ -1930,6 +1952,7 @@ namespace Dc {
             list.margin_bottom = 12;
 
             add_shortcut_row (list, "New chat", "<Control>n");
+            add_shortcut_row (list, "New group", "<Control>g");
             add_shortcut_row (list, "Open settings", "<Control>comma");
             add_shortcut_row (list, "Search in conversation", "<Control>f");
             add_shortcut_row (list, "Quick switch chat", "<Control>k");
@@ -1940,6 +1963,8 @@ namespace Dc {
 
             box.append (list);
             dialog.child = box;
+            active_modal = dialog;
+            dialog.closed.connect (() => { active_modal = null; });
             dialog.present (this);
         }
 
