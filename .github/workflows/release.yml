@@ -11,21 +11,13 @@ permissions:
 jobs:
   build-deb:
     runs-on: ubuntu-24.04
-    strategy:
-      matrix:
-        include:
-          - distro: ubuntu-24.04
-          - distro: debian-12
-            container: debian:12
-    container: ${{ matrix.container || '' }}
     steps:
       - uses: actions/checkout@v6
 
       - name: Install dependencies
         run: |
-          if [ "$(id -u)" -ne 0 ]; then SUDO=sudo; fi
-          $SUDO apt-get update
-          $SUDO apt-get install -y \
+          sudo apt-get update
+          sudo apt-get install -y \
             meson \
             ninja-build \
             valac \
@@ -36,21 +28,11 @@ jobs:
             make \
             dpkg-dev
 
-      - name: Apply Debian 12 patch
-        if: matrix.distro == 'debian-12'
-        run: patch -p1 < dist/debian/debian12.patch
-
       - name: Build
         run: make
 
       - name: Package .deb
         run: make deb
-
-      - name: Rename .deb with distro suffix
-        run: |
-          for f in dist/debian/deltachat-gnome/*.deb; do
-            mv "$f" "${f%.deb}_${{ matrix.distro }}.deb"
-          done
 
       - name: Upload .deb to release
         uses: softprops/action-gh-release@v2
