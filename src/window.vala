@@ -562,16 +562,18 @@ namespace Dc {
                 }
                 message_store.splice (0, message_store.get_n_items (), batch);
 
-                Idle.add (() => {
-                    scroll_to_bottom ();
-                    Timeout.add (50, () => {
+                if (messages.length == 0) {
+                    loading_chat = false;
+                    scroll_down_btn.visible = !is_near_bottom ();
+                } else {
+                    ulong scroll_handler_id = 0;
+                    scroll_handler_id = message_scroll.vadjustment.notify["upper"].connect (() => {
                         scroll_to_bottom ();
                         loading_chat = false;
                         scroll_down_btn.visible = !is_near_bottom ();
-                        return Source.REMOVE;
+                        SignalHandler.disconnect (message_scroll.vadjustment, scroll_handler_id);
                     });
-                    return Source.REMOVE;
-                });
+                }
 
                 pinned.update_bar.begin ();
             } catch (Error e) {
