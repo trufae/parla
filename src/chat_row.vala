@@ -193,6 +193,12 @@ namespace Dc {
             var popover = new Gtk.PopoverMenu.from_model (menu);
             popover.set_parent (parent);
             popover.set_pointing_to ({ (int) x, (int) y, 1, 1 });
+            popover.closed.connect (() => {
+                window.remove_action ("chat-pin");
+                window.remove_action ("chat-info");
+                window.remove_action ("chat-delete");
+                popover.unparent ();
+            });
             popover.popup ();
         }
 
