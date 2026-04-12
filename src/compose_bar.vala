@@ -48,7 +48,12 @@ namespace Dc {
             reply_label = new Gtk.Label ("");
             reply_label.add_css_class ("reply-label");
             reply_label.halign = Gtk.Align.START;
+            reply_label.valign = Gtk.Align.START;
             reply_label.hexpand = true;
+            reply_label.xalign = 0;
+            reply_label.wrap = true;
+            reply_label.wrap_mode = Pango.WrapMode.WORD_CHAR;
+            reply_label.lines = 3;
             reply_label.ellipsize = Pango.EllipsizeMode.END;
             reply_bar.append (reply_label);
 
@@ -224,9 +229,31 @@ namespace Dc {
         public void begin_reply (int msg_id, string sender_name, string preview) {
             cancel_edit ();
             replying_msg_id = msg_id;
-            reply_label.label = "%s: %s".printf (sender_name, preview);
+            reply_label.label = "%s: %s".printf (sender_name, shorten_preview (preview));
             reply_bar.visible = true;
             text_view.grab_focus ();
+        }
+
+        /* Keep at most 3 lines and bound total length so the reply bar
+           never explodes when quoting long messages. The label itself
+           also wraps + ellipsizes at 3 lines as a hard cap. */
+        private static string shorten_preview (string text) {
+            string[] lines = text.split ("\n");
+            int max_lines = 3;
+            int n = (lines.length < max_lines) ? lines.length : max_lines;
+            var sb = new StringBuilder ();
+            for (int i = 0; i < n; i++) {
+                if (i > 0) sb.append_c ('\n');
+                sb.append (lines[i]);
+            }
+            if (lines.length > max_lines) sb.append ("…");
+            string result = sb.str;
+            int max_chars = 240;
+            if (result.char_count () > max_chars) {
+                int byte_pos = result.index_of_nth_char (max_chars);
+                result = result.substring (0, byte_pos) + "…";
+            }
+            return result;
         }
 
         private void cancel_reply () {
