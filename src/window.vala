@@ -211,11 +211,16 @@ namespace Dc {
         private async void try_connect () {
             rpc = ((Dc.Application) this.application).rpc;
 
-            /* Find the RPC server binary */
-            string? rpc_path = AccountFinder.find_rpc_server ();
+            /* Reset any error widget left from a previous failed attempt. */
+            empty_status.child = null;
+            empty_status.icon_name = "mail-send-receive-symbolic";
+            empty_status.title = "Delta Chat";
+            empty_status.description = "Select a chat to start messaging,\nor wait for the connection…";
+
+            /* Find the RPC server binary — user override then auto-scan. */
+            string? rpc_path = AccountFinder.find_rpc_server (settings.rpc_server_path);
             if (rpc_path == null) {
-                show_toast ("Delta Chat RPC server not found. Install deltachat-rpc-server.");
-                empty_status.description = "deltachat-rpc-server not found.\nInstall it with: pip install deltachat-rpc-server";
+                show_rpc_not_found ();
                 return;
             }
 
@@ -269,6 +274,24 @@ namespace Dc {
                 yield load_profile_avatar ();
                 events.start.begin ();
             }
+        }
+
+        private void show_rpc_not_found () {
+            empty_status.icon_name = "dialog-error-symbolic";
+            empty_status.title = "RPC server not found";
+            empty_status.description = settings.rpc_server_path.length > 0
+                ? "Configured path is missing or not executable:\n" + settings.rpc_server_path
+                : "deltachat-rpc-server was not found.\nOpen Settings to locate it, or install it.";
+
+            var btn = new Gtk.Button.with_label ("Open Settings…");
+            btn.add_css_class ("suggested-action");
+            btn.add_css_class ("pill");
+            btn.halign = Gtk.Align.CENTER;
+            btn.clicked.connect (show_settings_dialog);
+            empty_status.child = btn;
+
+            content_stack.visible_child_name = "empty";
+            show_toast ("Delta Chat RPC server not found");
         }
 
         /* ================================================================
@@ -568,7 +591,12 @@ namespace Dc {
 
             var dialog = new SettingsDialog (rpc, this);
             active_modal = dialog;
-            dialog.closed.connect (() => { active_modal = null; });
+            dialog.closed.connect (() => {
+                active_modal = null;
+                if (!rpc.is_connected && settings.rpc_server_path.length > 0) {
+                    try_connect.begin ();
+                }
+            });
             dialog.account_changed.connect (() => {
                 reload_active_account.begin ();
             });

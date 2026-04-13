@@ -11,8 +11,17 @@ namespace Dc {
 
         /**
          * Return an absolute path to deltachat-rpc-server, or null if none found.
+         *
+         * When `override_path` is non-empty, it is used exclusively: if it is
+         * not executable, null is returned so the caller can surface a
+         * "configured path is broken" error instead of silently falling back
+         * to the scan.
          */
-        public static string? find_rpc_server () {
+        public static string? find_rpc_server (string? override_path = null) {
+            if (override_path != null && override_path.length > 0) {
+                return FileUtils.test (override_path, FileTest.IS_EXECUTABLE) ? override_path : null;
+            }
+
             /* PATH first — covers distro packages, /usr/local, and ~/.local/bin
              * when the user has it exported. */
             string? in_path = Environment.find_program_in_path (RPC_BIN);
