@@ -159,13 +159,6 @@ namespace Dc {
         public bool is_verified { get; set; default = false; }
     }
 
-    public class FoundInstallation : Object {
-        public string label { get; set; default = ""; }
-        public string data_path { get; set; default = ""; }
-        public string? email { get; set; default = null; }
-        public string source { get; set; default = ""; }
-    }
-
     public ChatEntry? find_chat_entry (GLib.ListStore store, int chat_id) {
         for (uint i = 0; i < store.get_n_items (); i++) {
             var entry = (ChatEntry) store.get_item (i);

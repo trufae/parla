@@ -212,20 +212,20 @@ namespace Dc {
             rpc = ((Dc.Application) this.application).rpc;
 
             /* Find the RPC server binary */
-            string[]? rpc_cmd = AccountFinder.find_rpc_server ();
-            if (rpc_cmd == null) {
+            string? rpc_path = AccountFinder.find_rpc_server ();
+            if (rpc_path == null) {
                 show_toast ("Delta Chat RPC server not found. Install deltachat-rpc-server.");
                 empty_status.description = "deltachat-rpc-server not found.\nInstall it with: pip install deltachat-rpc-server";
                 return;
             }
 
             /* Determine data directory and accounts path */
-            string data_dir = AccountFinder.get_default_data_dir ();
+            string data_dir = AccountFinder.get_data_dir ();
             string accounts_path = Path.build_filename (data_dir, "accounts");
 
             /* Try to connect */
             try {
-                yield rpc.start (rpc_cmd, data_dir, accounts_path);
+                yield rpc.start ({ rpc_path }, data_dir, accounts_path);
             } catch (Error e) {
                 string msg = e.message;
                 if ("already running" in msg.down () || "accounts.lock" in msg.down ()) {
