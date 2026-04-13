@@ -114,14 +114,6 @@ namespace Dc {
         return row;
     }
 
-    public class Account : Object {
-        public int id { get; set; default = 0; }
-        public string email { get; set; default = ""; }
-        public string password { get; set; default = ""; }
-        public bool configured { get; set; default = false; }
-        public string? display_name { get; set; default = null; }
-    }
-
     public class ChatEntry : Object {
         public int id { get; set; default = 0; }
         public string name { get; set; default = ""; }
@@ -171,7 +163,6 @@ namespace Dc {
         public string label { get; set; default = ""; }
         public string data_path { get; set; default = ""; }
         public string? email { get; set; default = null; }
-        public string? password { get; set; default = null; }
         public string source { get; set; default = ""; }
     }
 

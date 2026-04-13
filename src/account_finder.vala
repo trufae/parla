@@ -1,8 +1,8 @@
 namespace Dc {
 
     /**
-     * Locates existing DeltaChat installations, config files, and the RPC server binary.
-     * Supports Flatpak, native, and openclaw-deltachat configurations.
+     * Locates existing DeltaChat installations and the RPC server binary.
+     * Supports Flatpak, native, and Snap installations.
      */
     public class AccountFinder {
 
@@ -93,15 +93,12 @@ namespace Dc {
             );
             check_deltachat_dir (results, snap_dir, "Delta Chat Desktop (Snap)");
 
-            /* openclaw-deltachat config files */
-            find_openclaw_configs (results);
-
             return results;
         }
 
         /**
          * Find the best data directory to start the RPC server in.
-         * Prefers Flatpak > native > openclaw > fallback.
+         * Prefers Flatpak > native > fallback.
          */
         public static string get_default_data_dir () {
             var installations = find_installations ();
@@ -114,42 +111,10 @@ namespace Dc {
             }
             /* Fallback: create in user config */
             string fallback = Path.build_filename (
-                Environment.get_home_dir (), ".config", "openclaw-deltachat"
+                Environment.get_home_dir (), ".config", "deltachat-gnome"
             );
             DirUtils.create_with_parents (fallback, 0700);
             return fallback;
-        }
-
-        /**
-         * Try to read credentials from the first found openclaw-deltachat config.
-         * Returns an Account with email/password if found, null otherwise.
-         */
-        public static Account? get_credentials_from_config () {
-            string[] config_candidates = {
-                Environment.get_variable ("OPENCLAW_DELTACHAT_CONFIG") ?? "",
-                Environment.get_variable ("DELTACHAT_CONFIG") ?? "",
-                Path.build_filename (Environment.get_home_dir (),
-                    ".openclaw", "extensions", "deltachat", "deltachat-config.json"),
-                Path.build_filename (Environment.get_home_dir (),
-                    "prg", "openclaw-deltachat", "deltachat-config.json"),
-                "deltachat-config.json"
-            };
-
-            foreach (string candidate in config_candidates) {
-                if (candidate.length == 0) continue;
-
-                string path = expand_home (candidate);
-                if (!Path.is_absolute (path)) {
-                    path = Path.build_filename (Environment.get_current_dir (), path);
-                }
-
-                if (!FileUtils.test (path, FileTest.EXISTS)) continue;
-
-                var account = parse_openclaw_config (path);
-                if (account != null) return account;
-            }
-
-            return null;
         }
 
         /* ---- Private helpers ---- */
@@ -265,100 +230,6 @@ namespace Dc {
             return null;
         }
 
-        private static void find_openclaw_configs (GenericArray<FoundInstallation> results) {
-            string[] candidates = {
-                Path.build_filename (Environment.get_home_dir (),
-                    ".openclaw", "extensions", "deltachat", "deltachat-config.json"),
-                Path.build_filename (Environment.get_home_dir (),
-                    "prg", "openclaw-deltachat", "deltachat-config.json"),
-            };
-
-            /* Also check env vars */
-            string? env1 = Environment.get_variable ("OPENCLAW_DELTACHAT_CONFIG");
-            string? env2 = Environment.get_variable ("DELTACHAT_CONFIG");
-
-            string[] all_candidates = {};
-            if (env1 != null && env1.length > 0) all_candidates += expand_home (env1);
-            if (env2 != null && env2.length > 0) all_candidates += expand_home (env2);
-            foreach (string c in candidates) all_candidates += c;
-
-            foreach (string path in all_candidates) {
-                if (!FileUtils.test (path, FileTest.EXISTS)) continue;
-
-                var account = parse_openclaw_config (path);
-                if (account == null) continue;
-
-                var inst = new FoundInstallation ();
-                inst.label = "OpenClaw config (%s)".printf (Path.get_basename (
-                    Path.get_dirname (path)));
-                inst.data_path = Path.get_dirname (path);
-                inst.email = account.email;
-                inst.password = account.password;
-                inst.source = "openclaw";
-                results.add (inst);
-            }
-        }
-
-        private static Account? parse_openclaw_config (string path) {
-            try {
-                string contents;
-                FileUtils.get_contents (path, out contents);
-
-                var parser = new Json.Parser ();
-                parser.load_from_data (contents);
-
-                var root = parser.get_root ();
-                if (root == null || root.get_node_type () != Json.NodeType.OBJECT) return null;
-
-                var obj = root.get_object ();
-                if (!obj.has_member ("accounts")) return null;
-
-                var accounts_node = obj.get_member ("accounts");
-                if (accounts_node.get_node_type () != Json.NodeType.ARRAY) return null;
-
-                var accounts = accounts_node.get_array ();
-                if (accounts.get_length () == 0) return null;
-
-                var first = accounts.get_object_element (0);
-                string? email = null;
-                string? password = null;
-
-                if (first.has_member ("email"))
-                    email = first.get_string_member ("email");
-                else if (first.has_member ("addr"))
-                    email = first.get_string_member ("addr");
-
-                if (first.has_member ("mail_pw"))
-                    password = first.get_string_member ("mail_pw");
-                else if (first.has_member ("password"))
-                    password = first.get_string_member ("password");
-
-                if (email == null || email.length == 0) return null;
-
-                var account = new Account ();
-                account.email = email;
-                account.password = password ?? "";
-
-                if (first.has_member ("display_name") &&
-                    !first.get_member ("display_name").is_null ()) {
-                    account.display_name = first.get_string_member ("display_name");
-                }
-
-                return account;
-            } catch (Error e) {
-                return null;
-            }
-        }
-
-        private static string expand_home (string path) {
-            if (path == "~") return Environment.get_home_dir ();
-            if (path.has_prefix ("~/")) {
-                return Path.build_filename (
-                    Environment.get_home_dir (), path.substring (2));
-            }
-            return path;
-        }
-
         /**
          * Find and activate a configured account, or create one from
          * credentials. Returns the account id (>0) on success, or 0 with
@@ -384,17 +255,6 @@ namespace Dc {
                     }
                 }
 
-                var creds = get_credentials_from_config ();
-                if (creds != null && creds.email.length > 0 && creds.password.length > 0) {
-                    int acct_id = yield rpc.add_account ();
-                    yield rpc.add_or_update_transport (acct_id, creds.email, creds.password);
-                    yield rpc.select_account (acct_id);
-                    yield rpc.start_io (acct_id);
-                    rpc.account_id = acct_id;
-                    toast_msg = "Configured account: " + creds.email;
-                    return acct_id;
-                }
-
                 var installations = find_installations ();
                 if (installations.length > 0) {
                     var sb = new StringBuilder ("Found installations:\n");
@@ -404,12 +264,11 @@ namespace Dc {
                         if (inst.email != null) sb.append (" (%s)".printf (inst.email));
                         sb.append ("\n");
                     }
-                    description = sb.str +
-                        "\nCreate a deltachat-config.json with email/password to connect.";
+                    description = sb.str + "\nAdd an account from Settings to connect.";
                 } else {
                     description =
                         "No Delta Chat accounts found.\n" +
-                        "Create deltachat-config.json with your credentials.";
+                        "Add an account from Settings to connect.";
                 }
             } catch (Error e) {
                 toast_msg = "Account setup error: " + e.message;

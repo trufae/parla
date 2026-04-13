@@ -46,7 +46,7 @@ Lightweight **Vala** + **GTK4** + **libadwaita** desktop client that talks to [d
 
 ### Accounts & profile
 
-- **Auto-discovery** of existing Delta Chat accounts from Delta Chat Desktop, Flatpak, Snap and OpenClaw installations — no re-login needed.
+- **Auto-discovery** of existing Delta Chat accounts from Delta Chat Desktop, Flatpak and Snap installations — no re-login needed.
 - **Auto-discovery of `deltachat-rpc-server`** from `$PATH`, `~/.local/bin`, pip user installs, virtualenvs, and Flatpak runtimes.
 - **Multi-account** switching from the settings dialog.
 - **My Profile** dialog to edit display name, status and avatar.
