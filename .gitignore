@@ -6,4 +6,5 @@ dist/debian/parla/data/
 dist/debian/parla/debian-binary
 dist/debian/parla/root/
 dist/debian/parla/*.deb
+src/config.vala
 .codex/

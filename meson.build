@@ -11,6 +11,14 @@ deps = [
   dependency('json-glib-1.0'),
 ]
 
+config = configuration_data()
+config.set('VERSION', meson.project_version())
+config_file = configure_file(
+  input: 'src/config.vala.in',
+  output: 'config.vala',
+  configuration: config,
+)
+
 sources = files(
   'src/main.vala',
   'src/application.vala',
@@ -35,7 +43,7 @@ sources = files(
 )
 
 executable('parla',
-  sources,
+  sources, config_file,
   dependencies: deps,
   install: true,
 )

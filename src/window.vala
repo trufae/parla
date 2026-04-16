@@ -576,7 +576,7 @@ namespace Dc {
             var about = new Adw.AboutDialog ();
             about.application_name = "Parla";
             about.application_icon = "io.github.trufae.Parla";
-            about.version = "0.2.0";
+            about.version = Parla.VERSION;
             about.developer_name = "pancake";
             about.developers = { "pancake" };
             about.license_type = Gtk.License.GPL_3_0;
