@@ -242,6 +242,22 @@ namespace Dc {
             content.append (advanced_list);
             update_rpc_row ();
 
+            var reset_box = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 8);
+            reset_box.margin_top = 8;
+
+            var reset_btn = new Gtk.Button.with_label ("Factory Reset");
+            reset_btn.add_css_class ("destructive-action");
+            reset_btn.tooltip_text = "Delete all Parla configuration and start fresh";
+            reset_btn.clicked.connect (on_reset_settings);
+            reset_box.append (reset_btn);
+
+            var reset_label = new Gtk.Label ("Remove all settings and close the app");
+            reset_label.add_css_class ("dim-label");
+            reset_label.valign = Gtk.Align.CENTER;
+            reset_box.append (reset_label);
+
+            content.append (reset_box);
+
             var scroll = new Gtk.ScrolledWindow ();
             scroll.vexpand = true;
             scroll.hscrollbar_policy = Gtk.PolicyType.NEVER;
@@ -482,6 +498,23 @@ namespace Dc {
             } catch (Error e) {
                 show_error (app_window, e.message);
             }
+        }
+
+        private void on_reset_settings () {
+            confirm_action (app_window, "Factory Reset",
+                "This will delete all Parla configuration files and close the application. " +
+                "Your Delta Chat accounts and messages are not affected.",
+                "reset", "Reset & Close", () => {
+                    delete_parla_config ();
+                    app_window.application.quit ();
+                });
+        }
+
+        private static void delete_parla_config () {
+            var dir = Path.build_filename (
+                Environment.get_user_config_dir (), "parla");
+            FileUtils.unlink (Path.build_filename (dir, "settings.ini"));
+            DirUtils.remove (dir);
         }
     }
 }
