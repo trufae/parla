@@ -49,7 +49,7 @@ namespace Dc {
                 application: app,
                 default_width: 920,
                 default_height: 640,
-                title: "Delta Chat"
+                title: "Parla"
             );
         }
 
@@ -79,7 +79,7 @@ namespace Dc {
             var sidebar_box = new Gtk.Box (Gtk.Orientation.VERTICAL, 0);
 
             sidebar_header = new Adw.HeaderBar ();
-            var title_widget = new Adw.WindowTitle ("Delta Chat", "");
+            var title_widget = new Adw.WindowTitle ("Parla", "");
             sidebar_header.title_widget = title_widget;
 
             /* Profile avatar button in header */
@@ -172,7 +172,7 @@ namespace Dc {
 
             empty_status = new Adw.StatusPage ();
             empty_status.icon_name = "mail-send-receive-symbolic";
-            empty_status.title = "Delta Chat";
+            empty_status.title = "Parla";
             empty_status.description = "Select a chat to start messaging,\nor wait for the connection…";
             content_stack.add_named (empty_status, "empty");
             content_stack.visible_child_name = "empty";
@@ -214,7 +214,7 @@ namespace Dc {
             /* Reset any error widget left from a previous failed attempt. */
             empty_status.child = null;
             empty_status.icon_name = "mail-send-receive-symbolic";
-            empty_status.title = "Delta Chat";
+            empty_status.title = "Parla";
             empty_status.description = "Select a chat to start messaging,\nor wait for the connection…";
 
             /* Find the RPC server binary — user override then auto-scan. */
@@ -234,7 +234,7 @@ namespace Dc {
             } catch (Error e) {
                 string msg = e.message;
                 if ("already running" in msg.down () || "accounts.lock" in msg.down ()) {
-                    show_toast ("Cannot connect — Delta Chat Desktop is running");
+                    show_toast ("Cannot connect — Delta Chat Desktop is already running");
                     empty_status.description =
                         "Delta Chat Desktop is already running.\n\n" +
                         "Close it first, then restart this app.";
@@ -291,7 +291,7 @@ namespace Dc {
             empty_status.child = btn;
 
             content_stack.visible_child_name = "empty";
-            show_toast ("Delta Chat RPC server not found");
+            show_toast ("deltachat-rpc-server not found");
         }
 
         /* ================================================================
@@ -574,15 +574,15 @@ namespace Dc {
 
         private void show_about_dialog () {
             var about = new Adw.AboutDialog ();
-            about.application_name = "Delta Chat";
-            about.application_icon = "org.deltachat.Gnome";
+            about.application_name = "Parla";
+            about.application_icon = "io.github.trufae.Parla";
             about.version = "0.2.0";
             about.developer_name = "pancake";
             about.developers = { "pancake" };
             about.license_type = Gtk.License.GPL_3_0;
             about.website = "https://delta.chat";
-            about.issue_url = "https://github.com/nickolay/deltachat-gnome/issues";
-            about.comments = "Native Delta Chat client for GNOME";
+            about.issue_url = "https://github.com/trufae/parla/issues";
+            about.comments = "A Delta Chat client for GNOME";
             about.present (this);
         }
 

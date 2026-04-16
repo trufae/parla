@@ -1,8 +1,8 @@
 all:
-	$(MAKE) -C deltachat-gnome
+	$(MAKE) -C parla
 
 clean:
-	$(MAKE) -C deltachat-gnome clean
+	$(MAKE) -C parla clean
 
 mrproper:
-	$(MAKE) -C deltachat-gnome mrproper
+	$(MAKE) -C parla mrproper

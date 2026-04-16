@@ -13,7 +13,7 @@ namespace Dc {
         public static string get_config_path () {
             return Path.build_filename (
                 Environment.get_user_config_dir (),
-                "deltachat-gnome", "settings.ini");
+                "parla", "settings.ini");
         }
 
         public void load () {

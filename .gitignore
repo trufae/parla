@@ -1,9 +1,9 @@
 builddir/
 accounts/
-dist/debian/deltachat-gnome/build/
-dist/debian/deltachat-gnome/control/
-dist/debian/deltachat-gnome/data/
-dist/debian/deltachat-gnome/debian-binary
-dist/debian/deltachat-gnome/root/
-dist/debian/deltachat-gnome/*.deb
+dist/debian/parla/build/
+dist/debian/parla/control/
+dist/debian/parla/data/
+dist/debian/parla/debian-binary
+dist/debian/parla/root/
+dist/debian/parla/*.deb
 .codex/

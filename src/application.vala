@@ -13,7 +13,7 @@ namespace Dc {
 
         public Application () {
             Object (
-                application_id: "org.deltachat.Gnome",
+                application_id: "io.github.trufae.Parla",
                 flags: ApplicationFlags.FLAGS_NONE
             );
         }
@@ -34,7 +34,7 @@ namespace Dc {
             base.startup ();
             load_css ();
             register_icons ();
-            Gtk.Window.set_default_icon_name ("org.deltachat.Gnome");
+            Gtk.Window.set_default_icon_name ("io.github.trufae.Parla");
 
             set_accels_for_action ("win.new-chat", {"<Control>n"});
             set_accels_for_action ("win.refresh", {"<Control>r"});

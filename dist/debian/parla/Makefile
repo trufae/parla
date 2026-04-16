@@ -18,8 +18,8 @@ root:
 	mkdir -p root$(PREFIX)/bin
 	mkdir -p root$(PREFIX)/share/applications
 	mkdir -p root$(PREFIX)/share/icons/hicolor/scalable/apps
-	cp $(ROOT_DIR)/builddir/deltachat-gnome root$(PREFIX)/bin/deltachat-gnome
-	cp $(ROOT_DIR)/data/org.deltachat.Gnome.desktop root$(PREFIX)/share/applications/
-	cp $(ROOT_DIR)/data/icons/hicolor/scalable/apps/org.deltachat.Gnome.svg root$(PREFIX)/share/icons/hicolor/scalable/apps/
+	cp $(ROOT_DIR)/builddir/parla root$(PREFIX)/bin/parla
+	cp $(ROOT_DIR)/data/io.github.trufae.Parla.desktop root$(PREFIX)/share/applications/
+	cp $(ROOT_DIR)/data/icons/hicolor/scalable/apps/io.github.trufae.Parla.svg root$(PREFIX)/share/icons/hicolor/scalable/apps/
 
 include ../deb_hand.mak

@@ -194,7 +194,7 @@ namespace Dc {
             }
         }
 
-        /* ---- High-level Delta Chat RPC methods ---- */
+        /* ---- High-level RPC methods ---- */
 
         public async Json.Node? get_all_accounts () throws Error {
             return yield call ("get_all_accounts", Params.begin ().build ());

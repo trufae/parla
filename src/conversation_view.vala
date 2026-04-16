@@ -461,7 +461,7 @@ namespace Dc {
                 string name = file.get_basename () ?? "attachment";
                 if (path == null) {
                     GLib.FileIOStream stream;
-                    var tmp = GLib.File.new_tmp ("deltachat-gnome-XXXXXX", out stream);
+                    var tmp = GLib.File.new_tmp ("parla-XXXXXX", out stream);
                     stream.close ();
                     yield file.copy_async (tmp, FileCopyFlags.OVERWRITE,
                                            Priority.DEFAULT, null, null);

@@ -1,4 +1,4 @@
-project('deltachat-gnome', ['vala', 'c'],
+project('parla', ['vala', 'c'],
   version: '0.2.0',
   meson_version: '>= 0.59.0',
 )
@@ -34,18 +34,18 @@ sources = files(
   'src/message_actions.vala',
 )
 
-executable('deltachat-gnome',
+executable('parla',
   sources,
   dependencies: deps,
   install: true,
 )
 
 install_data(
-  'data/org.deltachat.Gnome.desktop',
+  'data/io.github.trufae.Parla.desktop',
   install_dir: get_option('datadir') / 'applications',
 )
 
 install_data(
-  'data/icons/hicolor/scalable/apps/org.deltachat.Gnome.svg',
+  'data/icons/hicolor/scalable/apps/io.github.trufae.Parla.svg',
   install_dir: get_option('datadir') / 'icons' / 'hicolor' / 'scalable' / 'apps',
 )

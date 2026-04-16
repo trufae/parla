@@ -1,9 +1,9 @@
 {
-    "id": "org.deltachat.Gnome",
+    "id": "io.github.trufae.Parla",
     "runtime": "org.gnome.Platform",
     "runtime-version": "48",
     "sdk": "org.gnome.Sdk",
-    "command": "deltachat-gnome",
+    "command": "parla",
     "finish-args": [
         "--share=ipc",
         "--share=network",
@@ -13,7 +13,7 @@
     ],
     "modules": [
         {
-            "name": "deltachat-gnome",
+            "name": "parla",
             "buildsystem": "meson",
             "sources": [
                 {

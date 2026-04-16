@@ -62,8 +62,8 @@ jobs:
       - name: Upload .deb artifact
         uses: actions/upload-artifact@v7
         with:
-          name: deltachat-gnome-deb
-          path: dist/debian/deltachat-gnome/*.deb
+          name: parla-deb
+          path: dist/debian/parla/*.deb
 
   build-flatpak:
     runs-on: ubuntu-24.04
@@ -75,9 +75,9 @@ jobs:
 
       - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
         with:
-          manifest-path: dist/flatpak/org.deltachat.Gnome.json
-          bundle: deltachat-gnome.flatpak
-          cache-key: flatpak-builder-${{ hashFiles('dist/flatpak/org.deltachat.Gnome.json') }}
+          manifest-path: dist/flatpak/io.github.trufae.Parla.json
+          bundle: parla.flatpak
+          cache-key: flatpak-builder-${{ hashFiles('dist/flatpak/io.github.trufae.Parla.json') }}
 
   release:
     if: startsWith(github.ref, 'refs/tags/')

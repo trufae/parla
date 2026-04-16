@@ -62,7 +62,7 @@ namespace Dc {
 
         /**
          * Return a Delta Chat Desktop data directory to reuse, or create
-         * and return a private fallback under ~/.config/deltachat-gnome.
+         * and return a private fallback under ~/.config/parla.
          */
         public static string get_data_dir () {
             string home = Environment.get_home_dir ();
@@ -77,7 +77,7 @@ namespace Dc {
                 string accounts = Path.build_filename (dir, "accounts");
                 if (FileUtils.test (accounts, FileTest.IS_DIR)) return dir;
             }
-            string fallback = Path.build_filename (home, ".config", "deltachat-gnome");
+            string fallback = Path.build_filename (home, ".config", "parla");
             DirUtils.create_with_parents (fallback, 0700);
             return fallback;
         }

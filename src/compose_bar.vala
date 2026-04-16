@@ -359,7 +359,7 @@ namespace Dc {
                 var texture = yield clipboard.read_texture_async (null);
                 if (texture == null) return;
                 GLib.FileIOStream stream;
-                var tmp = GLib.File.new_tmp ("deltachat-gnome-XXXXXX.png", out stream);
+                var tmp = GLib.File.new_tmp ("parla-XXXXXX.png", out stream);
                 stream.close ();
                 string path = tmp.get_path ();
                 if (texture.save_to_png (path)) {

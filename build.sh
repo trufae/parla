@@ -1,5 +1,5 @@
 #!/bin/bash
-# Build script for Delta Chat GNOME client
+# Build script for Parla — a Delta Chat client for GNOME
 set -e
 
 cd "$(dirname "$0")"
@@ -12,4 +12,4 @@ meson compile -C builddir
 
 echo ""
 echo "Build successful! Run with:"
-echo "  ./builddir/deltachat-gnome"
+echo "  ./builddir/parla"

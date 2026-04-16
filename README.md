@@ -1,16 +1,16 @@
 <p align="center">
-  <img src="delta-gnome.png" width="96" alt="Delta Chat GNOME logo"/>
+  <img src="delta-gnome.png" width="96" alt="Parla logo"/>
 </p>
 
-<h1 align="center">Delta Chat GNOME</h1>
+<h1 align="center">Parla</h1>
 
 <p align="center">
-  Native GNOME client for <a href="https://delta.chat">Delta Chat</a> &mdash; chat over email, decentralized and encrypted.
+  A <a href="https://delta.chat">Delta Chat</a> client for GNOME &mdash; chat over email, decentralized and encrypted.
 </p>
 
 <p align="center">
-  <a href="https://github.com/trufae/deltachat-gnome/actions/workflows/build.yml"><img alt="CI" src="https://github.com/trufae/deltachat-gnome/actions/workflows/build.yml/badge.svg"/></a>
-  <a href="https://github.com/trufae/deltachat-gnome/releases/latest"><img alt="Flatpak" src="https://img.shields.io/badge/Flatpak-download-4a86cf?style=flat-square&logo=flatpak&logoColor=white"/></a>
+  <a href="https://github.com/trufae/parla/actions/workflows/build.yml"><img alt="CI" src="https://github.com/trufae/parla/actions/workflows/build.yml/badge.svg"/></a>
+  <a href="https://github.com/trufae/parla/releases/latest"><img alt="Flatpak" src="https://img.shields.io/badge/Flatpak-download-4a86cf?style=flat-square&logo=flatpak&logoColor=white"/></a>
   <img alt="License" src="https://img.shields.io/badge/license-GPLv3-blue?style=flat-square"/>
   <img alt="GTK4 + libadwaita" src="https://img.shields.io/badge/GTK4-libadwaita-4a86cf?style=flat-square&logo=gnome&logoColor=white"/>
   <img alt="Vala" src="https://img.shields.io/badge/lang-Vala-a56de2?style=flat-square"/>
@@ -94,7 +94,7 @@ make ; make run
 
 **Arch:** `sudo pacman -S vala meson gtk4 libadwaita json-glib`
 
-**FlatPak:** `flatpak install org.deltachat.Gnome.flatpak`
+**FlatPak:** `flatpak install io.github.trufae.Parla.flatpak`
 </details>
 
 ## Contributing
