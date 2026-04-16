@@ -647,8 +647,11 @@ namespace Dc {
                 return true;
             }
 
-            /* Escape: close message search, then focus input entry */
+            /* Escape: close any open dialog, then focus input entry */
             if (keyval == Gdk.Key.Escape) {
+                for (var w = this.focus_widget; w != null; w = w.get_parent ()) {
+                    if (w is Adw.Dialog) { ((Adw.Dialog) w).close (); break; }
+                }
                 var v = current_view ();
                 if (v != null) {
                     v.close_search_if_active ();
