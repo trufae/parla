@@ -104,6 +104,7 @@ namespace Dc {
         else if (c.is_verified) subtitle = "(verified)";
 
         var row = new Adw.ActionRow ();
+        row.use_markup = false;
         row.title = title;
         row.subtitle = subtitle;
         row.activatable = activatable;

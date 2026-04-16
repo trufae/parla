@@ -240,7 +240,7 @@ namespace Dc {
                         "Close it first, then restart this app.";
                 } else {
                     show_toast ("RPC server error: " + msg);
-                    empty_status.description = "Failed to start RPC server:\n\n" + msg;
+                    empty_status.description = "Failed to start RPC server:\n\n" + Markup.escape_text (msg);
                 }
                 return;
             }
@@ -280,7 +280,7 @@ namespace Dc {
             empty_status.icon_name = "dialog-error-symbolic";
             empty_status.title = "RPC server not found";
             empty_status.description = settings.rpc_server_path.length > 0
-                ? "Configured path is missing or not executable:\n" + settings.rpc_server_path
+                ? "Configured path is missing or not executable:\n" + Markup.escape_text (settings.rpc_server_path)
                 : "deltachat-rpc-server was not found.\nOpen Settings to locate it, or install it.";
 
             var btn = new Gtk.Button.with_label ("Open Settings…");

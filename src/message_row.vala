@@ -137,8 +137,17 @@ namespace Dc {
 
             /* Message text */
             if (msg.text != null && msg.text.length > 0) {
-                var text = new Gtk.Label (null);
-                text.set_markup (Markdown.format (msg.text));
+                var text = new Gtk.Label (msg.text);
+                try {
+                    string markup = Markdown.format (msg.text);
+                    Pango.AttrList attrs;
+                    string parsed;
+                    unichar accel;
+                    Pango.parse_markup (markup, -1, 0, out attrs, out parsed, out accel);
+                    text.set_markup (markup);
+                } catch {
+                    /* invalid markup — plain text fallback already set */
+                }
                 text.wrap = true;
                 text.wrap_mode = Pango.WrapMode.WORD_CHAR;
                 text.halign = Gtk.Align.START;

@@ -293,6 +293,7 @@ namespace Dc {
                     }
 
                     var action_row = new Adw.ActionRow ();
+                    action_row.use_markup = false;
                     action_row.title = email ?? "Unconfigured account";
                     if (display_name != null && display_name.length > 0) {
                         action_row.subtitle = display_name;
@@ -343,6 +344,7 @@ namespace Dc {
                 }
             } catch (Error e) {
                 var err_row = new Adw.ActionRow ();
+                err_row.use_markup = false;
                 err_row.title = "Error loading accounts";
                 err_row.subtitle = e.message;
                 accounts_list.append (err_row);
