@@ -294,14 +294,14 @@ namespace Dc {
 
                     var action_row = new Adw.ActionRow ();
                     action_row.use_markup = false;
-                    action_row.title = email ?? "Unconfigured account";
                     if (display_name != null && display_name.length > 0) {
-                        action_row.subtitle = display_name;
+                        action_row.title = display_name;
                     } else if (configured) {
-                        action_row.subtitle = "Account #%d".printf (id);
+                        action_row.title = email ?? "Account #%d".printf (id);
                     } else {
-                        action_row.subtitle = "Not configured";
+                        action_row.title = "Unconfigured account";
                     }
+                    action_row.subtitle = email ?? "";
                     action_row.activatable = true;
 
                     /* Store account id so we can switch on click */
