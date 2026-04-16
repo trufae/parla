@@ -280,18 +280,9 @@ namespace Dc {
                     batch[i] = messages[i];
                 }
                 message_store.splice (0, message_store.get_n_items (), batch);
-
-                if (messages.length == 0) {
-                    loading_chat = false;
-                    scroll_down_btn.visible = !is_near_bottom ();
-                } else {
-                    ulong scroll_handler_id = 0;
-                    scroll_handler_id = message_scroll.vadjustment.notify["upper"].connect (() => {
-                        scroll_to_bottom ();
-                        loading_chat = false;
-                        scroll_down_btn.visible = !is_near_bottom ();
-                        SignalHandler.disconnect (message_scroll.vadjustment, scroll_handler_id);
-                    });
+                loading_chat = false;
+                if (messages.length > 0) {
+                    scroll_to_bottom ();
                 }
 
                 pinned.update_bar.begin ();
@@ -381,6 +372,10 @@ namespace Dc {
         public void scroll_to_bottom () {
             stick_to_bottom = true;
             maybe_autoscroll ();
+            uint n = filtered_message_store.get_n_items ();
+            if (n > 0) {
+                message_listview.scroll_to (n - 1, Gtk.ListScrollFlags.NONE, null);
+            }
         }
 
         private void insert_message_sorted (Message msg) {
