@@ -647,11 +647,14 @@ namespace Dc {
                 return true;
             }
 
-            /* Escape: close message search if active */
+            /* Escape: close message search, then focus input entry */
             if (keyval == Gdk.Key.Escape) {
                 var v = current_view ();
-                if (v != null && v.close_search_if_active ()) return true;
-                return false;
+                if (v != null) {
+                    v.close_search_if_active ();
+                    v.focus_entry ();
+                }
+                return true;
             }
 
             /* All other shortcuts require Ctrl */
@@ -688,13 +691,6 @@ namespace Dc {
             case Gdk.Key.q:
             case Gdk.Key.Q:
                 this.application.quit ();
-                return true;
-            case Gdk.Key.l:
-            case Gdk.Key.L:
-                {
-                    var v = current_view ();
-                    if (v != null) v.on_reselected ();
-                }
                 return true;
             }
             return false;
@@ -748,7 +744,7 @@ namespace Dc {
             "Search in conversation","<Control>f",
             "Quick switch chat",     "<Control>k",
             "Refresh messages",      "<Control>r",
-            "Focus message entry",   "<Control>l",
+            "Focus message entry",   "Escape",
             "Close window",          "<Control>w",
             "Quit application",      "<Control>q",
         };
