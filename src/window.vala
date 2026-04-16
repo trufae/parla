@@ -580,9 +580,22 @@ namespace Dc {
             about.developer_name = "pancake";
             about.developers = { "pancake" };
             about.license_type = Gtk.License.GPL_3_0;
-            about.website = "https://delta.chat";
+            about.website = "https://github.com/trufae/parla";
             about.issue_url = "https://github.com/trufae/parla/issues";
             about.comments = "A Delta Chat client for GNOME";
+            about.release_notes_version = Parla.VERSION;
+            about.release_notes =
+                "<p>What's New in Parla</p>" +
+                "<ul>" +
+                "<li>Rebranded from DCGnome to Parla</li>" +
+                "<li>Factory Reset option in advanced settings</li>" +
+                "<li>Configurable RPC server path in settings</li>" +
+                "<li>Flatpak support with GNOME 48 runtime</li>" +
+                "<li>Use ESC instead of Control+L to focus input</li>" +
+                "<li>Graceful plaintext fallback for invalid markdown</li>" +
+                "<li>Faster conversation loading with ListView</li>" +
+                "<li>Precompiled markdown for better performance</li>" +
+                "</ul>";
             about.present (this);
         }
 
