@@ -18,6 +18,7 @@ namespace Dc {
         private string placeholder_default = "Type a message…";
         private Gtk.Button send_button;
         private Gtk.Button attach_button;
+        private Gtk.MenuButton emoji_button;
         private Gtk.Button cancel_attach_button;
         private Gtk.Button cancel_edit_button;
         private Gtk.Button cancel_reply_button;
@@ -77,6 +78,17 @@ namespace Dc {
             attach_button.valign = Gtk.Align.CENTER;
             attach_button.clicked.connect (on_attach_clicked);
             input_row.append (attach_button);
+
+            /* Emoji picker button */
+            var emoji_chooser = new Gtk.EmojiChooser ();
+            emoji_chooser.emoji_picked.connect (on_emoji_picked);
+            emoji_button = new Gtk.MenuButton ();
+            emoji_button.icon_name = "face-smile-symbolic";
+            emoji_button.popover = emoji_chooser;
+            emoji_button.add_css_class ("flat");
+            emoji_button.tooltip_text = "Insert emoji";
+            emoji_button.valign = Gtk.Align.CENTER;
+            input_row.append (emoji_button);
 
             /* Cancel attachment button (hidden by default) */
             cancel_attach_button = new Gtk.Button.from_icon_name ("edit-clear-symbolic");
@@ -284,6 +296,11 @@ namespace Dc {
             set_placeholder (placeholder_default);
             cancel_edit_button.visible = false;
             attach_button.sensitive = true;
+        }
+
+        private void on_emoji_picked (string emoji) {
+            text_view.buffer.insert_at_cursor (emoji, emoji.length);
+            text_view.grab_focus ();
         }
 
         private void on_attach_clicked () {
