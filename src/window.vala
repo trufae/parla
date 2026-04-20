@@ -12,7 +12,7 @@ namespace Dc {
 
         /* Chat list */
         private Gtk.ListBox chat_listbox;
-        private GLib.ListStore chat_store;
+        public GLib.ListStore chat_store { get; private set; }
 
         /* Per-chat cached views */
         private HashTable<int, ConversationView> views;

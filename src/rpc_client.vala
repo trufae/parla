@@ -484,6 +484,15 @@ namespace Dc {
                     .build ());
         }
 
+        public async void forward_messages (int[] msg_ids, int chat_id) throws Error {
+            yield call ("forward_messages",
+                Params.begin ()
+                    .add_int (account_id)
+                    .add_int_array (msg_ids)
+                    .add_int (chat_id)
+                    .build ());
+        }
+
         public async void delete_messages_for_all (int[] msg_ids) throws Error {
             yield call ("delete_messages_for_all",
                 Params.begin ()

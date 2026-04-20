@@ -34,6 +34,26 @@ namespace Dc {
             vbox.margin_top = 4;
             vbox.margin_bottom = 4;
 
+            /* Reactions — first so they are most easily reachable */
+            string[] emojis = { "\xf0\x9f\x91\x8d", "\xe2\x9d\xa4\xef\xb8\x8f",
+                                 "\xf0\x9f\x98\x82", "\xf0\x9f\x98\xae",
+                                 "\xf0\x9f\x98\xa2", "\xf0\x9f\x91\x8e" };
+            var emoji_row1 = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 2);
+            var emoji_row2 = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 2);
+            for (int i = 0; i < emojis.length; i++) {
+                string emoji = emojis[i];
+                var btn = new Gtk.Button.with_label (emoji);
+                btn.add_css_class ("flat");
+                btn.clicked.connect (() => {
+                    popover.popdown ();
+                    send_reaction.begin (msg_id, emoji);
+                });
+                if (i < 3) emoji_row1.append (btn);
+                else emoji_row2.append (btn);
+            }
+            vbox.append (emoji_row1);
+            vbox.append (emoji_row2);
+
             /* Reply button (for all messages) */
             var reply_btn = new Gtk.Button.with_label ("Reply");
             reply_btn.add_css_class ("flat");
@@ -42,6 +62,15 @@ namespace Dc {
                 start_replying (msg_id);
             });
             vbox.append (reply_btn);
+
+            /* Forward… */
+            var forward_btn = new Gtk.Button.with_label ("Forward\u2026");
+            forward_btn.add_css_class ("flat");
+            forward_btn.clicked.connect (() => {
+                popover.popdown ();
+                start_forwarding (msg_id);
+            });
+            vbox.append (forward_btn);
 
             /* Pin / Unpin */
             bool msg_is_pinned = pinned.is_pinned (msg_id);
@@ -87,25 +116,6 @@ namespace Dc {
                     vbox.append (edit_btn);
                 }
             }
-
-            string[] emojis = { "\xf0\x9f\x91\x8d", "\xe2\x9d\xa4\xef\xb8\x8f",
-                                 "\xf0\x9f\x98\x82", "\xf0\x9f\x98\xae",
-                                 "\xf0\x9f\x98\xa2", "\xf0\x9f\x91\x8e" };
-            var emoji_row1 = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 2);
-            var emoji_row2 = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 2);
-            for (int i = 0; i < emojis.length; i++) {
-                string emoji = emojis[i];
-                var btn = new Gtk.Button.with_label (emoji);
-                btn.add_css_class ("flat");
-                btn.clicked.connect (() => {
-                    popover.popdown ();
-                    send_reaction.begin (msg_id, emoji);
-                });
-                if (i < 3) emoji_row1.append (btn);
-                else emoji_row2.append (btn);
-            }
-            vbox.append (emoji_row1);
-            vbox.append (emoji_row2);
 
             vbox.append (new Gtk.Separator (Gtk.Orientation.HORIZONTAL));
 
@@ -169,6 +179,44 @@ namespace Dc {
                 string sender = m.is_outgoing ? "You" : (m.sender_name ?? "");
                 string preview = m.text ?? "(attachment)";
                 compose_bar.begin_reply (msg_id, sender, preview);
+            }
+        }
+
+        public void start_forwarding (int msg_id) {
+            var picker = new ContactPickerDialog (rpc, window.chat_store,
+                                                  "Forward To");
+            picker.chat_picked.connect ((chat_id) => {
+                forward_to_chat.begin (msg_id, chat_id);
+            });
+            picker.contact_picked.connect ((contact_id, email) => {
+                forward_to_contact.begin (msg_id, contact_id, email);
+            });
+            picker.present (window);
+        }
+
+        private async void forward_to_chat (int msg_id, int chat_id) {
+            try {
+                yield rpc.forward_messages (new int[] { msg_id }, chat_id);
+                window.request_reload_chats ();
+                window.show_toast ("Message forwarded");
+            } catch (Error e) {
+                window.show_toast ("Forward failed: " + e.message);
+            }
+        }
+
+        private async void forward_to_contact (int msg_id, int contact_id,
+                                                string email) {
+            try {
+                int cid = contact_id;
+                if (cid <= 0) {
+                    cid = yield rpc.get_or_create_contact (email);
+                }
+                int chat_id = yield rpc.get_or_create_chat_by_contact (cid);
+                yield rpc.forward_messages (new int[] { msg_id }, chat_id);
+                window.request_reload_chats ();
+                window.show_toast ("Message forwarded");
+            } catch (Error e) {
+                window.show_toast ("Forward failed: " + e.message);
             }
         }
 
