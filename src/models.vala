@@ -21,6 +21,29 @@ namespace Dc {
         d.present (parent);
     }
 
+    public static void confirm_delete_options (Gtk.Widget parent,
+                                                string title, string body,
+                                                owned VoidFunc on_delete_for_me,
+                                                owned VoidFunc? on_delete_for_everyone) {
+        var d = new Adw.AlertDialog (title, body);
+        d.add_response ("cancel", "Cancel");
+        d.add_response ("delete_me", "Delete for Me");
+        d.set_response_appearance ("delete_me", Adw.ResponseAppearance.DESTRUCTIVE);
+        if (on_delete_for_everyone != null) {
+            d.add_response ("delete_all", "Delete for Everyone");
+            d.set_response_appearance ("delete_all",
+                Adw.ResponseAppearance.DESTRUCTIVE);
+        }
+        d.default_response = "cancel";
+        d.close_response = "cancel";
+        d.response.connect ((r) => {
+            if (r == "delete_me") on_delete_for_me ();
+            else if (r == "delete_all" && on_delete_for_everyone != null)
+                on_delete_for_everyone ();
+        });
+        d.present (parent);
+    }
+
     public static void install_escape_close (Adw.Dialog dialog) {
         var kc = new Gtk.EventControllerKey ();
         kc.propagation_phase = Gtk.PropagationPhase.CAPTURE;

@@ -174,7 +174,7 @@ namespace Dc {
             });
             box.append (info_btn);
 
-            var del_btn = make_menu_button ("Delete for Me");
+            var del_btn = make_menu_button ("Delete…");
             del_btn.clicked.connect (() => {
                 popover.popdown ();
                 confirm_delete.begin (chat_id);
@@ -228,9 +228,10 @@ namespace Dc {
             var entry = find_chat_entry (chat_store, chat_id);
             if (entry != null) chat_name = entry.name;
 
-            confirm_action (window, "Delete for Me",
-                "Remove \"%s\" from your chat list? You may still receive messages if you are a group member.".printf (chat_name),
-                "delete", "Delete for Me", () => { do_delete.begin (chat_id); });
+            confirm_delete_options (window, "Delete Chat?",
+                "Remove \"%s\" from your chat list? You may still receive messages if you are a member.".printf (chat_name),
+                () => { do_delete.begin (chat_id); },
+                null);
         }
 
         private async void do_delete (int chat_id) {

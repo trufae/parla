@@ -109,24 +109,23 @@ namespace Dc {
 
             vbox.append (new Gtk.Separator (Gtk.Orientation.HORIZONTAL));
 
-            var del_me_btn = new Gtk.Button.with_label ("Delete for me");
-            del_me_btn.add_css_class ("flat");
-            del_me_btn.clicked.connect (() => {
+            var del_btn = new Gtk.Button.with_label ("Delete…");
+            del_btn.add_css_class ("flat");
+            del_btn.clicked.connect (() => {
                 popover.popdown ();
-                delete_message.begin (msg_id, false);
+                if (is_outgoing) {
+                    confirm_delete_options (window, "Delete Message?",
+                        "Delete this message from your device only, or from all participants? This cannot be undone.",
+                        () => { delete_message.begin (msg_id, false); },
+                        () => { delete_message.begin (msg_id, true); });
+                } else {
+                    confirm_delete_options (window, "Delete Message?",
+                        "Delete this message from your device? This cannot be undone.",
+                        () => { delete_message.begin (msg_id, false); },
+                        null);
+                }
             });
-            vbox.append (del_me_btn);
-
-            if (is_outgoing) {
-                var del_all_btn = new Gtk.Button.with_label (
-                    "Delete for everyone");
-                del_all_btn.add_css_class ("flat");
-                del_all_btn.clicked.connect (() => {
-                    popover.popdown ();
-                    delete_message.begin (msg_id, true);
-                });
-                vbox.append (del_all_btn);
-            }
+            vbox.append (del_btn);
 
             popover.child = vbox;
             popover.set_parent (parent);
