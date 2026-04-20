@@ -54,6 +54,8 @@ namespace Dc {
             vbox.append (emoji_row1);
             vbox.append (emoji_row2);
 
+            vbox.append (new Gtk.Separator (Gtk.Orientation.HORIZONTAL));
+
             /* Reply button (for all messages) */
             var reply_btn = new Gtk.Button.with_label ("Reply");
             reply_btn.add_css_class ("flat");
