@@ -95,33 +95,43 @@ namespace Dc {
                 var msg = (Message) li.item;
                 var row = new MessageRow (msg);
                 row.quote_clicked.connect ((qid) => { scroll_to_message (qid); });
-
-                var rc = new Gtk.GestureClick ();
-                rc.button = 3;
-                rc.pressed.connect ((n, x, y) => {
-                    msg_actions.show_context_menu (msg.id, msg.is_outgoing, x, y, row);
-                });
-                row.add_controller (rc);
-
-                var dc = new Gtk.GestureClick ();
-                dc.button = 1;
-                dc.pressed.connect ((n, x, y) => {
-                    if (n == 2) msg_actions.handle_double_click (msg.id);
-                    else if (n == 1) on_message_activated (msg);
-                });
-                row.add_controller (dc);
-
                 if (msg.highlighted) {
                     msg.highlighted = false;
                     row.highlight ();
                 }
-
                 li.child = row;
             });
 
             var selection = new Gtk.NoSelection (filtered_message_store);
             message_listview = new Gtk.ListView (selection, factory);
             message_listview.add_css_class ("boxed-list-separate");
+
+            /* One gesture pair on the listview, not per-row: a per-row
+               left-click controller competes with the label's link gesture
+               and breaks URL clicks. */
+            var rc = new Gtk.GestureClick ();
+            rc.button = 3;
+            rc.pressed.connect ((n, x, y) => {
+                var row = pick_message_row (x, y);
+                if (row != null)
+                    msg_actions.show_context_menu (row.message_id,
+                        row.is_outgoing, x, y, message_listview);
+            });
+            message_listview.add_controller (rc);
+
+            var dc = new Gtk.GestureClick ();
+            dc.button = 1;
+            dc.pressed.connect ((n, x, y) => {
+                var row = pick_message_row (x, y);
+                if (row == null) return;
+                if (n == 2) msg_actions.handle_double_click (row.message_id);
+                else {
+                    var msg = find_message (message_store, row.message_id);
+                    if (msg != null) on_message_activated (msg);
+                }
+            });
+            message_listview.add_controller (dc);
+
             message_scroll.child = message_listview;
 
             message_search_entry = new Gtk.SearchEntry ();
@@ -467,6 +477,14 @@ namespace Dc {
             } catch (Error e) {
                 window.show_toast ("Attach failed: " + e.message);
             }
+        }
+
+        private MessageRow? pick_message_row (double x, double y) {
+            var w = message_listview.pick (x, y, Gtk.PickFlags.DEFAULT);
+            while (w != null && !(w is MessageRow)) {
+                w = w.get_parent ();
+            }
+            return w as MessageRow;
         }
 
         private void on_message_activated (Message msg) {

@@ -140,10 +140,12 @@ namespace Dc {
                 var text = new Gtk.Label (msg.text);
                 try {
                     string markup = Markdown.format (msg.text);
+                    // parse http links inside the html-ized pango text
+                    var probe = /<\/?a(\s[^>]*)?>/.replace (markup, -1, 0, "");
                     Pango.AttrList attrs;
                     string parsed;
                     unichar accel;
-                    Pango.parse_markup (markup, -1, 0, out attrs, out parsed, out accel);
+                    Pango.parse_markup (probe, -1, 0, out attrs, out parsed, out accel);
                     text.set_markup (markup);
                 } catch {
                     /* invalid markup — plain text fallback already set */

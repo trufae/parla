@@ -117,9 +117,9 @@ namespace Dc {
                     var url = mi.fetch (0);
                     sb.append ("<a href=\"");
                     sb.append (url);
-                    sb.append ("\">");
+                    sb.append ("\"><span foreground=\"#1c71d8\" underline=\"single\">");
                     sb.append (url);
-                    sb.append ("</a>");
+                    sb.append ("</span></a>");
                     return false;
                 });
             } catch (RegexError e) {
