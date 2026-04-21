@@ -575,6 +575,7 @@ namespace Dc {
             msg.file_mime = json_str (obj, "fileMime");
             msg.file_bytes = (int) json_int (obj, "fileBytes");
             msg.view_type = json_str (obj, "viewType");
+            msg.state = (int) json_int (obj, "state");
 
             if (obj.has_member ("sender") && !obj.get_member ("sender").is_null ()) {
                 var sender = obj.get_object_member ("sender");

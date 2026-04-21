@@ -170,6 +170,37 @@ namespace Dc {
                 background-color: alpha(@accent_bg_color, 0.08);
                 border-bottom: 1px solid alpha(@view_fg_color, 0.12);
             }
+            /* Delivery / read ticks next to the timestamp. */
+            .message-tick {
+                font-size: small;
+                opacity: 0.60;
+                margin-left: 2px;
+                letter-spacing: -3px;
+            }
+            .message-tick-read {
+                font-size: small;
+                color: @success_color;
+                opacity: 1;
+                margin-left: 2px;
+                letter-spacing: -3px;
+            }
+            .message-tick-failed {
+                font-size: small;
+                color: @error_color;
+                opacity: 1;
+                margin-left: 2px;
+            }
+            /* Floating "disconnected" pill over the chat area. */
+            .connection-banner {
+                background-color: alpha(@view_fg_color, 0.80);
+                color: @view_bg_color;
+                padding: 6px 14px;
+                border-radius: 18px;
+                box-shadow: 0 2px 8px alpha(@view_fg_color, 0.25);
+            }
+            .connection-banner-label {
+                font-size: small;
+            }
         """;
     }
 }

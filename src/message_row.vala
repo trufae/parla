@@ -159,7 +159,7 @@ namespace Dc {
                 bubble.append (text);
             }
 
-            /* Timestamp + pin indicator */
+            /* Timestamp + pin indicator + delivery/read tick */
             var footer = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 4);
             footer.halign = Gtk.Align.END;
             if (msg.is_pinned) {
@@ -171,6 +171,11 @@ namespace Dc {
             var time_lbl = new Gtk.Label (time_str);
             time_lbl.add_css_class ("message-time");
             footer.append (time_lbl);
+
+            if (outgoing) {
+                var tick = build_tick_indicator (msg);
+                if (tick != null) footer.append (tick);
+            }
             bubble.append (footer);
 
             /* Reactions */
@@ -256,6 +261,38 @@ namespace Dc {
             file_box.append (fname);
 
             return file_box;
+        }
+
+        private static Gtk.Label? build_tick_indicator (Message msg) {
+            string glyph;
+            string extra_class;
+            string? tooltip = null;
+
+            if (msg.is_failed) {
+                glyph = "⚠";
+                extra_class = "message-tick-failed";
+                tooltip = "Sending failed";
+            } else if (msg.is_read) {
+                glyph = "✓✓";
+                extra_class = "message-tick-read";
+                tooltip = "Read";
+            } else if (msg.is_delivered) {
+                glyph = "✓";
+                extra_class = "message-tick";
+                tooltip = "Delivered";
+            } else if (msg.is_pending) {
+                glyph = "⧖";
+                extra_class = "message-tick";
+                tooltip = "Sending…";
+            } else {
+                return null;
+            }
+
+            var lbl = new Gtk.Label (glyph);
+            lbl.add_css_class ("message-time");
+            lbl.add_css_class (extra_class);
+            if (tooltip != null) lbl.tooltip_text = tooltip;
+            return lbl;
         }
 
         private static string format_timestamp (int64 ts) {

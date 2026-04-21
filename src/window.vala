@@ -21,6 +21,10 @@ namespace Dc {
         private Adw.StatusPage empty_status;
         private Gtk.Stack content_stack;
 
+        /* Floating connection-status banner (revealed when RPC is down) */
+        private Gtk.Revealer connection_banner;
+        private Gtk.Label connection_banner_label;
+
         /* Profile avatar */
         private Adw.Avatar profile_avatar;
 
@@ -194,6 +198,7 @@ namespace Dc {
             var image_overlay = new Gtk.Overlay ();
             image_overlay.child = toast_overlay;
             image_overlay.add_overlay (image_viewer.widget);
+            image_overlay.add_overlay (build_connection_banner ());
 
             this.content = image_overlay;
 
@@ -220,6 +225,7 @@ namespace Dc {
             /* Find the RPC server binary — user override then auto-scan. */
             string? rpc_path = AccountFinder.find_rpc_server (settings.rpc_server_path);
             if (rpc_path == null) {
+                set_connection_status (false, "RPC server not found");
                 show_rpc_not_found ();
                 return;
             }
@@ -238,12 +244,21 @@ namespace Dc {
                     empty_status.description =
                         "Delta Chat Desktop is already running.\n\n" +
                         "Close it first, then restart this app.";
+                    set_connection_status (false, "Delta Chat Desktop is already running");
                 } else {
                     show_toast ("RPC server error: " + msg);
                     empty_status.description = "Failed to start RPC server:\n\n" + Markup.escape_text (msg);
+                    set_connection_status (false, "Cannot reach RPC server");
                 }
                 return;
             }
+
+            /* Connected — hide any banner from a prior failure and register
+               a handler in case the server goes away later. */
+            set_connection_status (true);
+            rpc.disconnected.connect ((reason) => {
+                set_connection_status (false, "Disconnected — " + reason);
+            });
 
             /* Ensure we have an account */
             string? acct_desc, acct_toast;
@@ -808,6 +823,48 @@ namespace Dc {
             /* Find or create toast overlay */
             /* For simplicity, use the application window's built-in toast support */
             toast_overlay.add_toast (toast);
+        }
+
+        /**
+         * Build the floating "disconnected" banner that slides in from the
+         * top when the RPC server can't be reached. Non-interactive so it
+         * never intercepts clicks meant for the chat below.
+         */
+        private Gtk.Revealer build_connection_banner () {
+            var box = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 8);
+            box.add_css_class ("connection-banner");
+
+            var icon = new Gtk.Image.from_icon_name ("network-offline-symbolic");
+            icon.pixel_size = 14;
+            box.append (icon);
+
+            connection_banner_label = new Gtk.Label ("Not connected");
+            connection_banner_label.add_css_class ("connection-banner-label");
+            box.append (connection_banner_label);
+
+            connection_banner = new Gtk.Revealer ();
+            connection_banner.child = box;
+            connection_banner.reveal_child = false;
+            connection_banner.transition_type = Gtk.RevealerTransitionType.SLIDE_DOWN;
+            connection_banner.transition_duration = 200;
+            connection_banner.halign = Gtk.Align.CENTER;
+            connection_banner.valign = Gtk.Align.START;
+            connection_banner.margin_top = 8;
+            connection_banner.can_target = false;   /* clicks pass through */
+            return connection_banner;
+        }
+
+        /**
+         * Show/hide the floating network banner. Pass null reason to hide.
+         */
+        public void set_connection_status (bool connected, string? reason = null) {
+            if (connection_banner == null) return;
+            if (connected) {
+                connection_banner.reveal_child = false;
+            } else {
+                connection_banner_label.label = reason ?? "Not connected";
+                connection_banner.reveal_child = true;
+            }
         }
 
     }

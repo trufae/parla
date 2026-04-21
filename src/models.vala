@@ -153,6 +153,23 @@ namespace Dc {
         public bool is_pinned { get; set; default = false; }
     }
 
+    /**
+     * Delivery state of a message, matching deltachat-core MessageState.
+     * Only the values we render are named; everything else is UNKNOWN.
+     */
+    public enum MessageState {
+        UNKNOWN       = 0,
+        IN_FRESH      = 10,
+        IN_NOTICED    = 13,
+        IN_SEEN       = 16,
+        OUT_PREPARING = 18,
+        OUT_DRAFT     = 19,
+        OUT_PENDING   = 20,
+        OUT_FAILED    = 24,
+        OUT_DELIVERED = 26,
+        OUT_MDN_RCVD  = 28;
+    }
+
     public class Message : Object {
         public int id { get; set; default = 0; }
         public int chat_id { get; set; default = 0; }
@@ -173,6 +190,29 @@ namespace Dc {
         public string? quote_sender_name { get; set; default = null; }
         public bool is_pinned { get; set; default = false; }
         public bool highlighted { get; set; default = false; }
+
+        /* Delivery state — one of MessageState. */
+        public int state { get; set; default = 0; }
+
+        /* Convenience derived flags for the UI. */
+        public bool is_pending {
+            get {
+                return state == MessageState.OUT_PENDING
+                    || state == MessageState.OUT_PREPARING;
+            }
+        }
+        public bool is_delivered {
+            get {
+                return state == MessageState.OUT_DELIVERED
+                    || state == MessageState.OUT_MDN_RCVD;
+            }
+        }
+        public bool is_read {
+            get { return state == MessageState.OUT_MDN_RCVD; }
+        }
+        public bool is_failed {
+            get { return state == MessageState.OUT_FAILED; }
+        }
     }
 
     public class Contact : Object {
