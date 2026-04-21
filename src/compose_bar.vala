@@ -235,6 +235,8 @@ namespace Dc {
             int qid = replying_msg_id;
             send_message (text, pending_file, pending_file_name, qid);
             cancel_reply ();
+            /* Hand temp-file ownership to the in-flight async RPC. */
+            pending_file_is_temp = false;
             clear ();
         }
 
@@ -343,44 +345,42 @@ namespace Dc {
 
             var clipboard = get_display ().get_clipboard ();
             var formats = clipboard.get_formats ();
-            if (formats.contain_gtype (typeof (Gdk.FileList))) {
-                paste_file_list.begin (clipboard);
-                return true;
-            }
-            if (formats.contain_gtype (typeof (Gdk.Texture))) {
-                paste_texture.begin (clipboard);
-                return true;
-            }
-            return false;
+            bool has_files = formats.contain_gtype (typeof (Gdk.FileList));
+            bool has_texture = formats.contain_gtype (typeof (Gdk.Texture));
+            if (!has_files && !has_texture) return false;
+            paste_from_clipboard.begin (clipboard, has_files, has_texture);
+            return true;
         }
 
-        private async void paste_file_list (Gdk.Clipboard clipboard) {
-            try {
-                var value = yield clipboard.read_value_async (typeof (Gdk.FileList),
-                                                              Priority.DEFAULT, null);
-                if (value == null) return;
-                var fl = (Gdk.FileList?) value.get_boxed ();
-                if (fl == null) return;
-                var files = fl.get_files ();
-                if (files != null && files.data != null) {
-                    var path = files.data.get_path ();
-                    if (path != null)
-                        set_pending_attachment (path, files.data.get_basename ());
+        /* Browser pastes often expose a FileList with remote URIs or
+           stale temp paths; fall back to the clipboard texture in that
+           case, saving it as a temp PNG we own. */
+        private async void paste_from_clipboard (Gdk.Clipboard clipboard,
+                                                 bool try_files, bool try_texture) {
+            if (try_files) {
+                try {
+                    var value = yield clipboard.read_value_async (typeof (Gdk.FileList),
+                                                                  Priority.DEFAULT, null);
+                    var fl = value == null ? null : (Gdk.FileList?) value.get_boxed ();
+                    var gf = fl == null || fl.get_files () == null
+                        ? null : fl.get_files ().data;
+                    var path = gf == null ? null : gf.get_path ();
+                    if (path != null && GLib.FileUtils.test (path, GLib.FileTest.EXISTS)) {
+                        set_pending_attachment (path, gf.get_basename ());
+                        return;
+                    }
+                } catch (Error e) {
                 }
-            } catch (Error e) {
             }
-        }
-
-        private async void paste_texture (Gdk.Clipboard clipboard) {
+            if (!try_texture) return;
             try {
                 var texture = yield clipboard.read_texture_async (null);
                 if (texture == null) return;
                 GLib.FileIOStream stream;
                 var tmp = GLib.File.new_tmp ("parla-XXXXXX.png", out stream);
                 stream.close ();
-                string path = tmp.get_path ();
-                if (texture.save_to_png (path)) {
-                    set_pending_attachment (path, "pasted-image.png");
+                if (texture.save_to_png (tmp.get_path ())) {
+                    set_pending_attachment (tmp.get_path (), "pasted-image.png");
                     pending_file_is_temp = true;
                 }
             } catch (Error e) {
