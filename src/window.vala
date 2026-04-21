@@ -126,7 +126,6 @@ namespace Dc {
 
             chat_listbox = new Gtk.ListBox ();
             chat_listbox.selection_mode = Gtk.SelectionMode.SINGLE;
-            chat_listbox.can_focus = false;
             chat_listbox.add_css_class ("navigation-sidebar");
             chat_listbox.set_filter_func (filter_chats);
             chat_listbox.row_selected.connect (on_chat_selected);
