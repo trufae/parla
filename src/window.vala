@@ -601,14 +601,19 @@ namespace Dc {
             about.release_notes =
                 "<p>What's New in Parla</p>" +
                 "<ul>" +
-                "<li>Rebranded from DCGnome to Parla</li>" +
-                "<li>Factory Reset option in advanced settings</li>" +
-                "<li>Configurable RPC server path in settings</li>" +
-                "<li>Flatpak support with GNOME 48 runtime</li>" +
-                "<li>Use ESC instead of Control+L to focus input</li>" +
-                "<li>Graceful plaintext fallback for invalid markdown</li>" +
-                "<li>Faster conversation loading with ListView</li>" +
-                "<li>Precompiled markdown for better performance</li>" +
+                "<li>Focusable conversation list</li>" +
+                "<li>Paste images from clipboard</li>" +
+                "<li>Add delivery indicators</li>" +
+                "<li>Add forward message action</li>" +
+                "<li>Improve delete experience</li>" +
+                "<li>Composebar with emoji-picker</li>" +
+                "</ul>" +
+                "<p>Previously in 0.2.1</p>" +
+                "<ul>" +
+                "<li>Add factory reset option in settings</li>" +
+                "<li>Custom path to the JSONRPC server</li>" +
+                "<li>Use ESC to focus the composebar</li>" +
+                "<li>Faster conversation loads</li>" +
                 "</ul>";
             about.present (this);
         }
