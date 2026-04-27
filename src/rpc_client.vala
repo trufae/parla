@@ -250,10 +250,12 @@ namespace Dc {
                     .build ());
         }
 
-        public async void batch_set_config (string key, string val) throws Error {
+        public async void batch_set_config (string key, string val,
+                                             int acct_id = 0) throws Error {
+            int id = acct_id > 0 ? acct_id : account_id;
             yield call ("batch_set_config",
                 Params.begin ()
-                    .add_int (account_id)
+                    .add_int (id)
                     .begin_object ()
                         .set_string_member (key, val)
                     .end_object ()

@@ -27,6 +27,8 @@ namespace Dc {
 
         /* Profile avatar */
         private Adw.Avatar profile_avatar;
+        private Gtk.Popover account_popover;
+        private Gtk.ListBox account_menu_list;
 
         /* State */
         private unowned RpcClient rpc;
@@ -86,14 +88,19 @@ namespace Dc {
             var title_widget = new Adw.WindowTitle ("Parla", "");
             sidebar_header.title_widget = title_widget;
 
-            /* Profile avatar button in header */
+            /* Profile/account menu button in header */
             profile_avatar = new Adw.Avatar (24, "", true);
-            var avatar_button = new Gtk.Button ();
+            account_popover = build_account_popover ();
+            account_popover.map.connect (() => {
+                load_account_menu.begin ();
+            });
+
+            var avatar_button = new Gtk.MenuButton ();
             avatar_button.child = profile_avatar;
             avatar_button.add_css_class ("flat");
             avatar_button.add_css_class ("circular");
-            avatar_button.tooltip_text = "My profile";
-            avatar_button.clicked.connect (on_show_profile);
+            avatar_button.tooltip_text = "Account Menu";
+            avatar_button.popover = account_popover;
             sidebar_header.pack_start (avatar_button);
 
             /* Hamburger menu button on the right */
@@ -206,6 +213,33 @@ namespace Dc {
             key_ctrl.propagation_phase = Gtk.PropagationPhase.CAPTURE;
             key_ctrl.key_pressed.connect (on_window_key_pressed);
             ((Gtk.Widget) this).add_controller (key_ctrl);
+        }
+
+        private Gtk.Popover build_account_popover () {
+            var popover = new Gtk.Popover ();
+            popover.has_arrow = true;
+
+            var box = new Gtk.Box (Gtk.Orientation.VERTICAL, 8);
+            box.margin_start = 10;
+            box.margin_end = 10;
+            box.margin_top = 10;
+            box.margin_bottom = 10;
+            box.width_request = 300;
+
+            var title = new Gtk.Label ("Accounts");
+            title.add_css_class ("heading");
+            title.halign = Gtk.Align.START;
+            title.xalign = 0;
+            box.append (title);
+
+            account_menu_list = new Gtk.ListBox ();
+            account_menu_list.selection_mode = Gtk.SelectionMode.NONE;
+            account_menu_list.add_css_class ("boxed-list");
+            account_menu_list.row_activated.connect (on_account_menu_row_activated);
+            box.append (account_menu_list);
+
+            popover.child = box;
+            return popover;
         }
 
         /* ================================================================
@@ -474,12 +508,241 @@ namespace Dc {
          *  Actions
          * ================================================================ */
 
-        private void on_show_profile () {
-            if (rpc.account_id <= 0) return;
+        private async void load_account_menu () {
+            clear_listbox (account_menu_list);
 
-            var dialog = new ProfileDialog (rpc);
+            if (rpc == null || !rpc.is_connected) {
+                var row = new Adw.ActionRow ();
+                row.title = "Not connected";
+                row.subtitle = "Open Settings to configure the RPC server";
+                account_menu_list.append (row);
+                return;
+            }
+
+            try {
+                var accounts_node = yield rpc.get_all_accounts ();
+                clear_listbox (account_menu_list);
+
+                if (accounts_node == null) return;
+                var accounts = accounts_node.get_array ();
+
+                for (uint i = 0; i < accounts.get_length (); i++) {
+                    var acct = accounts.get_object_element (i);
+                    int id = (int) acct.get_int_member ("id");
+                    account_menu_list.append (yield build_account_menu_row_for_id (
+                        id, id == rpc.account_id));
+                }
+
+                if (accounts.get_length () == 0) {
+                    var empty = new Adw.ActionRow ();
+                    empty.title = "No accounts";
+                    empty.subtitle = "Add an account to get started";
+                    account_menu_list.append (empty);
+                }
+                account_menu_list.append (build_add_account_row ());
+            } catch (Error e) {
+                clear_listbox (account_menu_list);
+                var err_row = new Adw.ActionRow ();
+                err_row.use_markup = false;
+                err_row.title = "Error loading accounts";
+                err_row.subtitle = e.message;
+                account_menu_list.append (err_row);
+            }
+        }
+
+        private Adw.ActionRow build_add_account_row () {
+            var row = new Adw.ActionRow ();
+            row.title = "Add Account";
+            row.activatable = true;
+            row.set_data<int> ("acct-id", -1);
+
+            var icon = new Gtk.Image.from_icon_name ("list-add-symbolic");
+            icon.valign = Gtk.Align.CENTER;
+            row.add_prefix (icon);
+
+            return row;
+        }
+
+        private async Adw.ActionRow build_account_menu_row_for_id (int id,
+                                                                   bool current) throws Error {
+            bool configured = yield rpc.is_configured (id);
+
+            string? email = null;
+            string? display_name = null;
+            string? avatar = null;
+            if (configured) {
+                try {
+                    email = yield rpc.get_config ("addr", id);
+                    display_name = yield rpc.get_config ("displayname", id);
+                    avatar = yield rpc.get_config ("selfavatar", id);
+                } catch (Error ce) { /* ignore */ }
+            }
+
+            return build_account_menu_row (id, configured, current,
+                email, display_name, avatar);
+        }
+
+        private Adw.ActionRow build_account_menu_row (int id, bool configured,
+                                                       bool current,
+                                                       string? email,
+                                                       string? display_name,
+                                                       string? avatar) {
+            string title;
+            if (display_name != null && display_name.length > 0) {
+                title = display_name;
+            } else if (configured) {
+                title = email ?? "Account #%d".printf (id);
+            } else {
+                title = "Unconfigured account";
+            }
+
+            var row = new Adw.ActionRow ();
+            row.use_markup = false;
+            row.title = title;
+            row.subtitle = email ?? "";
+            row.activatable = configured && !current;
+            row.set_data<int> ("acct-id", id);
+            if (current) row.add_css_class ("current-account-row");
+
+            var avatar_widget = new Adw.Avatar (32, title, true);
+            avatar_widget.custom_image = load_avatar (avatar);
+            row.add_prefix (avatar_widget);
+
+            var edit_btn = new Gtk.Button.from_icon_name ("preferences-system-symbolic");
+            edit_btn.valign = Gtk.Align.CENTER;
+            edit_btn.add_css_class ("flat");
+            edit_btn.tooltip_text = "Edit profile";
+            edit_btn.sensitive = configured;
+            edit_btn.clicked.connect (() => {
+                account_popover.popdown ();
+                show_profile_for_account (id);
+            });
+            row.add_suffix (edit_btn);
+
+            if (!configured) {
+                var status = new Gtk.Label ("Not configured");
+                status.add_css_class ("caption");
+                status.add_css_class ("dim-label");
+                status.valign = Gtk.Align.CENTER;
+                row.add_suffix (status);
+            }
+
+            return row;
+        }
+
+        private void on_account_menu_row_activated (Gtk.ListBoxRow row) {
+            var action_row = row as Adw.ActionRow;
+            if (action_row == null) return;
+            int acct_id = action_row.get_data<int> ("acct-id");
+            if (acct_id == -1) {
+                account_popover.popdown ();
+                on_add_account ();
+                return;
+            }
+            if (!action_row.activatable || acct_id <= 0 || acct_id == rpc.account_id) return;
+
+            account_popover.popdown ();
+            switch_account_from_menu.begin (acct_id);
+        }
+
+        private void on_add_account () {
+            var dialog = new Adw.AlertDialog (
+                "Add Account",
+                "Enter your email and password."
+            );
+
+            var box = new Gtk.Box (Gtk.Orientation.VERTICAL, 8);
+
+            var email_entry = new Gtk.Entry ();
+            email_entry.placeholder_text = "user@example.com";
+            email_entry.input_purpose = Gtk.InputPurpose.EMAIL;
+            box.append (email_entry);
+
+            var pass_entry = new Gtk.PasswordEntry ();
+            pass_entry.placeholder_text = "Password";
+            pass_entry.show_peek_icon = true;
+            box.append (pass_entry);
+
+            dialog.extra_child = box;
+
+            dialog.add_response ("cancel", "Cancel");
+            dialog.add_response ("add", "Add");
+            dialog.set_response_appearance ("add", Adw.ResponseAppearance.SUGGESTED);
+            dialog.default_response = "add";
+
+            pass_entry.activate.connect (() => {
+                dialog.response ("add");
+            });
+
+            dialog.response.connect ((resp) => {
+                if (resp == "add") {
+                    string email = email_entry.text.strip ();
+                    string password = pass_entry.text;
+                    if (email.length > 0 && email.contains ("@") && password.length > 0) {
+                        do_add_account.begin (email, password);
+                    }
+                }
+            });
+
+            dialog.present (this);
+        }
+
+        private async void do_add_account (string email, string password) {
+            try {
+                int acct_id = yield rpc.add_account ();
+                yield rpc.add_or_update_transport (acct_id, email, password);
+                if (rpc.account_id > 0) {
+                    yield rpc.stop_io ();
+                }
+                yield rpc.select_account (acct_id);
+                yield rpc.start_io (acct_id);
+                rpc.account_id = acct_id;
+                yield reload_active_account ();
+                yield load_account_menu ();
+            } catch (Error e) {
+                show_error (this, e.message);
+            }
+        }
+
+        private async void switch_account_from_menu (int acct_id) {
+            bool changed = yield switch_account (acct_id);
+            if (changed) yield load_account_menu ();
+        }
+
+        public async bool switch_account (int acct_id) {
+            if (acct_id <= 0 || acct_id == rpc.account_id) return false;
+
+            try {
+                if (rpc.account_id > 0) {
+                    yield rpc.stop_io ();
+                }
+                yield rpc.select_account (acct_id);
+                yield rpc.start_io (acct_id);
+                rpc.account_id = acct_id;
+                yield reload_active_account ();
+                return true;
+            } catch (Error e) {
+                show_error (this, e.message);
+                return false;
+            }
+        }
+
+        private void show_profile_for_account (int acct_id) {
+            if (acct_id <= 0) return;
+
+            bool edits_current_account = acct_id == rpc.account_id;
+            var dialog = new ProfileDialog (rpc, acct_id);
             dialog.profile_updated.connect (() => {
-                load_profile_avatar.begin ();
+                if (edits_current_account) {
+                    load_profile_avatar.begin ();
+                }
+                load_account_menu.begin ();
+            });
+            dialog.account_deleted.connect ((deleted_id) => {
+                load_account_menu.begin ();
+                if (edits_current_account) {
+                    reload_active_account.begin ();
+                }
             });
             dialog.present (this);
         }
@@ -621,16 +884,13 @@ namespace Dc {
         private void show_settings_dialog () {
             if (active_modal != null) return;
 
-            var dialog = new SettingsDialog (rpc, this);
+            var dialog = new SettingsDialog (this);
             active_modal = dialog;
             dialog.closed.connect (() => {
                 active_modal = null;
                 if (!rpc.is_connected && settings.rpc_server_path.length > 0) {
                     try_connect.begin ();
                 }
-            });
-            dialog.account_changed.connect (() => {
-                reload_active_account.begin ();
             });
             dialog.present (this);
         }
@@ -639,6 +899,8 @@ namespace Dc {
             discard_all_views ();
             if (rpc.account_id <= 0) {
                 rpc.self_email = null;
+                profile_avatar.text = "";
+                profile_avatar.custom_image = null;
                 content_stack.visible_child_name = "empty";
                 current_chat_id = 0;
                 return;

@@ -100,6 +100,10 @@ namespace Dc {
                 box-shadow: inset 0 0 0 2px alpha(@accent_bg_color, 0.45);
             }
             .chat-row { border-radius: 8px; padding: 4px; }
+            .current-account-row {
+                background-color: alpha(@accent_bg_color, 0.10);
+                border-radius: 8px;
+            }
             .unread-dot {
                 color: @accent_bg_color;
                 font-size: 12px;

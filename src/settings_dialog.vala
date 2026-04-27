@@ -83,17 +83,12 @@ namespace Dc {
 
     public class SettingsDialog : Adw.Dialog {
 
-        private RpcClient rpc;
-        private Gtk.ListBox accounts_list;
         private Gtk.Box content;
         private unowned Window app_window;
         private Adw.ActionRow rpc_row;
         private Gtk.Switch rpc_custom_switch;
 
-        public signal void account_changed ();
-
-        public SettingsDialog (RpcClient rpc, Window window) {
-            this.rpc = rpc;
+        public SettingsDialog (Window window) {
             this.app_window = window;
             this.title = "Settings";
             this.content_width = 400;
@@ -110,25 +105,6 @@ namespace Dc {
             content.margin_end = 16;
             content.margin_top = 12;
             content.margin_bottom = 16;
-
-            /* Accounts section */
-            var accounts_label = new Gtk.Label ("Accounts");
-            accounts_label.add_css_class ("title-3");
-            accounts_label.halign = Gtk.Align.START;
-            content.append (accounts_label);
-
-            accounts_list = new Gtk.ListBox ();
-            accounts_list.selection_mode = Gtk.SelectionMode.NONE;
-            accounts_list.add_css_class ("boxed-list");
-            accounts_list.row_activated.connect (on_row_activated);
-            content.append (accounts_list);
-
-            /* Add account button */
-            var add_btn = new Gtk.Button.with_label ("Add Account");
-            add_btn.add_css_class ("suggested-action");
-            add_btn.halign = Gtk.Align.START;
-            add_btn.clicked.connect (on_add_account);
-            content.append (add_btn);
 
             /* Behavior section */
             var behavior_label = new Gtk.Label ("Behavior");
@@ -265,176 +241,6 @@ namespace Dc {
             box.append (scroll);
 
             this.child = box;
-
-            load_accounts.begin ();
-        }
-
-        private async void load_accounts () {
-            clear_listbox (accounts_list);
-
-            try {
-                var accounts_node = yield rpc.get_all_accounts ();
-                if (accounts_node == null) return;
-
-                var accounts = accounts_node.get_array ();
-
-                for (uint i = 0; i < accounts.get_length (); i++) {
-                    var acct = accounts.get_object_element (i);
-                    int id = (int) acct.get_int_member ("id");
-                    bool configured = yield rpc.is_configured (id);
-
-                    string? email = null;
-                    string? display_name = null;
-                    if (configured) {
-                        try {
-                            email = yield rpc.get_config ("addr", id);
-                            display_name = yield rpc.get_config ("displayname", id);
-                        } catch (Error ce) { /* ignore */ }
-                    }
-
-                    var action_row = new Adw.ActionRow ();
-                    action_row.use_markup = false;
-                    if (display_name != null && display_name.length > 0) {
-                        action_row.title = display_name;
-                    } else if (configured) {
-                        action_row.title = email ?? "Account #%d".printf (id);
-                    } else {
-                        action_row.title = "Unconfigured account";
-                    }
-                    action_row.subtitle = email ?? "";
-                    action_row.activatable = true;
-
-                    /* Store account id so we can switch on click */
-                    int acct_id = id;
-                    action_row.set_data<int> ("acct-id", acct_id);
-
-                    if (id == rpc.account_id) {
-                        var badge = new Gtk.Label ("Active");
-                        badge.add_css_class ("accent");
-                        badge.add_css_class ("caption");
-                        badge.valign = Gtk.Align.CENTER;
-                        action_row.add_suffix (badge);
-                    } else if (configured) {
-                        var switch_icon = new Gtk.Image.from_icon_name ("go-next-symbolic");
-                        switch_icon.valign = Gtk.Align.CENTER;
-                        switch_icon.opacity = 0.5;
-                        action_row.add_suffix (switch_icon);
-                    }
-
-                    /* Remove button */
-                    var remove_btn = new Gtk.Button.from_icon_name ("user-trash-symbolic");
-                    remove_btn.valign = Gtk.Align.CENTER;
-                    remove_btn.add_css_class ("flat");
-                    remove_btn.add_css_class ("error");
-                    remove_btn.tooltip_text = "Remove account";
-                    string acct_label = email ?? "this account";
-                    remove_btn.clicked.connect (() => {
-                        confirm_remove_account.begin (acct_id, acct_label);
-                    });
-                    action_row.add_suffix (remove_btn);
-
-                    accounts_list.append (action_row);
-                }
-
-                if (accounts.get_length () == 0) {
-                    var empty = new Adw.ActionRow ();
-                    empty.title = "No accounts";
-                    empty.subtitle = "Add an account to get started";
-                    accounts_list.append (empty);
-                }
-            } catch (Error e) {
-                var err_row = new Adw.ActionRow ();
-                err_row.use_markup = false;
-                err_row.title = "Error loading accounts";
-                err_row.subtitle = e.message;
-                accounts_list.append (err_row);
-            }
-        }
-
-        private void on_row_activated (Gtk.ListBoxRow row) {
-            var action_row = row as Adw.ActionRow;
-            if (action_row == null) return;
-            int acct_id = action_row.get_data<int> ("acct-id");
-            if (acct_id <= 0 || acct_id == rpc.account_id) return;
-            do_switch_account.begin (acct_id);
-        }
-
-        private async void do_switch_account (int acct_id) {
-            try {
-                /* Stop IO on current account if any */
-                if (rpc.account_id > 0) {
-                    yield rpc.stop_io ();
-                }
-                yield rpc.select_account (acct_id);
-                yield rpc.start_io (acct_id);
-                rpc.account_id = acct_id;
-                account_changed ();
-                yield load_accounts ();
-            } catch (Error e) {
-                show_error (app_window, e.message);
-            }
-        }
-
-        private void on_add_account () {
-            var dialog = new Adw.AlertDialog (
-                "Add Account",
-                "Enter your email and password."
-            );
-
-            var box = new Gtk.Box (Gtk.Orientation.VERTICAL, 8);
-
-            var email_entry = new Gtk.Entry ();
-            email_entry.placeholder_text = "user@example.com";
-            email_entry.input_purpose = Gtk.InputPurpose.EMAIL;
-            box.append (email_entry);
-
-            var pass_entry = new Gtk.PasswordEntry ();
-            pass_entry.placeholder_text = "Password";
-            pass_entry.show_peek_icon = true;
-            box.append (pass_entry);
-
-            dialog.extra_child = box;
-
-            dialog.add_response ("cancel", "Cancel");
-            dialog.add_response ("add", "Add");
-            dialog.set_response_appearance ("add", Adw.ResponseAppearance.SUGGESTED);
-            dialog.default_response = "add";
-
-            pass_entry.activate.connect (() => {
-                dialog.response ("add");
-            });
-
-            dialog.response.connect ((resp) => {
-                if (resp == "add") {
-                    string email = email_entry.text.strip ();
-                    string password = pass_entry.text;
-                    if (email.length > 0 && email.contains ("@") && password.length > 0) {
-                        do_add_account.begin (email, password);
-                    }
-                }
-            });
-
-            dialog.present (app_window);
-        }
-
-        private async void do_add_account (string email, string password) {
-            try {
-                int acct_id = yield rpc.add_account ();
-                yield rpc.add_or_update_transport (acct_id, email, password);
-                yield rpc.select_account (acct_id);
-                yield rpc.start_io (acct_id);
-                rpc.account_id = acct_id;
-                account_changed ();
-                yield load_accounts ();
-            } catch (Error e) {
-                show_error (app_window, e.message);
-            }
-        }
-
-        private async void confirm_remove_account (int acct_id, string label) {
-            confirm_action (app_window, "Remove Account",
-                "Remove \"%s\"? This will delete all local data for this account.".printf (label),
-                "remove", "Remove", () => { do_remove_account.begin (acct_id); });
         }
 
         private void update_rpc_row () {
@@ -487,19 +293,6 @@ namespace Dc {
             /* Sync switch to actual state — reverts the toggle if nothing was saved. */
             rpc_custom_switch.active = app_window.settings.rpc_server_path.length > 0;
             update_rpc_row ();
-        }
-
-        private async void do_remove_account (int acct_id) {
-            try {
-                yield rpc.remove_account (acct_id);
-                if (rpc.account_id == acct_id) {
-                    rpc.account_id = 0;
-                }
-                account_changed ();
-                yield load_accounts ();
-            } catch (Error e) {
-                show_error (app_window, e.message);
-            }
         }
 
         private void on_reset_settings () {
