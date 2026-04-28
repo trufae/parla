@@ -26,10 +26,10 @@ namespace Dc {
 
     public const ChatmailRelay[] CHATMAIL_RELAYS = {
         { "nine.testrun.org",                "Default" },
-        { "mehl.cloud",                      "German speakers" },
-        { "mailchat.pl",                     "Polish speakers" },
-        { "chatmail.woodpeckersnest.space",  "Italian speakers" },
-        { "chatmail.culturanerd.it",         "Italian speakers" },
+        { "mehl.cloud",                      "German" },
+        { "mailchat.pl",                     "Poland" },
+        { "chatmail.woodpeckersnest.space",  "Italy" },
+        { "chatmail.culturanerd.it",         "Italy" },
         { "chat.adminforge.de",              "Falkenstein, Germany" },
         { "chika.aangat.lahat.computer",     "Santa Clara, USA" },
         { "tarpit.fun",                      "Nuremberg, Germany" },

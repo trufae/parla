@@ -226,7 +226,7 @@ namespace Dc {
             box.margin_bottom = 10;
             box.width_request = 300;
 
-            var title = new Gtk.Label ("Accounts");
+            var title = new Gtk.Label ("Profiles");
             title.add_css_class ("heading");
             title.halign = Gtk.Align.START;
             title.xalign = 0;
@@ -243,7 +243,7 @@ namespace Dc {
         }
 
         /* ================================================================
-         *  Connection & Account Setup
+         *  Connection & Profile Setup
          * ================================================================ */
 
         private async void try_connect () {
@@ -552,7 +552,7 @@ namespace Dc {
 
         private Adw.ActionRow build_add_account_row () {
             var row = new Adw.ActionRow ();
-            row.title = "Add Account";
+            row.title = "Add Profile";
             row.activatable = true;
             row.set_data<int> ("acct-id", -1);
 
@@ -649,7 +649,7 @@ namespace Dc {
             if (active_modal != null) return;
 
             var dialog = new Adw.Dialog ();
-            dialog.title = "Add Account";
+            dialog.title = "Add Profile";
             dialog.content_width = 460;
 
             var box = new Gtk.Box (Gtk.Orientation.VERTICAL, 0);
@@ -672,7 +672,7 @@ namespace Dc {
             list.append (build_add_method_row (
                 "contact-new-symbolic",
                 "Create new profile",
-                "Pick a chatmail relay and let the server generate keys"));
+                "Pick a chatmail relay and create a new account"));
             list.append (build_add_method_row (
                 "phone-symbolic",
                 "Add as secondary device",

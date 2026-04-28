@@ -243,6 +243,23 @@ namespace Dc {
                     .build ());
         }
 
+        public async void provide_backup (int acct_id) throws Error {
+            yield call ("provide_backup",
+                Params.begin ().add_int (acct_id).build ());
+        }
+
+        public async string get_backup_qr (int acct_id) throws Error {
+            var result = yield call ("get_backup_qr",
+                Params.begin ().add_int (acct_id).build ());
+            return result.get_string ();
+        }
+
+        public async string create_qr_svg (string text) throws Error {
+            var result = yield call ("create_qr_svg",
+                Params.begin ().add_string (text).build ());
+            return result.get_string ();
+        }
+
         public async void stop_ongoing_process (int acct_id) throws Error {
             yield call ("stop_ongoing_process",
                 Params.begin ().add_int (acct_id).build ());
