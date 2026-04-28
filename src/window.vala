@@ -33,6 +33,7 @@ namespace Dc {
         /* State */
         private unowned RpcClient rpc;
         private int _current_chat_id = 0;
+        private bool suppress_reselect_scroll = false;
         public int current_chat_id {
             get { return _current_chat_id; }
             private set {
@@ -401,7 +402,9 @@ namespace Dc {
                 }
 
                 if (reselect_row != null) {
+                    suppress_reselect_scroll = true;
                     chat_listbox.select_row (reselect_row);
+                    suppress_reselect_scroll = false;
                 }
             } catch (Error e) {
                 show_toast ("Failed to load chats: " + e.message);
@@ -431,6 +434,7 @@ namespace Dc {
             int chat_id = chat_row.chat_id;
 
             if (chat_id == current_chat_id) {
+                if (suppress_reselect_scroll) return;
                 var v = current_view ();
                 if (v != null) v.on_reselected ();
                 return;

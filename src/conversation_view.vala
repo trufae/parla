@@ -203,7 +203,7 @@ namespace Dc {
         }
 
         public async void reload_messages () {
-            yield load_messages ();
+            yield load_messages (true);
         }
 
         public async void handle_incoming_msg (int msg_id) {
@@ -266,10 +266,17 @@ namespace Dc {
          *  Message loading
          * ================================================================ */
 
-        private async void load_messages () {
+        private async void load_messages (bool preserve_scroll = false) {
             if (rpc.account_id <= 0) return;
 
             try {
+                bool was_near_bottom = stick_to_bottom;
+                double previous_scroll_value = 0;
+                if (preserve_scroll) {
+                    was_near_bottom = is_near_bottom ();
+                    previous_scroll_value = message_scroll.vadjustment.value;
+                }
+
                 all_msg_ids = yield rpc.get_message_ids (chat_id);
                 if (all_msg_ids == null) return;
 
@@ -282,7 +289,7 @@ namespace Dc {
                 pinned.load_for_chat (chat_id);
 
                 loading_chat = true;
-                stick_to_bottom = true;
+                stick_to_bottom = preserve_scroll ? was_near_bottom : true;
 
                 var batch = new GLib.Object[messages.length];
                 for (uint i = 0; i < messages.length; i++) {
@@ -292,7 +299,20 @@ namespace Dc {
                 message_store.splice (0, message_store.get_n_items (), batch);
                 loading_chat = false;
                 if (messages.length > 0) {
-                    scroll_to_bottom ();
+                    if (!preserve_scroll || was_near_bottom) {
+                        scroll_to_bottom ();
+                    } else {
+                        Idle.add (() => {
+                            var adj = message_scroll.vadjustment;
+                            double max_value = adj.upper - adj.page_size;
+                            if (max_value < 0) max_value = 0;
+                            adj.value = previous_scroll_value > max_value
+                                ? max_value : previous_scroll_value;
+                            stick_to_bottom = false;
+                            scroll_down_btn.visible = !is_near_bottom ();
+                            return Source.REMOVE;
+                        });
+                    }
                 }
 
                 pinned.update_bar.begin ();
