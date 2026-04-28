@@ -731,6 +731,8 @@ namespace Dc {
                 show_secondary_device_dialog ();
             } else if (method == "Create new profile") {
                 show_create_profile_dialog ();
+            } else if (method == "Use invitation code") {
+                show_invitation_code_profile_dialog ();
             } else {
                 show_toast (method + ": not yet implemented");
             }
@@ -757,6 +759,37 @@ namespace Dc {
             if (changed) {
                 show_toast ("Profile created");
                 yield load_account_menu ();
+            }
+        }
+
+        private void show_invitation_code_profile_dialog () {
+            if (active_modal != null) return;
+            if (events == null) {
+                show_toast ("RPC not ready");
+                return;
+            }
+
+            var dialog = new InvitationCodeProfileDialog (rpc, events);
+            active_modal = dialog;
+            dialog.closed.connect (() => { active_modal = null; });
+            dialog.account_created.connect ((new_id, chat_id) => {
+                after_invitation_profile_created.begin (new_id, chat_id);
+            });
+            dialog.present (this);
+        }
+
+        private async void after_invitation_profile_created (int new_id,
+                                                            int chat_id) {
+            bool changed = yield switch_account (new_id);
+            if (changed) {
+                yield load_account_menu ();
+                if (chat_id > 0) {
+                    yield load_chats ();
+                    select_chat_by_id (chat_id);
+                }
+                show_toast (chat_id > 0
+                    ? "Profile created and invitation accepted"
+                    : "Profile created");
             }
         }
 

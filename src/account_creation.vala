@@ -7,10 +7,10 @@ namespace Dc {
      * Currently implemented:
      *   - Create new profile (CreateProfileDialog) — chatmail relay
      *   - Add as secondary device (ReceiveBackupDialog)
+     *   - Use invitation code (InvitationCodeProfileDialog)
      *
      * Stubs for future work:
      *   - Use classic email address (lives in window.vala for now)
-     *   - Use invitation code
      */
 
     /**
@@ -287,6 +287,302 @@ namespace Dc {
 
         private void update_server_choice () {
             relay_dropdown.sensitive = custom_server_entry.text.strip ().length == 0;
+        }
+
+        private void on_configure_progress (int ctx, int progress,
+                                              string? comment) {
+            if (ctx != new_account_id) return;
+            if (progress == 0) {
+                status_label.label = comment ?? "Failed";
+                return;
+            }
+            double frac = ((double) progress) / 1000.0;
+            if (frac > 1.0) frac = 1.0;
+            progress_bar.fraction = frac;
+            progress_label.label = "%d %%".printf ((int) (frac * 100));
+            if (comment != null && comment.length > 0) {
+                status_label.label = comment;
+            } else if (progress >= 1000) {
+                status_label.label = "Finishing…";
+            }
+        }
+
+        private void cleanup_signal () {
+            if (progress_handler_id != 0) {
+                events.disconnect (progress_handler_id);
+                progress_handler_id = 0;
+            }
+        }
+
+        private void cancel_create () {
+            if (!create_running) {
+                this.close ();
+                return;
+            }
+            if (new_account_id > 0) {
+                rpc.stop_ongoing_process.begin (new_account_id, (obj, res) => {
+                    try { rpc.stop_ongoing_process.end (res); }
+                    catch (Error e) { /* ignore */ }
+                });
+            }
+        }
+
+        private void on_dialog_closed () {
+            cleanup_signal ();
+            if (!create_finished && new_account_id > 0) {
+                int aid = new_account_id;
+                new_account_id = 0;
+                rpc.stop_ongoing_process.begin (aid, (obj, res) => {
+                    try { rpc.stop_ongoing_process.end (res); } catch (Error e) {}
+                    rpc.remove_account.begin (aid, (obj2, res2) => {
+                        try { rpc.remove_account.end (res2); } catch (Error e) {}
+                    });
+                });
+            }
+        }
+    }
+
+    /**
+     * Creates a profile from a pasted Delta Chat invitation/account link.
+     *
+     * DCACCOUNT/DCLOGIN links configure the new profile directly using the
+     * linked server credentials. Secure-join invitation links first create a
+     * default chatmail profile and then accept the invite on the new profile,
+     * matching Delta Chat Desktop's instant-onboarding flow.
+     */
+    public class InvitationCodeProfileDialog : Adw.Dialog {
+
+        public signal void account_created (int new_account_id, int chat_id);
+
+        private RpcClient rpc;
+        private EventHandler events;
+
+        private Gtk.Stack stack;
+        private Gtk.Entry invite_entry;
+        private Gtk.Button start_btn;
+        private Gtk.ProgressBar progress_bar;
+        private Gtk.Label progress_label;
+        private Gtk.Label status_label;
+
+        private int new_account_id = 0;
+        private bool create_running = false;
+        private bool create_finished = false;
+        private ulong progress_handler_id = 0;
+
+        public InvitationCodeProfileDialog (RpcClient rpc, EventHandler events) {
+            this.rpc = rpc;
+            this.events = events;
+
+            this.title = "Use Invitation Code";
+            this.content_width = 480;
+            this.can_close = true;
+
+            var box = new Gtk.Box (Gtk.Orientation.VERTICAL, 0);
+            box.append (new Adw.HeaderBar ());
+
+            stack = new Gtk.Stack ();
+            stack.transition_type = Gtk.StackTransitionType.CROSSFADE;
+            stack.transition_duration = 180;
+            stack.vexpand = true;
+
+            stack.add_named (build_input_page (), "input");
+            stack.add_named (build_progress_page (), "progress");
+
+            box.append (stack);
+            this.child = box;
+
+            install_escape_close (this);
+            this.closed.connect (on_dialog_closed);
+        }
+
+        private Gtk.Widget build_input_page () {
+            var content = new Gtk.Box (Gtk.Orientation.VERTICAL, 12);
+            content.margin_start = content.margin_end = 18;
+            content.margin_top = 12;
+            content.margin_bottom = 18;
+
+            var intro = new Gtk.Label (
+                "Paste a Delta Chat account or invitation link. Account links " +
+                "use the linked server; contact and group invites create a new " +
+                "chatmail profile first.");
+            intro.wrap = true;
+            intro.xalign = 0;
+            intro.add_css_class ("dim-label");
+            content.append (intro);
+
+            invite_entry = new Gtk.Entry ();
+            invite_entry.placeholder_text = "dcaccount:example.org or https://i.delta.chat/#...";
+            invite_entry.input_purpose = Gtk.InputPurpose.URL;
+            invite_entry.hexpand = true;
+            invite_entry.activates_default = true;
+            invite_entry.changed.connect (update_start_sensitivity);
+            content.append (invite_entry);
+
+            var row = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 8);
+            row.halign = Gtk.Align.END;
+
+            var paste_btn = new Gtk.Button.with_label ("Paste from Clipboard");
+            paste_btn.clicked.connect (paste_from_clipboard);
+            row.append (paste_btn);
+
+            start_btn = new Gtk.Button.with_label ("Create Profile");
+            start_btn.add_css_class ("suggested-action");
+            start_btn.sensitive = false;
+            start_btn.clicked.connect (() => { start_create.begin (); });
+            row.append (start_btn);
+
+            this.default_widget = start_btn;
+            content.append (row);
+
+            return content;
+        }
+
+        private Gtk.Widget build_progress_page () {
+            var content = new Gtk.Box (Gtk.Orientation.VERTICAL, 12);
+            content.margin_start = content.margin_end = 18;
+            content.margin_top = 12;
+            content.margin_bottom = 18;
+            content.valign = Gtk.Align.CENTER;
+
+            status_label = new Gtk.Label ("Checking invitation…");
+            status_label.xalign = 0;
+            status_label.wrap = true;
+            content.append (status_label);
+
+            progress_bar = new Gtk.ProgressBar ();
+            progress_bar.fraction = 0.0;
+            progress_bar.show_text = false;
+            content.append (progress_bar);
+
+            progress_label = new Gtk.Label ("0 %");
+            progress_label.xalign = 0;
+            progress_label.add_css_class ("dim-label");
+            content.append (progress_label);
+
+            var actions = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 8);
+            actions.halign = Gtk.Align.END;
+            actions.margin_top = 6;
+            var cancel_btn = new Gtk.Button.with_label ("Cancel");
+            cancel_btn.add_css_class ("destructive-action");
+            cancel_btn.clicked.connect (cancel_create);
+            actions.append (cancel_btn);
+            content.append (actions);
+
+            return content;
+        }
+
+        private void update_start_sensitivity () {
+            start_btn.sensitive = invite_entry.text.strip ().length > 0;
+        }
+
+        private void paste_from_clipboard () {
+            var display = this.get_display ();
+            if (display == null) return;
+            var clipboard = display.get_clipboard ();
+            clipboard.read_text_async.begin (null, (obj, res) => {
+                try {
+                    string? text = clipboard.read_text_async.end (res);
+                    if (text != null) {
+                        invite_entry.text = text.strip ();
+                        invite_entry.grab_focus_without_selecting ();
+                    }
+                } catch (Error e) {
+                    /* no clipboard text */
+                }
+            });
+        }
+
+        private async void start_create () {
+            if (create_running) return;
+
+            string invite_link = invite_entry.text.strip ();
+            if (invite_link.length == 0) return;
+
+            create_running = true;
+            stack.visible_child_name = "progress";
+            status_label.label = "Checking invitation…";
+
+            progress_handler_id = events.configure_progress.connect (
+                on_configure_progress);
+
+            try {
+                new_account_id = yield rpc.add_account ();
+            } catch (Error e) {
+                cleanup_signal ();
+                create_running = false;
+                show_error (this, "Failed to create account: " + e.message);
+                this.close ();
+                return;
+            }
+
+            Json.Object? qr = null;
+            try {
+                qr = yield rpc.check_qr (new_account_id, invite_link);
+            } catch (Error e) {
+                yield fail_new_account ("Invitation code failed: " + e.message);
+                return;
+            }
+
+            if (qr == null || !qr.has_member ("kind")) {
+                yield fail_new_account ("This is not a valid Delta Chat invitation code.");
+                return;
+            }
+
+            string kind = qr.get_string_member ("kind");
+            int chat_id = 0;
+
+            if (kind == "account" || kind == "login") {
+                status_label.label = "Creating profile…";
+                try {
+                    yield rpc.add_transport_from_qr (new_account_id, invite_link);
+                } catch (Error e) {
+                    yield fail_new_account ("Profile creation failed: " + e.message);
+                    return;
+                }
+            } else if (kind == "askVerifyContact" ||
+                       kind == "askVerifyGroup" ||
+                       kind == "askJoinBroadcast") {
+                status_label.label = "Creating profile…";
+                try {
+                    yield rpc.add_transport_from_qr (
+                        new_account_id,
+                        "dcaccount:" + CHATMAIL_RELAYS[0].domain);
+                    status_label.label = "Accepting invitation…";
+                    chat_id = yield rpc.secure_join (new_account_id, invite_link);
+                } catch (Error e) {
+                    yield fail_new_account ("Invitation failed: " + e.message);
+                    return;
+                }
+            } else {
+                yield fail_new_account (
+                    "This code cannot be used to create a profile.");
+                return;
+            }
+
+            cleanup_signal ();
+            create_finished = true;
+            create_running = false;
+            int created = new_account_id;
+            new_account_id = 0;
+            account_created (created, chat_id);
+            this.close ();
+        }
+
+        private async void fail_new_account (string message) {
+            cleanup_signal ();
+            create_running = false;
+            if (new_account_id > 0) {
+                int aid = new_account_id;
+                new_account_id = 0;
+                try {
+                    yield rpc.stop_ongoing_process (aid);
+                } catch (Error e) { /* ignore */ }
+                try {
+                    yield rpc.remove_account (aid);
+                } catch (Error e) { /* ignore */ }
+            }
+            show_error (this, message);
+            this.close ();
         }
 
         private void on_configure_progress (int ctx, int progress,
