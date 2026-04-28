@@ -227,6 +227,14 @@ namespace Dc {
             yield call ("stop_io", Params.begin ().add_int (account_id).build ());
         }
 
+        public async void add_transport_from_qr (int acct_id, string qr_text) throws Error {
+            yield call ("add_transport_from_qr",
+                Params.begin ()
+                    .add_int (acct_id)
+                    .add_string (qr_text)
+                    .build ());
+        }
+
         public async void get_backup (int acct_id, string qr_text) throws Error {
             yield call ("get_backup",
                 Params.begin ()

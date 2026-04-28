@@ -14,6 +14,8 @@ namespace Dc {
         public signal void messages_reload_fired ();
         public signal void incoming_msg_received (int chat_id, int msg_id);
         public signal void imex_progress (int context_id, int progress);
+        public signal void configure_progress (int context_id, int progress,
+                                                string? comment);
 
         public EventHandler (RpcClient rpc) {
             this.rpc = rpc;
@@ -39,11 +41,21 @@ namespace Dc {
 
                     string kind = event.get_string_member ("kind");
 
-                    /* ImexProgress can come from a non-current account
-                       during backup import for a secondary device setup. */
+                    /* ImexProgress / ConfigureProgress can come from a
+                       non-current account during account creation. */
                     if (kind == "ImexProgress") {
                         int progress = (int) event.get_int_member ("progress");
                         imex_progress (ctx, progress);
+                        continue;
+                    }
+                    if (kind == "ConfigureProgress") {
+                        int progress = (int) event.get_int_member ("progress");
+                        string? comment = null;
+                        if (event.has_member ("comment") &&
+                            !event.get_member ("comment").is_null ()) {
+                            comment = event.get_string_member ("comment");
+                        }
+                        configure_progress (ctx, progress, comment);
                         continue;
                     }
 

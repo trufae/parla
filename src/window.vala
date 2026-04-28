@@ -725,8 +725,34 @@ namespace Dc {
                 show_classic_email_dialog ();
             } else if (method == "Add as secondary device") {
                 show_secondary_device_dialog ();
+            } else if (method == "Create new profile") {
+                show_create_profile_dialog ();
             } else {
                 show_toast (method + ": not yet implemented");
+            }
+        }
+
+        private void show_create_profile_dialog () {
+            if (active_modal != null) return;
+            if (events == null) {
+                show_toast ("RPC not ready");
+                return;
+            }
+
+            var dialog = new CreateProfileDialog (rpc, events);
+            active_modal = dialog;
+            dialog.closed.connect (() => { active_modal = null; });
+            dialog.account_created.connect ((new_id) => {
+                after_profile_created.begin (new_id);
+            });
+            dialog.present (this);
+        }
+
+        private async void after_profile_created (int new_id) {
+            bool changed = yield switch_account (new_id);
+            if (changed) {
+                show_toast ("Profile created");
+                yield load_account_menu ();
             }
         }
 
