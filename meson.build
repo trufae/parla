@@ -40,6 +40,7 @@ sources = files(
   'src/quick_switch_dialog.vala',
   'src/event_handler.vala',
   'src/message_actions.vala',
+  'src/account_creation.vala',
 )
 
 executable('parla',

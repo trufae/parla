@@ -723,8 +723,34 @@ namespace Dc {
         private void on_add_account_method_selected (string method) {
             if (method == "Use classic email address") {
                 show_classic_email_dialog ();
+            } else if (method == "Add as secondary device") {
+                show_secondary_device_dialog ();
             } else {
                 show_toast (method + ": not yet implemented");
+            }
+        }
+
+        private void show_secondary_device_dialog () {
+            if (active_modal != null) return;
+            if (events == null) {
+                show_toast ("RPC not ready");
+                return;
+            }
+
+            var dialog = new ReceiveBackupDialog (rpc, events);
+            active_modal = dialog;
+            dialog.closed.connect (() => { active_modal = null; });
+            dialog.account_imported.connect ((new_id) => {
+                after_secondary_device_imported.begin (new_id);
+            });
+            dialog.present (this);
+        }
+
+        private async void after_secondary_device_imported (int new_id) {
+            bool changed = yield switch_account (new_id);
+            if (changed) {
+                show_toast ("Profile imported");
+                yield load_account_menu ();
             }
         }
 

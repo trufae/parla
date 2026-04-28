@@ -227,6 +227,30 @@ namespace Dc {
             yield call ("stop_io", Params.begin ().add_int (account_id).build ());
         }
 
+        public async void get_backup (int acct_id, string qr_text) throws Error {
+            yield call ("get_backup",
+                Params.begin ()
+                    .add_int (acct_id)
+                    .add_string (qr_text)
+                    .build ());
+        }
+
+        public async void stop_ongoing_process (int acct_id) throws Error {
+            yield call ("stop_ongoing_process",
+                Params.begin ().add_int (acct_id).build ());
+        }
+
+        public async Json.Object? check_qr (int acct_id, string qr_text) throws Error {
+            var result = yield call ("check_qr",
+                Params.begin ()
+                    .add_int (acct_id)
+                    .add_string (qr_text)
+                    .build ());
+            if (result == null || result.get_node_type () != Json.NodeType.OBJECT)
+                return null;
+            return result.get_object ();
+        }
+
         public async void add_or_update_transport (int acct_id, string email,
                                                     string password) throws Error {
             yield call ("add_or_update_transport",
