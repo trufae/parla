@@ -286,6 +286,15 @@ namespace Dc {
             return result.get_object ();
         }
 
+        public async int secure_join (int acct_id, string qr_text) throws Error {
+            var result = yield call ("secure_join",
+                Params.begin ()
+                    .add_int (acct_id)
+                    .add_string (qr_text)
+                    .build ());
+            return (int) result.get_int ();
+        }
+
         public async void add_or_update_transport (int acct_id, string email,
                                                     string password) throws Error {
             yield call ("add_or_update_transport",

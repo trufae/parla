@@ -959,6 +959,8 @@ namespace Dc {
             a.activate.connect (() => { on_new_chat (); }); add_action (a);
             a = new SimpleAction ("new-group", null);
             a.activate.connect (() => { on_new_group (); }); add_action (a);
+            a = new SimpleAction ("use-invite-link", null);
+            a.activate.connect (() => { show_use_invite_link_dialog (); }); add_action (a);
             a = new SimpleAction ("refresh", null);
             a.activate.connect (() => { load_chats.begin (); }); add_action (a);
             a = new SimpleAction ("settings", null);
@@ -971,6 +973,7 @@ namespace Dc {
             var s1 = new GLib.Menu ();
             s1.append ("New Chat", "win.new-chat");
             s1.append ("New Group", "win.new-group");
+            s1.append ("Use Invite Link", "win.use-invite-link");
             var s2 = new GLib.Menu ();
             s2.append ("Settings", "win.settings");
             var s3 = new GLib.Menu ();
@@ -1014,6 +1017,123 @@ namespace Dc {
                 "<li>Faster conversation loads</li>" +
                 "</ul>";
             about.present (this);
+        }
+
+        private void show_use_invite_link_dialog () {
+            if (active_modal != null) return;
+            if (rpc.account_id <= 0) {
+                show_toast ("No active profile");
+                return;
+            }
+
+            var dialog = new Adw.Dialog ();
+            dialog.title = "Use Invite Link";
+            dialog.content_width = 460;
+
+            var box = new Gtk.Box (Gtk.Orientation.VERTICAL, 0);
+            box.append (new Adw.HeaderBar ());
+
+            var content = new Gtk.Box (Gtk.Orientation.VERTICAL, 10);
+            content.margin_start = 18;
+            content.margin_end = 18;
+            content.margin_top = 12;
+            content.margin_bottom = 18;
+
+            var label = new Gtk.Label ("Paste a Delta Chat invite link.");
+            label.halign = Gtk.Align.START;
+            label.xalign = 0;
+            label.wrap = true;
+            label.add_css_class ("dim-label");
+            content.append (label);
+
+            var entry = new Gtk.Entry ();
+            entry.placeholder_text = "https://i.delta.chat/#...";
+            entry.input_purpose = Gtk.InputPurpose.URL;
+            entry.hexpand = true;
+            content.append (entry);
+
+            var status = new Gtk.Label ("");
+            status.halign = Gtk.Align.START;
+            status.xalign = 0;
+            status.wrap = true;
+            status.add_css_class ("dim-label");
+            content.append (status);
+
+            var actions = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 8);
+            actions.halign = Gtk.Align.END;
+            actions.margin_top = 6;
+
+            var cancel_btn = new Gtk.Button.with_label ("Cancel");
+            cancel_btn.clicked.connect (() => { dialog.close (); });
+            actions.append (cancel_btn);
+
+            var add_btn = new Gtk.Button.with_label ("Add");
+            add_btn.add_css_class ("suggested-action");
+            add_btn.sensitive = false;
+            add_btn.clicked.connect (() => {
+                use_invite_link.begin (dialog, entry, status, add_btn);
+            });
+            actions.append (add_btn);
+            content.append (actions);
+
+            entry.changed.connect (() => {
+                add_btn.sensitive = entry.text.strip ().length > 0;
+                status.label = "";
+            });
+            entry.activate.connect (() => {
+                if (add_btn.sensitive) {
+                    use_invite_link.begin (dialog, entry, status, add_btn);
+                }
+            });
+
+            box.append (content);
+            dialog.child = box;
+            active_modal = dialog;
+            dialog.closed.connect (() => { active_modal = null; });
+            dialog.present (this);
+            entry.grab_focus ();
+        }
+
+        private async void use_invite_link (Adw.Dialog dialog,
+                                            Gtk.Entry entry,
+                                            Gtk.Label status,
+                                            Gtk.Button add_btn) {
+            string invite_link = entry.text.strip ();
+            if (invite_link.length == 0) return;
+
+            add_btn.sensitive = false;
+            entry.sensitive = false;
+            status.label = "Checking invite link…";
+
+            try {
+                var qr = yield rpc.check_qr (rpc.account_id, invite_link);
+                if (qr == null || !qr.has_member ("kind")) {
+                    status.label = "This is not a valid invite link.";
+                    return;
+                }
+
+                string kind = qr.get_string_member ("kind");
+                if (kind != "askVerifyContact" &&
+                    kind != "askVerifyGroup" &&
+                    kind != "askJoinBroadcast") {
+                    status.label = "This is not a contact, group, or channel invite link.";
+                    return;
+                }
+
+                status.label = "Accepting invite link…";
+                int chat_id = yield rpc.secure_join (rpc.account_id, invite_link);
+                yield load_chats ();
+                select_chat_by_id (chat_id);
+                dialog.close ();
+                show_toast ("Invite link accepted");
+            } catch (Error e) {
+                status.label = "Invite link failed: " + e.message;
+            } finally {
+                if (active_modal == dialog) {
+                    entry.sensitive = true;
+                    add_btn.sensitive = entry.text.strip ().length > 0;
+                }
+            }
         }
 
         private void show_settings_dialog () {
