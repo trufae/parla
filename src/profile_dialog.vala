@@ -91,6 +91,24 @@ namespace Dc {
 
             content.append (new Gtk.Separator (Gtk.Orientation.HORIZONTAL));
 
+            var invite_code_box = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 8);
+            invite_code_box.margin_top = 4;
+
+            var invite_code_btn = new Gtk.Button.with_label ("Invite Code");
+            invite_code_btn.tooltip_text = "Show a contact invite QR code";
+            invite_code_btn.clicked.connect (show_invite_code_dialog);
+            invite_code_box.append (invite_code_btn);
+
+            var invite_code_label = new Gtk.Label ("Share your contact");
+            invite_code_label.add_css_class ("dim-label");
+            invite_code_label.valign = Gtk.Align.CENTER;
+            invite_code_label.wrap = true;
+            invite_code_label.xalign = 0;
+            invite_code_label.hexpand = true;
+            invite_code_box.append (invite_code_label);
+
+            content.append (invite_code_box);
+
             var second_device_box = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 8);
             second_device_box.margin_top = 4;
 
@@ -176,6 +194,11 @@ namespace Dc {
             }
         }
 
+        private void show_invite_code_dialog () {
+            var dialog = new InviteCodeDialog (rpc, account_id);
+            dialog.present (this);
+        }
+
         private void show_second_device_dialog () {
             var dialog = new SecondDeviceDialog (rpc, account_id);
             dialog.present (this);
@@ -216,6 +239,120 @@ namespace Dc {
                 avatar_changed = true;
                 avatar_widget.custom_image = load_avatar (path);
             }
+        }
+    }
+
+    public class InviteCodeDialog : Adw.Dialog {
+
+        private RpcClient rpc;
+        private int account_id;
+        private Gtk.Label status_label;
+        private Gtk.Picture qr_picture;
+        private Gtk.TextView qr_text_view;
+        private Gtk.ScrolledWindow qr_text_scroll;
+        private Gtk.Button copy_btn;
+        private string? invite_text = null;
+        private bool closing = false;
+
+        public InviteCodeDialog (RpcClient rpc, int acct_id) {
+            this.rpc = rpc;
+            this.account_id = acct_id;
+            this.title = "Invite Code";
+            this.content_width = 480;
+            this.content_height = 560;
+            this.can_close = true;
+
+            var box = new Gtk.Box (Gtk.Orientation.VERTICAL, 0);
+            box.append (new Adw.HeaderBar ());
+
+            var content = new Gtk.Box (Gtk.Orientation.VERTICAL, 12);
+            content.margin_start = 18;
+            content.margin_end = 18;
+            content.margin_top = 12;
+            content.margin_bottom = 18;
+
+            status_label = new Gtk.Label ("Preparing invite code…");
+            status_label.wrap = true;
+            status_label.xalign = 0;
+            content.append (status_label);
+
+            qr_picture = new Gtk.Picture ();
+            qr_picture.content_fit = Gtk.ContentFit.CONTAIN;
+            qr_picture.can_shrink = true;
+            qr_picture.halign = Gtk.Align.CENTER;
+            qr_picture.set_size_request (280, 280);
+            qr_picture.visible = false;
+            content.append (qr_picture);
+
+            qr_text_view = new Gtk.TextView ();
+            qr_text_view.editable = false;
+            qr_text_view.cursor_visible = false;
+            qr_text_view.monospace = true;
+            qr_text_view.wrap_mode = Gtk.WrapMode.CHAR;
+
+            qr_text_scroll = new Gtk.ScrolledWindow ();
+            qr_text_scroll.hscrollbar_policy = Gtk.PolicyType.NEVER;
+            qr_text_scroll.min_content_height = 96;
+            qr_text_scroll.child = qr_text_view;
+            qr_text_scroll.visible = false;
+            content.append (qr_text_scroll);
+
+            var actions = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 8);
+            actions.halign = Gtk.Align.END;
+            actions.margin_top = 6;
+
+            copy_btn = new Gtk.Button.with_label ("Copy Link");
+            copy_btn.sensitive = false;
+            copy_btn.clicked.connect (copy_invite_text);
+            actions.append (copy_btn);
+
+            var close_btn = new Gtk.Button.with_label ("Close");
+            close_btn.clicked.connect (() => { this.close (); });
+            actions.append (close_btn);
+            content.append (actions);
+
+            box.append (content);
+            this.child = box;
+
+            install_escape_close (this);
+            this.closed.connect (() => { closing = true; });
+            load_invite_code.begin ();
+        }
+
+        private async void load_invite_code () {
+            try {
+                string text = yield rpc.get_chat_securejoin_qr_code (account_id);
+                string svg = yield rpc.create_qr_svg (text);
+                if (!closing) show_qr (text, svg);
+            } catch (Error e) {
+                if (!closing) show_invite_error (e.message);
+            }
+        }
+
+        private void show_qr (string text, string svg) {
+            invite_text = text;
+            status_label.label = "Share this QR code with another user, or copy the invite link below.";
+            qr_text_view.buffer.text = text;
+            qr_text_scroll.visible = true;
+            copy_btn.sensitive = true;
+
+            try {
+                var bytes = new Bytes (svg.data);
+                qr_picture.paintable = Gdk.Texture.from_bytes (bytes);
+                qr_picture.visible = true;
+            } catch (Error e) {
+                status_label.label = "Invite link is ready, but the QR image could not be rendered: " + e.message;
+            }
+        }
+
+        private void show_invite_error (string message) {
+            status_label.label = "Invite code creation failed: " + message;
+            copy_btn.sensitive = false;
+        }
+
+        private void copy_invite_text () {
+            if (invite_text == null || invite_text.length == 0) return;
+            this.get_display ().get_clipboard ().set_text (invite_text);
         }
     }
 

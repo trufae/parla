@@ -260,6 +260,16 @@ namespace Dc {
             return result.get_string ();
         }
 
+        public async string get_chat_securejoin_qr_code (int acct_id,
+                                                          int chat_id = 0) throws Error {
+            var p = Params.begin ().add_int (acct_id);
+            if (chat_id > 0) p.add_int (chat_id);
+            else p.add_null ();
+
+            var result = yield call ("get_chat_securejoin_qr_code", p.build ());
+            return result.get_string ();
+        }
+
         public async void stop_ongoing_process (int acct_id) throws Error {
             yield call ("stop_ongoing_process",
                 Params.begin ().add_int (acct_id).build ());
