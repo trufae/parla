@@ -874,12 +874,55 @@ namespace Dc {
                 load_account_menu.begin ();
             });
             dialog.account_deleted.connect ((deleted_id) => {
-                load_account_menu.begin ();
-                if (edits_current_account) {
-                    reload_active_account.begin ();
-                }
+                after_profile_deleted.begin (deleted_id, edits_current_account);
             });
             dialog.present (this);
+        }
+
+        private async void after_profile_deleted (int deleted_id,
+                                                  bool was_current_account) {
+            bool switched_account = false;
+
+            if (was_current_account) {
+                switched_account = yield switch_to_first_configured_account (
+                    deleted_id);
+                if (!switched_account) {
+                    rpc.account_id = 0;
+                    yield reload_active_account ();
+                }
+            }
+
+            yield load_account_menu ();
+            show_toast (switched_account
+                ? "Profile deleted; switched profile"
+                : "Profile deleted");
+        }
+
+        private async bool switch_to_first_configured_account (int skip_id) {
+            try {
+                var accounts_node = yield rpc.get_all_accounts ();
+                if (accounts_node == null) return false;
+
+                var accounts = accounts_node.get_array ();
+                for (uint i = 0; i < accounts.get_length (); i++) {
+                    var acct = accounts.get_object_element (i);
+                    int id = (int) acct.get_int_member ("id");
+                    if (id <= 0 || id == skip_id) continue;
+
+                    bool configured = false;
+                    try {
+                        configured = yield rpc.is_configured (id);
+                    } catch (Error e) {
+                        continue;
+                    }
+                    if (configured && yield switch_account (id)) {
+                        return true;
+                    }
+                }
+            } catch (Error e) {
+                show_toast ("Failed to select another profile: " + e.message);
+            }
+            return false;
         }
 
         private async void load_profile_avatar () {
@@ -1152,14 +1195,28 @@ namespace Dc {
 
         public async void reload_active_account () {
             discard_all_views ();
+            chat_store.remove_all ();
+            clear_listbox (chat_listbox);
+            search_entry.text = "";
+            content_title_label.label = "Select a chat";
+            empty_status.child = null;
+
             if (rpc.account_id <= 0) {
                 rpc.self_email = null;
                 profile_avatar.text = "";
                 profile_avatar.custom_image = null;
+                empty_status.icon_name = "avatar-default-symbolic";
+                empty_status.title = "No Profile Loaded";
+                empty_status.description =
+                    "Add or select a profile from the profile menu.";
                 content_stack.visible_child_name = "empty";
                 current_chat_id = 0;
                 return;
             }
+
+            empty_status.icon_name = "mail-send-receive-symbolic";
+            empty_status.title = "Parla";
+            empty_status.description = "Select a chat to start messaging.";
             try {
                 rpc.self_email = yield rpc.get_config ("addr");
             } catch (Error e) {

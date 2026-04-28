@@ -213,9 +213,9 @@ namespace Dc {
                 label = "this account";
             }
 
-            confirm_action (this, "Delete Account",
-                "Delete \"%s\"? This will remove all local data for this account.".printf (label),
-                "delete", "Delete", () => { do_delete_account.begin (); });
+            confirm_action (this, "Delete Profile",
+                "Delete \"%s\"? This will remove all local data for this profile.".printf (label),
+                "delete", "Delete Profile", () => { do_delete_account.begin (); });
         }
 
         private async void do_delete_account () {

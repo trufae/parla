@@ -17,6 +17,7 @@ namespace Dc {
         d.add_response (action_id, action_label);
         d.set_response_appearance (action_id, Adw.ResponseAppearance.DESTRUCTIVE);
         d.default_response = "cancel";
+        d.close_response = "cancel";
         d.response.connect ((r) => { if (r == action_id) on_confirm (); });
         d.present (parent);
     }
