@@ -646,8 +646,91 @@ namespace Dc {
         }
 
         private void on_add_account () {
+            if (active_modal != null) return;
+
+            var dialog = new Adw.Dialog ();
+            dialog.title = "Add Account";
+            dialog.content_width = 460;
+
+            var box = new Gtk.Box (Gtk.Orientation.VERTICAL, 0);
+            box.append (new Adw.HeaderBar ());
+
+            var intro = new Gtk.Label ("Choose how you want to add an account.");
+            intro.halign = Gtk.Align.START;
+            intro.margin_start = intro.margin_end = 12;
+            intro.margin_top = 12;
+            intro.add_css_class ("dim-label");
+            box.append (intro);
+
+            var list = new Gtk.ListBox ();
+            list.selection_mode = Gtk.SelectionMode.NONE;
+            list.add_css_class ("boxed-list");
+            list.margin_start = list.margin_end = 12;
+            list.margin_top = 8;
+            list.margin_bottom = 12;
+
+            list.append (build_add_method_row (
+                "contact-new-symbolic",
+                "Create new profile",
+                "Pick a chatmail relay and let the server generate keys"));
+            list.append (build_add_method_row (
+                "phone-symbolic",
+                "Add as secondary device",
+                "Synchronize from another device on the same network"));
+            list.append (build_add_method_row (
+                "mail-message-new-symbolic",
+                "Use classic email address",
+                "Sign in with an existing email account"));
+            list.append (build_add_method_row (
+                "mail-attachment-symbolic",
+                "Use invitation code",
+                "Join via a dcaccount: link or QR code"));
+
+            list.row_activated.connect ((row) => {
+                string method = row.get_data<string> ("add-method");
+                dialog.close ();
+                on_add_account_method_selected (method);
+            });
+
+            box.append (list);
+            dialog.child = box;
+            active_modal = dialog;
+            dialog.closed.connect (() => { active_modal = null; });
+            dialog.present (this);
+        }
+
+        private Adw.ActionRow build_add_method_row (string icon_name,
+                                                     string title,
+                                                     string subtitle) {
+            var row = new Adw.ActionRow ();
+            row.title = title;
+            row.subtitle = subtitle;
+            row.activatable = true;
+            row.set_data<string> ("add-method", title);
+
+            var icon = new Gtk.Image.from_icon_name (icon_name);
+            icon.valign = Gtk.Align.CENTER;
+            row.add_prefix (icon);
+
+            var chevron = new Gtk.Image.from_icon_name ("go-next-symbolic");
+            chevron.valign = Gtk.Align.CENTER;
+            chevron.add_css_class ("dim-label");
+            row.add_suffix (chevron);
+
+            return row;
+        }
+
+        private void on_add_account_method_selected (string method) {
+            if (method == "Use classic email address") {
+                show_classic_email_dialog ();
+            } else {
+                show_toast (method + ": not yet implemented");
+            }
+        }
+
+        private void show_classic_email_dialog () {
             var dialog = new Adw.AlertDialog (
-                "Add Account",
+                "Use classic email address",
                 "Enter your email and password."
             );
 
