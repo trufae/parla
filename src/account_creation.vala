@@ -14,46 +14,6 @@ namespace Dc {
      */
 
     /**
-     * Curated list of public chatmail relays derived from the human-readable
-     * directory at https://chatmail.at/relays. The first entry is always the
-     * default. Locations follow the form "City, Country" or a language hint
-     * if the operators only document the audience.
-     */
-    public struct ChatmailRelay {
-        public unowned string domain;
-        public unowned string location;
-    }
-
-    public const ChatmailRelay[] CHATMAIL_RELAYS = {
-        { "nine.testrun.org",                "Default" },
-        { "mehl.cloud",                      "German" },
-        { "mailchat.pl",                     "Poland" },
-        { "chatmail.woodpeckersnest.space",  "Italy" },
-        { "chatmail.culturanerd.it",         "Italy" },
-        { "chat.adminforge.de",              "Falkenstein, Germany" },
-        { "chika.aangat.lahat.computer",     "Santa Clara, USA" },
-        { "tarpit.fun",                      "Nuremberg, Germany" },
-        { "d.gaufr.es",                      "Roubaix, France" },
-        { "chtml.ca",                        "Quebec, Canada" },
-        { "chatmail.au",                     "Melbourne, Australia" },
-        { "e2ee.wang",                       "Johannesburg, South Africa" },
-        { "chat.privittytech.com",           "Bangalore, India" },
-        { "e2ee.im",                         "Orastie, Romania" },
-        { "chatmail.email",                  "Warsaw, Poland" },
-        { "danneskjold.de",                  "Helsinki, Finland" },
-        { "chat.in-the.eu",                  "Falkenstein, Germany" },
-        { "chat.nuvon.app",                  "Prague, Czechia" },
-        { "nibblehole.com",                  "Zug, Switzerland" },
-        { "chat.zashm.org",                  "Lviv, Ukraine" },
-        { "chat.sus.fr",                     "Iceland/Japan/Kenya/South Africa" },
-        { "delta.thelab.uno",                "Gravelines, France" },
-        { "chat.vim.wtf",                    "Frankfurt, Germany" },
-        { "uninterest.ing",                  "Elk Grove Village, USA" },
-        { "sweetfern.net",                   "Ashburn, USA" },
-        { "delta.disobey.net",               "Roon, Netherlands" }
-    };
-
-    /**
      * Creates a fresh chatmail profile on the relay chosen by the user.
      * Server-side picks an address, returns credentials, and the rpc
      * server configures the account end-to-end. ConfigureProgress events
@@ -68,8 +28,7 @@ namespace Dc {
 
         private Gtk.Stack stack;
         private Gtk.Entry name_entry;
-        private Gtk.DropDown relay_dropdown;
-        private Gtk.Entry custom_server_entry;
+        private RelayPicker relay_picker;
         private Gtk.Button create_btn;
         private Gtk.ProgressBar progress_bar;
         private Gtk.Label progress_label;
@@ -138,26 +97,8 @@ namespace Dc {
             relay_label.xalign = 0;
             content.append (relay_label);
 
-            string[] labels = new string[CHATMAIL_RELAYS.length];
-            for (int i = 0; i < CHATMAIL_RELAYS.length; i++) {
-                labels[i] = "%s (%s)".printf (
-                    CHATMAIL_RELAYS[i].domain,
-                    CHATMAIL_RELAYS[i].location);
-            }
-            relay_dropdown = new Gtk.DropDown.from_strings (labels);
-            relay_dropdown.selected = 0;
-
-            custom_server_entry = new Gtk.Entry ();
-            custom_server_entry.placeholder_text = "Custom server name";
-            custom_server_entry.activates_default = true;
-            custom_server_entry.changed.connect (update_server_choice);
-
-            var relay_row = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 8);
-            relay_dropdown.hexpand = true;
-            custom_server_entry.hexpand = true;
-            relay_row.append (relay_dropdown);
-            relay_row.append (custom_server_entry);
-            content.append (relay_row);
+            relay_picker = new RelayPicker ();
+            content.append (relay_picker);
 
             var hint = new Gtk.Label (null);
             hint.use_markup = true;
@@ -222,7 +163,8 @@ namespace Dc {
             if (create_running) return;
 
             string display_name = name_entry.text.strip ();
-            string domain = get_selected_server ();
+            string domain = relay_picker.get_selected_domain ();
+            string qr_link = relay_picker.get_chatmail_qr ();
 
             create_running = true;
             stack.visible_child_name = "progress";
@@ -251,8 +193,7 @@ namespace Dc {
             }
 
             try {
-                yield rpc.add_transport_from_qr (new_account_id,
-                                                   "dcaccount:" + domain);
+                yield rpc.add_transport_from_qr (new_account_id, qr_link);
             } catch (Error e) {
                 cleanup_signal ();
                 create_running = false;
@@ -274,19 +215,6 @@ namespace Dc {
             new_account_id = 0;
             account_created (created);
             this.close ();
-        }
-
-        private string get_selected_server () {
-            string custom = custom_server_entry.text.strip ();
-            if (custom.length > 0) return custom;
-
-            int idx = (int) relay_dropdown.selected;
-            if (idx < 0 || idx >= CHATMAIL_RELAYS.length) idx = 0;
-            return CHATMAIL_RELAYS[idx].domain;
-        }
-
-        private void update_server_choice () {
-            relay_dropdown.sensitive = custom_server_entry.text.strip ().length == 0;
         }
 
         private void on_configure_progress (int ctx, int progress,
@@ -546,7 +474,7 @@ namespace Dc {
                 try {
                     yield rpc.add_transport_from_qr (
                         new_account_id,
-                        "dcaccount:" + CHATMAIL_RELAYS[0].domain);
+                        build_chatmail_qr (CHATMAIL_RELAYS[0].domain));
                     status_label.label = "Accepting invitation…";
                     chat_id = yield rpc.secure_join (new_account_id, invite_link);
                 } catch (Error e) {

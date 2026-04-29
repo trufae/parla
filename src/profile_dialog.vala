@@ -109,6 +109,24 @@ namespace Dc {
 
             content.append (invite_code_box);
 
+            var relays_box = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 8);
+            relays_box.margin_top = 4;
+
+            var relays_btn = new Gtk.Button.with_label ("Relays...");
+            relays_btn.tooltip_text = "Manage chatmail relays for this profile";
+            relays_btn.clicked.connect (show_relays_dialog);
+            relays_box.append (relays_btn);
+
+            var relays_label = new Gtk.Label ("Manage transports");
+            relays_label.add_css_class ("dim-label");
+            relays_label.valign = Gtk.Align.CENTER;
+            relays_label.wrap = true;
+            relays_label.xalign = 0;
+            relays_label.hexpand = true;
+            relays_box.append (relays_label);
+
+            content.append (relays_box);
+
             var second_device_box = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 8);
             second_device_box.margin_top = 4;
 
@@ -201,6 +219,11 @@ namespace Dc {
 
         private void show_second_device_dialog () {
             var dialog = new SecondDeviceDialog (rpc, account_id);
+            dialog.present (this);
+        }
+
+        private void show_relays_dialog () {
+            var dialog = new RelaysDialog (rpc, account_id);
             dialog.present (this);
         }
 

@@ -318,6 +318,19 @@ namespace Dc {
                     .build ());
         }
 
+        public async Json.Node? list_transports (int acct_id) throws Error {
+            return yield call ("list_transports",
+                Params.begin ().add_int (acct_id).build ());
+        }
+
+        public async void delete_transport (int acct_id, string addr) throws Error {
+            yield call ("delete_transport",
+                Params.begin ()
+                    .add_int (acct_id)
+                    .add_string (addr)
+                    .build ());
+        }
+
         public async void batch_set_config (string key, string val,
                                              int acct_id = 0) throws Error {
             int id = acct_id > 0 ? acct_id : account_id;
