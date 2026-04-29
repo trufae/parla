@@ -57,18 +57,22 @@ namespace Dc {
     public class RelayPicker : Gtk.Box {
 
         private Gtk.DropDown dropdown;
+        private Gtk.StringList model;
         private Gtk.Entry custom_entry;
+        private GenericArray<string> domains;
 
         public RelayPicker () {
             Object (orientation: Gtk.Orientation.HORIZONTAL, spacing: 8);
 
-            string[] labels = new string[CHATMAIL_RELAYS.length];
+            domains = new GenericArray<string> ();
+            model = new Gtk.StringList (null);
             for (int i = 0; i < CHATMAIL_RELAYS.length; i++) {
-                labels[i] = "%s (%s)".printf (
+                model.append ("%s (%s)".printf (
                     CHATMAIL_RELAYS[i].domain,
-                    CHATMAIL_RELAYS[i].location);
+                    CHATMAIL_RELAYS[i].location));
+                domains.add (CHATMAIL_RELAYS[i].domain);
             }
-            dropdown = new Gtk.DropDown.from_strings (labels);
+            dropdown = new Gtk.DropDown (model, null);
             dropdown.selected = 0;
             dropdown.hexpand = true;
 
@@ -89,12 +93,47 @@ namespace Dc {
             if (custom.length > 0) return custom;
 
             int idx = (int) dropdown.selected;
-            if (idx < 0 || idx >= CHATMAIL_RELAYS.length) idx = 0;
-            return CHATMAIL_RELAYS[idx].domain;
+            if (idx < 0 || idx >= (int) domains.length) idx = 0;
+            return domains[idx];
         }
 
         public string get_chatmail_qr () {
             return build_chatmail_qr (get_selected_domain ());
+        }
+
+        /**
+         * Returns true if `domain` is already present in the dropdown.
+         */
+        public bool has_domain (string domain) {
+            for (int i = 0; i < (int) domains.length; i++) {
+                if (domains[i] == domain) return true;
+            }
+            return false;
+        }
+
+        /**
+         * Append a domain entry to the dropdown if it isn't already present.
+         * `note` is shown in parentheses after the domain.
+         * Returns true when a new entry was added.
+         */
+        public bool add_domain (string domain, string note) {
+            if (domain.length == 0) return false;
+            if (has_domain (domain)) return false;
+            model.append ("%s (%s)".printf (domain, note));
+            domains.add (domain);
+            return true;
+        }
+
+        /**
+         * Select the first entry whose domain matches, if any.
+         */
+        public void select_domain (string domain) {
+            for (int i = 0; i < (int) domains.length; i++) {
+                if (domains[i] == domain) {
+                    dropdown.selected = i;
+                    return;
+                }
+            }
         }
     }
 
@@ -112,7 +151,9 @@ namespace Dc {
         private Gtk.Label empty_label;
         private RelayPicker picker;
         private Gtk.Button add_btn;
+        private Gtk.Button discover_btn;
         private bool busy = false;
+        private bool discovered = false;
 
         public RelaysDialog (RpcClient rpc, int acct_id) {
             this.rpc = rpc;
@@ -169,6 +210,12 @@ namespace Dc {
 
             var add_row = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 8);
             add_row.halign = Gtk.Align.END;
+            discover_btn = new Gtk.Button.with_label ("Discover from Contacts");
+            discover_btn.tooltip_text =
+                "Scan known contacts on all profiles and append their relays " +
+                "to the list above.";
+            discover_btn.clicked.connect (() => { do_discover.begin (); });
+            add_row.append (discover_btn);
             add_btn = new Gtk.Button.with_label ("Add Relay");
             add_btn.add_css_class ("suggested-action");
             add_btn.clicked.connect (() => { do_add_relay.begin (); });
@@ -274,6 +321,81 @@ namespace Dc {
             add_btn.sensitive = true;
             busy = false;
             yield refresh_list ();
+        }
+
+        /**
+         * Walk every configured account, read all known contacts locally
+         * (no network round-trips), pull the domain out of each address,
+         * and append the unique ones to the picker.
+         */
+        private async void do_discover () {
+            if (busy) return;
+            if (discovered) {
+                /* Avoid stacking duplicate "(N contacts)" entries on repeat
+                 * clicks — one scan is enough per dialog session. */
+                return;
+            }
+            busy = true;
+            discover_btn.sensitive = false;
+            string original_label = discover_btn.label;
+            discover_btn.label = "Scanning…";
+
+            var counts = new HashTable<string, int> (str_hash, str_equal);
+
+            try {
+                var accounts_node = yield rpc.get_all_accounts ();
+                if (accounts_node != null
+                    && accounts_node.get_node_type () == Json.NodeType.ARRAY) {
+                    var accounts = accounts_node.get_array ();
+                    for (uint a = 0; a < accounts.get_length (); a++) {
+                        var acct = accounts.get_object_element (a);
+                        if (acct == null) continue;
+                        int aid = (int) acct.get_int_member ("id");
+                        if (aid <= 0) continue;
+                        yield collect_domains_for (aid, counts);
+                    }
+                }
+            } catch (Error e) {
+                show_error (this, "Failed to scan contacts: " + e.message);
+                discover_btn.label = original_label;
+                discover_btn.sensitive = true;
+                busy = false;
+                return;
+            }
+
+            int added = 0;
+            counts.foreach ((domain, count) => {
+                string note = count == 1
+                    ? "1 contact"
+                    : "%d contacts".printf (count);
+                if (picker.add_domain (domain, note)) added++;
+            });
+
+            discovered = true;
+            discover_btn.label = added > 0
+                ? "Found %d new".printf (added)
+                : "No new relays";
+            /* leave button disabled — repeat scans would rebuild the same set */
+            busy = false;
+        }
+
+        private async void collect_domains_for (int aid,
+                                                HashTable<string, int> counts) throws Error {
+            var ids = yield rpc.get_contact_ids_for (aid, null);
+            if (ids == null) return;
+            for (uint i = 0; i < ids.get_length (); i++) {
+                int cid = (int) ids.get_int_element (i);
+                if (cid <= 1) continue; /* skip self / special ids */
+                var obj = yield rpc.get_contact_for (aid, cid);
+                if (obj == null) continue;
+                string addr = json_str (obj, "address") ?? "";
+                int at = addr.index_of_char ('@');
+                if (at <= 0 || at >= addr.length - 1) continue;
+                string domain = addr.substring (at + 1).down ().strip ();
+                if (domain.length == 0) continue;
+                int prev = counts.lookup (domain);
+                counts.insert (domain, prev + 1);
+            }
         }
     }
 }

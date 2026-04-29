@@ -484,9 +484,13 @@ namespace Dc {
         }
 
         public async Json.Array? get_contact_ids (string? query) throws Error {
+            return yield get_contact_ids_for (account_id, query);
+        }
+
+        public async Json.Array? get_contact_ids_for (int acct_id, string? query) throws Error {
             var result = yield call ("get_contact_ids",
                 Params.begin ()
-                    .add_int (account_id)
+                    .add_int (acct_id)
                     .add_int (0)            /* listFlags: 0 = all known contacts */
                     .add_string (query)
                     .build ());
@@ -582,6 +586,14 @@ namespace Dc {
                     .add_int (account_id)
                     .add_int_array (msg_ids)
                     .build ());
+        }
+
+        public async Json.Object? get_contact_for (int acct_id, int contact_id) throws Error {
+            var result = yield call ("get_contact",
+                Params.begin ().add_int (acct_id).add_int (contact_id).build ());
+            if (result == null || result.get_node_type () != Json.NodeType.OBJECT)
+                return null;
+            return result.get_object ();
         }
 
         public async Json.Object? get_contact (int contact_id) throws Error {
