@@ -514,10 +514,32 @@ namespace Dc {
                 return;
             }
             if (MessageRow.is_image_file (msg)) {
-                window.show_image (msg.file_path);
+                string[] paths;
+                int start;
+                collect_image_paths (msg.file_path, out paths, out start);
+                window.show_image_list (paths, start);
             } else {
                 window.save_attachment.begin (msg.file_path, msg.file_name);
             }
+        }
+
+        private void collect_image_paths (string current_path,
+                                          out string[] paths,
+                                          out int start_index) {
+            var list = new GLib.GenericArray<string> ();
+            int found = -1;
+            uint n = message_store.get_n_items ();
+            for (uint i = 0; i < n; i++) {
+                var m = (Message) message_store.get_item (i);
+                if (m == null) continue;
+                if (m.file_path == null || m.file_path.length == 0) continue;
+                if (!MessageRow.is_image_file (m)) continue;
+                if (!FileUtils.test (m.file_path, FileTest.EXISTS)) continue;
+                if (m.file_path == current_path) found = (int) list.length;
+                list.add (m.file_path);
+            }
+            paths = list.steal ();
+            start_index = found >= 0 ? found : 0;
         }
     }
 }

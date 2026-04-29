@@ -472,6 +472,10 @@ namespace Dc {
             image_viewer.show (path);
         }
 
+        public void show_image_list (string[] paths, int start_index) {
+            image_viewer.show_list (paths, start_index);
+        }
+
         public async void save_attachment (string src_path, string? name) {
             var dialog = new Gtk.FileDialog ();
             dialog.initial_name = name ?? Path.get_basename (src_path);
@@ -1284,10 +1288,10 @@ namespace Dc {
 
         private bool on_window_key_pressed (uint keyval, uint keycode,
                                             Gdk.ModifierType state) {
-            /* Close fullscreen image viewer on any key */
+            /* Image viewer handles its own keys (nav keys move; any
+             * other key closes). */
             if (image_viewer.visible) {
-                image_viewer.hide ();
-                return true;
+                return image_viewer.handle_key (keyval);
             }
 
             /* Escape: close any open dialog, then focus input entry */

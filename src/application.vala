@@ -93,6 +93,9 @@ namespace Dc {
             }
             .message-attachment { padding: 4px 0; }
             .message-image { border-radius: 12px; margin-top: 4px; }
+            .image-viewer-overlay {
+                background-color: alpha(black, 0.75);
+            }
             .compose-bar { border-top: none; }
             .compose-entry { min-height: 36px; border-radius: 18px; }
             .chat-drop-active {
