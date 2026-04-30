@@ -1084,7 +1084,17 @@ namespace Dc {
             about.comments = "A Delta Chat client for GNOME";
             about.release_notes_version = Parla.VERSION;
             about.release_notes =
-                "<p>What's New in Parla</p>" +
+                "<ul>" +
+                "<li>Account creation</li>" +
+                "<li>Enter chat via invite link</li>" +
+                "<li>Manage relay profiles</li>" +
+                "<li>Discover new relays from contacts</li>" +
+                "<li>Profile lists available in the avatar circle</li>" +
+                "<li>Support import/export secondary device</li>" +
+                "<li>Prompt before destructive actions</li>" +
+                "<li>Next/prev picture with arrows</li>" +
+                "</ul>" +
+                "<p>Previously in 0.2.2</p>" +
                 "<ul>" +
                 "<li>Focusable conversation list</li>" +
                 "<li>Paste images from clipboard</li>" +
