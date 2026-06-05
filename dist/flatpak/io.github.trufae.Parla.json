@@ -1,7 +1,7 @@
 {
     "id": "io.github.trufae.Parla",
     "runtime": "org.gnome.Platform",
-    "runtime-version": "48",
+    "runtime-version": "50",
     "sdk": "org.gnome.Sdk",
     "command": "parla",
     "finish-args": [
@@ -21,21 +21,35 @@
             "sources": [
                 {
                     "type": "file",
-                    "url": "https://github.com/chatmail/core/releases/download/v2.49.0/deltachat-rpc-server-x86_64-linux",
-                    "sha256": "28e10b40518f55fa8ce20edd119fa743dd29a22df372b58443ec53eb753cb50c",
+                    "url": "https://github.com/chatmail/core/releases/download/v2.51.0/deltachat-rpc-server-x86_64-linux",
+                    "sha256": "c943a826ef9668fb4f3f065c239d14275acf60eed6e968e03dd6498a9052cbd4",
                     "dest-filename": "deltachat-rpc-server",
                     "only-arches": [
                         "x86_64"
-                    ]
+                    ],
+                    "x-checker-data": {
+                        "type": "json",
+                        "url": "https://api.github.com/repos/chatmail/core/releases/latest",
+                        "timestamp-query": ".published_at",
+                        "version-query": ".tag_name",
+                        "url-query": ".assets[] | select(.name==\"deltachat-rpc-server-x86_64-linux\") | .browser_download_url"
+                    }
                 },
                 {
                     "type": "file",
-                    "url": "https://github.com/chatmail/core/releases/download/v2.49.0/deltachat-rpc-server-aarch64-linux",
-                    "sha256": "33acdc048060fcd51bc585f2eefdaa2cf93cca9306440f45be8c5936024732cf",
+                    "url": "https://github.com/chatmail/core/releases/download/v2.51.0/deltachat-rpc-server-aarch64-linux",
+                    "sha256": "395577d92a957b80eeace5299dbf3087324de61f5f8d37522f58b3206f329926",
                     "dest-filename": "deltachat-rpc-server",
                     "only-arches": [
                         "aarch64"
-                    ]
+                    ],
+                    "x-checker-data": {
+                        "type": "json",
+                        "url": "https://api.github.com/repos/chatmail/core/releases/latest",
+                        "timestamp-query": ".published_at",
+                        "version-query": ".tag_name",
+                        "url-query": ".assets[] | select(.name==\"deltachat-rpc-server-aarch64-linux\") | .browser_download_url"
+                    }
                 }
             ]
         },
