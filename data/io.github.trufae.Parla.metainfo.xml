@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.trufae.Parla</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0</project_license>
+  <name>Parla</name>
+  <summary>Delta Chat client</summary>
+  <description>
+    <p>Parla is a Delta Chat client for GNOME.</p>
+    <p>Chat over email, decentralized and encrypted.</p>
+  </description>
+  <launchable type="desktop-id">io.github.trufae.Parla.desktop</launchable>
+  <content_rating type="oars-1.1"/>
+  <screenshots>
+    <screenshot type="default">
+      <image>https://raw.githubusercontent.com/trufae/parla/main/data/screenshots/welcome.png</image>
+      <caption>Welcome</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/trufae/parla/main/data/screenshots/welcome-dark.png</image>
+      <caption>Dark Theme</caption>
+    </screenshot>
+  </screenshots>
+
+  <url type="homepage">https://github.com/trufae/parla</url>
+  <url type="bugtracker">https://github.com/trufae/parla/issues</url>
+  <url type="vcs-browser">https://github.com/trufae/parla</url>
+  <developer id="io.github.trufae">
+    <name translate="no">pancake</name>
+  </developer>
+  <releases>
+    <release version="0.4.0" date="2026-06-03"></release>
+    <release version="0.3.0" date="2026-06-01"></release>
+    <release version="0.2.8" date="2026-05-20">
+      <description>
+        <p>Bubble/IRC modes</p>
+        <p>Toggle sidebar with Control+S</p>
+        <p>Customizable accent color</p>
+        <p>Create channels</p>
+        <p>Improved reactions</p>
+      </description>
+    </release>
+    <release version="0.2.6" date="2026-05-15"></release>
+    <release version="0.2.4" date="2026-04-30">
+      <description>
+        <p>Support profile creation</p>
+        <p>Manage and discover new relays</p>
+        <p>Enter chat via invite link</p>
+        <p>Profile list refactored into the avatar circle</p>
+        <p>Support transfer account into secondary device</p>
+        <p>Prompt the user before performing destructive actions</p>
+        <p>See next/previous picture with arrow keys</p>
+      </description>
+    </release>
+    <release version="0.2.2" date="2026-04-22"></release>
+    <release version="0.2.1" date="2026-04-16"></release>
+    <release version="0.2.0" date="2026-04-12">
+      <description>
+        <p>This is the very first release</p>
+      </description>
+    </release>
+  </releases>
+</component>

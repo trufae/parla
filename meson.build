@@ -75,6 +75,11 @@ install_data(
 )
 
 install_data(
+  'data/io.github.trufae.Parla.metainfo.xml',
+  install_dir: get_option('datadir') / 'metainfo',
+)
+
+install_data(
   'data/icons/hicolor/scalable/apps/io.github.trufae.Parla.svg',
   'data/icons/hicolor/scalable/apps/parla-welcome.svg',
   'data/icons/hicolor/scalable/apps/parla-tray.svg',
