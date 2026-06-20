@@ -66,7 +66,15 @@ jobs:
           path: dist/debian/parla/*.deb
 
   build-flatpak:
-    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+            runner: ubuntu-24.04
+          - arch: aarch64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
     container:
       image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-50
       options: --privileged
@@ -75,9 +83,10 @@ jobs:
 
       - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
         with:
+          arch: ${{ matrix.arch }}
           manifest-path: dist/flatpak/io.github.trufae.Parla.json
-          bundle: parla.flatpak
-          cache-key: flatpak-builder-${{ hashFiles('dist/flatpak/io.github.trufae.Parla.json') }}
+          bundle: parla-${{ matrix.arch }}.flatpak
+          cache-key: flatpak-builder-${{ matrix.arch }}-${{ hashFiles('dist/flatpak/io.github.trufae.Parla.json') }}
 
   build-macos:
     runs-on: macos-26
