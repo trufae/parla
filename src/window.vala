@@ -71,6 +71,7 @@ namespace Dc {
         private VideoPlayer video_player;
         private EventHandler events;
         private ChatContextMenu chat_menu;
+        private ChatSwitcher chat_switcher;
         private bool reconnecting_rpc = false;
         private uint unread_notification_timer = 0;
         private int[] pending_unread_notification_accounts = {};
@@ -98,7 +99,13 @@ namespace Dc {
 
         private void present_modal (Adw.Dialog dialog) {
             active_modal = dialog;
-            dialog.closed.connect (() => { active_modal = null; });
+            dialog.closed.connect (() => {
+                active_modal = null;
+                /* Return focus to the compose entry so in-conversation
+                   shortcuts work immediately after dismissing a modal. */
+                var v = current_view ();
+                if (v != null) v.focus_entry ();
+            });
             dialog.present (this);
         }
 
@@ -465,6 +472,9 @@ namespace Dc {
             });
 
             apply_sidebar_mode (true);
+
+            chat_switcher = new ChatSwitcher (
+                this, chat_listbox, chat_store, sidebar_box, split_view);
 
             /* Fullscreen image viewer overlay */
             var image_overlay = new Gtk.Overlay ();
@@ -2108,6 +2118,8 @@ namespace Dc {
                 }
             }
 
+            if (chat_switcher.handle_key (keyval, state)) return true;
+
             /* All other shortcuts require the platform primary modifier:
                Ctrl normally, Command on macOS. */
             if (!Platform.has_primary_modifier (state)) return false;
@@ -2119,12 +2131,6 @@ namespace Dc {
 #endif
 
             switch (lower_key) {
-            case Gdk.Key.Tab:
-            case Gdk.Key.ISO_Left_Tab:
-            case Gdk.Key.KP_Tab:
-                return select_adjacent_chat (
-                    ((state & Gdk.ModifierType.SHIFT_MASK) != 0 ||
-                     keyval == Gdk.Key.ISO_Left_Tab) ? -1 : 1);
             case Gdk.Key.a:
                 if ((state & Gdk.ModifierType.SHIFT_MASK) == 0) return false;
                 show_account_menu ();
@@ -2245,6 +2251,18 @@ namespace Dc {
             return false;
         }
 
+        internal bool shortcuts_modal_open () {
+            return active_modal != null;
+        }
+
+        internal Gtk.Widget? shortcuts_focus_widget () {
+            return focus_widget ?? get_focus ();
+        }
+
+        internal bool shortcuts_filter_chat_row (Gtk.ListBoxRow row) {
+            return filter_chats (row);
+        }
+
 #if PARLA_MACOS_CLIPBOARD_WORKAROUND
         private bool paste_macos_text_into_focus () {
             if (!Platform.is_macos ()) return false;
@@ -2311,43 +2329,6 @@ namespace Dc {
             account_menu_button.popup ();
         }
 
-        private bool select_adjacent_chat (int delta) {
-            int row_count = 0;
-            int current_index = -1;
-            Gtk.ListBoxRow? row;
-
-            while ((row = chat_listbox.get_row_at_index (row_count)) != null) {
-                var chat_row = row.child as ChatRow;
-                if (chat_row != null && chat_row.chat_id == current_chat_id) {
-                    current_index = row_count;
-                }
-                row_count++;
-            }
-
-            if (row_count == 0) return false;
-            if (row_count == 1) return true;
-
-            int target_index;
-            if (current_index < 0) {
-                target_index = delta > 0 ? 0 : row_count - 1;
-            } else {
-                target_index = current_index + delta;
-                if (target_index < 0) {
-                    target_index = row_count - 1;
-                } else if (target_index >= row_count) {
-                    target_index = 0;
-                }
-            }
-
-            row = chat_listbox.get_row_at_index (target_index);
-            if (row == null) return false;
-
-            var chat_row = row.child as ChatRow;
-            if (chat_row == null) return false;
-
-            return select_chat_by_id (chat_row.chat_id);
-        }
-
         private void show_quick_switch_dialog () {
             if (!can_show_account_modal ()) return;
             if (chat_store.get_n_items () == 0) return;
@@ -2375,7 +2356,7 @@ namespace Dc {
             return false;
         }
 
-        private const string[] SHORTCUTS = {
+        private const string[] SHORTCUTS_BEFORE_CHAT_SWITCHER = {
             "New chat",              "<Primary>n",
             "New group",             "<Primary>g",
             "New channel",           "<Primary><Shift>g",
@@ -2386,8 +2367,9 @@ namespace Dc {
             "Search in conversation","<Primary>f",
             "Quick switch chat",     "<Primary>k",
             "Account menu",          "<Primary><Shift>a",
-            "Next conversation",     "<Primary>Tab",
-            "Previous conversation", "<Primary><Shift>Tab",
+        };
+
+        private const string[] SHORTCUTS_AFTER_CHAT_SWITCHER = {
             "Refresh messages",      "<Primary>r",
             "Toggle sidebar",        "<Primary>s",
             "Compact sidebar",       "<Primary><Shift>s",
@@ -2397,15 +2379,23 @@ namespace Dc {
             "Quit application",      "<Primary>q",
         };
 
-        private static string shortcut_accelerator (string accelerator) {
-            return accelerator.replace ("<Primary>",
-                Platform.primary_accelerator_prefix ());
+        private void append_shortcut_rows (Gtk.ListBox list, string[] pairs) {
+            for (int i = 0; i + 1 < pairs.length; i += 2) {
+                var row = new Adw.ActionRow ();
+                row.title = pairs[i];
+                var lbl = new Gtk.Label (shortcut_label_text (pairs[i + 1]));
+                lbl.valign = Gtk.Align.CENTER;
+                lbl.add_css_class ("dim-label");
+                row.add_suffix (lbl);
+                list.append (row);
+            }
         }
 
         private static string shortcut_label_text (string accelerator) {
             uint key;
             Gdk.ModifierType mods;
-            var resolved = shortcut_accelerator (accelerator);
+            var resolved = accelerator.replace ("<Primary>",
+                Platform.primary_accelerator_prefix ());
             if (!Gtk.accelerator_parse (resolved, out key, out mods)) {
                 return resolved;
             }
@@ -2434,15 +2424,9 @@ namespace Dc {
             list.add_css_class ("boxed-list");
             list.margin_start = list.margin_end = list.margin_top = list.margin_bottom = 12;
 
-            for (int i = 0; i + 1 < SHORTCUTS.length; i += 2) {
-                var row = new Adw.ActionRow ();
-                row.title = SHORTCUTS[i];
-                var lbl = new Gtk.Label (shortcut_label_text (SHORTCUTS[i + 1]));
-                lbl.valign = Gtk.Align.CENTER;
-                lbl.add_css_class ("dim-label");
-                row.add_suffix (lbl);
-                list.append (row);
-            }
+            append_shortcut_rows (list, SHORTCUTS_BEFORE_CHAT_SWITCHER);
+            chat_switcher.append_shortcut_rows (list);
+            append_shortcut_rows (list, SHORTCUTS_AFTER_CHAT_SWITCHER);
 
             var wheel_row = new Adw.ActionRow ();
             wheel_row.title = "Change font size";

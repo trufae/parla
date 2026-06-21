@@ -74,6 +74,7 @@ sources = files(
   'src/platform.c',
   'src/application.vala',
   'src/window.vala',
+  'src/shortcuts/chat_switcher.vala',
   'src/rpc_transport.vala',
   'src/rpc_params.vala',
   'src/rpc_parsers.vala',
