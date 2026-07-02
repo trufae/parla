@@ -159,6 +159,16 @@ namespace Dc {
             message_listview.valign = Gtk.Align.FILL;
             message_listview.add_css_class ("boxed-list-separate");
 
+            var message_key = new Gtk.EventControllerKey ();
+            message_key.propagation_phase = Gtk.PropagationPhase.CAPTURE;
+            message_key.key_pressed.connect ((keyval, keycode, state) => {
+                if (!is_context_menu_trigger (message_key, keyval, state)) {
+                    return false;
+                }
+                return show_focused_message_context_menu ();
+            });
+            message_listview.add_controller (message_key);
+
             /* One gesture pair on the listview, not per-row: a per-row
                left-click controller competes with the label's link gesture
                and breaks URL clicks. */
@@ -578,12 +588,13 @@ namespace Dc {
          *  Public API (called by Window)
          * ================================================================ */
 
-        public void on_activated () {
+        public void on_activated (bool focus_compose = true) {
             if (!messages_loaded) {
                 messages_loaded = true;
                 load_messages.begin ();
             }
-            if (!is_contact_request && !selection_mode) compose_bar.grab_entry_focus ();
+            if (focus_compose && !is_contact_request && !selection_mode)
+                compose_bar.grab_entry_focus ();
         }
 
         public void on_reselected () {
@@ -1109,6 +1120,65 @@ namespace Dc {
                 w = w.get_parent ();
             }
             return w as MessageRow;
+        }
+
+        private MessageRow? find_message_row_descendant (Gtk.Widget? widget) {
+            if (widget == null || widget == message_listview) return null;
+            var row = widget as MessageRow;
+            if (row != null) return row;
+
+            for (Gtk.Widget? child = widget.get_first_child ();
+                    child != null;
+                    child = child.get_next_sibling ()) {
+                row = find_message_row_descendant (child);
+                if (row != null) return row;
+            }
+            return null;
+        }
+
+        private MessageRow? focused_message_row () {
+            for (var w = window.focus_widget; w != null; w = w.get_parent ()) {
+                var row = w as MessageRow;
+                if (row != null) return row;
+                row = find_message_row_descendant (w);
+                if (row != null) return row;
+                if (w == message_listview) break;
+            }
+            return null;
+        }
+
+        private MessageRow? fallback_visible_message_row () {
+            double x = message_listview.get_width () / 2.0;
+            double[] ys = {
+                message_listview.get_height () / 2.0,
+                24.0,
+                double.max (24.0, message_listview.get_height () - 24.0)
+            };
+            foreach (double y in ys) {
+                var row = pick_message_row (x, y);
+                if (row != null) return row;
+            }
+            return null;
+        }
+
+        private bool show_focused_message_context_menu () {
+            var row = focused_message_row ();
+            if (row == null) row = fallback_visible_message_row ();
+            if (row == null) return false;
+
+            double x;
+            double y;
+            Graphene.Rect bounds;
+            if (row.compute_bounds (message_listview, out bounds)) {
+                x = bounds.get_x () + bounds.get_width () / 2.0;
+                y = bounds.get_y () + bounds.get_height () / 2.0;
+            } else {
+                x = message_listview.get_width () / 2.0;
+                y = message_listview.get_height () / 2.0;
+            }
+            msg_actions.show_context_menu (row.message_id, row.is_outgoing,
+                x, y, message_listview);
+            return true;
         }
 
         /* True when the pointer sits over a selectable text label (the

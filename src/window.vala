@@ -10,6 +10,26 @@ namespace Dc {
             || u.has_prefix ("https://i.delta.chat/");
     }
 
+    public bool is_context_menu_trigger (Gtk.EventController controller,
+                                         uint keyval,
+                                         Gdk.ModifierType state) {
+        var event = controller.get_current_event ();
+        if (event != null && event.triggers_context_menu ()) return true;
+
+        var blocked_mods = state & (Gdk.ModifierType.CONTROL_MASK
+                                  | Gdk.ModifierType.ALT_MASK
+                                  | Gdk.ModifierType.SUPER_MASK
+                                  | Gdk.ModifierType.META_MASK);
+        if (blocked_mods != 0) return false;
+
+        if (keyval == Gdk.Key.Menu || keyval == Gdk.Key.MenuKB ||
+                keyval == Gdk.Key.MenuPB) {
+            return true;
+        }
+        return keyval == Gdk.Key.F10
+            && (state & Gdk.ModifierType.SHIFT_MASK) != 0;
+    }
+
     public class Window : Adw.ApplicationWindow {
 
         /* Layout */
@@ -76,6 +96,7 @@ namespace Dc {
         private uint unread_notification_timer = 0;
         private int[] pending_unread_notification_accounts = {};
         private int applied_media_font_size = -1;
+        private bool chat_list_keyboard_navigation = false;
 
         private const double FULL_SIDEBAR_MIN_WIDTH = 260;
         private const double FULL_SIDEBAR_MAX_WIDTH = 340;
@@ -443,6 +464,19 @@ namespace Dc {
                     chat_menu.show (chat_row.chat_id, x, y, chat_listbox);
             });
             chat_listbox.add_controller (right_click);
+
+            var chat_key = new Gtk.EventControllerKey ();
+            chat_key.propagation_phase = Gtk.PropagationPhase.CAPTURE;
+            chat_key.key_pressed.connect ((keyval, keycode, state) => {
+                if (is_context_menu_trigger (chat_key, keyval, state)) {
+                    return show_chat_context_menu_for_keyboard ();
+                }
+                if (is_chat_list_navigation_key (keyval)) {
+                    mark_chat_list_keyboard_navigation ();
+                }
+                return false;
+            });
+            chat_listbox.add_controller (chat_key);
 
             chat_scroll.child = chat_listbox;
             sidebar_box.append (chat_scroll);
@@ -976,9 +1010,72 @@ namespace Dc {
             return true;
         }
 
+        private static bool is_chat_list_navigation_key (uint keyval) {
+            switch (keyval) {
+            case Gdk.Key.Up:
+            case Gdk.Key.KP_Up:
+            case Gdk.Key.Down:
+            case Gdk.Key.KP_Down:
+            case Gdk.Key.Home:
+            case Gdk.Key.KP_Home:
+            case Gdk.Key.End:
+            case Gdk.Key.KP_End:
+            case Gdk.Key.Page_Up:
+            case Gdk.Key.KP_Page_Up:
+            case Gdk.Key.Page_Down:
+            case Gdk.Key.KP_Page_Down:
+                return true;
+            default:
+                return false;
+            }
+        }
+
+        private void mark_chat_list_keyboard_navigation () {
+            chat_list_keyboard_navigation = true;
+            Idle.add (() => {
+                chat_list_keyboard_navigation = false;
+                return Source.REMOVE;
+            });
+        }
+
+        private Gtk.ListBoxRow? focused_chat_list_row () {
+            for (var w = this.focus_widget; w != null; w = w.get_parent ()) {
+                var row = w as Gtk.ListBoxRow;
+                if (row != null && row.get_parent () == chat_listbox) {
+                    return row;
+                }
+                if (w == chat_listbox) break;
+            }
+            return null;
+        }
+
+        private bool show_chat_context_menu_for_keyboard () {
+            var row = focused_chat_list_row ();
+            if (row == null) row = chat_listbox.get_selected_row ();
+            if (row == null || chat_menu == null) return false;
+
+            var chat_row = row.child as ChatRow;
+            if (chat_row == null) return false;
+
+            double x;
+            double y;
+            Graphene.Rect bounds;
+            if (row.compute_bounds (chat_listbox, out bounds)) {
+                x = bounds.get_x () + bounds.get_width () / 2.0;
+                y = bounds.get_y () + bounds.get_height () / 2.0;
+            } else {
+                x = chat_listbox.get_width () / 2.0;
+                y = chat_listbox.get_height () / 2.0;
+            }
+            chat_menu.show (chat_row.chat_id, x, y, chat_listbox);
+            return true;
+        }
+
         private void on_chat_selected (Gtk.ListBoxRow? row) {
             if (suppress_chat_selection) return;
             if (row == null) return;
+            bool focus_compose = !chat_list_keyboard_navigation;
+            chat_list_keyboard_navigation = false;
 
             var chat_row = row.child as ChatRow;
             if (chat_row == null) return;
@@ -1011,7 +1108,7 @@ namespace Dc {
             view.set_contact_request (entry != null && entry.is_contact_request);
 
             content_stack.visible_child_name = "chat_%d".printf (chat_id);
-            view.on_activated ();
+            view.on_activated (focus_compose);
             if (this.is_active) view.flush_pending_seen ();
 
             notice_chat.begin (current_chat_id);
