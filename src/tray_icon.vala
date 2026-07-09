@@ -214,6 +214,31 @@ namespace Dc {
         public bool about_to_show (int32 id) throws GLib.Error {
             return false;
         }
+
+        /* Batch variants XFCE/KDE panels call instead of the singular
+           AboutToShow/Event that GNOME uses. The menu is static, so no item
+           ever needs updating and no event can fail: both error lists stay
+           empty and EventGroup just fans out to the existing event handler. */
+        public void about_to_show_group (int32[] ids,
+                                         out int32[] updates_needed,
+                                         out int32[] id_errors) throws GLib.Error {
+            updates_needed = new int32[0];
+            id_errors = new int32[0];
+        }
+
+        public void event_group (
+                [DBus (signature = "a(isvu)")] Variant events,
+                out int32[] id_errors) throws GLib.Error {
+            VariantIter iter = events.iterator ();
+            int32 id;
+            string event_id;
+            Variant data;
+            uint32 timestamp;
+            while (iter.next ("(isvu)", out id, out event_id, out data, out timestamp)) {
+                event (id, event_id, data, timestamp);
+            }
+            id_errors = new int32[0];
+        }
     }
 
     public class TrayIcon : Object {
