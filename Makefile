@@ -10,7 +10,7 @@ MACOS_APP_DIR?=dist/macos/Parla.app
 MESON_OPTIONS?=
 SANITIZER_DEBUG_OPTIONS=-Dstrip=false -Dvala_args=--debug -Dc_args=-g
 
-.PHONY: all asan tsan run clean install uninstall deb app dmg appimage
+.PHONY: all asan tsan run clean install uninstall deb app macos appimage
 
 all:
 	$(RUN_ENV) if [ -f "$(BUILD_DIR)/build.ninja" ]; then meson setup --reconfigure "$(BUILD_DIR)" --buildtype="$(BUILDTYPE)" --prefix="$(PREFIX)" $(MESON_OPTIONS); else meson setup "$(BUILD_DIR)" . --buildtype="$(BUILDTYPE)" --prefix="$(PREFIX)" $(MESON_OPTIONS); fi
@@ -57,9 +57,9 @@ deb: all
 app: all
 	BUILD_DIR="$(BUILD_DIR)" bash scripts/macos/bundle.sh
 
-dmg: BUILDTYPE=release
-dmg:
-	BUILD_DIR="$(BUILD_DIR)" BUILDTYPE="$(BUILDTYPE)" bash scripts/macos/package-dmg.sh
+macos: BUILDTYPE=release
+macos:
+	BUILD_DIR="$(BUILD_DIR)" BUILDTYPE="$(BUILDTYPE)" bash scripts/macos/package-zip.sh
 
 appimage: BUILD_DIR=builddir-appimage
 appimage: BUILDTYPE=release

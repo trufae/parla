@@ -112,7 +112,7 @@ make run
 <summary>macOS</summary>
 
 ```sh
-brew install meson ninja vala pkgconf gtk4 libadwaita json-glib librsvg webp-pixbuf-loader glib-networking adwaita-icon-theme create-dmg
+brew install meson ninja vala pkgconf gtk4 libadwaita json-glib librsvg webp-pixbuf-loader glib-networking adwaita-icon-theme
 
 # Install the RPC backend for source builds.
 pip install deltachat-rpc-server
@@ -120,7 +120,7 @@ pip install deltachat-rpc-server
 
 make run   # builds and runs dist/macos/Parla.app
 make app   # creates dist/macos/Parla.app
-make dmg   # creates dist/macos/Parla-<version>-<arch>.dmg
+make macos # creates Parla-<version>-<arch>.zip
 ```
 
 `make app` bundles Homebrew GTK/libadwaita libraries. The RPC backend is not

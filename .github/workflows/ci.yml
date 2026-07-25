@@ -154,30 +154,22 @@ jobs:
             librsvg \
             webp-pixbuf-loader \
             glib-networking \
-            adwaita-icon-theme \
-            create-dmg
+            adwaita-icon-theme
 
       - name: Build
         run: make BUILDTYPE=release
 
-      - name: Package DMG
-        id: dmg
-        run: |
-          version=$(awk -F"'" '/version:/ { print $2; exit }' meson.build)
-          ARCH="${{ matrix.arch }}" DMG_VARIANT="${{ matrix.runner }}" VERSION="$version" scripts/macos/package-dmg.sh | tee /tmp/parla-dmg.log
-          dmg=$(tail -n 1 /tmp/parla-dmg.log)
-          test -f "$dmg"
-          hdiutil verify "$dmg"
-          case "$dmg" in
-            "$PWD"/*) dmg="${dmg#"$PWD"/}" ;;
-          esac
-          echo "path=$dmg" >> "$GITHUB_OUTPUT"
+      - name: Package ZIP
+        id: zip
+        env:
+          ARCH: ${{ matrix.arch }}
+        run: scripts/macos/package-zip.sh
 
-      - name: Upload DMG artifact
+      - name: Upload ZIP artifact
         uses: actions/upload-artifact@v7
         with:
-          name: parla-macos-${{ matrix.runner }}-${{ matrix.arch }}-dmg
-          path: ${{ steps.dmg.outputs.path }}
+          name: parla-macos-${{ matrix.runner }}-${{ matrix.arch }}-zip
+          path: Parla-*.zip
           if-no-files-found: error
 
   build-windows:
@@ -224,9 +216,124 @@ jobs:
           path: dist/windows/*.zip
           if-no-files-found: error
 
+  macos-sign:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs:
+      - build-macos
+    runs-on: macos-latest
+    environment: release
+    # Environment secrets for signing:
+    #   APPLE_DEVELOPER_CERTIFICATE_P12_BASE64:
+    #     Base64 of the p12 export (cert+private key), the certificate must be named
+    #     "Developer ID Application: DEVELOPER_NAME (TEAM_ID)"
+    #   APPLE_DEVELOPER_CERTIFICATE_PASSWORD: Random password used to encrypt the exported P12
+    # Environment secrets for notarization:
+    #   APPLE_DEVELOPER_ID: email of the developer
+    #   APPLE_TEAM_ID: Team ID (can be extracted from the certificate name too)
+    #   APPLE_APP_SPECIFIC_PASSWORD: https://support.apple.com/en-us/102654
+    steps:      
+      - name: Install dependencies
+        run: brew install create-dmg
+
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: parla-macos-*-zip
+          path: artifacts
+       
+      - name: Install Apple Certificate
+        env:
+          CERTIFICATE_BASE64: ${{ secrets.APPLE_DEVELOPER_CERTIFICATE_P12_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.APPLE_DEVELOPER_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: "keychainpass-${{ github.run_id }}"
+        run: |
+          # Create keychain
+          security create-keychain -p "${KEYCHAIN_PASSWORD}" release.keychain
+          security default-keychain -s release.keychain
+          security unlock-keychain -p "${KEYCHAIN_PASSWORD}" release.keychain
+          security set-keychain-settings -t 3600 -u release.keychain
+          
+          # Import certificate
+          echo "$CERTIFICATE_BASE64" | base64 --decode > certificate.p12
+          security import certificate.p12 -k release.keychain -P "${CERTIFICATE_PASSWORD}" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "${KEYCHAIN_PASSWORD}" release.keychain
+          
+          # Check if the certificate was imported correctly and find its identity
+          security find-identity -v -p codesigning release.keychain
+          
+          # Clean up
+          rm certificate.p12
+
+      - name: Sign and package the App Bundle
+        run: |
+          # Find the Developer ID Application certificate identity
+          IDENTITY=$(security find-identity -v -p codesigning | awk '/Developer ID Application/{print $2;exit}')
+          
+          if [ -z "$IDENTITY" ]; then
+            echo "Error: No Developer ID Application certificate found in keychain"
+            exit 1
+          fi
+
+          # Sign and package for all builds
+          for folder in artifacts/*; do
+            build=$(echo "$folder" | sed -e 's,artifacts/parla-,,' -e 's,-zip$,,')
+            
+            echo "[${build}] Extracting build..."
+            disk="disks/${build}/"
+            zip=$(echo "${folder}/"Parla*.zip)
+            zipname=$(basename ${zip} .zip)
+            mkdir -p "${disk}"
+            ditto -x -k "${zip}" "${disk}"
+
+            echo "[${build}] Signing app bundle..."
+            app="${disk}/Parla.app"
+            codesign --force --deep --options runtime --entitlements "scripts/macos/release.entitlements" --sign "$IDENTITY" "${app}"
+            codesign --verify --verbose "${app}"
+
+            dmg="${zipname}-${build}.dmg"
+            echo "[${build}] Packaging into ${dmg}..."
+            create-dmg \
+                --volname "Parla" \
+                --window-pos 200 120 \
+                --window-size 600 400 \
+                --icon-size 100 \
+                --icon "Parla.app" 150 185 \
+                --app-drop-link 450 185 \
+                --no-internet-enable \
+                "${dmg}" \
+                "disks/${build}/"
+
+            echo "[${build}] Signing ${dmg}..."
+            codesign --force --sign "$IDENTITY" --timestamp "${dmg}"
+          done
+
+      - name: Notarize DMG
+        env:
+          APPLE_ID: ${{ secrets.APPLE_DEVELOPER_ID }}
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APP_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+        run: |
+          for dmg in *.dmg; do
+            echo "Notary $dmg..."
+            xcrun notarytool submit "${dmg}" --apple-id "$APPLE_ID" --team-id "$TEAM_ID" --password "$APP_PASSWORD" --wait
+            xcrun stapler staple "${dmg}"
+          done
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: parla-macos-signed
+          path: ./*.dmg
+      
+      - name: Remove keychain
+        if: always()
+        run: security delete-keychain release.keychain
+
   release:
     if: startsWith(github.ref, 'refs/tags/')
-    needs: [build-deb, build-flatpak, build-appimage, build-macos, build-windows]
+    needs: [build-deb, build-flatpak, build-appimage, macos-sign, build-windows]
     runs-on: ubuntu-24.04
     steps:
       - name: Download artifacts
@@ -240,8 +347,8 @@ jobs:
           debs=(artifacts/**/*.deb)
           flatpaks=(artifacts/**/*.flatpak)
           appimages=(artifacts/**/*.AppImage)
-          dmgs=(artifacts/**/*.dmg)
-          zips=(artifacts/**/*.zip)
+          dmgs=(artifacts/parla-macos-signed/*.dmg)
+          zips=(artifacts/parla-windows-*/*.zip)
           if (( ${#debs[@]} == 0 || ${#flatpaks[@]} == 0 || ${#appimages[@]} == 0 || ${#dmgs[@]} != 3 || ${#zips[@]} == 0 )); then
             find artifacts -maxdepth 4 -type f
             echo "::error::Missing release artifact (.deb, .flatpak, three .dmg files, .AppImage, or .zip)"
@@ -265,5 +372,5 @@ jobs:
             artifacts/**/*.deb
             artifacts/**/*.flatpak
             artifacts/**/*.AppImage
-            artifacts/**/*.dmg
-            artifacts/**/*.zip
+            artifacts/parla-macos-signed/*.dmg
+            artifacts/parla-windows-*/*.zip

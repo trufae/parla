@@ -19,3 +19,4 @@ dist/release/
 src/config.vala
 .codex/
 scripts/stickers/.tools/
+./*.zip
