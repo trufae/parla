@@ -264,6 +264,7 @@ namespace Dc {
             /* The tray icon stays up the whole time "minimize to status bar"
                is on (like Discord/Telegram), not just while minimized. */
             settings.notify["minimize-to-tray"].connect (sync_tray);
+            settings.notify["keep-in-dock"].connect (sync_tray);
 
             /* Keep the tray menu's show/minimize label matching the window. */
             this.notify["visible"].connect (() => {
@@ -309,6 +310,10 @@ namespace Dc {
         private bool on_close_request () {
             if (quit_requested) return false;
 
+            if (macos_keep_in_dock_enabled ()) {
+                minimize_to_dock ();
+                return true;
+            }
             if (ensure_tray_visible ()) {
                 minimize_to_tray ();
                 return true;
@@ -334,6 +339,11 @@ namespace Dc {
             sync_tray ();
         }
 
+        public void set_keep_in_dock (bool enabled) {
+            settings.save_keep_in_dock (enabled);
+            sync_tray ();
+        }
+
         public void quit_application () { handle_primary_q (); }
 
         public void handle_primary_q () {
@@ -347,6 +357,10 @@ namespace Dc {
         }
 
         public void handle_primary_w () {
+            if (macos_keep_in_dock_enabled ()) {
+                minimize_to_dock ();
+                return;
+            }
             if (ensure_tray_visible () || runs_in_background ()) {
                 minimize_to_tray ();
                 return;
@@ -366,12 +380,20 @@ namespace Dc {
         /* Single source of truth for the tray icon: create it on first need,
            then show/hide it to track the setting. */
         private void sync_tray () {
+            /* keep-in-Dock mode still needs the macOS reopen handler so a
+               Dock click can restore the hidden window, even though no
+               menu-bar item is shown. */
+            if (macos_keep_in_dock_enabled ()) ensure_tray_backend ();
+
             if (!settings.minimize_to_tray) {
                 if (tray != null) tray.hide ();
                 /* In background/service mode the hidden window is
                    deliberate — the tray setting being off (or getting
                    toggled off) must not summon it. */
                 if (runs_in_background ()) return;
+                /* Same for keep-in-Dock: the window is intentionally
+                   hidden, so the setting flipping off must not re-show it. */
+                if (macos_keep_in_dock_enabled () && !this.visible) return;
                 if (held_in_background || !this.visible) restore_from_tray ();
                 else release_background_hold ();
                 return;
@@ -380,28 +402,35 @@ namespace Dc {
             ensure_tray_visible ();
         }
 
+        /* Create the tray backend and wire its callbacks, without showing
+           the status item. macOS needs this even when only keep-in-Dock is
+           enabled: constructing MacosTray installs the reopen handler that
+           brings the hidden window back. */
+        private void ensure_tray_backend () {
+            if (tray != null) return;
+#if MACOS
+            tray = new MacosTray ();
+#else
+            var conn = this.application.get_dbus_connection ();
+            if (conn == null) return;
+            tray = new TrayIcon (conn);
+#endif
+            tray.show_on_current_desktop_requested.connect (
+                show_from_tray_on_current_desktop);
+            tray.window_toggle_requested.connect (
+                toggle_window_from_tray);
+            tray.quit_requested.connect (() => {
+                handle_primary_q ();
+            });
+            tray.notifications_toggle_requested.connect ((enabled) => {
+                set_notifications_enabled (enabled);
+            });
+        }
+
         private bool ensure_tray_visible () {
             if (!settings.minimize_to_tray) return false;
 
-            if (tray == null) {
-#if MACOS
-                tray = new MacosTray ();
-#else
-                var conn = this.application.get_dbus_connection ();
-                if (conn == null) return false;
-                tray = new TrayIcon (conn);
-#endif
-                tray.show_on_current_desktop_requested.connect (
-                    show_from_tray_on_current_desktop);
-                tray.window_toggle_requested.connect (
-                    toggle_window_from_tray);
-                tray.quit_requested.connect (() => {
-                    handle_primary_q ();
-                });
-                tray.notifications_toggle_requested.connect ((enabled) => {
-                    set_notifications_enabled (enabled);
-                });
-            }
+            ensure_tray_backend ();
             if (tray == null) return false;
             tray.set_notifications_enabled (settings.notifications_enabled);
             tray.set_window_visible (this.visible);
@@ -416,6 +445,26 @@ namespace Dc {
                 this.application.hold ();
                 held_in_background = true;
             }
+        }
+
+        /* macOS keep-in-Dock mode: hide the window but stay a regular
+           activation-policy app so the Dock icon (and Cmd-Tab) survive. */
+        private void minimize_to_dock () {
+            close_active_modal ();
+            this.set_visible (false);
+            set_macos_app_hidden (false);
+            if (!held_in_background) {
+                this.application.hold ();
+                held_in_background = true;
+            }
+        }
+
+        private bool macos_keep_in_dock_enabled () {
+#if MACOS
+            return settings.keep_in_dock;
+#else
+            return false;
+#endif
         }
 
         /* On macOS "in the tray" also means out of the Dock and Cmd-Tab

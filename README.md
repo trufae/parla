@@ -82,7 +82,7 @@ Want to build it yourself? See [Build](#build) below.
 - Choose whether Markdown is rendered, stripped, or shown as-is.
 - Toggle Shift+Enter vs Enter to send.
 - Toggle desktop notifications for incoming messages when the window is unfocused.
-- Choose bubble, compact IRC, or workspace message layouts, and configure the tray icon for background use.
+- Choose bubble, compact IRC, or workspace message layouts, and configure the tray icon for background use. On macOS, a "Keep in Dock" option keeps Parla running with its Dock icon when the window is closed, with or without the menu bar icon.
 - Choose the JSON-RPC server source: Parla/system auto-discovery or a custom binary.
 
 ### Keyboard shortcuts
