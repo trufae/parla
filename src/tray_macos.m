@@ -305,31 +305,4 @@ parla_macos_tray_set_notifications_enabled (gboolean enabled)
 		                               : NSControlStateValueOff];
 }
 
-static gboolean
-idle_activate_app (gpointer data)
-{
-	[[NSRunningApplication currentApplication]
-		activateWithOptions:(NSApplicationActivationOptions)(1 << 1)];
-	return G_SOURCE_REMOVE;
-}
-
-void
-parla_macos_tray_set_app_hidden (gboolean hidden)
-{
-	NSApplicationActivationPolicy policy = hidden
-		? NSApplicationActivationPolicyAccessory
-		: NSApplicationActivationPolicyRegular;
-	if ([NSApp activationPolicy] == policy) {
-		return;
-	}
-	[NSApp setActivationPolicy:policy];
-	if (!hidden) {
-		/* Deferred one main-loop turn: right after the policy flip
-		   AppKit has not finished re-registering the app, and an
-		   immediate activation can leave the menu bar on the
-		   previous app. */
-		g_idle_add (idle_activate_app, NULL);
-	}
-}
-
 #endif

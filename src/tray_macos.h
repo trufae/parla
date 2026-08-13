@@ -29,9 +29,3 @@ void parla_macos_tray_hide (void);
 /* Keep the menu labels/checkmark in sync with the app state. */
 void parla_macos_tray_set_window_visible (gboolean visible);
 void parla_macos_tray_set_notifications_enabled (gboolean enabled);
-
-/* While hidden in the tray the app also leaves the Dock and the Cmd-Tab
- * switcher (accessory activation policy) — the GNOME behaviour, where a
- * closed window exists only as the tray icon. Un-hiding restores the
- * Dock icon and re-activates the app. */
-void parla_macos_tray_set_app_hidden (gboolean hidden);

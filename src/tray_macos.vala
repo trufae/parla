@@ -37,9 +37,6 @@ namespace Dc {
         [CCode (cheader_filename = "tray_macos.h",
                 cname = "parla_macos_tray_set_notifications_enabled")]
         private static extern void tray_set_notifications_enabled (bool enabled);
-        [CCode (cheader_filename = "tray_macos.h",
-                cname = "parla_macos_tray_set_app_hidden")]
-        private static extern void tray_set_app_hidden (bool hidden);
 
         public signal void show_on_current_desktop_requested (
             string? activation_token);
@@ -97,13 +94,6 @@ namespace Dc {
 
         public void set_notifications_enabled (bool enabled) {
             tray_set_notifications_enabled (enabled);
-        }
-
-        /* Hidden-in-tray means gone from the Dock and Cmd-Tab too; see
-           tray_macos.h. Static so window.vala can restore the Dock icon
-           on early present () paths even before any tray exists. */
-        public static void set_app_hidden (bool hidden) {
-            tray_set_app_hidden (hidden);
         }
     }
 }

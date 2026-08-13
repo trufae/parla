@@ -78,7 +78,6 @@ namespace Dc {
         public bool notifications_enabled { get; set; default = true; }
         public bool show_notification_contents { get; set; default = true; }
         public bool minimize_to_tray { get; set; default = false; }
-        public bool keep_in_dock { get; set; default = false; }
         public bool system_audio_player { get; set; default = false; }
         public bool animate_stickers { get; set; default = true; }
         /* Only honored in builds with -Dwebxdc=true (Webxdc.AVAILABLE). */
@@ -186,7 +185,6 @@ namespace Dc {
             show_notification_contents =
                 kf_bool (kf, "show_notification_contents", true);
             minimize_to_tray = kf_bool (kf, "minimize_to_tray", false);
-            keep_in_dock = kf_bool (kf, "keep_in_dock", false);
             system_audio_player = kf_bool (kf, "system_audio_player", false);
             AudioPlayer.prefer_system = system_audio_player;
             animate_stickers = kf_bool (kf, "animate_stickers", true);
@@ -312,11 +310,6 @@ namespace Dc {
         public void save_minimize_to_tray (bool v) {
             minimize_to_tray = v;
             save_bool ("minimize_to_tray", v);
-        }
-
-        public void save_keep_in_dock (bool v) {
-            keep_in_dock = v;
-            save_bool ("keep_in_dock", v);
         }
 
         public void save_system_audio_player (bool v) {
@@ -818,7 +811,8 @@ namespace Dc {
                     : "Minimize to status bar",
                 Platform.is_macos ()
                     ? "Closing the window keeps Parla running as a menu bar "
-                    + "icon, out of the Dock; notifications still appear"
+                    + "icon; the Dock icon stays visible and notifications "
+                    + "still appear"
                     : "Closing the window keeps Parla running in the status "
                     + "bar; notifications still appear");
             var tray_switch = row_switch (
@@ -828,21 +822,6 @@ namespace Dc {
             });
 
             behavior_group.add (tray_row);
-
-            /* macOS: keep running with the Dock icon when the window is
-               closed, independent of the menu-bar icon. */
-            if (Platform.is_macos ()) {
-                var dock_row = action_row (
-                    "Keep in Dock",
-                    "Closing the window keeps Parla running with its Dock "
-                    + "icon, with or without the menu bar icon");
-                var dock_switch = row_switch (
-                    dock_row, app_window.settings.keep_in_dock);
-                dock_switch.notify["active"].connect (() => {
-                    app_window.set_keep_in_dock (dock_switch.active);
-                });
-                behavior_group.add (dock_row);
-            }
 
             var notifications_group = settings_group (general_page, "Notifications");
             var notif_row = action_row (
