@@ -3,7 +3,7 @@
 project('parla', ['vala', 'c'],
   version: '0.7.8',
   meson_version: '>= 0.59.0',
-  default_options: ['werror=true'],
+  default_options: ['werror=true', 'cpp_std=c++17'],
 )
 
 # posix vapi provides Posix.getpid () for the StatusNotifierItem bus name.
@@ -166,11 +166,6 @@ if get_option('webxdc')
       error('Windows Webxdc builds need -Dwebview2_sdk=/path/to/Microsoft.Web.WebView2')
     endif
     add_languages('cpp', native: false)
-    cpp = meson.get_compiler('cpp')
-    add_project_arguments(
-      cpp.get_supported_arguments(['-std=c++17']),
-      language: 'cpp',
-    )
     sources += files('src/webxdc_windows.cpp')
     webview2_inc = include_directories(
       webview2_sdk / 'build/native/include',
