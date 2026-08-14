@@ -1,7 +1,11 @@
 option('webxdc',
   type: 'boolean',
   value: false,
-  description: 'Experimental: run Webxdc (Delta Chat mini-app) attachments in an embedded web view. Uses the system WebKit.framework on macOS and webkitgtk-6.0 elsewhere; see docs/webxdc.md.')
+  description: 'Experimental: run Webxdc (Delta Chat mini-app) attachments in an embedded web view. Uses WebKitGTK on Linux, system WebKit on macOS, and system Edge WebView2 on Windows; see docs/webxdc.md.')
+option('webview2_sdk',
+  type: 'string',
+  value: '',
+  description: 'Windows WebView2 SDK package root (the directory containing build/native/include and the architecture-specific WebView2Loader.dll). Required only for -Dwebxdc=true Windows builds.')
 option('rpc_server_path',
   type: 'string',
   value: '',

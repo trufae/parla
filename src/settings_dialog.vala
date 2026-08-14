@@ -1097,7 +1097,7 @@ namespace Dc {
             webxdc_group.add (webgl_row);
 
             Gtk.Switch? acceleration_switch = null;
-            if (!Platform.is_macos ()) {
+            if (!Platform.is_macos () && !Platform.is_windows ()) {
                 var acceleration_row = action_row (
                     "Hardware acceleration",
                     "Allow WebKit to use GPU-accelerated rendering");
