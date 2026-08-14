@@ -80,6 +80,14 @@ namespace Dc {
             return this;
         }
 
+        /** Adds an integer member, or null when the value is not positive. */
+        public Params set_opt_int_member (string name, int value) {
+            b.set_member_name (name);
+            if (value > 0) b.add_int_value (value);
+            else b.add_null_value ();
+            return this;
+        }
+
         public Params set_null_member (string name) {
             b.set_member_name (name);
             b.add_null_value ();

@@ -131,6 +131,7 @@ sources = files(
   'src/save_folder.vala',
   'src/gallery_dialog.vala',
   'src/account_creation.vala',
+  'src/classic_email_dialog.vala',
   'src/relay_picker.vala',
 )
 

@@ -55,6 +55,7 @@ namespace Dc {
 
         private RpcClient rpc;
         private SettingsManager settings;
+        private EventHandler events;
         private int account_id;
         private Adw.Avatar avatar_widget;
         private Gtk.Entry name_entry;
@@ -78,9 +79,10 @@ namespace Dc {
         public signal void account_deleted (int acct_id);
 
         public ProfileDialog (RpcClient rpc, SettingsManager settings,
-                              int acct_id = 0) {
+                              EventHandler events, int acct_id = 0) {
             this.rpc = rpc;
             this.settings = settings;
+            this.events = events;
             this.account_id = acct_id > 0 ? acct_id : rpc.account_id;
             this.title = "My Profile";
             this.content_width = 420;
@@ -476,7 +478,7 @@ namespace Dc {
         }
 
         private void show_relays_dialog () {
-            var dialog = new RelaysDialog (rpc, account_id);
+            var dialog = new RelaysDialog (rpc, events, account_id);
             dialog.present (this);
         }
 

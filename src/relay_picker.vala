@@ -219,6 +219,7 @@ namespace Dc {
     public class RelaysDialog : Adw.Dialog {
 
         private RpcClient rpc;
+        private EventHandler events;
         private int account_id;
         private Gtk.ListBox list_box;
         private Gtk.Stack list_stack;
@@ -227,8 +228,9 @@ namespace Dc {
         private Gtk.Button add_btn;
         private bool busy = false;
 
-        public RelaysDialog (RpcClient rpc, int acct_id) {
+        public RelaysDialog (RpcClient rpc, EventHandler events, int acct_id) {
             this.rpc = rpc;
+            this.events = events;
             this.account_id = acct_id;
             this.title = "Relays";
             this.content_width = 480;
@@ -325,14 +327,26 @@ namespace Dc {
                 var obj = node.get_object ();
                 string addr = json_str (obj, "addr") ?? "";
                 if (addr.length == 0) continue;
-                list_box.append (build_relay_row (addr));
+                list_box.append (build_relay_row (addr,
+                    EnteredLoginParams.from_json (obj)));
             }
             list_stack.visible_child_name = "list";
         }
 
-        private Gtk.Widget build_relay_row (string addr) {
+        private Gtk.Widget build_relay_row (string addr,
+                                            EnteredLoginParams params) {
             var row = new Adw.ActionRow ();
             row.title = addr;
+
+            var edit_btn = new Gtk.Button.from_icon_name (
+                "document-edit-symbolic");
+            edit_btn.add_css_class ("flat");
+            edit_btn.valign = Gtk.Align.CENTER;
+            edit_btn.tooltip_text = "Edit password and server settings";
+            edit_btn.clicked.connect (() => {
+                show_edit_transport_dialog (params);
+            });
+            row.add_suffix (edit_btn);
 
             var trash_btn = new Gtk.Button.from_icon_name ("user-trash-symbolic");
             trash_btn.add_css_class ("flat");
@@ -344,6 +358,15 @@ namespace Dc {
             row.add_suffix (trash_btn);
 
             return row;
+        }
+
+        private void show_edit_transport_dialog (EnteredLoginParams params) {
+            var dialog = new ClassicEmailDialog.for_edit (rpc, events,
+                account_id, params);
+            dialog.transport_updated.connect (() => {
+                refresh_list.begin ();
+            });
+            dialog.present (this);
         }
 
         private async void confirm_delete_relay (string addr) {

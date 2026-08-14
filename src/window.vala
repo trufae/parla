@@ -2351,45 +2351,13 @@ namespace Dc {
         }
 
         private void show_classic_email_dialog () {
-            var dialog = new Adw.AlertDialog (
-                "Use classic email address",
-                "Enter your email and password."
-            );
+            if (!can_show_rpc_modal ()) return;
 
-            var box = new Gtk.Box (Gtk.Orientation.VERTICAL, 8);
-
-            var email_entry = new Gtk.Entry ();
-            email_entry.placeholder_text = "user@example.com";
-            email_entry.input_purpose = Gtk.InputPurpose.EMAIL;
-            box.append (email_entry);
-
-            var pass_entry = new Gtk.PasswordEntry ();
-            pass_entry.placeholder_text = "Password";
-            pass_entry.show_peek_icon = true;
-            box.append (pass_entry);
-
-            dialog.extra_child = box;
-
-            dialog.add_response ("cancel", "Cancel");
-            dialog.add_response ("add", "Add");
-            dialog.set_response_appearance ("add", Adw.ResponseAppearance.SUGGESTED);
-            dialog.default_response = "add";
-
-            pass_entry.activate.connect (() => {
-                dialog.response ("add");
+            var dialog = new ClassicEmailDialog (rpc, events);
+            dialog.account_created.connect ((new_id) => {
+                after_profile_created.begin (new_id);
             });
-
-            dialog.response.connect ((resp) => {
-                if (resp == "add") {
-                    string email = email_entry.text.strip ();
-                    string password = pass_entry.text;
-                    if (email.length > 0 && email.contains ("@") && password.length > 0) {
-                        do_add_account.begin (email, password);
-                    }
-                }
-            });
-
-            dialog.present (this);
+            present_modal (dialog);
         }
 
         public async void set_auto_download_limit (int bytes) {
@@ -2413,22 +2381,6 @@ namespace Dc {
                 if (id > 0) {
                     yield rpc.batch_set_config ("download_limit", limit, id);
                 }
-            }
-        }
-
-        private async void do_add_account (string email, string password) {
-            try {
-                int acct_id = yield rpc.add_account ();
-                yield rpc.add_or_update_transport (acct_id, email, password);
-                yield rpc.select_account (acct_id);
-                rpc.account_id = acct_id;
-                /* Pick up IO for the freshly added account (and keep the rest
-                   running too). */
-                yield apply_auto_download_limit ();
-                yield rpc.start_io_for_all_accounts ();
-                yield reload_active_account ();
-            } catch (Error e) {
-                show_error (this, e.message);
             }
         }
 
@@ -2456,7 +2408,7 @@ namespace Dc {
             if (acct_id <= 0) return;
 
             bool edits_current_account = acct_id == rpc.account_id;
-            var dialog = new ProfileDialog (rpc, settings, acct_id);
+            var dialog = new ProfileDialog (rpc, settings, events, acct_id);
             dialog.profile_updated.connect (() => {
                 if (edits_current_account) {
                     load_profile_avatar.begin ();

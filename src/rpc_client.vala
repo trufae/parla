@@ -1,6 +1,49 @@
 namespace Dc {
 
     /**
+     * Login parameters for a classic email transport, mirroring the
+     * JSON-RPC EnteredLoginParam object. Optional fields left null (or
+     * ports left at 0) are sent as null so the core autoconfigures them.
+     */
+    public class EnteredLoginParams : Object {
+        public string addr = "";
+        public string password = "";
+        public string? imap_user = null;
+        public string? imap_server = null;
+        public int imap_port = 0;             /* 0 = automatic */
+        public string? imap_security = null;  /* "ssl", "starttls", "plain" */
+        public string? smtp_user = null;
+        public string? smtp_password = null;  /* null = same as IMAP */
+        public string? smtp_server = null;
+        public int smtp_port = 0;             /* 0 = automatic */
+        public string? smtp_security = null;  /* "ssl", "starttls", "plain" */
+        /* null = automatic, or "strict" / "acceptInvalidCertificates" */
+        public string? certificate_checks = null;
+
+        public static EnteredLoginParams from_json (Json.Object obj) {
+            var p = new EnteredLoginParams ();
+            p.addr = json_str (obj, "addr") ?? "";
+            p.password = json_str (obj, "password") ?? "";
+            p.imap_user = json_str (obj, "imapUser");
+            p.imap_server = json_str (obj, "imapServer");
+            p.imap_port = (int) json_int (obj, "imapPort");
+            p.imap_security = json_str (obj, "imapSecurity");
+            p.smtp_user = json_str (obj, "smtpUser");
+            p.smtp_password = json_str (obj, "smtpPassword");
+            p.smtp_server = json_str (obj, "smtpServer");
+            p.smtp_port = (int) json_int (obj, "smtpPort");
+            p.smtp_security = json_str (obj, "smtpSecurity");
+            p.certificate_checks = json_str (obj, "certificateChecks");
+            /* The core reports "automatic" defaults explicitly; normalize
+               them back to null so round-tripping stays canonical. */
+            if (p.imap_security == "automatic") p.imap_security = null;
+            if (p.smtp_security == "automatic") p.smtp_security = null;
+            if (p.certificate_checks == "automatic") p.certificate_checks = null;
+            return p;
+        }
+    }
+
+    /**
      * Typed Delta Chat RPC API facade.
      * Transport/process concerns live in RpcTransport.
      */
@@ -177,24 +220,26 @@ namespace Dc {
                     .build ());
         }
 
-        public async void add_or_update_transport (int acct_id, string email,
-                                                    string password) throws Error {
+        public async void add_or_update_transport (int acct_id,
+                                                    EnteredLoginParams p)
+                                                    throws Error {
             yield call ("add_or_update_transport",
                 Params.begin ()
                     .add_int (acct_id)
                     .begin_object ()
-                        .set_string_member ("addr", email)
-                        .set_string_member ("password", password)
-                        .set_null_member ("imapServer")
-                        .set_null_member ("imapPort")
-                        .set_null_member ("imapSecurity")
-                        .set_null_member ("imapUser")
-                        .set_null_member ("smtpServer")
-                        .set_null_member ("smtpPort")
-                        .set_null_member ("smtpSecurity")
-                        .set_null_member ("smtpUser")
-                        .set_null_member ("smtpPassword")
-                        .set_null_member ("certificateChecks")
+                        .set_string_member ("addr", p.addr)
+                        .set_string_member ("password", p.password)
+                        .set_string_member ("imapUser", p.imap_user)
+                        .set_string_member ("imapServer", p.imap_server)
+                        .set_opt_int_member ("imapPort", p.imap_port)
+                        .set_string_member ("imapSecurity", p.imap_security)
+                        .set_string_member ("smtpUser", p.smtp_user)
+                        .set_string_member ("smtpPassword", p.smtp_password)
+                        .set_string_member ("smtpServer", p.smtp_server)
+                        .set_opt_int_member ("smtpPort", p.smtp_port)
+                        .set_string_member ("smtpSecurity", p.smtp_security)
+                        .set_string_member ("certificateChecks",
+                                            p.certificate_checks)
                         .set_null_member ("oauth2")
                     .end_object ()
                     .build ());
