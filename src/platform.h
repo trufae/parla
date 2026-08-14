@@ -5,6 +5,8 @@
 typedef struct _GtkWidget GtkWidget;
 
 typedef void (*ParlaMacosFileDropCallback) (const gchar *path,
+                                            gdouble      x,
+                                            gdouble      y,
                                             gpointer     user_data);
 
 gchar *parla_get_executable_path (void);

@@ -1,6 +1,7 @@
 namespace Dc.Platform {
     [CCode (has_target = false)]
-    public delegate void RawMacosFileDropCallback (string path, void* user_data);
+    public delegate void RawMacosFileDropCallback (string path, double x,
+                                                   double y, void* user_data);
 
     [CCode (cheader_filename = "platform.h", cname = "parla_get_executable_path")]
     private extern string? platform_get_executable_path ();

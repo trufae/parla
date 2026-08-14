@@ -22,6 +22,11 @@ namespace Dc {
         private bool has_mention;
         private int unread_count;
         private bool compact = false;
+        private FileDropTarget? file_drop_target;
+
+        public signal bool accept_file_drop ();
+        public signal void file_dropped (string path, string name);
+        public signal void file_drop_failed (string message);
 
         public ChatRow (ChatEntry entry) {
             Object (orientation: Gtk.Orientation.HORIZONTAL, spacing: 10);
@@ -167,6 +172,18 @@ namespace Dc {
 
             mid_box.append (bot);
             append (mid_box);
+
+            /* Treat every chat row as a file destination. The window decides
+               whether this particular chat can currently accept an
+               attachment and switches to it when the drop completes. */
+            file_drop_target = new FileDropTarget (this);
+            file_drop_target.accept.connect (() => accept_file_drop ());
+            file_drop_target.dropped.connect ((path, name) => {
+                file_dropped (path, name);
+            });
+            file_drop_target.failed.connect ((message) => {
+                file_drop_failed (message);
+            });
         }
 
         public void set_compact (bool compact) {

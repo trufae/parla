@@ -138,7 +138,18 @@ parla_pasteboard_has_file_url (NSPasteboard *pasteboard)
 		return NO;
 	}
 
-	callback ([path fileSystemRepresentation], user_data);
+	NSView *view = [[sender draggingDestinationWindow] contentView];
+	NSPoint point = [sender draggingLocation];
+	if (view != nil) {
+		point = [view convertPoint:point fromView:nil];
+		NSRect bounds = [view bounds];
+		point.x -= NSMinX (bounds);
+		point.y = [view isFlipped]
+			? point.y - NSMinY (bounds)
+			: NSMaxY (bounds) - point.y;
+	}
+
+	callback ([path fileSystemRepresentation], point.x, point.y, user_data);
 	return YES;
 }
 

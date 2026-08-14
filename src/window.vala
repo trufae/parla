@@ -378,7 +378,14 @@ namespace Dc {
 #endif
         }
 
-        private void handle_native_file_drop (string path) {
+        private void handle_native_file_drop (string path, double x, double y) {
+            var chat_row = chat_row_at_point (x, y);
+            if (chat_row != null) {
+                attach_file_to_chat (chat_row.chat_id, path,
+                                     Path.get_basename (path));
+                return;
+            }
+
             var v = current_view ();
             if (v == null) {
                 show_toast ("Select a chat before dropping a file");
@@ -1422,6 +1429,15 @@ namespace Dc {
                     var row = new Gtk.ListBoxRow ();
                     var chat_row = new ChatRow (entry);
                     chat_row.set_compact (settings.sidebar_mode == SidebarMode.COMPACT);
+                    chat_row.accept_file_drop.connect (() => {
+                        return can_attach_file_to_chat (chat_row.chat_id);
+                    });
+                    chat_row.file_dropped.connect ((path, name) => {
+                        attach_file_to_chat (chat_row.chat_id, path, name);
+                    });
+                    chat_row.file_drop_failed.connect ((message) => {
+                        show_toast ("Attach failed: " + message);
+                    });
                     row.child = chat_row;
                     chat_listbox.append (row);
 
@@ -1501,6 +1517,49 @@ namespace Dc {
         private bool chat_list_has_focus () {
             var f = get_focus ();
             return f != null && (f == chat_listbox || f.is_ancestor (chat_listbox));
+        }
+
+        private bool can_attach_file_to_chat (int chat_id) {
+            var entry = find_chat_entry (chat_store, chat_id);
+            if (entry == null || entry.is_contact_request) return false;
+
+            var view = views.lookup (chat_id);
+            return view == null || view.can_accept_dropped_file ();
+        }
+
+        private void attach_file_to_chat (int chat_id, string path,
+                                          string name) {
+            if (!can_attach_file_to_chat (chat_id)) {
+                show_toast ("Attach failed: cannot attach here");
+                return;
+            }
+            if (!select_chat_by_id (chat_id)) {
+                show_toast ("Attach failed: chat is unavailable");
+                return;
+            }
+
+            var view = current_view ();
+            if (view == null) {
+                show_toast ("Attach failed: chat is unavailable");
+                return;
+            }
+            view.attach_dropped_file (path, name);
+        }
+
+        private ChatRow? chat_row_at_point (double x, double y) {
+            Gtk.Widget? widget = pick (x, y, Gtk.PickFlags.DEFAULT);
+            while (widget != null && widget != this) {
+                var chat_row = widget as ChatRow;
+                if (chat_row != null) return chat_row;
+
+                var list_row = widget as Gtk.ListBoxRow;
+                if (list_row != null) {
+                    chat_row = list_row.child as ChatRow;
+                    if (chat_row != null) return chat_row;
+                }
+                widget = widget.get_parent ();
+            }
+            return null;
         }
 
         private Gtk.ListBoxRow? first_visible_chat_row () {

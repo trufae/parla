@@ -950,6 +950,14 @@ namespace Dc {
             attach_local_file (path, Path.get_basename (path));
         }
 
+        public void attach_dropped_file (string path, string name) {
+            attach_local_file (path, name);
+        }
+
+        public bool can_accept_dropped_file () {
+            return can_accept_file_attachment ();
+        }
+
         public void focus_entry () {
             if (selection_mode) return;
             compose_bar.grab_entry_focus ();

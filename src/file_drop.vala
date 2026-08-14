@@ -196,7 +196,7 @@ namespace Dc {
     public class NativeFileDropTarget : Object {
         private unowned Gtk.Widget widget;
 
-        public signal void path_dropped (string path);
+        public signal void path_dropped (string path, double x, double y);
 
         public NativeFileDropTarget (Gtk.Widget widget) {
             this.widget = widget;
@@ -208,9 +208,10 @@ namespace Dc {
                 widget, on_path_dropped, this);
         }
 
-        private static void on_path_dropped (string path, void* user_data) {
+        private static void on_path_dropped (string path, double x, double y,
+                                             void* user_data) {
             unowned NativeFileDropTarget self = (NativeFileDropTarget) user_data;
-            self.path_dropped (path);
+            self.path_dropped (path, x, y);
         }
     }
 }
