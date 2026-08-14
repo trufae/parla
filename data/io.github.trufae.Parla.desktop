@@ -11,3 +11,4 @@ Keywords=chat;messaging;email;deltachat;parla;
 MimeType=x-scheme-handler/openpgp4fpr;
 StartupNotify=true
 DBusActivatable=true
+X-Purism-FormFactor=Workstation;Mobile;
