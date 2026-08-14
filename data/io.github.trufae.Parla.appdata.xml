@@ -29,6 +29,22 @@
     <name translate="no">pancake</name>
   </developer>
   <releases>
+    <release version="0.8.0" date="2026-08-14">
+      <description>
+        <ul>
+          <li>Custom smtp/imap for the classic email accounts</li>
+          <li>Initial WebXDC support for Windows</li>
+          <li>Improve mentions in chats</li>
+          <li>Add an option to remove tracking IDs from links</li>
+          <li>Create new group cloning members from another</li>
+          <li>Transcribe voice messages at origin</li>
+          <li>Always keep the dock icon on macOS</li>
+          <li>Add support for archived chats</li>
+          <li>Fix slow window appearing on macOS</li>
+          <li>Share files by dropping them in the sidebar</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.7.8" date="2026-08-12">
       <description>
         <ul>
