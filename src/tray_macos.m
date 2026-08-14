@@ -41,19 +41,19 @@ static struct {
 } tray;
 
 static gboolean
-idle_window_toggle (gpointer data)
+idle_window_show (gpointer data)
 {
-	if (tray.window_toggle != NULL) {
-		tray.window_toggle (tray.user_data);
+	if (tray.window_show != NULL) {
+		tray.window_show (tray.user_data);
 	}
 	return G_SOURCE_REMOVE;
 }
 
 static gboolean
-idle_window_show (gpointer data)
+idle_window_toggle (gpointer data)
 {
-	if (tray.window_show != NULL) {
-		tray.window_show (tray.user_data);
+	if (tray.window_toggle != NULL) {
+		tray.window_toggle (tray.user_data);
 	}
 	return G_SOURCE_REMOVE;
 }
@@ -80,7 +80,14 @@ idle_notifications_toggle (gpointer data)
 
 - (void)toggleWindow:(id)sender
 {
-	g_idle_add (idle_window_toggle, NULL);
+	/* Dispatch on the flag captured at click time: "Show Parla" is queued
+	 * as a show, not a toggle, so a Dock click that shows the window
+	 * before this idle runs cannot turn into an unexpected hide. */
+	if (tray.window_visible) {
+		g_idle_add (idle_window_toggle, NULL);
+	} else {
+		g_idle_add (idle_window_show, NULL);
+	}
 }
 
 - (void)toggleNotifications:(id)sender
@@ -127,12 +134,33 @@ parla_tray_call_super_reopen (id self, SEL selector, NSApplication *app,
 	                                           has_visible);
 }
 
+/* Show the window synchronously from the AppKit reopen callback. While the
+ * window is hidden the GLib main loop does not wake up promptly to dispatch
+ * a queued idle (up to ~12s), so deferring through g_idle_add is not fast
+ * enough for a Dock click. The callback runs on the main thread during
+ * ordinary AppKit event processing, where touching GTK is safe. */
+static void
+parla_tray_show_window_now (void)
+{
+	if (tray.window_visible) {
+		return;
+	}
+
+	/* The setter keeps the tray menu title in sync with the flag; GTK's
+	 * visible notify re-syncs both once the window is really on screen. */
+	parla_macos_tray_set_window_visible (TRUE);
+
+	if (tray.window_show != NULL) {
+		tray.window_show (tray.user_data);
+	}
+}
+
 static BOOL
 parla_tray_should_handle_reopen (id self, SEL selector, NSApplication *app,
                                  BOOL has_visible)
 {
 	if (!tray.window_visible) {
-		g_idle_add (idle_window_show, NULL);
+		parla_tray_show_window_now ();
 		return NO;
 	}
 	return parla_tray_call_super_reopen (self, selector, app, has_visible);
