@@ -16,6 +16,19 @@ ARCH="${MSYSTEM_CARCH:-x86_64}"
 PREFIX="${MINGW_PREFIX:-/ucrt64}"
 DIST="$ROOT/dist/windows/parla"
 ZIP="$ROOT/dist/windows/parla-$VERSION-windows-$ARCH.zip"
+WITH_WEBXDC="${WITH_WEBXDC:-0}"
+
+meson_options=(-Dwerror=true -Dwebxdc=false)
+if [ "$WITH_WEBXDC" = "1" ]; then
+    WEBVIEW2_SDK_DIR="${WEBVIEW2_SDK_DIR:-$(
+        bash "$ROOT/scripts/windows/fetch-webview2-sdk.sh"
+    )}"
+    meson_options=(
+        -Dwerror=true
+        -Dwebxdc=true
+        "-Dwebview2_sdk=$WEBVIEW2_SDK_DIR"
+    )
+fi
 
 rm -rf "$DIST"
 mkdir -p "$DIST"
@@ -28,10 +41,12 @@ fi
 
 if [ -f "$BUILD_DIR/build.ninja" ]; then
     meson setup --reconfigure "$BUILD_DIR" "$ROOT" \
-        --buildtype="$BUILDTYPE" --prefix="$dist_prefix" -Dwerror=true
+        --buildtype="$BUILDTYPE" --prefix="$dist_prefix" \
+        "${meson_options[@]}"
 else
     meson setup "$BUILD_DIR" "$ROOT" \
-        --buildtype="$BUILDTYPE" --prefix="$dist_prefix" -Dwerror=true
+        --buildtype="$BUILDTYPE" --prefix="$dist_prefix" \
+        "${meson_options[@]}"
 fi
 meson compile -C "$BUILD_DIR"
 meson install -C "$BUILD_DIR"
@@ -114,7 +129,15 @@ if [ -d "$PREFIX/etc/fonts" ]; then
     cp -r "$PREFIX/etc/fonts" "$DIST/etc/"
 fi
 
-find "$DIST" \( -iname '*.exe' -o -iname '*.dll' \) -exec strip -s {} + 2>/dev/null || true
+if [ "$WITH_WEBXDC" = "1" ] && [ ! -f "$BIN/WebView2Loader.dll" ]; then
+    echo "error: WebView2Loader.dll was not installed into the bundle" >&2
+    exit 1
+fi
+
+# Keep Microsoft's signed loader byte-for-byte identical to the verified
+# NuGet package. Strip only binaries produced by this build/MSYS2.
+find "$DIST" \( -iname '*.exe' -o -iname '*.dll' \) \
+    ! -iname 'WebView2Loader.dll' -exec strip -s {} + 2>/dev/null || true
 
 rm -f "$ZIP"
 (cd "$(dirname "$DIST")" && zip -r -9 -q "$ZIP" "$(basename "$DIST")")

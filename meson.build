@@ -3,7 +3,7 @@
 project('parla', ['vala', 'c'],
   version: '0.7.8',
   meson_version: '>= 0.59.0',
-  default_options: ['werror=true'],
+  default_options: ['werror=true', 'cpp_std=c++17'],
 )
 
 # posix vapi provides Posix.getpid () for the StatusNotifierItem bus name.
@@ -151,16 +151,54 @@ else
   sources += files('src/tray_icon.vala')
 endif
 
-# Experimental Webxdc runner (docs/webxdc.md), off by default. macOS uses
-# the system WebKit.framework through the shim in webxdc_macos.m; everywhere
-# else the view is WebKitGTK. The shared logic sits in webxdc.vala (#if
-# MACOS selects the view layer) and the stub keeps every call site compiling
-# and linking when the option is disabled.
+# Experimental Webxdc runner (docs/webxdc.md), off by default. Linux uses
+# WebKitGTK, macOS uses its system WebKit framework, and Windows uses the
+# installed Evergreen WebView2 Runtime through Microsoft's SDK loader.
+# Native implementations remain isolated in their platform files.
 if get_option('webxdc')
   sources += files('src/webxdc.vala')
   if host_machine.system() == 'darwin'
     sources += files('src/webxdc_macos.m')
     deps += dependency('appleframeworks', modules: ['WebKit'])
+  elif host_machine.system() == 'windows'
+    webview2_sdk = get_option('webview2_sdk')
+    if webview2_sdk == ''
+      error('Windows Webxdc builds need -Dwebview2_sdk=/path/to/Microsoft.Web.WebView2')
+    endif
+    add_languages('cpp', native: false)
+    sources += files('src/webxdc_windows.cpp')
+    webview2_inc = include_directories(
+      webview2_sdk / 'build/native/include',
+      is_system: true,
+    )
+    deps += declare_dependency(include_directories: webview2_inc)
+    deps += cc.find_library('ole32')
+    deps += cc.find_library('uuid')
+
+    webview2_arch = ''
+    if host_machine.cpu_family() == 'x86_64'
+      webview2_arch = 'x64'
+    elif host_machine.cpu_family() == 'x86'
+      webview2_arch = 'x86'
+    elif host_machine.cpu_family() == 'aarch64'
+      webview2_arch = 'arm64'
+    else
+      error('The WebView2 SDK has no loader for ' + host_machine.cpu_family())
+    endif
+    configure_file(
+      input: webview2_sdk / 'build/native' / webview2_arch / 'WebView2Loader.dll',
+      output: 'WebView2Loader.dll',
+      copy: true,
+      install: true,
+      install_dir: get_option('bindir'),
+    )
+    configure_file(
+      input: webview2_sdk / 'LICENSE.txt',
+      output: 'WebView2-LICENSE.txt',
+      copy: true,
+      install: true,
+      install_dir: get_option('datadir') / 'licenses' / 'parla',
+    )
   else
     deps += dependency('webkitgtk-6.0')
   endif

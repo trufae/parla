@@ -3,8 +3,7 @@
  * webxdc_stub.vala provides the same entry points as no-ops so no other
  * file needs conditional compilation. The jsonrpc plumbing and the JS
  * bridge below are platform-independent; only the view layer splits:
- * WebKitGTK on GNOME, the system WebKit.framework through the shim in
- * webxdc_macos.m on macOS (where WebKitGTK is not available). See
+ * WebKitGTK on GNOME, and isolated native shims on macOS and Windows. See
  * docs/webxdc.md for the security boundaries and the JS API. */
 namespace Dc.Webxdc {
 
@@ -182,7 +181,7 @@ namespace Dc.Webxdc {
     }
 
     public void open (Gtk.Window? parent, RpcClient rpc, Message msg) {
-#if !MACOS
+#if !MACOS && !WINDOWS
         string sandbox_error;
         if (!linux_sandbox_available (out sandbox_error)) {
             if (parent != null) show_error (parent, sandbox_error);
@@ -202,7 +201,7 @@ namespace Dc.Webxdc {
         Monitor.get_default ().changed (msg.id);
     }
 
-#if !MACOS
+#if !MACOS && !WINDOWS
     /* Ubuntu's AppArmor userns restriction moves an unprofiled process into
        the unprivileged_userns profile when WebKit starts bubblewrap. That
        profile cannot write bubblewrap's uid_map, and WebKit treats the helper
@@ -345,7 +344,7 @@ namespace Dc.Webxdc {
         /* Everything the page loads is pulled out of the .xdc archive by
            deltachat core (get_webxdc_blob); nothing is read from disk or
            the network. webxdc.js itself is the one synthetic file. */
-#if MACOS
+#if MACOS || WINDOWS
         private async void serve (string path, void* token) {
 #else
         private async void serve (string path, WebKit.URISchemeRequest token) {
@@ -497,12 +496,10 @@ namespace Dc.Webxdc {
             set_view_visible (!want_hidden);
         }
 
-#if MACOS
+#if MACOS || WINDOWS
         /* ============================================================
-         *  View layer, macOS: NSWindow + WKWebView via webxdc_macos.m.
-         *  The shim owns all AppKit state behind an opaque handle and
-         *  re-queues every callback through g_idle_add, so this code
-         *  always runs in normal GTK main-loop iterations.
+         *  Native-window view layer: each platform shim owns its window
+         *  and browser state behind an opaque handle.
          * ============================================================ */
 
         [CCode (has_target = false)]
@@ -513,7 +510,7 @@ namespace Dc.Webxdc {
         [CCode (has_target = false)]
         private delegate void RawClosedFn (void* user_data);
 
-        [CCode (cheader_filename = "webxdc_macos.h",
+        [CCode (cheader_filename = "webxdc_platform.h",
                 cname = "parla_webxdc_open")]
         private static extern void* shim_open (string title, RawBlobFn blob,
                                                RawMsgFn message,
@@ -522,37 +519,37 @@ namespace Dc.Webxdc {
                                                bool allow_wasm,
                                                bool allow_webgl,
                                                void* user_data);
-        [CCode (cheader_filename = "webxdc_macos.h",
+        [CCode (cheader_filename = "webxdc_platform.h",
                 cname = "parla_webxdc_load")]
         private static extern void shim_load (void* handle, string uri);
-        [CCode (cheader_filename = "webxdc_macos.h",
+        [CCode (cheader_filename = "webxdc_platform.h",
                 cname = "parla_webxdc_finish_task")]
         private static extern void shim_finish_task (void* handle, void* task,
                                                      uint8[] data,
                                                      string mime);
-        [CCode (cheader_filename = "webxdc_macos.h",
+        [CCode (cheader_filename = "webxdc_platform.h",
                 cname = "parla_webxdc_fail_task")]
         private static extern void shim_fail_task (void* handle, void* task);
-        [CCode (cheader_filename = "webxdc_macos.h",
+        [CCode (cheader_filename = "webxdc_platform.h",
                 cname = "parla_webxdc_eval_js")]
         private static extern void shim_eval_js (void* handle, string js);
-        [CCode (cheader_filename = "webxdc_macos.h",
+        [CCode (cheader_filename = "webxdc_platform.h",
                 cname = "parla_webxdc_set_title")]
         private static extern void shim_set_title (void* handle, string title);
-        [CCode (cheader_filename = "webxdc_macos.h",
+        [CCode (cheader_filename = "webxdc_platform.h",
                 cname = "parla_webxdc_present")]
         private static extern void shim_present (void* handle);
-        [CCode (cheader_filename = "webxdc_macos.h",
+        [CCode (cheader_filename = "webxdc_platform.h",
                 cname = "parla_webxdc_minimize")]
         private static extern void shim_minimize (void* handle);
-        [CCode (cheader_filename = "webxdc_macos.h",
+        [CCode (cheader_filename = "webxdc_platform.h",
                 cname = "parla_webxdc_set_visible")]
         private static extern void shim_set_visible (void* handle,
                                                      bool visible);
-        [CCode (cheader_filename = "webxdc_macos.h",
+        [CCode (cheader_filename = "webxdc_platform.h",
                 cname = "parla_webxdc_close")]
         private static extern void shim_close (void* handle);
-        [CCode (cheader_filename = "webxdc_macos.h",
+        [CCode (cheader_filename = "webxdc_platform.h",
                 cname = "parla_webxdc_free")]
         private static extern void shim_free (void* handle);
 
@@ -589,7 +586,7 @@ namespace Dc.Webxdc {
             if (handle != null) shim_present (handle);
         }
 
-        /* The shim toggles: it can ask NSWindow for isMiniaturized. */
+        /* Native shims can query their own window's minimized state. */
         public void toggle_minimize_view () {
             if (handle != null) shim_minimize (handle);
         }

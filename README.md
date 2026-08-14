@@ -36,7 +36,7 @@ Want to build it yourself? See [Build](#build) below.
 
 - **Stickers that are yours to keep** &mdash; send stickers, collect received stickers, and organize them in local packs. Animated stickers can be paused or disabled when you want to save resources.
 - **A useful media gallery** &mdash; each chat has a browsable gallery for images, stickers, files, audio, video, and shared Webxdc apps, with quick access back to the original message.
-- **Webxdc mini-apps** &mdash; run and manage offline web apps shared in chats. This is experimental and available on supported Linux and macOS builds; see [Webxdc apps](#webxdc-apps-experimental) for security and platform details.
+- **Webxdc mini-apps** &mdash; run and manage offline web apps shared in chats. This is experimental and available on supported Linux, macOS, and Windows builds; see [Webxdc apps](#webxdc-apps-experimental) for security and platform details.
 - **Choose the conversation layout** &mdash; use familiar bubbles, compact IRC-style lines, or workspace rows. The split view adapts to narrow and phone-sized windows, where the sidebar becomes a single-pane navigation view.
 - **Keyboard-first when you want it** &mdash; quickly switch chats, create conversations, search, navigate, and focus the composer without leaving the keyboard.
 - **Desktop-aware** &mdash; configurable notifications, a tray icon for keeping Parla available in the background, and support for multiple accounts.
@@ -169,8 +169,13 @@ pacman -S zip mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-meson \
   mingw-w64-ucrt-x86_64-librsvg mingw-w64-ucrt-x86_64-webp-pixbuf-loader \
   mingw-w64-ucrt-x86_64-ntldd
 
-bash scripts/windows/bundle.sh   # creates dist/windows/parla-<version>-windows-<arch>.zip
+bash scripts/windows/bundle.sh   # default build, Webxdc compiled out
+WITH_WEBXDC=1 bash scripts/windows/bundle.sh  # system Edge WebView2 backend
 ```
+
+The Webxdc build fetches a pinned official Microsoft WebView2 SDK package for
+its C/C++ headers and small loader DLL. It does not download or bundle Edge:
+at runtime it uses the installed Evergreen WebView2 Runtime.
 
 The script builds with meson and bundles the GTK/libadwaita runtime
 (DLLs, GSettings schemas, icon themes, pixbuf loaders, TLS module) into
@@ -203,7 +208,10 @@ Platform support currently is:
   AppImage does not bundle WebKitGTK and therefore has no Webxdc support.
 - **macOS:** the system WebKit framework; no extra web-engine package is
   needed.
-- **Windows:** not supported yet; Windows builds use the Webxdc stub.
+- **Windows:** the installed Evergreen WebView2 Runtime, through the
+  native Win32 API. The Parla ZIP carries Microsoft's small SDK loader but no
+  browser runtime. Windows 11 includes the Evergreen Runtime; Windows 10
+  systems without it must install Microsoft's Evergreen Runtime once.
 
 To build and run it from the source tree:
 
@@ -216,6 +224,10 @@ make run WITH_WEBXDC=1
 meson setup builddir -Dwebxdc=true
 meson compile -C builddir
 ```
+
+On Windows, use the `WITH_WEBXDC=1` bundle command above. For a direct Meson
+build, extract the official `Microsoft.Web.WebView2` NuGet package and pass
+its root as `-Dwebview2_sdk=/path/to/package` together with `-Dwebxdc=true`.
 
 Webxdc attachments contain untrusted JavaScript, so Parla deliberately does
 not fall back to running them without the web-engine sandbox. On Linux,
