@@ -659,9 +659,11 @@ namespace Dc {
                 ensure_regexes ();
                 return replace_matches (link_re, escaped, (mi) => {
                     var url = mi.fetch (0);
-                    return "<a href=\"" + url + "\"><span foreground="
-                        + "\"#1c71d8\" underline=\"single\">" + url
-                        + "</span></a>";
+                    /* No foreground here: the colour comes from the
+                       "label link" CSS so it can adapt to the bubble tint
+                       (see Application.apply_link_colors). */
+                    return "<a href=\"" + url + "\"><span underline=\"single\">"
+                        + url + "</span></a>";
                 });
             } catch (RegexError e) {
                 return escaped;

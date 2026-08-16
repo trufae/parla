@@ -41,6 +41,8 @@ namespace Dc {
         public bool background_mode { get; private set; default = false; }
 
         private Gtk.CssProvider? accent_provider = null;
+        private Gtk.CssProvider? link_provider = null;
+        private string current_accent_hex = "";
         private Gtk.CssProvider? background_provider = null;
         private Gtk.CssProvider? font_provider = null;
 
@@ -102,7 +104,11 @@ namespace Dc {
                 remove_provider_for_display (display, accent_provider);
                 accent_provider = null;
             }
-            if (hex.length == 0) return;
+            current_accent_hex = hex;
+            if (hex.length == 0) {
+                apply_link_colors ();
+                return;
+            }
 
             var rgba = Gdk.RGBA ();
             if (!rgba.parse (hex)) return;
@@ -126,6 +132,67 @@ namespace Dc {
             add_provider_for_display (
                 display,
                 accent_provider,
+                Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 1
+            );
+            current_accent_hex = hex;
+            apply_link_colors ();
+        }
+
+        /* Links inside message bubbles are coloured by CSS ("label link"),
+           not by a hardcoded Pango foreground, so the colour can follow the
+           bubble it sits on. Outgoing bubbles are tinted with the accent
+           (50% over the view background); a fixed blue — or the accent
+           itself, which is what libadwaita uses for links — is unreadable
+           there when the accent is bluish or dark. Pick a light or dark
+           link colour from the luminance of the effective bubble colour. */
+        private static double rgba_luma (Gdk.RGBA c) {
+            return 0.299 * c.red + 0.587 * c.green + 0.114 * c.blue;
+        }
+
+        public void apply_link_colors () {
+            var display = Gdk.Display.get_default ();
+            if (display == null) return;
+            var style = Adw.StyleManager.get_default ();
+            bool dark = style.dark;
+
+            var accent = Gdk.RGBA ();
+            if (current_accent_hex.length == 0
+                || !accent.parse (current_accent_hex)) {
+                /* No override: assume the stock libadwaita blue (the
+                   accent-colour API needs libadwaita >= 1.6). */
+                accent.parse ("#3584e4");
+            }
+            /* Approximate view backgrounds of the default stylesheet. */
+            double bg = dark ? 0.118 : 1.0;
+            var out_bubble = Gdk.RGBA ();
+            out_bubble.red = (float) (0.5 * accent.red + 0.5 * bg);
+            out_bubble.green = (float) (0.5 * accent.green + 0.5 * bg);
+            out_bubble.blue = (float) (0.5 * accent.blue + 0.5 * bg);
+            out_bubble.alpha = 1.0f;
+
+            /* Light-on-dark / dark-on-light blues that keep >= 4.5:1 against
+               the respective bubble.  Incoming bubbles are essentially the
+               view background, so the stock GNOME link blues do. */
+            string incoming = dark ? "#78aeed" : "#1c71d8";
+            string outgoing = rgba_luma (out_bubble) > 0.5 ? "#0b3f7e" : "#b8d4ff";
+
+            if (link_provider != null) {
+                remove_provider_for_display (display, link_provider);
+                link_provider = null;
+            }
+            string css =
+                "@define-color parla_link_in_color " + incoming + ";\n" +
+                "@define-color parla_link_out_color " + outgoing + ";\n" +
+                ".message-bubble label link,\n" +
+                ".message-workspace label link,\n" +
+                ".message-irc label link { color: @parla_link_in_color; }\n" +
+                ".message-bubble.outgoing label link {"
+                + " color: @parla_link_out_color; }\n";
+            link_provider = new Gtk.CssProvider ();
+            link_provider.load_from_string (css);
+            add_provider_for_display (
+                display,
+                link_provider,
                 Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 1
             );
         }
@@ -326,6 +393,11 @@ namespace Dc {
             settings.load ();
             apply_theme_override (settings.theme_override);
             apply_accent_color (settings.accent_color);
+            /* Bubble tint depends on light/dark, so link colours must
+               follow the resolved scheme (system changes included). */
+            Adw.StyleManager.get_default ().notify["dark"].connect (() => {
+                apply_link_colors ();
+            });
             apply_background (settings.background_mode, settings.background_color);
             apply_font (
                 settings.font_family,
