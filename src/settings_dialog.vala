@@ -76,6 +76,10 @@ namespace Dc {
         public CodeTheme code_theme { get; set; default = CodeTheme.ADAPTIVE; }
         public bool shift_enter_sends { get; set; default = false; }
         public bool clean_pasted_links { get; set; default = false; }
+        /* Replace the built-in tracking rules with a uBlock/AdGuard
+           $removeparam filter list downloaded from tracking_filter_url. */
+        public bool tracking_filter_enabled { get; set; default = false; }
+        public string tracking_filter_url { get; set; default = ""; }
         /* Fetch Open Graph metadata for pasted links and attach the
            preview image (sender-side, like Signal). Off by default:
            fetching reveals the sender's address to the linked site. */
@@ -187,6 +191,10 @@ namespace Dc {
             SyntaxHighlight.theme = code_theme;
             shift_enter_sends = kf_bool (kf, "shift_enter_sends", false);
             clean_pasted_links = kf_bool (kf, "clean_pasted_links", false);
+            tracking_filter_enabled =
+                kf_bool (kf, "tracking_filter_enabled", false);
+            tracking_filter_url = kf_str (kf, "tracking_filter_url", "").strip ();
+            apply_tracking_filter ();
             link_previews = kf_bool (kf, "link_previews", false);
             notifications_enabled = kf_bool (kf, "notifications_enabled", true);
             show_notification_contents =
@@ -307,6 +315,25 @@ namespace Dc {
         public void save_clean_pasted_links (bool v) {
             clean_pasted_links = v;
             save_bool ("clean_pasted_links", v);
+        }
+
+        public void save_tracking_filter_enabled (bool v) {
+            tracking_filter_enabled = v;
+            save_bool ("tracking_filter_enabled", v);
+            apply_tracking_filter ();
+        }
+
+        public void save_tracking_filter_url (string v) {
+            tracking_filter_url = v.strip ();
+            save_string ("tracking_filter_url", tracking_filter_url);
+        }
+
+        /** Installs the cached filter list as the active link cleaner
+            when enabled, or reverts to the built-in rules. */
+        public void apply_tracking_filter () {
+            RemoveParamFilter.active =
+                tracking_filter_enabled && tracking_filter_url.length > 0
+                    ? RemoveParamFilter.load_cached () : null;
         }
 
         public void save_link_previews (bool v) {
@@ -609,6 +636,8 @@ namespace Dc {
         private Gtk.Button font_btn;
         private uint rpc_version_request = 0;
         private string? rpc_current_version = null;
+        private Adw.ActionRow tracking_filter_url_row;
+        private Gtk.Button tracking_filter_refresh_btn;
 
         public SettingsDialog (Window window, RpcClient rpc) {
             this.app_window = window;
@@ -810,32 +839,6 @@ namespace Dc {
 
             behavior_group.add (shift_row);
 
-            var clean_links_row = action_row (
-                "Remove tracking from pasted links",
-                "Strip known tracking parameters (YouTube, X, Instagram, "
-                + "Facebook, LinkedIn and others) from links pasted into "
-                + "the message field");
-            var clean_links_switch = row_switch (
-                clean_links_row, app_window.settings.clean_pasted_links);
-            clean_links_switch.notify["active"].connect (() => {
-                app_window.settings.save_clean_pasted_links (
-                    clean_links_switch.active);
-            });
-            behavior_group.add (clean_links_row);
-
-            var previews_row = action_row (
-                "Link previews",
-                "Attach the picture and title a page advertises (Open "
-                + "Graph tags) when a link is pasted into the message field. "
-                + "Each pasted link becomes one image; remove it before "
-                + "sending if unwanted. The page is fetched from this device");
-            var previews_switch = row_switch (
-                previews_row, app_window.settings.link_previews);
-            previews_switch.notify["active"].connect (() => {
-                app_window.settings.save_link_previews (previews_switch.active);
-            });
-            behavior_group.add (previews_row);
-
             var audio_row = action_row (
                 "System audio tools",
                 "Prefer system programs for voice playback and recording "
@@ -865,6 +868,8 @@ namespace Dc {
             });
 
             behavior_group.add (tray_row);
+
+            build_links_group (general_page);
 
             var notifications_group = settings_group (general_page, "Notifications");
             var notif_row = action_row (
@@ -1158,6 +1163,166 @@ namespace Dc {
             });
             safest_row.add_suffix (safest_button);
             webxdc_group.add (safest_row);
+        }
+
+        /* Settings → Links: previews and tracking removal for pasted URLs. */
+        private void build_links_group (Adw.PreferencesPage page) {
+            var links_group = settings_group (page, "Links");
+
+            var previews_row = action_row (
+                "Link previews",
+                "Attach the picture and title a page advertises (Open "
+                + "Graph tags) when a link is pasted into the message field. "
+                + "Each pasted link becomes one image; remove it before "
+                + "sending if unwanted. The page is fetched from this device");
+            var previews_switch = row_switch (
+                previews_row, app_window.settings.link_previews);
+            previews_switch.notify["active"].connect (() => {
+                app_window.settings.save_link_previews (previews_switch.active);
+            });
+            links_group.add (previews_row);
+
+            var clean_links_row = action_row (
+                "Remove tracking from pasted links",
+                "Strip known tracking parameters (YouTube, X, Instagram, "
+                + "Facebook, LinkedIn and others) from links pasted into "
+                + "the message field");
+            var clean_links_switch = row_switch (
+                clean_links_row, app_window.settings.clean_pasted_links);
+            links_group.add (clean_links_row);
+
+            /* Optional uBlock Origin / AdGuard $removeparam list that
+               replaces the built-in rules above. */
+            var filter_row = action_row (
+                "Use a uBlock removeparam filter list",
+                "Replace the built-in rules with the $removeparam rules of "
+                + "a uBlock Origin / AdGuard filter list, downloaded through "
+                + "the active account and refreshed when it expires");
+            var filter_switch = row_switch (
+                filter_row, app_window.settings.tracking_filter_enabled);
+            links_group.add (filter_row);
+
+            tracking_filter_url_row = action_row ("Filter list URL");
+            /* URL on the first line, status on the second; a URL has no
+               break points, so ellipsize instead of wrapping. */
+            tracking_filter_url_row.subtitle_lines = 2;
+            var url_btn = new Gtk.Button.with_label ("Set URL…");
+            url_btn.valign = Gtk.Align.CENTER;
+            url_btn.clicked.connect (() => {
+                prompt_tracking_filter_url.begin ();
+            });
+            tracking_filter_url_row.add_suffix (url_btn);
+            tracking_filter_url_row.activatable_widget = url_btn;
+
+            tracking_filter_refresh_btn =
+                new Gtk.Button.from_icon_name ("view-refresh-symbolic");
+            tracking_filter_refresh_btn.valign = Gtk.Align.CENTER;
+            tracking_filter_refresh_btn.add_css_class ("flat");
+            tracking_filter_refresh_btn.tooltip_text = "Download the list again";
+            tracking_filter_refresh_btn.clicked.connect (() => {
+                update_tracking_filter.begin ();
+            });
+            tracking_filter_url_row.add_suffix (tracking_filter_refresh_btn);
+            links_group.add (tracking_filter_url_row);
+
+            filter_switch.notify["active"].connect (() => {
+                app_window.settings.save_tracking_filter_enabled (
+                    filter_switch.active);
+                sync_tracking_filter_rows ();
+                if (filter_switch.active) {
+                    if (app_window.settings.tracking_filter_url.length == 0)
+                        prompt_tracking_filter_url.begin ();
+                    else
+                        update_tracking_filter.begin ();
+                }
+            });
+            clean_links_switch.notify["active"].connect (() => {
+                app_window.settings.save_clean_pasted_links (
+                    clean_links_switch.active);
+                filter_row.sensitive = clean_links_switch.active;
+                sync_tracking_filter_rows ();
+            });
+            filter_row.sensitive = clean_links_switch.active;
+            sync_tracking_filter_rows ();
+        }
+
+        private void sync_tracking_filter_rows () {
+            var settings = app_window.settings;
+            tracking_filter_url_row.sensitive =
+                settings.clean_pasted_links && settings.tracking_filter_enabled;
+            string url = settings.tracking_filter_url;
+            if (url.length == 0) {
+                tracking_filter_url_row.subtitle = "No list configured";
+                tracking_filter_url_row.tooltip_text = null;
+                tracking_filter_refresh_btn.sensitive = false;
+                return;
+            }
+            tracking_filter_refresh_btn.sensitive = true;
+            var filter = RemoveParamFilter.active;
+            string status;
+            if (filter == null) {
+                status = "Not downloaded yet";
+            } else {
+                status = "%d rules".printf (filter.rule_count);
+                if (filter.version.length > 0)
+                    status += ", version " + filter.version;
+                var when = RemoveParamFilter.cache_time ();
+                if (when != null)
+                    status += ", updated " + when.to_local ().format ("%x %H:%M");
+            }
+            tracking_filter_url_row.subtitle =
+                Markup.escape_text (url) + "\n" + status;
+            tracking_filter_url_row.tooltip_text = url;
+        }
+
+        private async void prompt_tracking_filter_url () {
+            var d = new Adw.AlertDialog ("Filter List URL",
+                "Address of a uBlock Origin or AdGuard filter list with "
+                + "$removeparam rules, for example the AdGuard URL Tracking "
+                + "filter.");
+            d.add_response ("cancel", "Cancel");
+            d.add_response ("set", "Download");
+            d.set_response_appearance ("set", Adw.ResponseAppearance.SUGGESTED);
+            d.default_response = "set";
+            d.close_response = "cancel";
+
+            var entry = new Gtk.Entry ();
+            string current = app_window.settings.tracking_filter_url;
+            entry.text = current.length > 0 ? current
+                : RemoveParamFilter.DEFAULT_URL;
+            entry.placeholder_text = RemoveParamFilter.DEFAULT_URL;
+            entry.activates_default = true;
+            d.extra_child = entry;
+
+            string response = yield d.choose (this, null);
+            if (response != "set") return;
+            string url = entry.text.strip ();
+            if (!url.has_prefix ("https://") && !url.has_prefix ("http://")) {
+                app_window.show_toast ("The filter list URL must start with http(s)://");
+                return;
+            }
+            bool changed = url != current;
+            app_window.settings.save_tracking_filter_url (url);
+            if (changed) {
+                RemoveParamFilter.active = null;
+                sync_tracking_filter_rows ();
+            }
+            yield update_tracking_filter ();
+        }
+
+        private async void update_tracking_filter () {
+            tracking_filter_refresh_btn.sensitive = false;
+            string? err = yield app_window.refresh_tracking_filter (true);
+            if (err != null) {
+                app_window.show_toast (err);
+                app_window.settings.apply_tracking_filter ();
+            } else {
+                var f = RemoveParamFilter.active;
+                app_window.show_toast (f != null
+                    ? "Filter list updated: %d rules".printf (f.rule_count)
+                    : "Filter list updated");
+            }
+            sync_tracking_filter_rows ();
         }
 
         private Adw.PreferencesGroup settings_group (Adw.PreferencesPage page,

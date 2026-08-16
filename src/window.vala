@@ -923,6 +923,7 @@ namespace Dc {
                 } catch (Error e) {
                     show_toast ("Connection setup error: " + e.message);
                 }
+                refresh_tracking_filter.begin (false);
             }
 
             /* Create event handler and message actions now that rpc is ready */
@@ -1242,6 +1243,43 @@ namespace Dc {
 
             show_toast ("Delta Chat engine installed");
             yield reconnect_rpc_server ();
+        }
+
+        /**
+         * Downloads the uBlock/AdGuard removeparam list configured in
+         * Settings → Links and installs it as the active link cleaner.
+         * Without `force` the cached copy is kept until it expires.
+         * Returns null on success, otherwise a message for the user.
+         */
+        public async string? refresh_tracking_filter (bool force) {
+            if (!settings.tracking_filter_enabled) return "Filter list disabled";
+            string url = settings.tracking_filter_url;
+            if (url.length == 0) return "No filter list URL configured";
+            if (rpc == null || rpc.account_id <= 0)
+                return "Not connected: the list is downloaded through the "
+                       + "active account";
+            if (!force) {
+                var cached = RemoveParamFilter.active;
+                if (cached != null && !cached.cache_is_stale ()) return null;
+            }
+            uint8[] body;
+            string? mimetype;
+            try {
+                body = yield rpc.get_http_response (url, out mimetype);
+            } catch (Error e) {
+                warning ("tracking filter: download failed: %s", e.message);
+                return "Download failed: " + e.message;
+            }
+            var sb = new StringBuilder.sized (body.length + 1);
+            sb.append_len ((string) body, body.length);
+            var filter = RemoveParamFilter.from_text (sb.str);
+            if (filter == null)
+                return "The downloaded file contains no $removeparam rules";
+            if (!RemoveParamFilter.save_cached (sb.str))
+                return "Could not save the filter list";
+            RemoveParamFilter.active = filter;
+            debug ("tracking filter: %d rules from %s", filter.rule_count, url);
+            return null;
         }
 
         /* Quietly check GitHub for a newer managed server and offer to update. */

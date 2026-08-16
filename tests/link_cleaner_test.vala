@@ -121,6 +121,95 @@ int main () {
         "Check https://youtu.be/abc.",
         "trailing period not part of url");
 
+    /* ---- uBlock/AdGuard $removeparam filter lists ---- */
+
+    const string LIST = """! Title: Test list
+! Expires: 2 days
+$removeparam=utm_source
+$removeparam=/^utm_/
+$removeparam=/^__s=[A-Za-z0-9]{6\,}/
+||example.com^$removeparam=ref
+||shop.example.org/*/products/$removeparam=TrackId
+||amazon.*/dp/$removeparam=tag
+$removeparam=fbclid,domain=facebook.com|fb.com
+$removeparam=lang,domain=~keep.example.net
+$denyallow=safe.example.com,removeparam=cid
+||api.example.com^$xhr,removeparam=token
+||doc.example.com^$document,removeparam=token
+||all.example.com/redirect?$removeparam
+||only.example.com^$removeparam=~id
+||ad.example.net/clk/$removeparam=/^\\$ja=/
+@@||example.com/keep$removeparam=ref
+@@||example.com/raw$removeparam
+example.com##.cosmetic
+""";
+    var filter = RemoveParamFilter.from_text (LIST);
+    if (filter == null) {
+        stderr.printf ("FAIL: filter list did not parse\n");
+        failures++;
+    } else {
+        check_eq (filter.expires_seconds.to_string (), "172800", "expires header");
+        check_eq (filter.title, "Test list", "title header");
+        RemoveParamFilter.active = filter;
+
+        check_eq (LinkCleaner.clean_url ("https://foo.org/p?utm_source=a&utm_medium=b&id=1"),
+                  "https://foo.org/p?id=1", "generic name and regex rules");
+        check_eq (LinkCleaner.clean_url ("https://foo.org/p?__s=abcdef1&x=1"),
+                  "https://foo.org/p?x=1", "escaped comma inside regex quantifier");
+        check_eq (LinkCleaner.clean_url ("https://foo.org/p?__s=abc&x=1"),
+                  "https://foo.org/p?__s=abc&x=1", "regex quantifier respected");
+        check_eq (LinkCleaner.clean_url ("https://www.example.com/a?ref=x&q=1"),
+                  "https://www.example.com/a?q=1", "||host^ subdomain match");
+        check_eq (LinkCleaner.clean_url ("https://notexample.com/a?ref=x"),
+                  "https://notexample.com/a?ref=x", "||host^ needs a label boundary");
+        check_eq (LinkCleaner.clean_url ("https://foo.org/a?ref=x"),
+                  "https://foo.org/a?ref=x", "site rule does not leak");
+        check_eq (LinkCleaner.clean_url ("https://shop.example.org/xx/products/1?TrackId=9&a=b"),
+                  "https://shop.example.org/xx/products/1?a=b", "path wildcard, case-sensitive name");
+        check_eq (LinkCleaner.clean_url ("https://shop.example.org/xx/products/1?trackid=9"),
+                  "https://shop.example.org/xx/products/1?trackid=9", "param names are case-sensitive");
+        check_eq (LinkCleaner.clean_url ("https://www.amazon.co.uk/dp/B01?tag=aff&th=1"),
+                  "https://www.amazon.co.uk/dp/B01?th=1", "amazon.* tld wildcard");
+        check_eq (LinkCleaner.clean_url ("https://m.facebook.com/x?fbclid=1&id=2"),
+                  "https://m.facebook.com/x?id=2", "domain= restricts to listed hosts");
+        check_eq (LinkCleaner.clean_url ("https://foo.org/x?fbclid=1"),
+                  "https://foo.org/x?fbclid=1", "domain= excludes other hosts");
+        check_eq (LinkCleaner.clean_url ("https://foo.org/x?lang=en"),
+                  "https://foo.org/x", "negated domain applies elsewhere");
+        check_eq (LinkCleaner.clean_url ("https://keep.example.net/x?lang=en"),
+                  "https://keep.example.net/x?lang=en", "negated domain excluded");
+        check_eq (LinkCleaner.clean_url ("https://foo.org/x?cid=1"),
+                  "https://foo.org/x", "denyallow applies elsewhere");
+        check_eq (LinkCleaner.clean_url ("https://safe.example.com/x?cid=1"),
+                  "https://safe.example.com/x?cid=1", "denyallow host excluded");
+        check_eq (LinkCleaner.clean_url ("https://api.example.com/x?token=1"),
+                  "https://api.example.com/x?token=1", "xhr-only rule ignored for links");
+        check_eq (LinkCleaner.clean_url ("https://doc.example.com/x?token=1"),
+                  "https://doc.example.com/x", "document rule applies");
+        check_eq (LinkCleaner.clean_url ("https://all.example.com/redirect?a=1&b=2#frag"),
+                  "https://all.example.com/redirect#frag", "bare removeparam drops whole query");
+        check_eq (LinkCleaner.clean_url ("https://only.example.com/x?a=1&id=7&b=2"),
+                  "https://only.example.com/x?id=7", "inverse keeps only named param");
+        check_eq (LinkCleaner.clean_url ("https://ad.example.net/clk/x?$ja=1&u=2"),
+                  "https://ad.example.net/clk/x?u=2", "escaped $ inside regex value");
+        check_eq (LinkCleaner.clean_url ("https://example.com/keep?ref=x&utm_source=y"),
+                  "https://example.com/keep?ref=x", "exception protects one param");
+        check_eq (LinkCleaner.clean_url ("https://example.com/raw?ref=x&utm_source=y"),
+                  "https://example.com/raw?ref=x&utm_source=y", "bare exception protects url");
+        check_eq (LinkCleaner.clean_url ("https://youtu.be/abc?si=x"),
+                  "https://youtu.be/abc?si=x", "built-in rules replaced by the list");
+        check_eq (LinkCleaner.clean_text ("see https://foo.org/p?utm_source=a."),
+                  "see https://foo.org/p.", "clean_text routes through the list");
+
+        RemoveParamFilter.active = null;
+        check_eq (LinkCleaner.clean_url ("https://youtu.be/abc?si=x"),
+                  "https://youtu.be/abc", "built-in rules back once list is cleared");
+    }
+    if (RemoveParamFilter.from_text ("! nothing\nexample.com##.ad\n") != null) {
+        stderr.printf ("FAIL: list without removeparam rules should be null\n");
+        failures++;
+    }
+
     if (failures == 0) stdout.printf ("all link-cleaner tests passed\n");
     return failures == 0 ? 0 : 1;
 }

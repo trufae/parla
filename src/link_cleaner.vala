@@ -118,8 +118,11 @@ namespace Dc {
         }
 
         /** Strips tracking query parameters (and Amazon's /ref= path
-            suffix) from a single URL. */
+            suffix) from a single URL. When a removeparam filter list is
+            active (Settings → Links) it replaces the built-in rules. */
         public static string clean_url (string url) {
+            if (RemoveParamFilter.active != null)
+                return RemoveParamFilter.active.clean_url (url);
             string host = host_of (url);
 
             int frag_start = url.index_of_char ('#');
