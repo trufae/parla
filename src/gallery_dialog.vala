@@ -182,6 +182,15 @@ namespace Dc {
                     overflow = true
                 },
                 new GalleryTab () {
+                    key = "links", title = "Links",
+                    icon_name = "web-browser-symbolic",
+                    types = {},
+                    empty_title = "No Links",
+                    empty_description = "Links shared in this chat will appear here",
+                    kind_plural = "links",
+                    overflow = true
+                },
+                new GalleryTab () {
                     key = "apps", title = "Apps",
                     icon_name = "application-x-executable-symbolic",
                     types = { "Webxdc" },
@@ -599,7 +608,21 @@ namespace Dc {
             if (tab == null || tab.load_started) return;
             tab.load_started = true;
             try {
-                int[] ids = yield rpc.get_chat_media (chat_id, tab.types);
+                int[] ids;
+                if (tab.key == "links") {
+                    /* Links live in the message text, which get_chat_media
+                       cannot match on; walk the chat's whole message list
+                       and let append_messages keep the ones with a URL. */
+                    ids = {};
+                    var arr = yield rpc.get_message_ids_for (rpc.account_id,
+                                                             chat_id);
+                    if (arr != null) {
+                        for (uint i = 0; i < arr.get_length (); i++)
+                            ids += (int) arr.get_int_element (i);
+                    }
+                } else {
+                    ids = yield rpc.get_chat_media (chat_id, tab.types);
+                }
                 if (!is_open) return;
 
                 /* Newest first, like the official client. */
@@ -627,6 +650,14 @@ namespace Dc {
         private void append_messages (GalleryTab tab, Message[] msgs) {
             Object[] batch = {};
             foreach (var msg in msgs) {
+                if (tab.key == "links") {
+                    if (msg.is_info) continue;
+                    string t = msg.text ?? "";
+                    if (t.index_of ("://") < 0
+                        || LinkCleaner.find_urls (t).length == 0) continue;
+                    batch += msg;
+                    continue;
+                }
                 if (!msg.has_file) continue;
                 if (tab.filter == MediaFilter.STICKERS_ONLY
                     && !msg.is_sticker_file ()) continue;
@@ -924,6 +955,10 @@ namespace Dc {
             private Gtk.Label title_label;
             private Gtk.Label subtitle_label;
             private Gtk.Button? play_btn = null;
+            /* Links tab only: thumbnail of a picture attached to the
+               same message, shown in place of the generic icon. */
+            private Gtk.Picture? thumb = null;
+            private int generation = 0;
             /* AudioPlayback outlives the dialog, so unlike the dialog's
                own selection_changed these must disconnect on unbind. */
             private ulong playing_handler = 0;
@@ -968,6 +1003,19 @@ namespace Dc {
                 text_box.append (subtitle_label);
                 append (text_box);
 
+                if (tab_key == "links") {
+                    /* Attached picture, right-aligned after the text. */
+                    thumb = new Gtk.Picture ();
+                    thumb.content_fit = Gtk.ContentFit.COVER;
+                    thumb.set_size_request (48, 48);
+                    thumb.overflow = Gtk.Overflow.HIDDEN;
+                    thumb.add_css_class ("gallery-thumb");
+                    thumb.halign = Gtk.Align.END;
+                    thumb.valign = Gtk.Align.CENTER;
+                    thumb.visible = false;
+                    append (thumb);
+                }
+
                 if (tab_key == "audio") {
                     play_btn = new Gtk.Button.from_icon_name (
                         "media-playback-start-symbolic");
@@ -989,6 +1037,7 @@ namespace Dc {
 
             public void bind (Message m) {
                 msg = m;
+                generation++;
                 update_selection_visuals ();
 
                 string sender = m.is_outgoing ? "You"
@@ -1020,6 +1069,27 @@ namespace Dc {
                     title_label.label = app_display_name (m);
                     subtitle_label.label = meta;
                     break;
+                case "links":
+                    var links = LinkCleaner.find_urls (m.text ?? "");
+                    string link = links.length > 0 ? links[0] : "";
+                    title_label.label = links.length > 1
+                        ? "%s (+%d more)".printf (link, links.length - 1)
+                        : link;
+                    tooltip_text = link;
+                    subtitle_label.label = meta;
+                    icon.icon_name = "web-browser-symbolic";
+                    bool has_pic = m.has_local_file && m.is_image_file ();
+                    thumb.visible = has_pic;
+                    thumb.paintable = null;
+                    if (has_pic) {
+                        int gen = generation;
+                        dialog.load_thumb.begin (m.file_path, (o, res) => {
+                            var tex = dialog.load_thumb.end (res);
+                            if (gen != generation || tex == null) return;
+                            thumb.paintable = tex;
+                        });
+                    }
+                    break;
                 default:
                     icon.gicon = file_type_icon (m);
                     title_label.label = m.display_file_name ();
@@ -1032,6 +1102,8 @@ namespace Dc {
             }
 
             public void unbind () {
+                generation++;
+                if (thumb != null) thumb.paintable = null;
                 var playback = AudioPlayback.shared ();
                 if (playing_handler != 0) {
                     playback.disconnect (playing_handler);
@@ -1097,7 +1169,23 @@ namespace Dc {
             case "apps":
                 app_window.prompt_webxdc_app.begin (this, rpc, m);
                 break;
+            case "links":
+                var links = LinkCleaner.find_urls (m.text ?? "");
+                if (links.length > 0) open_link (links[0]);
+                break;
             }
+        }
+
+        private void open_link (string url) {
+            var launcher = new Gtk.UriLauncher (url);
+            launcher.launch.begin (app_window, null, (o, res) => {
+                try {
+                    launcher.launch.end (res);
+                } catch (Error e) {
+                    if (!is_dialog_dismissal (e))
+                        toast ("Could not open link: " + e.message);
+                }
+            });
         }
 
         private void toggle_audio (Message m) {
@@ -1181,6 +1269,23 @@ namespace Dc {
                                      double x, double y) {
             Gtk.Box vbox;
             var popover = popover_menu (parent, x, y, out vbox);
+
+            var cur = current_tab ();
+            if (cur != null && cur.key == "links") {
+                var links = LinkCleaner.find_urls (m.text ?? "");
+                if (links.length > 0) {
+                    string link0 = links[0];
+                    var open_btn = new PopoverButton (popover, "Open Link");
+                    open_btn.selected.connect (() => open_link (link0));
+                    vbox.append (open_btn);
+                    var copy_btn = new PopoverButton (popover, "Copy Link");
+                    copy_btn.selected.connect (() => {
+                        get_clipboard ().set_text (link0);
+                        toast ("Link copied");
+                    });
+                    vbox.append (copy_btn);
+                }
+            }
 
             if (m.has_local_file) {
                 string fpath = m.file_path;
@@ -1289,7 +1394,9 @@ namespace Dc {
 
         private void update_save_all_button () {
             var tab = current_tab ();
-            bool has_items = tab != null && tab.store.get_n_items () > 0;
+            /* Links are text, not files — nothing "Save all" could save. */
+            bool has_items = tab != null && tab.key != "links"
+                && tab.store.get_n_items () > 0;
             save_all_btn.sensitive = has_items;
             save_all_btn.tooltip_text = tab != null
                 ? "Save all %s to a folder…".printf (tab.kind_plural)
