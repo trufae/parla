@@ -80,7 +80,10 @@ int main () {
     /* Truncation. */
     string long_title = string.nfill (200, 'a');
     string? t = LinkPreview.shorten (long_title, LinkPreview.MAX_TITLE_CHARS);
-    check_eq (t.char_count ().to_string (), LinkPreview.MAX_TITLE_CHARS.to_string (),
+    /* char_count () is glong in C; go through an int so the generated
+       printf format matches under -Werror=format. */
+    int title_len = t.char_count ();
+    check_eq (title_len.to_string (), LinkPreview.MAX_TITLE_CHARS.to_string (),
         "title truncated with ellipsis");
     check_true (t.has_suffix ("…"), "ellipsis appended");
 

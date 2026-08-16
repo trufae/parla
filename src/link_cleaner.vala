@@ -9,81 +9,54 @@ namespace Dc {
     public class LinkCleaner : Object {
 
         /* Ad-click and campaign IDs appended by platforms regardless of
-           the destination site; always safe to drop. */
-        private const string[] GLOBAL_PARAMS = {
-            "fbclid", "gclid", "gclsrc", "dclid", "wbraid", "gbraid",
-            "msclkid", "yclid", "twclid", "ttclid", "li_fat_id",
-            "mc_cid", "mc_eid", "igshid", "srsltid", "s_cid",
-            "_hsenc", "_hsmi", "_openstat", "vero_conv", "vero_id",
-            "oly_anon_id", "oly_enc_id"
-        };
+           the destination site; always safe to drop. utm_* (Google
+           Analytics), pk_/mtm_/piwik_ (Matomo), hsa_ (HubSpot ads). */
+        private const string GLOBAL_PARAMS =
+            "fbclid gclid gclsrc dclid wbraid gbraid msclkid yclid twclid "
+            + "ttclid li_fat_id mc_cid mc_eid igshid srsltid s_cid _hsenc "
+            + "_hsmi _openstat vero_conv vero_id oly_anon_id oly_enc_id";
+        private const string GLOBAL_PREFIXES = "utm_ pk_ mtm_ piwik_ hsa_";
 
-        /* utm_* (Google Analytics), pk_/mtm_/piwik_ (Matomo),
-           hsa_ (HubSpot ads). */
-        private const string[] GLOBAL_PREFIXES = {
-            "utm_", "pk_", "mtm_", "piwik_", "hsa_"
+        /* Space-separated word lists; a host ending in ".*" matches the
+           brand under any country TLD (amazon.co.uk, smile.amazon.de). */
+        private struct SiteRule {
+            unowned string hosts;
+            unowned string params;
+            unowned string prefixes;
+        }
+        private const SiteRule[] SITE_RULES = {
+            { "youtube.com youtu.be",
+              "si feature pp ab_channel embeds_referring_euri source_ve_path", "" },
+            { "x.com twitter.com", "s t ref_src ref_url", "" },
+            { "instagram.com threads.net threads.com", "igsh ig_rid ig_mid xmt", "" },
+            /* __tn__, __cft__[0], __xts__[0] ... */
+            { "facebook.com fb.com fb.watch fb.me messenger.com",
+              "mibextid rdid share_url refid ref fref hc_ref sfnsn wtsid paipv "
+              + "eav comment_tracking notif_id notif_t", "__" },
+            { "linkedin.com lnkd.in",
+              "trk trackingid lipi midtoken midsig trkemail ebp refid otptoken "
+              + "original_referer rcm", "" },
+            { "tiktok.com",
+              "_t _r is_from_webapp sender_device sender_web_id web_id u_code "
+              + "tt_from is_copy_url share_app_id share_link_id share_iid ug_btm "
+              + "checksum", "" },
+            { "reddit.com redd.it", "share_id ref ref_source rdt correlation_id", "" },
+            { "spotify.com", "si nd _branch_match_id _branch_referrer", "" },
+            { "twitch.tv", "tt_content tt_medium", "" },
+            /* YouTube thumbnail CDN: rendering hints and signatures that
+               the plain .jpg does not need. */
+            { "ytimg.com", "sqp rs usqp", "" },
+            { "amazon.*",
+              "tag ref ref_ ascsubtag linkcode linkid camp creative creativeasin "
+              + "qid sr sprefix crid dib dib_tag content-id social_share",
+              "pf_rd_ pd_rd_" },
+            { "ebay.*",
+              "mkcid mkevt mkrid ssspo sssrc ssuid campid toolid customid mkpid "
+              + "ul_noapp amdata", "" },
+            { "aliexpress.*",
+              "spm scm aff_platform aff_trace_key aff_fcid aff_fsk terminal_id "
+              + "pdp_npi gatewayadapt algo_pvid algo_exp_id utparam-url", "" },
         };
-
-        private const string[] YOUTUBE_PARAMS = {
-            "si", "feature", "pp", "ab_channel",
-            "embeds_referring_euri", "source_ve_path"
-        };
-        private const string[] X_PARAMS = {
-            "s", "t", "ref_src", "ref_url"
-        };
-        private const string[] INSTAGRAM_PARAMS = {
-            "igsh", "ig_rid", "ig_mid", "xmt"
-        };
-        private const string[] FACEBOOK_PARAMS = {
-            "mibextid", "rdid", "share_url", "refid", "ref", "fref",
-            "hc_ref", "sfnsn", "wtsid", "paipv", "eav",
-            "comment_tracking", "notif_id", "notif_t"
-        };
-        /* __tn__, __cft__[0], __xts__[0] ... */
-        private const string[] FACEBOOK_PREFIXES = { "__" };
-        private const string[] LINKEDIN_PARAMS = {
-            "trk", "trackingid", "lipi", "midtoken", "midsig",
-            "trkemail", "ebp", "refid", "otptoken", "original_referer",
-            "rcm"
-        };
-        private const string[] TIKTOK_PARAMS = {
-            "_t", "_r", "is_from_webapp", "sender_device",
-            "sender_web_id", "web_id", "u_code", "tt_from",
-            "is_copy_url", "share_app_id", "share_link_id", "share_iid",
-            "ug_btm", "checksum"
-        };
-        private const string[] REDDIT_PARAMS = {
-            "share_id", "ref", "ref_source", "rdt", "correlation_id"
-        };
-        private const string[] SPOTIFY_PARAMS = {
-            "si", "nd", "_branch_match_id", "_branch_referrer"
-        };
-        private const string[] AMAZON_PARAMS = {
-            "tag", "ref", "ref_", "ascsubtag", "linkcode", "linkid",
-            "camp", "creative", "creativeasin", "qid", "sr", "sprefix",
-            "crid", "dib", "dib_tag", "content-id", "social_share"
-        };
-        private const string[] AMAZON_PREFIXES = { "pf_rd_", "pd_rd_" };
-        private const string[] EBAY_PARAMS = {
-            "mkcid", "mkevt", "mkrid", "ssspo", "sssrc", "ssuid",
-            "campid", "toolid", "customid", "mkpid", "ul_noapp",
-            "amdata"
-        };
-        private const string[] ALIEXPRESS_PARAMS = {
-            "spm", "scm", "aff_platform", "aff_trace_key", "aff_fcid",
-            "aff_fsk", "terminal_id", "pdp_npi", "gatewayadapt",
-            "algo_pvid", "algo_exp_id", "utparam-url"
-        };
-        private const string[] TWITCH_PARAMS = {
-            "tt_content", "tt_medium"
-        };
-        /* YouTube thumbnail CDN: rendering hints and signatures that
-           the plain .jpg does not need. */
-        private const string[] YTIMG_PARAMS = {
-            "sqp", "rs", "usqp"
-        };
-
-        private const string[] EMPTY = {};
 
         /** Rewrites every http(s) URL found in the text; anything that is
             not a URL passes through unchanged. */
@@ -134,7 +107,7 @@ namespace Dc {
             string base_part = url[0:base_end];
             string fragment = frag_start >= 0 ? url.substring (frag_start) : "";
 
-            if (host_is_brand (host, "amazon"))
+            if (host_matches (host, "amazon.*"))
                 base_part = strip_amazon_ref_path (base_part);
 
             if (query_start < 0) return base_part + fragment;
@@ -142,15 +115,14 @@ namespace Dc {
             int query_end = frag_start >= 0 ? frag_start : url.length;
             string query = url[query_start + 1:query_end];
 
-            string[] site_params, site_prefixes;
-            rules_for_host (host, out site_params, out site_prefixes);
+            int site = site_rule_for (host);
 
             var kept = new StringBuilder ();
             foreach (string param in query.split ("&")) {
                 if (param.length == 0) continue;
                 int eq = param.index_of_char ('=');
                 string name = (eq >= 0 ? param[0:eq] : param).down ();
-                if (is_tracking_param (name, site_params, site_prefixes))
+                if (is_tracking_param (name, site))
                     continue;
                 if (kept.len > 0) kept.append_c ('&');
                 kept.append (param);
@@ -162,57 +134,21 @@ namespace Dc {
             return cleaned + fragment;
         }
 
-        private static bool is_tracking_param (string name,
-                                               string[] site_params,
-                                               string[] site_prefixes) {
-            if (contains (GLOBAL_PARAMS, name)) return true;
-            if (has_any_prefix (name, GLOBAL_PREFIXES)) return true;
-            if (contains (site_params, name)) return true;
-            return has_any_prefix (name, site_prefixes);
+        private static bool is_tracking_param (string name, int site) {
+            if (has_word (GLOBAL_PARAMS, name) || has_prefix_in (GLOBAL_PREFIXES, name))
+                return true;
+            return site >= 0 && (has_word (SITE_RULES[site].params, name)
+                || has_prefix_in (SITE_RULES[site].prefixes, name));
         }
 
-        private static void rules_for_host (string host,
-                                            out string[] params,
-                                            out string[] prefixes) {
-            params = EMPTY;
-            prefixes = EMPTY;
-            if (host_is (host, "youtube.com") || host_is (host, "youtu.be")) {
-                params = YOUTUBE_PARAMS;
-            } else if (host_is (host, "x.com") || host_is (host, "twitter.com")) {
-                params = X_PARAMS;
-            } else if (host_is (host, "instagram.com")
-                       || host_is (host, "threads.net")
-                       || host_is (host, "threads.com")) {
-                params = INSTAGRAM_PARAMS;
-            } else if (host_is (host, "facebook.com")
-                       || host_is (host, "fb.com")
-                       || host_is (host, "fb.watch")
-                       || host_is (host, "fb.me")
-                       || host_is (host, "messenger.com")) {
-                params = FACEBOOK_PARAMS;
-                prefixes = FACEBOOK_PREFIXES;
-            } else if (host_is (host, "linkedin.com")
-                       || host_is (host, "lnkd.in")) {
-                params = LINKEDIN_PARAMS;
-            } else if (host_is (host, "tiktok.com")) {
-                params = TIKTOK_PARAMS;
-            } else if (host_is (host, "reddit.com")
-                       || host_is (host, "redd.it")) {
-                params = REDDIT_PARAMS;
-            } else if (host_is (host, "spotify.com")) {
-                params = SPOTIFY_PARAMS;
-            } else if (host_is (host, "twitch.tv")) {
-                params = TWITCH_PARAMS;
-            } else if (host_is (host, "ytimg.com")) {
-                params = YTIMG_PARAMS;
-            } else if (host_is_brand (host, "amazon")) {
-                params = AMAZON_PARAMS;
-                prefixes = AMAZON_PREFIXES;
-            } else if (host_is_brand (host, "ebay")) {
-                params = EBAY_PARAMS;
-            } else if (host_is_brand (host, "aliexpress")) {
-                params = ALIEXPRESS_PARAMS;
+        /* Index into SITE_RULES, or -1 when no site-specific rule applies. */
+        private static int site_rule_for (string host) {
+            for (int i = 0; i < SITE_RULES.length; i++) {
+                foreach (string pattern in SITE_RULES[i].hosts.split (" ")) {
+                    if (host_matches (host, pattern)) return i;
+                }
             }
+            return -1;
         }
 
         /** Lowercased host without userinfo, port, or a leading www./m. */
@@ -236,15 +172,14 @@ namespace Dc {
             return host;
         }
 
-        private static bool host_is (string host, string domain) {
-            return host == domain || host.has_suffix ("." + domain);
-        }
-
-        /* Matches brands with per-country TLDs: "amazon" covers
-           amazon.com, amazon.co.uk, smile.amazon.de, ... */
-        private static bool host_is_brand (string host, string brand) {
-            int idx = host.index_of (brand + ".");
-            return idx == 0 || (idx > 0 && host[idx - 1] == '.');
+        /* "example.com" matches the domain and its subdomains; "brand.*"
+           matches per-country TLDs: amazon.com, amazon.co.uk, smile.amazon.de */
+        private static bool host_matches (string host, string pattern) {
+            if (pattern.has_suffix (".*")) {
+                int idx = host.index_of (pattern[0:pattern.length - 1]);
+                return idx == 0 || (idx > 0 && host[idx - 1] == '.');
+            }
+            return host == pattern || host.has_suffix ("." + pattern);
         }
 
         /* Amazon appends the click source as a trailing path segment:
@@ -301,16 +236,13 @@ namespace Dc {
             return depth >= 0;
         }
 
-        private static bool contains (string[] haystack, string needle) {
-            foreach (string s in haystack) {
-                if (s == needle) return true;
-            }
-            return false;
+        private static bool has_word (string words, string word) {
+            return (" " + words + " ").contains (" " + word + " ");
         }
 
-        private static bool has_any_prefix (string name, string[] prefixes) {
-            foreach (string prefix in prefixes) {
-                if (name.has_prefix (prefix)) return true;
+        private static bool has_prefix_in (string prefixes, string name) {
+            foreach (string prefix in prefixes.split (" ")) {
+                if (prefix.length > 0 && name.has_prefix (prefix)) return true;
             }
             return false;
         }
