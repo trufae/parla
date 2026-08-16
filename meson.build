@@ -106,6 +106,8 @@ sources = files(
   'src/conversation_media_bar.vala',
   'src/compose_bar.vala',
   'src/link_cleaner.vala',
+  'src/link_preview.vala',
+  'src/link_preview_fetcher.vala',
   'src/emoji.vala',
   'src/file_drop.vala',
   'src/conversation_view.vala',
@@ -293,6 +295,17 @@ link_cleaner_test = executable(
 )
 
 test('link-cleaner', link_cleaner_test)
+
+link_preview_test = executable(
+  'link-preview-test',
+  files('tests/link_preview_test.vala', 'src/link_preview.vala',
+        'src/link_cleaner.vala'),
+  dependencies: [dependency('glib-2.0'), dependency('gobject-2.0'),
+                 dependency('gio-2.0')],
+  install: false,
+)
+
+test('link-preview', link_preview_test)
 
 storage_quota_test = executable(
   'storage-quota-test',

@@ -34,6 +34,7 @@ namespace Dc {
         private unowned Window window;
         private unowned RpcClient rpc;
         private unowned SettingsManager settings;
+        private LinkPreviewFetcher? link_preview_fetcher = null;
         private ChatKind chat_kind = ChatKind.UNKNOWN;
         private bool chat_kind_loaded = false;
 
@@ -482,6 +483,9 @@ namespace Dc {
                                     "shift-enter-sends", BindingFlags.SYNC_CREATE);
             settings.bind_property ("clean-pasted-links", compose_bar,
                                     "clean-pasted-links", BindingFlags.SYNC_CREATE);
+            settings.bind_property ("link-previews", compose_bar,
+                                    "link-previews", BindingFlags.SYNC_CREATE);
+            compose_bar.link_previews_requested.connect (on_link_previews_requested);
             compose_bar.send_message.connect (on_send_message);
             compose_bar.send_voice_message.connect (on_send_voice_message);
             compose_bar.draft_changed.connect (on_draft_changed);
@@ -1960,6 +1964,24 @@ namespace Dc {
         /* ================================================================
          *  Sending & attachments
          * ================================================================ */
+
+        /* One preview per pasted link, fetched concurrently; each lands
+           in the composer as its own image attachment as soon as it is
+           ready, or is dropped if the composer moved on meanwhile. */
+        private void on_link_previews_requested (string[] urls, uint generation) {
+            if (link_preview_fetcher == null)
+                link_preview_fetcher = new LinkPreviewFetcher (rpc);
+            foreach (string url in urls) {
+                link_preview_fetcher.fetch.begin (url, settings.clean_pasted_links,
+                    (obj, res) => {
+                        var r = link_preview_fetcher.fetch.end (res);
+                        if (r == null) return;
+                        if (!compose_bar.add_link_preview (generation, r.image_path,
+                                r.file_name, r.title, r.description))
+                            GLib.FileUtils.unlink (r.image_path);
+                    });
+            }
+        }
 
         private void on_send_message (string text, string? file_path,
                                       string? file_name, int quote_msg_id) {

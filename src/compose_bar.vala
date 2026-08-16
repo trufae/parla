@@ -13,6 +13,15 @@ namespace Dc {
         /* Strip known tracking parameters from URLs in pasted text. */
         public bool clean_pasted_links { get; set; default = false; }
 
+        /* Ask for Open Graph previews of pasted links (see LinkPreview);
+           the owner fetches them and hands the images back through
+           add_link_preview(). */
+        public bool link_previews { get; set; default = false; }
+        /* `generation` identifies the composer state the request was
+           made for; add_link_preview() drops results for a stale one. */
+        public signal void link_previews_requested (string[] urls,
+            uint generation);
+
         public signal void send_message (string text, string? file_path,
             string? file_name, int quote_msg_id);
         /* `text` is the transcription typed into the composer alongside the
@@ -65,6 +74,14 @@ namespace Dc {
         private string[] extra_pending_files = {};
         private string[] extra_pending_file_names = {};
         private string[] extra_pending_temp_files = {};
+        /* Caption sent with each extra file; "" for plain attachments,
+           the page title/description for a link preview. */
+        private string[] extra_pending_captions = {};
+        /* Bumped whenever the pending attachments are cleared or the
+           composer switches chats, so late preview fetches for an old
+           state are discarded. */
+        private uint preview_generation = 1;
+        private string[] previewed_urls = {};
         private int editing_msg_id = 0;
         private int replying_msg_id = 0;
         private MentionRoster? mention_roster = null;
@@ -84,6 +101,7 @@ namespace Dc {
         private bool suspended_draft_file_is_voice = false;
         private string[] suspended_extra_draft_files = {};
         private string[] suspended_extra_draft_file_names = {};
+        private string[] suspended_extra_draft_captions = {};
         private int suspended_replying_msg_id = 0;
         private string suspended_reply_label = "";
         /* Last natural height a resize was queued for; guards the
@@ -885,7 +903,8 @@ namespace Dc {
 
         public void set_pending_attachment (string file_path,
                                             string? file_name = null,
-                                            bool is_temp = false) {
+                                            bool is_temp = false,
+                                            string caption = "") {
             string name = file_name ?? Path.get_basename (file_path);
             if (pending_file == null) {
                 pending_file = file_path;
@@ -895,6 +914,7 @@ namespace Dc {
             } else {
                 extra_pending_files += file_path;
                 extra_pending_file_names += name;
+                extra_pending_captions += caption;
                 if (is_temp) extra_pending_temp_files += file_path;
                 int count = 1 + extra_pending_files.length;
                 attachment_picture.paintable = null;
@@ -909,6 +929,54 @@ namespace Dc {
             cancel_attach_button.visible = true;
             update_send_stack ();
             notify_draft_changed ();
+        }
+
+        /** State token to pass along with link_previews_requested. */
+        public uint current_preview_generation () {
+            return preview_generation;
+        }
+
+        /** Attaches a fetched link preview image. Returns false (and
+            takes no ownership of `image_path`) when the composer has
+            moved on since `generation` was issued or cannot take
+            attachments any more. */
+        public bool add_link_preview (uint generation, string image_path,
+                                      string file_name, string? title,
+                                      string? description) {
+            if (generation != preview_generation) return false;
+            if (!can_accept_attachment ()) return false;
+            string caption = title ?? "";
+            if (description != null && description.length > 0)
+                caption = caption.length > 0
+                    ? "%s\n%s".printf (caption, description) : description;
+            bool primary = pending_file == null;
+            set_pending_attachment (image_path, file_name, true, caption);
+            if (primary) {
+                /* Show what the page advertises rather than the temp
+                   file's name and size. */
+                if (title != null && title.length > 0)
+                    attachment_name_label.label = title;
+                if (description != null && description.length > 0)
+                    attachment_meta_label.label = description;
+                else if (title != null && title.length > 0)
+                    attachment_meta_label.label = "Link preview";
+            }
+            return true;
+        }
+
+        private void request_link_previews (string text) {
+            string[] fresh = {};
+            foreach (string url in LinkPreview.pick_urls (text)) {
+                bool seen = false;
+                foreach (string u in previewed_urls) {
+                    if (u == url) { seen = true; break; }
+                }
+                if (seen) continue;
+                previewed_urls += url;
+                fresh += url;
+            }
+            if (fresh.length > 0)
+                link_previews_requested (fresh, preview_generation);
         }
 
         private void populate_attachment_preview (string file_path, string file_name) {
@@ -1023,6 +1091,9 @@ namespace Dc {
             extra_pending_files = {};
             extra_pending_file_names = {};
             extra_pending_temp_files = {};
+            extra_pending_captions = {};
+            preview_generation++;
+            previewed_urls = {};
             cancel_attach_button.visible = false;
             attachment_bar.visible = false;
             attachment_picture.paintable = null;
@@ -1090,8 +1161,9 @@ namespace Dc {
                 send_message (text, null, null, qid);
             }
             for (int i = 0; i < extra_pending_files.length; i++) {
-                send_message ("", extra_pending_files[i],
-                    extra_pending_file_names[i], 0);
+                send_message (
+                    i < extra_pending_captions.length ? extra_pending_captions[i] : "",
+                    extra_pending_files[i], extra_pending_file_names[i], 0);
             }
             suppress_draft_signal = true;
             cancel_reply ();
@@ -1168,11 +1240,16 @@ namespace Dc {
             suspended_draft_file_is_voice = pending_file_is_voice;
             suspended_extra_draft_files = extra_pending_files;
             suspended_extra_draft_file_names = extra_pending_file_names;
+            suspended_extra_draft_captions = extra_pending_captions;
             suspended_replying_msg_id = replying_msg_id;
             suspended_reply_label = reply_label.label;
         }
 
         private void restore_suspended_draft () {
+            /* Whether or not a draft comes back, previews requested for
+               the previous chat must not land here. */
+            preview_generation++;
+            previewed_urls = {};
             if (!has_suspended_draft) return;
 
             text_view.buffer.text = suspended_draft_text;
@@ -1188,7 +1265,10 @@ namespace Dc {
                 set_pending_attachment (path,
                     i < suspended_extra_draft_file_names.length
                         ? suspended_extra_draft_file_names[i]
-                        : Path.get_basename (path));
+                        : Path.get_basename (path),
+                    false,
+                    i < suspended_extra_draft_captions.length
+                        ? suspended_extra_draft_captions[i] : "");
             }
             if (suspended_replying_msg_id > 0) {
                 replying_msg_id = suspended_replying_msg_id;
@@ -1202,6 +1282,7 @@ namespace Dc {
             suspended_draft_file_name = null;
             suspended_extra_draft_files = {};
             suspended_extra_draft_file_names = {};
+            suspended_extra_draft_captions = {};
             suspended_replying_msg_id = 0;
             suspended_reply_label = "";
         }
@@ -1497,6 +1578,8 @@ namespace Dc {
                 var text = yield clipboard.read_text_async (null);
                 if (text == null || text.length == 0 || !text_view.editable) return;
                 if (clean_pasted_links) text = LinkCleaner.clean_text (text);
+                if (link_previews && can_accept_attachment ())
+                    request_link_previews (text);
 
                 var buffer = text_view.buffer;
                 buffer.begin_user_action ();

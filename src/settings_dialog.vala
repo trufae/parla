@@ -76,6 +76,10 @@ namespace Dc {
         public CodeTheme code_theme { get; set; default = CodeTheme.ADAPTIVE; }
         public bool shift_enter_sends { get; set; default = false; }
         public bool clean_pasted_links { get; set; default = false; }
+        /* Fetch Open Graph metadata for pasted links and attach the
+           preview image (sender-side, like Signal). Off by default:
+           fetching reveals the sender's address to the linked site. */
+        public bool link_previews { get; set; default = false; }
         public bool notifications_enabled { get; set; default = true; }
         public bool show_notification_contents { get; set; default = true; }
         public bool minimize_to_tray { get; set; default = false; }
@@ -183,6 +187,7 @@ namespace Dc {
             SyntaxHighlight.theme = code_theme;
             shift_enter_sends = kf_bool (kf, "shift_enter_sends", false);
             clean_pasted_links = kf_bool (kf, "clean_pasted_links", false);
+            link_previews = kf_bool (kf, "link_previews", false);
             notifications_enabled = kf_bool (kf, "notifications_enabled", true);
             show_notification_contents =
                 kf_bool (kf, "show_notification_contents", true);
@@ -302,6 +307,11 @@ namespace Dc {
         public void save_clean_pasted_links (bool v) {
             clean_pasted_links = v;
             save_bool ("clean_pasted_links", v);
+        }
+
+        public void save_link_previews (bool v) {
+            link_previews = v;
+            save_bool ("link_previews", v);
         }
 
         public void save_notifications_enabled (bool v) {
@@ -812,6 +822,19 @@ namespace Dc {
                     clean_links_switch.active);
             });
             behavior_group.add (clean_links_row);
+
+            var previews_row = action_row (
+                "Link previews",
+                "Attach the picture and title a page advertises (Open "
+                + "Graph tags) when a link is pasted into the message field. "
+                + "Each pasted link becomes one image; remove it before "
+                + "sending if unwanted. The page is fetched from this device");
+            var previews_switch = row_switch (
+                previews_row, app_window.settings.link_previews);
+            previews_switch.notify["active"].connect (() => {
+                app_window.settings.save_link_previews (previews_switch.active);
+            });
+            behavior_group.add (previews_row);
 
             var audio_row = action_row (
                 "System audio tools",

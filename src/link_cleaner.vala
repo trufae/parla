@@ -77,6 +77,11 @@ namespace Dc {
         private const string[] TWITCH_PARAMS = {
             "tt_content", "tt_medium"
         };
+        /* YouTube thumbnail CDN: rendering hints and signatures that
+           the plain .jpg does not need. */
+        private const string[] YTIMG_PARAMS = {
+            "sqp", "rs", "usqp"
+        };
 
         private const string[] EMPTY = {};
 
@@ -95,6 +100,21 @@ namespace Dc {
             }
             result.append (text.substring (pos));
             return result.str;
+        }
+
+        /** Every http(s) URL found in the text, in order, duplicates
+            included. */
+        public static string[] find_urls (string text) {
+            string[] urls = {};
+            int pos = 0;
+            while (true) {
+                int start = find_url_start (text, pos);
+                if (start < 0) break;
+                int end = find_url_end (text, start);
+                urls += text[start:end];
+                pos = end;
+            }
+            return urls;
         }
 
         /** Strips tracking query parameters (and Amazon's /ref= path
@@ -180,6 +200,8 @@ namespace Dc {
                 params = SPOTIFY_PARAMS;
             } else if (host_is (host, "twitch.tv")) {
                 params = TWITCH_PARAMS;
+            } else if (host_is (host, "ytimg.com")) {
+                params = YTIMG_PARAMS;
             } else if (host_is_brand (host, "amazon")) {
                 params = AMAZON_PARAMS;
                 prefixes = AMAZON_PREFIXES;

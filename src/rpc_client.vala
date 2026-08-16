@@ -189,6 +189,32 @@ namespace Dc {
                 Params.begin ().add_int (acct_id).build ());
         }
 
+        /** HTTP GET through core (proxy-aware, cached). Returns the raw
+            body; `mimetype` is the Content-Type without parameters, null
+            when the server sent none. */
+        public async uint8[] get_http_response (string url,
+                                                out string? mimetype) throws Error {
+            mimetype = null;
+            var result = yield call ("get_http_response",
+                Params.begin ()
+                    .add_int (account_id)
+                    .add_string (url)
+                    .build ());
+            if (result == null || result.get_node_type () != Json.NodeType.OBJECT)
+                throw new IOError.FAILED ("Unexpected get_http_response result");
+            var obj = result.get_object ();
+            if (obj.has_member ("mimetype")
+                && obj.get_member ("mimetype").get_node_type () == Json.NodeType.VALUE)
+                mimetype = obj.get_string_member ("mimetype");
+            string blob = obj.has_member ("blob") ? obj.get_string_member ("blob") : "";
+            /* Core encodes with STANDARD_NO_PAD; g_base64_decode silently
+               drops an unpadded final group, so restore the padding. */
+            int rem = blob.length % 4;
+            if (rem == 2) blob += "==";
+            else if (rem == 3) blob += "=";
+            return GLib.Base64.decode (blob);
+        }
+
         public async Json.Object? check_qr (int acct_id, string qr_text) throws Error {
             var result = yield call ("check_qr",
                 Params.begin ()
