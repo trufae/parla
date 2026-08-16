@@ -158,8 +158,8 @@ private void test_unicode_and_multiple_replacements () {
         "α `β` γ `δ` https://example.com/é");
 
     assert (markup == "α <tt>β</tt> γ <tt>δ</tt> "
-        + "<a href=\"https://example.com/é\"><span foreground=\"#1c71d8\" "
-        + "underline=\"single\">https://example.com/é</span></a>");
+        + "<a href=\"https://example.com/é\"><span underline=\"single\">"
+        + "https://example.com/é</span></a>");
 }
 
 private void test_rendering_modes () {
