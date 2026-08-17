@@ -47,8 +47,9 @@ namespace Dc {
                                       out int minimum_baseline,
                                       out int natural_baseline) {
             minimum_baseline = natural_baseline = -1;
-            int width = MessageRow.media_size (natural_width);
-            int height = MessageRow.media_size (natural_height);
+            /* Font zoom is text-only: previews retain their pixel budget. */
+            int width = natural_width;
+            int height = natural_height;
             if (orientation == Gtk.Orientation.HORIZONTAL) {
                 minimum = 1;
                 natural = width;
@@ -267,7 +268,6 @@ namespace Dc {
         public static bool animate_stickers = true;
         public static string? self_display_name = null;
         public static string? self_avatar_path = null;
-        private static double media_scale = 1.0;
         private const int ALIGN_LEFT = 0;
         private const int ALIGN_RIGHT = 1;
         private const int ALIGN_CENTER = 2;
@@ -316,16 +316,6 @@ namespace Dc {
         public signal void full_message_view_requested (int msg_id);
         public signal void selection_toggled (int msg_id, bool selected);
         public signal void checkbox_toggle_requested (int msg_id, string new_text);
-
-        public static void set_media_scale (int font_size, int system_font_size) {
-            media_scale = font_size > 0 && system_font_size > 0
-                ? (double) font_size / (double) system_font_size
-                : 1.0;
-        }
-
-        public static int media_size (int value) {
-            return int.max (1, (int) (value * media_scale + 0.5));
-        }
 
         public void highlight () {
             this.add_css_class ("message-new");
@@ -1056,7 +1046,7 @@ namespace Dc {
                 fit_size (ref dw, ref dh, max_w, max_h, min_w, min_h);
 
                 var pixbuf = new Gdk.Pixbuf.from_file_at_scale (
-                    path, media_size (dw), media_size (dh), true);
+                    path, dw, dh, true);
                 var texture = texture_from_pixbuf (pixbuf);
                 var picture = new Gtk.Picture.for_paintable (texture);
                 picture.content_fit = Gtk.ContentFit.CONTAIN;

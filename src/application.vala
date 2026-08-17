@@ -43,8 +43,16 @@ namespace Dc {
         private Gtk.CssProvider? accent_provider = null;
         private Gtk.CssProvider? link_provider = null;
         private string current_accent_hex = "";
+        private bool accent_applied = false;
         private Gtk.CssProvider? background_provider = null;
+        private bool background_applied = false;
+        private BackgroundMode current_background_mode = BackgroundMode.SYSTEM;
+        private string current_background_hex = "";
         private Gtk.CssProvider? font_provider = null;
+        private bool font_applied = false;
+        private string current_font_css = "";
+        private bool theme_override_applied = false;
+        private ThemeOverride current_theme_override = ThemeOverride.SYSTEM;
 
         public Application () {
             Object (
@@ -72,6 +80,9 @@ namespace Dc {
         }
 
         public void apply_theme_override (ThemeOverride theme) {
+            if (theme_override_applied && current_theme_override == theme) {
+                return;
+            }
             var style = Adw.StyleManager.get_default ();
             switch (theme) {
             case ThemeOverride.LIGHT:
@@ -85,6 +96,8 @@ namespace Dc {
                 style.color_scheme = Adw.ColorScheme.DEFAULT;
                 break;
             }
+            current_theme_override = theme;
+            theme_override_applied = true;
         }
 
         public void reset_rpc_client () {
@@ -93,9 +106,12 @@ namespace Dc {
         }
 
         public void apply_accent_color (string hex) {
+            string clean_hex = hex.strip ();
+            if (accent_applied && current_accent_hex == clean_hex) return;
+
             /* Inline mention chips are Pango markup and cannot reference CSS
                colours, so they get the accent pushed to them. */
-            Mentions.set_accent (hex);
+            Mentions.set_accent (clean_hex);
 
             var display = Gdk.Display.get_default ();
             if (display == null) return;
@@ -104,27 +120,28 @@ namespace Dc {
                 remove_provider_for_display (display, accent_provider);
                 accent_provider = null;
             }
-            current_accent_hex = hex;
-            if (hex.length == 0) {
+            current_accent_hex = clean_hex;
+            accent_applied = true;
+            if (clean_hex.length == 0) {
                 apply_link_colors ();
                 return;
             }
 
             var rgba = Gdk.RGBA ();
-            if (!rgba.parse (hex)) return;
+            if (!rgba.parse (clean_hex)) return;
 
             /* Pick a readable foreground based on luminance */
             double y = 0.299 * rgba.red + 0.587 * rgba.green + 0.114 * rgba.blue;
             string fg = y > 0.6 ? "rgb(0,0,0)" : "rgb(255,255,255)";
 
             string css =
-                "@define-color accent_bg_color " + hex + ";\n" +
-                "@define-color accent_color " + hex + ";\n" +
+                "@define-color accent_bg_color " + clean_hex + ";\n" +
+                "@define-color accent_color " + clean_hex + ";\n" +
                 "@define-color accent_fg_color " + fg + ";\n" +
                 /* Legacy GTK names — used by plain (non-libadwaita) widgets
                    such as selections and some controls that would otherwise
                    keep the default blue. */
-                "@define-color theme_selected_bg_color " + hex + ";\n" +
+                "@define-color theme_selected_bg_color " + clean_hex + ";\n" +
                 "@define-color theme_selected_fg_color " + fg + ";\n";
 
             accent_provider = new Gtk.CssProvider ();
@@ -134,7 +151,6 @@ namespace Dc {
                 accent_provider,
                 Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 1
             );
-            current_accent_hex = hex;
             apply_link_colors ();
         }
 
@@ -205,6 +221,11 @@ namespace Dc {
            Opaque chrome (the header bars and the navigation sidebar) keeps
            its own theme shade and is unaffected. */
         public void apply_background (BackgroundMode mode, string hex) {
+            string clean_hex = hex.strip ();
+            if (background_applied && current_background_mode == mode &&
+                    current_background_hex == clean_hex) {
+                return;
+            }
             var display = Gdk.Display.get_default ();
             if (display == null) return;
 
@@ -212,11 +233,14 @@ namespace Dc {
                 remove_provider_for_display (display, background_provider);
                 background_provider = null;
             }
+            current_background_mode = mode;
+            current_background_hex = clean_hex;
+            background_applied = true;
             if (mode == BackgroundMode.SYSTEM) return;
 
             /* Fall back to the same default the picker shows when no color
                has been chosen yet, so the window matches the button. */
-            string color = hex.length > 0 ? hex : "#3584e4";
+            string color = clean_hex.length > 0 ? clean_hex : "#3584e4";
             var rgba = Gdk.RGBA ();
             if (!rgba.parse (color)) return;
 
@@ -254,41 +278,52 @@ namespace Dc {
         }
 
         public void apply_font (string family, FontAttribute attr, int size) {
+            string clean_family = family.strip ();
+            int clean_size = SettingsManager.clamp_font_size (size);
+            bool use_default = clean_family.length == 0 &&
+                attr == FontAttribute.REGULAR &&
+                clean_size == FONT_SIZE_SYSTEM;
+
+            string css = "";
+            if (!use_default) {
+                var builder = new StringBuilder (".conversation-view {");
+                if (clean_family.length > 0) {
+                    builder.append (" font-family: \"%s\";".printf (
+                        css_string (clean_family)));
+                }
+                builder.append (" font-style: %s; font-weight: %s;".printf (
+                    attr.css_style (), attr.css_weight ()));
+                if (clean_size > FONT_SIZE_SYSTEM) {
+                    builder.append (" font-size: %dpt;".printf (clean_size));
+                }
+                builder.append (" }\n");
+                css = builder.str;
+            }
+
+            /* Display providers invalidate styles globally. Keep the existing
+               provider when possible and do nothing for an identical rule. */
+            if (font_applied && current_font_css == css) return;
             var display = Gdk.Display.get_default ();
             if (display == null) return;
 
-            if (font_provider != null) {
-                remove_provider_for_display (display, font_provider);
-                font_provider = null;
+            if (use_default) {
+                if (font_provider != null) {
+                    remove_provider_for_display (display, font_provider);
+                    font_provider = null;
+                }
+            } else if (font_provider == null) {
+                font_provider = new Gtk.CssProvider ();
+                font_provider.load_from_string (css);
+                add_provider_for_display (
+                    display,
+                    font_provider,
+                    Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 1
+                );
+            } else {
+                font_provider.load_from_string (css);
             }
-
-            string clean_family = family.strip ();
-            int clean_size = SettingsManager.clamp_font_size (size);
-            if (clean_family.length == 0 &&
-                attr == FontAttribute.REGULAR &&
-                clean_size == FONT_SIZE_SYSTEM) {
-                return;
-            }
-
-            var css = new StringBuilder (".conversation-view {");
-            if (clean_family.length > 0) {
-                css.append (" font-family: \"%s\";".printf (
-                    css_string (clean_family)));
-            }
-            css.append (" font-style: %s; font-weight: %s;".printf (
-                attr.css_style (), attr.css_weight ()));
-            if (clean_size > FONT_SIZE_SYSTEM) {
-                css.append (" font-size: %dpt;".printf (clean_size));
-            }
-            css.append (" }\n");
-
-            font_provider = new Gtk.CssProvider ();
-            font_provider.load_from_string (css.str);
-            add_provider_for_display (
-                display,
-                font_provider,
-                Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 1
-            );
+            current_font_css = css;
+            font_applied = true;
         }
 
         private static string css_string (string value) {

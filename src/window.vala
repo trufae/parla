@@ -126,13 +126,14 @@ namespace Dc {
         private GenericArray<PendingNotification> pending_notifications =
             new GenericArray<PendingNotification> ();
         private uint notification_flush_timer = 0;
-        private int applied_media_font_size = -1;
+        private uint font_update_source = 0;
 
         private const double FULL_SIDEBAR_MIN_WIDTH = 260;
         private const double FULL_SIDEBAR_MAX_WIDTH = 340;
         private const double COLLAPSED_SIDEBAR_MIN_WIDTH = 220;
         private const double COLLAPSED_SIDEBAR_MAX_WIDTH = 10000;
         private const double COMPACT_SIDEBAR_WIDTH = 48;
+        private const uint FONT_UPDATE_INTERVAL_MS = 16;
 
         /* Modal dialog guard – only one at a time */
         private Adw.Dialog? active_modal = null;
@@ -256,12 +257,7 @@ namespace Dc {
                 rebuild_current_chat_view ();
             });
             settings.font_changed.connect (() => {
-                int previous_size = applied_media_font_size;
-                apply_current_appearance ();
-                if (applied_media_font_size != previous_size) {
-                    var v = current_view ();
-                    if (v != null) v.queue_resize ();
-                }
+                queue_font_update ();
             });
             close_request.connect (on_close_request);
 
@@ -294,18 +290,40 @@ namespace Dc {
         private void apply_current_appearance () {
             var app = this.application as Dc.Application;
             if (app == null) return;
-            applied_media_font_size = settings.font_size;
-            MessageRow.set_media_scale (
-                settings.font_size,
-                SettingsManager.system_font_size ());
             app.apply_theme_override (settings.theme_override);
             app.apply_accent_color (settings.accent_color);
             app.apply_background (
                 settings.background_mode, settings.background_color);
+            apply_current_font ();
+        }
+
+        private void apply_current_font () {
+            var app = this.application as Dc.Application;
+            if (app == null) return;
             app.apply_font (
                 settings.font_family,
                 settings.font_attribute,
                 settings.font_size);
+        }
+
+        private void queue_font_update () {
+            /* Collapse high-resolution wheel events to one style/layout
+               invalidation per frame, always using the newest font value. */
+            if (font_update_source != 0) return;
+            font_update_source = add_font_update_timeout (this);
+        }
+
+        private static uint add_font_update_timeout (Window target) {
+            WeakRef window_ref = WeakRef (target);
+            return Timeout.add (FONT_UPDATE_INTERVAL_MS, () => {
+                var window = window_ref.get () as Window;
+                if (window == null) return Source.REMOVE;
+                window.font_update_source = 0;
+                window.apply_current_font ();
+                var view = window.current_view ();
+                if (view != null) view.queue_resize ();
+                return Source.REMOVE;
+            });
         }
 
         private void rebuild_current_chat_view () {

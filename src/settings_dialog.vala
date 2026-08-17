@@ -120,6 +120,8 @@ namespace Dc {
         public string font_family { get; set; default = ""; }
         public FontAttribute font_attribute { get; set; default = FontAttribute.REGULAR; }
         public int font_size { get; set; default = FONT_SIZE_SYSTEM; }
+        private const uint FONT_SAVE_DEBOUNCE_MS = 250;
+        private uint font_save_source = 0;
 
         public static string get_config_path () {
             return Path.build_filename (
@@ -522,13 +524,48 @@ namespace Dc {
             font_family = clean_family;
             font_attribute = attr;
             font_size = clean_size;
+            schedule_font_save ();
+            font_changed ();
+        }
+
+        private void schedule_font_save () {
+            /* Wheel zoom may produce dozens of changes in one gesture. Keep
+               the in-memory setting immediate, but persist only after rest. */
+            if (font_save_source != 0) {
+                Source.remove (font_save_source);
+                font_save_source = 0;
+            }
+            font_save_source = add_font_save_timeout (this);
+        }
+
+        private static uint add_font_save_timeout (SettingsManager target) {
+            WeakRef settings_ref = WeakRef (target);
+            return Timeout.add (FONT_SAVE_DEBOUNCE_MS, () => {
+                var settings = settings_ref.get () as SettingsManager;
+                if (settings != null) {
+                    settings.font_save_source = 0;
+                    settings.write_font_settings ();
+                }
+                return Source.REMOVE;
+            });
+        }
+
+        private void write_font_settings () {
             save_to_file ((kf) => {
                 kf.set_string ("General", "font_family", font_family);
                 kf.set_integer ("General", "font_attribute",
                                 (int) font_attribute);
                 kf.set_integer ("General", "font_size", font_size);
             });
-            font_changed ();
+        }
+
+        public override void dispose () {
+            if (font_save_source != 0) {
+                Source.remove (font_save_source);
+                font_save_source = 0;
+                write_font_settings ();
+            }
+            base.dispose ();
         }
 
         public static int clamp_font_size (int size) {
