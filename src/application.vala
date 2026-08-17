@@ -982,6 +982,10 @@ namespace Dc {
                 font-size: small;
                 opacity: 0.78;
             }
+            dropdown.conversation-media-speed button {
+                min-height: 24px;
+                padding: 2px 6px;
+            }
             scale.conversation-media-progress {
                 padding: 0;
                 margin: 0;

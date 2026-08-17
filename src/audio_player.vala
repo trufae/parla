@@ -44,8 +44,12 @@ namespace Dc {
         public bool has_next { get; private set; default = false; }
         public int64 position_us { get; private set; default = 0; }
         public int64 duration_us { get; private set; default = 0; }
+        public double playback_rate { get; private set; default = 1.0; }
+        public bool can_change_speed { get; private set; default = false; }
 
         private string? path = null;
+        private void* native_backend = null;
+        private bool native_backend_failed = false;
         private Gtk.MediaFile? media = null;
         private GLib.Subprocess? proc = null;
         private Posix.pid_t proc_pid = 0;
@@ -57,9 +61,40 @@ namespace Dc {
 
         public signal void finished (int message_id);
 
+        private AudioPlayback () {
+            can_change_speed = Platform.audio_backend_supported ()
+                || rate_player_available ();
+        }
+
         public static AudioPlayback shared () {
             if (instance == null) instance = new AudioPlayback ();
             return instance;
+        }
+
+        public static double rate_for_index (uint index) {
+            switch (index) {
+                case 0: return 0.5;
+                case 1: return 0.75;
+                case 3: return 1.25;
+                case 4: return 1.5;
+                case 5: return 2.0;
+                case 6: return 3.0;
+                case 7: return 4.0;
+                case 8: return 5.0;
+                default: return 1.0;
+            }
+        }
+
+        public static uint index_for_rate (double rate) {
+            if (Math.fabs (rate - 0.5) < 0.001) return 0;
+            if (Math.fabs (rate - 0.75) < 0.001) return 1;
+            if (Math.fabs (rate - 1.25) < 0.001) return 3;
+            if (Math.fabs (rate - 1.5) < 0.001) return 4;
+            if (Math.fabs (rate - 2.0) < 0.001) return 5;
+            if (Math.fabs (rate - 3.0) < 0.001) return 6;
+            if (Math.fabs (rate - 4.0) < 0.001) return 7;
+            if (Math.fabs (rate - 5.0) < 0.001) return 8;
+            return 2;
         }
 
         public void play_message (Message msg, int account_id) {
@@ -71,6 +106,8 @@ namespace Dc {
             duration_us = 0;
             can_seek = false;
             external_backend = false;
+            playback_rate = 1.0;
+            native_backend_failed = false;
             has_previous = false;
             has_next = false;
             current_item = item;
@@ -98,17 +135,58 @@ namespace Dc {
             has_next = false;
             current_item = null;
             current_message_id = 0;
+            playback_rate = 1.0;
         }
 
         public void seek_fraction (double fraction) {
-            if (media == null || !can_seek || duration_us <= 0) return;
+            if (!can_seek || duration_us <= 0) return;
             double clamped = double.max (0.0, double.min (1.0, fraction));
             int64 target = (int64) (clamped * duration_us);
-            media.seek (target);
+            if (native_backend != null) {
+                Platform.audio_backend_seek (native_backend, target);
+            } else if (media != null) {
+                media.seek (target);
+            } else {
+                return;
+            }
             position_us = target;
         }
 
+        public void change_playback_rate (double rate) {
+            uint index = index_for_rate (rate);
+            double normalized = rate_for_index (index);
+            if (!can_change_speed
+                    || Math.fabs (normalized - playback_rate) < 0.001)
+                return;
+
+            if (native_backend != null) {
+                playback_rate = normalized;
+                Platform.audio_backend_set_rate (native_backend, normalized);
+                return;
+            }
+
+            /* GtkMediaFile has no rate API. Move an active fallback session
+               to a rate-aware system player while preserving its position. */
+            if (media != null || proc != null) {
+                if (media != null) sync_media_state (media);
+                else update_external_position ();
+                bool was_playing = playing;
+                playback_rate = normalized;
+                stop_backend ();
+                if (was_playing) start_backend ();
+            } else {
+                playback_rate = normalized;
+            }
+        }
+
         private void pause () {
+            if (native_backend != null) {
+                Platform.audio_backend_pause (native_backend);
+                sync_native_state ();
+                playing = false;
+                stop_progress_timer ();
+                return;
+            }
             if (media != null) {
                 media.pause ();
                 sync_media_state (media);
@@ -120,8 +198,8 @@ namespace Dc {
             /* POSIX external players can be suspended without losing their
                position. Windows has no equivalent signal, so it restarts. */
 #if WINDOWS
+            update_external_position ();
             stop_external ();
-            position_us = 0;
 #else
             if (proc_pid > 0) {
                 update_external_position ();
@@ -131,7 +209,6 @@ namespace Dc {
                 external_paused = true;
             } else {
                 stop_external ();
-                position_us = 0;
             }
 #endif
             playing = false;
@@ -139,6 +216,13 @@ namespace Dc {
         }
 
         private void resume () {
+            if (native_backend != null) {
+                if (Platform.audio_backend_play (native_backend)) {
+                    playing = true;
+                    ensure_progress_timer ();
+                }
+                return;
+            }
             if (media != null) {
                 media.play_now ();
                 playing = true;
@@ -157,42 +241,120 @@ namespace Dc {
                 return;
 #endif
             }
-            position_us = 0;
             start_backend ();
         }
 
         private void start_backend () {
             if (path == null) return;
-            bool try_external = AudioPlayer.prefer_system || Platform.is_macos ();
+            bool try_native = !native_backend_failed
+                && Platform.audio_backend_supported ()
+                && (!AudioPlayer.prefer_system || Platform.is_macos ()
+                    || playback_rate != 1.0);
+            if (try_native && play_native (path)) return;
+
+            bool try_external = AudioPlayer.prefer_system || Platform.is_macos ()
+                || playback_rate != 1.0;
             if (try_external) {
-                var argv = find_external_command (path);
+                var argv = find_external_command (path, position_us,
+                                                  playback_rate);
                 if (argv != null && play_external (argv)) {
                     external_backend = true;
                     playing = true;
                     can_seek = false;
-                    external_elapsed_us = 0;
+                    external_elapsed_us = position_us;
                     external_started_us = GLib.get_monotonic_time ();
                     external_paused = false;
                     ensure_progress_timer ();
                     return;
                 }
             }
+
+            /* A rate-aware backend disappeared or failed to start. Do not
+               claim a speed that GtkMediaFile cannot apply. */
+            if (playback_rate != 1.0) playback_rate = 1.0;
             external_backend = false;
             play_media (path);
             playing = true;
             ensure_progress_timer ();
         }
 
-        private string[]? find_external_command (string file_path) {
+        private bool play_native (string file_path) {
+            native_backend = Platform.audio_backend_new (
+                file_path, on_native_finished, this);
+            if (native_backend == null) {
+                native_backend_failed = true;
+                return false;
+            }
+            Platform.audio_backend_set_rate (native_backend, playback_rate);
+            if (position_us > 0)
+                Platform.audio_backend_seek (native_backend, position_us);
+            if (!Platform.audio_backend_play (native_backend)) {
+                Platform.audio_backend_free (native_backend);
+                native_backend = null;
+                native_backend_failed = true;
+                return false;
+            }
+            external_backend = false;
+            playing = true;
+            sync_native_state ();
+            ensure_progress_timer ();
+            return true;
+        }
+
+        private static void on_native_finished (bool completed,
+                                                void* user_data) {
+            unowned AudioPlayback self = (AudioPlayback) user_data;
+            if (self.native_backend == null) return;
+            self.sync_native_state ();
+            Platform.audio_backend_free (self.native_backend);
+            self.native_backend = null;
+            self.stop_progress_timer ();
+            self.playing = false;
+            self.can_seek = false;
+            if (completed) {
+                self.position_us = 0;
+                self.finished (self.current_message_id);
+            } else if (self.path != null) {
+                self.native_backend_failed = true;
+                self.playback_rate = 1.0;
+                self.start_backend ();
+            }
+        }
+
+        private void sync_native_state () {
+            if (native_backend == null) return;
+            position_us = int64.max (0,
+                Platform.audio_backend_get_position (native_backend));
+            duration_us = int64.max (0,
+                Platform.audio_backend_get_duration (native_backend));
+            can_seek = Platform.audio_backend_can_seek (native_backend)
+                && duration_us > 0;
+            playing = Platform.audio_backend_is_playing (native_backend);
+        }
+
+        private static bool rate_player_available () {
+            return Environment.find_program_in_path ("mpv") != null
+                || Environment.find_program_in_path ("ffplay") != null;
+        }
+
+        private string[]? find_external_command (string file_path,
+                                                  int64 start_us,
+                                                  double rate) {
+            string speed = rate.to_string ();
+            string start = ((double) int64.max (0, start_us) / 1000000.0)
+                .to_string ();
+            if (Environment.find_program_in_path ("mpv") != null)
+                return {"mpv", "--no-video", "--really-quiet",
+                        "--speed=" + speed, "--start=" + start, file_path};
+            if (Environment.find_program_in_path ("ffplay") != null)
+                return {"ffplay", "-nodisp", "-autoexit", "-loglevel",
+                        "quiet", "-ss", start, "-af", "atempo=" + speed,
+                        file_path};
+            if (rate != 1.0 || start_us > 0) return null;
             if (Environment.find_program_in_path ("afplay") != null)
                 return {"afplay", file_path};
             if (Environment.find_program_in_path ("gst-play-1.0") != null)
                 return {"gst-play-1.0", "--quiet", file_path};
-            if (Environment.find_program_in_path ("mpv") != null)
-                return {"mpv", "--no-video", "--really-quiet", file_path};
-            if (Environment.find_program_in_path ("ffplay") != null)
-                return {"ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet",
-                        file_path};
             return null;
         }
 
@@ -219,6 +381,7 @@ namespace Dc {
                         proc_cancel = null;
                         stop_progress_timer ();
                         playing = false;
+                        if (completed) position_us = 0;
                         if (completed && current_message_id == played_id)
                             finished (played_id);
                     }
@@ -233,7 +396,14 @@ namespace Dc {
         private void play_media (string file_path) {
             var m = Gtk.MediaFile.for_filename (file_path);
             int played_id = current_message_id;
+            bool initial_seek_pending = position_us > 0;
             media = m;
+            m.notify["prepared"].connect (() => {
+                if (media == m && m.prepared && initial_seek_pending) {
+                    m.seek (position_us);
+                    initial_seek_pending = false;
+                }
+            });
             m.notify["timestamp"].connect (() => {
                 if (media == m) sync_media_state (m);
             });
@@ -250,6 +420,7 @@ namespace Dc {
                 if (media == m && m.ended) {
                     sync_media_state (m);
                     playing = false;
+                    position_us = 0;
                     stop_progress_timer ();
                     if (current_message_id == played_id) finished (played_id);
                 }
@@ -258,6 +429,10 @@ namespace Dc {
                 if (media == m && m.error != null) stop_backend ();
             });
             m.play_now ();
+            if (m.prepared && initial_seek_pending) {
+                m.seek (position_us);
+                initial_seek_pending = false;
+            }
             sync_media_state (m);
         }
 
@@ -275,7 +450,9 @@ namespace Dc {
                     progress_timer = 0;
                     return Source.REMOVE;
                 }
-                if (media != null) {
+                if (native_backend != null) {
+                    sync_native_state ();
+                } else if (media != null) {
                     sync_media_state (media);
                 } else if (proc != null && external_started_us > 0) {
                     update_external_position ();
@@ -293,6 +470,11 @@ namespace Dc {
         private void stop_backend () {
             stop_progress_timer ();
             stop_external ();
+            if (native_backend != null) {
+                Platform.audio_backend_stop (native_backend);
+                Platform.audio_backend_free (native_backend);
+                native_backend = null;
+            }
             if (media != null) {
                 media.pause ();
                 media = null;
@@ -305,7 +487,8 @@ namespace Dc {
         private void update_external_position () {
             if (external_started_us <= 0) return;
             position_us = external_elapsed_us
-                + GLib.get_monotonic_time () - external_started_us;
+                + (int64) ((GLib.get_monotonic_time () - external_started_us)
+                           * playback_rate);
         }
 
         private void stop_external () {

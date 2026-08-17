@@ -9,12 +9,36 @@ typedef void (*ParlaMacosFileDropCallback) (const gchar *path,
                                             gdouble      y,
                                             gpointer     user_data);
 
+typedef void (*ParlaAudioFinishedCallback) (gboolean completed,
+                                            gpointer user_data);
+
 gchar *parla_get_executable_path (void);
 gboolean parla_platform_is_macos (void);
 void parla_setup_macos_bundle_environment (void);
 void parla_macos_install_file_drop_handler (GtkWidget                  *widget,
                                             ParlaMacosFileDropCallback  callback,
                                             gpointer                    user_data);
+
+/*
+ * Rate-aware audio playback. macOS implements this with AVAudioEngine; other
+ * platforms use GstPlay when its runtime library is available. The opaque
+ * handle is owned by the caller and must be released with
+ * parla_audio_backend_free(). Times use GLib/GTK's microsecond convention.
+ */
+gboolean parla_audio_backend_supported (void);
+gpointer parla_audio_backend_new (const gchar                *path,
+                                  ParlaAudioFinishedCallback  callback,
+                                  gpointer                    user_data);
+gboolean parla_audio_backend_play (gpointer handle);
+void parla_audio_backend_pause (gpointer handle);
+void parla_audio_backend_stop (gpointer handle);
+void parla_audio_backend_seek (gpointer handle, gint64 position_us);
+void parla_audio_backend_set_rate (gpointer handle, gdouble rate);
+gint64 parla_audio_backend_get_position (gpointer handle);
+gint64 parla_audio_backend_get_duration (gpointer handle);
+gboolean parla_audio_backend_is_playing (gpointer handle);
+gboolean parla_audio_backend_can_seek (gpointer handle);
+void parla_audio_backend_free (gpointer handle);
 
 #ifdef _WIN32
 #include <gio/gio.h>
