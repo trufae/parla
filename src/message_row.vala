@@ -271,6 +271,14 @@ namespace Dc {
         private const int ALIGN_LEFT = 0;
         private const int ALIGN_RIGHT = 1;
         private const int ALIGN_CENTER = 2;
+        private const string ACTION_DATA = "parla-message-row-action";
+        private const string MESSAGE_DATA = "parla-message-row-message";
+        private const string TASK_RAW_DATA = "parla-message-row-task-raw";
+        private const string TASK_INDEX_DATA = "parla-message-row-task-index";
+        private const string REACTION_POPOVER_DATA =
+            "parla-message-row-reaction-popover";
+        private const string REACTION_HIDE_DATA =
+            "parla-message-row-reaction-hide-source";
 
         private class MarkdownTableRow {
             public string[] cells;
@@ -321,8 +329,16 @@ namespace Dc {
 
         public void highlight () {
             this.add_css_class ("message-new");
+            clear_highlight_later (this);
+        }
+
+        private static void clear_highlight_later (MessageRow row) {
+            WeakRef row_ref = WeakRef (row);
             Timeout.add (2000, () => {
-                this.remove_css_class ("message-new");
+                var live_row = row_ref.get () as MessageRow;
+                if (live_row != null) {
+                    live_row.remove_css_class ("message-new");
+                }
                 return Source.REMOVE;
             });
         }
@@ -677,8 +693,7 @@ namespace Dc {
             var bar = build_hover_actions ();
             bar.visible = false;
             var motion = new Gtk.EventControllerMotion ();
-            motion.enter.connect (() => { bar.visible = true; });
-            motion.leave.connect (() => { bar.visible = false; });
+            connect_hover_visibility (motion, bar);
             this.add_controller (motion);
 
             var overlay = new Gtk.Overlay ();
@@ -686,6 +701,25 @@ namespace Dc {
             overlay.child = content;
             overlay.add_overlay (bar);
             this.append (overlay);
+        }
+
+        private static void connect_hover_visibility (
+                Gtk.EventControllerMotion motion, Gtk.Widget bar) {
+            Signal.connect_object (motion, "enter",
+                (Callback) on_hover_enter, bar, (ConnectFlags) 0);
+            Signal.connect_object (motion, "leave",
+                (Callback) on_hover_leave, bar, (ConnectFlags) 0);
+        }
+
+        private static void on_hover_enter (Gtk.EventControllerMotion motion,
+                                            double x, double y,
+                                            Gtk.Widget bar) {
+            bar.visible = true;
+        }
+
+        private static void on_hover_leave (Gtk.EventControllerMotion motion,
+                                            Gtk.Widget bar) {
+            bar.visible = false;
         }
 
         /** Quick-action buttons shown while the pointer is over a Workspace
@@ -707,10 +741,22 @@ namespace Dc {
                 var btn = new Gtk.Button.from_icon_name (actions[i, 1]);
                 btn.add_css_class ("flat");
                 btn.tooltip_text = actions[i, 2];
-                btn.clicked.connect (() => { action_requested (action, btn); });
+                connect_action_button (btn, action);
                 bar.append (btn);
             }
             return bar;
+        }
+
+        private void connect_action_button (Gtk.Button button, string action) {
+            button.set_data<string> (ACTION_DATA, action.dup ());
+            Signal.connect_object (button, "clicked",
+                (Callback) on_action_button_clicked, this, (ConnectFlags) 0);
+        }
+
+        private static void on_action_button_clicked (Gtk.Button button,
+                                                      MessageRow row) {
+            string? action = button.get_data<string> (ACTION_DATA);
+            if (action != null) row.action_requested (action, button);
         }
 
         private void append_selection_checkbox (Message msg) {
@@ -722,13 +768,18 @@ namespace Dc {
                                BindingFlags.SYNC_CREATE);
             msg.bind_property ("selected", check, "active",
                                BindingFlags.SYNC_CREATE);
-            check.toggled.connect (() => {
-                if (msg.selected != check.active) {
-                    msg.selected = check.active;
-                }
-                selection_toggled (msg.id, check.active);
-            });
+            check.set_data<Message> (MESSAGE_DATA, msg);
+            Signal.connect_object (check, "toggled",
+                (Callback) on_selection_toggled, this, (ConnectFlags) 0);
             this.append (check);
+        }
+
+        private static void on_selection_toggled (Gtk.CheckButton check,
+                                                  MessageRow row) {
+            Message? msg = check.get_data<Message> (MESSAGE_DATA);
+            if (msg == null) return;
+            if (msg.selected != check.active) msg.selected = check.active;
+            row.selection_toggled (msg.id, check.active);
         }
 
         private void append_attachment (Gtk.Box box, Message msg, bool irc,
@@ -811,16 +862,27 @@ namespace Dc {
             /* Icon and real name only exist inside the archive, so this
                stays generic until the app is downloaded. */
             if (ready && Webxdc.AVAILABLE) {
-                Webxdc.card_info.begin (msg.id, (obj, res) => {
-                    var info = Webxdc.card_info.end (res);
-                    if (info.name != null) name.label = info.name;
-                    if (info.icon != null) icon.paintable = info.icon;
-                });
+                load_webxdc_card_info (msg.id, name, icon);
             }
-            btn.clicked.connect (() => {
-                action_requested ("webxdc", btn);
-            });
+            connect_action_button (btn, "webxdc");
             return btn;
+        }
+
+        private static void load_webxdc_card_info (int msg_id, Gtk.Label name,
+                                                   Gtk.Image icon) {
+            WeakRef name_ref = WeakRef (name);
+            WeakRef icon_ref = WeakRef (icon);
+            Webxdc.card_info.begin (msg_id, (obj, res) => {
+                var info = Webxdc.card_info.end (res);
+                var live_name = name_ref.get () as Gtk.Label;
+                var live_icon = icon_ref.get () as Gtk.Image;
+                if (live_name != null && info.name != null) {
+                    live_name.label = info.name;
+                }
+                if (live_icon != null && info.icon != null) {
+                    live_icon.paintable = info.icon;
+                }
+            });
         }
 
         private static bool should_show_bubble_avatar (
@@ -1234,8 +1296,10 @@ namespace Dc {
             btn.add_css_class ("flat");
             btn.add_css_class ("quote-block");
             if (msg.quote_msg_id > 0) {
-                int qid = msg.quote_msg_id;
-                btn.clicked.connect (() => { quote_clicked (qid); });
+                btn.set_data<int> ("parla-message-row-quote-id",
+                                   msg.quote_msg_id);
+                Signal.connect_object (btn, "clicked",
+                    (Callback) on_quote_clicked, this, (ConnectFlags) 0);
             }
             bool stacked = lines > 1
                 && msg.quote_sender_name != null && msg.quote_sender_name.length > 0;
@@ -1264,6 +1328,13 @@ namespace Dc {
                 btn.child = t;
             }
             return btn;
+        }
+
+        private static void on_quote_clicked (Gtk.Button button,
+                                              MessageRow row) {
+            int quoted_id = button.get_data<int> (
+                "parla-message-row-quote-id");
+            if (quoted_id > 0) row.quote_clicked (quoted_id);
         }
 
         /** Message body widget with markdown + link markup. Shared by both row styles. */
@@ -1341,9 +1412,9 @@ namespace Dc {
                 /* Don't grab focus on click: inside the ListView that scrolls
                    the button into view mid-press and eats the first click. */
                 toggle_btn.focus_on_click = false;
-                toggle_btn.clicked.connect (() => {
-                    full_message_requested (msg.id);
-                });
+                Signal.connect_object (toggle_btn, "clicked",
+                    (Callback) on_full_message_clicked,
+                    this, (ConnectFlags) 0);
                 actions.append (toggle_btn);
 
                 if (!msg.can_download_full_message) {
@@ -1354,14 +1425,24 @@ namespace Dc {
                     view_btn.hexpand = true;
                     view_btn.halign = Gtk.Align.END;
                     view_btn.focus_on_click = false;
-                    view_btn.clicked.connect (() => {
-                        full_message_view_requested (msg.id);
-                    });
+                    Signal.connect_object (view_btn, "clicked",
+                        (Callback) on_full_message_view_clicked,
+                        this, (ConnectFlags) 0);
                     actions.append (view_btn);
                 }
                 box.append (actions);
             }
             return box;
+        }
+
+        private static void on_full_message_clicked (Gtk.Button button,
+                                                     MessageRow row) {
+            row.full_message_requested (row.message_id);
+        }
+
+        private static void on_full_message_view_clicked (Gtk.Button button,
+                                                          MessageRow row) {
+            row.full_message_view_requested (row.message_id);
         }
 
         private static Gtk.Label build_markup_label (string raw,
@@ -1398,17 +1479,25 @@ namespace Dc {
         private static void connect_label_links (Gtk.Label text) {
             /* Delta Chat invite links join in-app instead of bouncing through a
                browser; everything else falls through to the default handler. */
-            text.activate_link.connect ((uri) => {
-                if (uri.has_prefix ("parla-mention:") && text.get_root () is Dc.Window) {
-                    ((Dc.Window) text.get_root ()).open_mention (uri);
-                    return true;
-                }
-                if (is_delta_invite_uri (uri) && text.get_root () is Dc.Window) {
-                    ((Dc.Window) text.get_root ()).handle_invite_uri (uri);
-                    return true;
-                }
-                return false;
-            });
+            Signal.connect_object (text, "activate-link",
+                (Callback) on_label_activate_link,
+                text, (ConnectFlags) 0);
+        }
+
+        private static bool on_label_activate_link (Gtk.Label sender,
+                                                    string uri,
+                                                    Gtk.Label text) {
+            if (uri.has_prefix ("parla-mention:") &&
+                    text.get_root () is Dc.Window) {
+                ((Dc.Window) text.get_root ()).open_mention (uri);
+                return true;
+            }
+            if (is_delta_invite_uri (uri) &&
+                    text.get_root () is Dc.Window) {
+                ((Dc.Window) text.get_root ()).handle_invite_uri (uri);
+                return true;
+            }
+            return false;
         }
 
         private Gtk.Widget? build_text_with_markdown_blocks (Message msg,
@@ -1516,12 +1605,11 @@ namespace Dc {
                     : "Mark checked";
                 string raw = msg.text ?? "";
                 int idx = line_index;
-                toggle.clicked.connect (() => {
-                    string? new_text = toggled_task_text (raw, idx);
-                    if (new_text == null) return;
-                    toggle.sensitive = false;
-                    checkbox_toggle_requested (msg.id, new_text);
-                });
+                toggle.set_data<string> (TASK_RAW_DATA, raw.dup ());
+                toggle.set_data<int> (TASK_INDEX_DATA, idx);
+                Signal.connect_object (toggle, "clicked",
+                    (Callback) on_task_toggle_clicked,
+                    this, (ConnectFlags) 0);
                 row.append (toggle);
             } else {
                 var mark = new Gtk.Label (glyph);
@@ -1543,6 +1631,17 @@ namespace Dc {
             label.hexpand = true;
             row.append (label);
             return row;
+        }
+
+        private static void on_task_toggle_clicked (Gtk.Button button,
+                                                    MessageRow row) {
+            string? raw = button.get_data<string> (TASK_RAW_DATA);
+            int index = button.get_data<int> (TASK_INDEX_DATA);
+            if (raw == null) return;
+            string? new_text = toggled_task_text (raw, index);
+            if (new_text == null) return;
+            button.sensitive = false;
+            row.checkbox_toggle_requested (row.message_id, new_text);
         }
 
         private static string? toggled_task_text (string raw, int line_index) {
@@ -1887,41 +1986,99 @@ namespace Dc {
             badge.add_css_class ("reaction-badge");
             badge.tooltip_text = "Show reactions";
 
-            var popover = build_reaction_popover (badge, msg, reaction);
-            badge.clicked.connect (() => {
-                popover.popup ();
-            });
-
-            uint hide_id = 0;
+            var popover = build_reaction_popover (msg, reaction);
+            badge.set_data<Gtk.Popover> (REACTION_POPOVER_DATA, popover);
             var motion = new Gtk.EventControllerMotion ();
-            motion.enter.connect ((x, y) => {
-                if (hide_id != 0) {
-                    Source.remove (hide_id);
-                    hide_id = 0;
-                }
-                popover.popup ();
-            });
-            motion.leave.connect (() => {
-                if (hide_id != 0) Source.remove (hide_id);
-                hide_id = Timeout.add (180, () => {
-                    popover.popdown ();
-                    hide_id = 0;
-                    return Source.REMOVE;
-                });
-            });
+            connect_reaction_popover (badge, motion, popover);
             badge.add_controller (motion);
 
             return badge;
         }
 
-        private Gtk.Popover build_reaction_popover (Gtk.Widget parent,
-                                                    Message msg,
+        private static void connect_reaction_popover (
+                Gtk.Button badge, Gtk.EventControllerMotion motion,
+                Gtk.Popover popover) {
+            Signal.connect_object (badge, "clicked",
+                (Callback) on_reaction_clicked,
+                popover, (ConnectFlags) 0);
+            Signal.connect_object (motion, "enter",
+                (Callback) on_reaction_enter,
+                popover, (ConnectFlags) 0);
+            Signal.connect_object (motion, "leave",
+                (Callback) on_reaction_leave,
+                popover, (ConnectFlags) 0);
+            Signal.connect_object (badge, "destroy",
+                (Callback) on_reaction_badge_destroy,
+                popover, (ConnectFlags) 0);
+            Signal.connect_object (popover, "closed",
+                (Callback) on_reaction_popover_closed,
+                badge, (ConnectFlags) 0);
+        }
+
+        private static void on_reaction_clicked (Gtk.Button badge,
+                                                 Gtk.Popover popover) {
+            cancel_reaction_popdown (popover);
+            show_reaction_popover (badge, popover);
+        }
+
+        private static void on_reaction_enter (
+                Gtk.EventControllerMotion motion, double x, double y,
+                Gtk.Popover popover) {
+            cancel_reaction_popdown (popover);
+            var badge = motion.widget as Gtk.Button;
+            if (badge != null) show_reaction_popover (badge, popover);
+        }
+
+        private static void on_reaction_leave (
+                Gtk.EventControllerMotion motion, Gtk.Popover popover) {
+            cancel_reaction_popdown (popover);
+            schedule_reaction_popdown (popover);
+        }
+
+        private static void show_reaction_popover (Gtk.Button badge,
+                                                    Gtk.Popover popover) {
+            if (popover.get_parent () == null) popover.set_parent (badge);
+            popover.popup ();
+        }
+
+        private static void on_reaction_badge_destroy (Gtk.Button badge,
+                                                        Gtk.Popover popover) {
+            cancel_reaction_popdown (popover);
+            popover.popdown ();
+            if (popover.get_parent () == badge) popover.unparent ();
+        }
+
+        private static void on_reaction_popover_closed (Gtk.Popover popover,
+                                                        Gtk.Button badge) {
+            if (popover.get_parent () == badge) popover.unparent ();
+        }
+
+        private static void cancel_reaction_popdown (Gtk.Popover popover) {
+            uint source_id = popover.get_data<uint> (REACTION_HIDE_DATA);
+            if (source_id == 0) return;
+            Source.remove (source_id);
+            popover.set_data<uint> (REACTION_HIDE_DATA, 0);
+        }
+
+        private static void schedule_reaction_popdown (Gtk.Popover popover) {
+            WeakRef popover_ref = WeakRef (popover);
+            uint source_id = Timeout.add (180, () => {
+                var live_popover = popover_ref.get () as Gtk.Popover;
+                if (live_popover != null) {
+                    live_popover.set_data<uint> (REACTION_HIDE_DATA, 0);
+                    live_popover.popdown ();
+                }
+                return Source.REMOVE;
+            });
+            popover.set_data<uint> (REACTION_HIDE_DATA, source_id);
+        }
+
+        private Gtk.Popover build_reaction_popover (Message msg,
                                                     MessageReaction reaction) {
             var popover = new Gtk.Popover ();
             popover.has_arrow = false;
             popover.autohide = true;
             popover.position = Gtk.PositionType.TOP;
-            popover.set_parent (parent);
 
             var pill = new Gtk.Box (Gtk.Orientation.VERTICAL, 4);
             pill.add_css_class ("reaction-users-pill");

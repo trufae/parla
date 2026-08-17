@@ -279,11 +279,9 @@ namespace Dc {
                     update_selection_actions ();
                 });
                 row.quote_clicked.connect ((qid) => { scroll_to_message (qid); });
-                int row_msg_id = msg.id;
-                bool row_outgoing = msg.is_outgoing;
-                row.action_requested.connect ((action, anchor) => {
-                    on_row_action (row_msg_id, row_outgoing, action, anchor);
-                });
+                Signal.connect_object (row, "action-requested",
+                    (Callback) on_message_row_action_requested,
+                    this, (ConnectFlags) 0);
                 row.full_message_requested.connect ((mid) => {
                     toggle_full_message.begin (mid);
                 });
@@ -305,6 +303,9 @@ namespace Dc {
                 li.activatable = false;
                 li.focusable = false;
             });
+            /* bind builds a fresh row tree; drop it as soon as the list item
+               is recycled so widgets, textures, and messages can finalize. */
+            factory.unbind.connect (unbind_message_list_item);
 
             var selection = new Gtk.NoSelection (filtered_message_store);
             message_listview = new Gtk.ListView (selection, factory);
@@ -507,6 +508,18 @@ namespace Dc {
             append (request_bar);
 
             install_file_drop_target ();
+        }
+
+        private static void on_message_row_action_requested (
+                MessageRow row, string action, Gtk.Widget anchor,
+                ConversationView view) {
+            view.on_row_action (row.message_id, row.is_outgoing,
+                                action, anchor);
+        }
+
+        private static void unbind_message_list_item (Object obj) {
+            var item = (Gtk.ListItem) obj;
+            item.child = null;
         }
 
         private void queue_next_voice_message (int current_msg_id) {
