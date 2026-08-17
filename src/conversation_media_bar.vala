@@ -22,6 +22,8 @@ namespace Dc {
         private Gtk.Label sent_label;
         private Gtk.Label time_label;
         private Gtk.Scale progress;
+        private Gtk.DropDown speed_dropdown;
+        private bool syncing_speed = false;
         private ulong current_handler = 0;
         private ulong item_handler = 0;
         private ulong playing_handler = 0;
@@ -29,6 +31,7 @@ namespace Dc {
         private ulong external_handler = 0;
         private ulong position_handler = 0;
         private ulong duration_handler = 0;
+        private ulong rate_handler = 0;
         private ulong previous_handler = 0;
         private ulong next_handler = 0;
 
@@ -83,6 +86,23 @@ namespace Dc {
             sent_label.xalign = 0;
             sent_label.ellipsize = Pango.EllipsizeMode.END;
             metadata.append (sent_label);
+
+            speed_dropdown = new Gtk.DropDown.from_strings ({
+                "0.5×", "0.75×", "1×", "1.25×", "1.5×", "2×",
+                "3×", "4×", "5×"
+            });
+            speed_dropdown.add_css_class ("conversation-media-speed");
+            speed_dropdown.valign = Gtk.Align.CENTER;
+            speed_dropdown.tooltip_text = "Playback speed";
+            speed_dropdown.update_property (
+                Gtk.AccessibleProperty.LABEL, "Playback speed", -1);
+            speed_dropdown.notify["selected"].connect (() => {
+                if (syncing_speed) return;
+                playback.change_playback_rate (
+                    AudioPlayback.rate_for_index (speed_dropdown.selected));
+                sync_speed ();
+            });
+            metadata.append (speed_dropdown);
             details.append (metadata);
 
             progress = new Gtk.Scale.with_range (
@@ -146,6 +166,7 @@ namespace Dc {
                 sync_playback);
             position_handler = playback.notify["position-us"].connect (sync_playback);
             duration_handler = playback.notify["duration-us"].connect (sync_playback);
+            rate_handler = playback.notify["playback-rate"].connect (sync_speed);
             previous_handler = playback.notify["has-previous"].connect (
                 sync_navigation);
             next_handler = playback.notify["has-next"].connect (sync_navigation);
@@ -183,6 +204,19 @@ namespace Dc {
                     ? "Seeking is unavailable with the system audio player"
                     : "Seeking will be available after the audio loads");
             time_label.label = format_playing_time (position, duration);
+            sync_speed ();
+        }
+
+        private void sync_speed () {
+            syncing_speed = true;
+            speed_dropdown.selected = AudioPlayback.index_for_rate (
+                playback.playback_rate);
+            syncing_speed = false;
+            speed_dropdown.sensitive = message_id > 0
+                && playback.can_change_speed;
+            speed_dropdown.tooltip_text = playback.can_change_speed
+                ? "Playback speed"
+                : "Install GstPlay, mpv, or ffplay to change playback speed";
         }
 
         private void sync_item () {
@@ -220,7 +254,7 @@ namespace Dc {
             while (widget != null && widget != this) {
                 if (widget == previous_button || widget == play_button
                         || widget == next_button || widget == close_button
-                        || widget == progress)
+                        || widget == progress || widget == speed_dropdown)
                     return true;
                 widget = widget.get_parent ();
             }
@@ -257,7 +291,7 @@ namespace Dc {
             ulong[] handlers = {
                 current_handler, item_handler, playing_handler, seekable_handler,
                 external_handler, position_handler, duration_handler,
-                previous_handler, next_handler
+                previous_handler, next_handler, rate_handler
             };
             foreach (ulong handler in handlers) {
                 if (handler != 0) playback.disconnect (handler);
@@ -265,6 +299,7 @@ namespace Dc {
             current_handler = item_handler = playing_handler = 0;
             seekable_handler = previous_handler = next_handler = 0;
             external_handler = position_handler = duration_handler = 0;
+            rate_handler = 0;
             base.dispose ();
         }
     }

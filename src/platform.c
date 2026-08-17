@@ -1,5 +1,8 @@
 #include "platform.h"
 
+#include <glib-object.h>
+#include <gmodule.h>
+
 #if defined(__APPLE__)
 # include <mach-o/dyld.h>
 # include <glib/gstdio.h>
@@ -248,5 +251,295 @@ parla_macos_install_file_drop_handler (GtkWidget                  *widget,
 	(void) widget;
 	(void) callback;
 	(void) user_data;
+}
+
+/* Keep GstPlay optional at link time. GTK installations commonly provide it,
+ * but Parla can still fall back to GtkMediaFile or a system player when they
+ * do not. GstPlay's API has been stable since its 1.20 introduction. */
+typedef gpointer (*ParlaGstPlayNew) (gpointer renderer);
+typedef void (*ParlaGstPlaySetUri) (gpointer play, const gchar *uri);
+typedef void (*ParlaGstPlayAction) (gpointer play);
+typedef void (*ParlaGstPlaySeek) (gpointer play, guint64 position_ns);
+typedef void (*ParlaGstPlaySetRate) (gpointer play, gdouble rate);
+typedef guint64 (*ParlaGstPlayGetTime) (gpointer play);
+typedef gpointer (*ParlaGstPlayGetBus) (gpointer play);
+typedef gboolean (*ParlaGstPlayIsMessage) (gpointer message);
+typedef void (*ParlaGstPlayParseType) (gpointer message, gint *type);
+typedef gboolean (*ParlaGstBusFunc) (gpointer bus, gpointer message,
+                                     gpointer user_data);
+typedef guint (*ParlaGstBusAddWatch) (gpointer bus, ParlaGstBusFunc callback,
+                                     gpointer user_data);
+typedef void (*ParlaGstBusSetFlushing) (gpointer bus, gboolean flushing);
+
+typedef struct {
+	ParlaGstPlayNew play_new;
+	ParlaGstPlaySetUri set_uri;
+	ParlaGstPlayAction play;
+	ParlaGstPlayAction pause;
+	ParlaGstPlayAction stop;
+	ParlaGstPlaySeek seek;
+	ParlaGstPlaySetRate set_rate;
+	ParlaGstPlayGetTime get_position;
+	ParlaGstPlayGetTime get_duration;
+	ParlaGstPlayGetBus get_message_bus;
+	ParlaGstPlayIsMessage is_play_message;
+	ParlaGstPlayParseType parse_message_type;
+	ParlaGstBusAddWatch bus_add_watch;
+	ParlaGstBusSetFlushing bus_set_flushing;
+} ParlaGstPlayApi;
+
+typedef struct {
+	gpointer play;
+	gpointer bus;
+	guint bus_watch;
+	gboolean playing;
+	ParlaAudioFinishedCallback callback;
+	gpointer user_data;
+} ParlaGstAudioBackend;
+
+static ParlaGstPlayApi gst_play_api;
+static GModule *gst_play_module;
+static GModule *gstreamer_module;
+static gboolean gst_play_checked;
+static gboolean gst_play_available;
+
+static GModule *
+parla_open_first_module (const gchar * const *names)
+{
+	for (guint i = 0; names[i] != NULL; i++) {
+		GModule *module = g_module_open (names[i], G_MODULE_BIND_LAZY);
+		if (module != NULL) {
+			return module;
+		}
+	}
+	return NULL;
+}
+
+static gboolean
+parla_load_symbol (GModule *module, const gchar *name, gpointer *target)
+{
+	return module != NULL && g_module_symbol (module, name, target);
+}
+
+#define PARLA_LOAD_PLAY(member, name) \
+	parla_load_symbol (gst_play_module, name, (gpointer *) &gst_play_api.member)
+#define PARLA_LOAD_GST(member, name) \
+	parla_load_symbol (gstreamer_module, name, (gpointer *) &gst_play_api.member)
+
+static gboolean
+parla_load_gst_play (void)
+{
+	if (gst_play_checked) {
+		return gst_play_available;
+	}
+	gst_play_checked = TRUE;
+
+	if (!g_module_supported ()) {
+		return FALSE;
+	}
+
+#if defined(_WIN32)
+	const gchar *play_names[] = {
+		"libgstplay-1.0-0.dll", "libgstplay-1.0.dll", NULL
+	};
+	const gchar *gst_names[] = {
+		"libgstreamer-1.0-0.dll", "libgstreamer-1.0.dll", NULL
+	};
+#else
+	const gchar *play_names[] = {
+		"libgstplay-1.0.so.0", "libgstplay-1.0.so", NULL
+	};
+	const gchar *gst_names[] = {
+		"libgstreamer-1.0.so.0", "libgstreamer-1.0.so", NULL
+	};
+#endif
+
+	gst_play_module = parla_open_first_module (play_names);
+	gstreamer_module = parla_open_first_module (gst_names);
+	if (gst_play_module == NULL || gstreamer_module == NULL) {
+		return FALSE;
+	}
+
+	gst_play_available =
+		PARLA_LOAD_PLAY (play_new, "gst_play_new") &&
+		PARLA_LOAD_PLAY (set_uri, "gst_play_set_uri") &&
+		PARLA_LOAD_PLAY (play, "gst_play_play") &&
+		PARLA_LOAD_PLAY (pause, "gst_play_pause") &&
+		PARLA_LOAD_PLAY (stop, "gst_play_stop") &&
+		PARLA_LOAD_PLAY (seek, "gst_play_seek") &&
+		PARLA_LOAD_PLAY (set_rate, "gst_play_set_rate") &&
+		PARLA_LOAD_PLAY (get_position, "gst_play_get_position") &&
+		PARLA_LOAD_PLAY (get_duration, "gst_play_get_duration") &&
+		PARLA_LOAD_PLAY (get_message_bus, "gst_play_get_message_bus") &&
+		PARLA_LOAD_PLAY (is_play_message, "gst_play_is_play_message") &&
+		PARLA_LOAD_PLAY (parse_message_type, "gst_play_message_parse_type") &&
+		PARLA_LOAD_GST (bus_add_watch, "gst_bus_add_watch") &&
+		PARLA_LOAD_GST (bus_set_flushing, "gst_bus_set_flushing");
+
+	return gst_play_available;
+}
+
+#undef PARLA_LOAD_PLAY
+#undef PARLA_LOAD_GST
+
+static gboolean
+parla_gst_audio_message (gpointer bus, gpointer message, gpointer user_data)
+{
+	(void) bus;
+	ParlaGstAudioBackend *backend = user_data;
+	if (!gst_play_api.is_play_message (message)) {
+		return G_SOURCE_CONTINUE;
+	}
+
+	gint type = -1;
+	gst_play_api.parse_message_type (message, &type);
+	/* GstPlayMessage: END_OF_STREAM = 5, ERROR = 6. */
+	if (type != 5 && type != 6) {
+		return G_SOURCE_CONTINUE;
+	}
+
+	backend->playing = FALSE;
+	backend->bus_watch = 0;
+	ParlaAudioFinishedCallback callback = backend->callback;
+	gpointer callback_data = backend->user_data;
+	if (callback != NULL) {
+		callback (type == 5, callback_data);
+	}
+	return G_SOURCE_REMOVE;
+}
+
+gboolean
+parla_audio_backend_supported (void)
+{
+	return parla_load_gst_play ();
+}
+
+gpointer
+parla_audio_backend_new (const gchar                *path,
+                         ParlaAudioFinishedCallback  callback,
+                         gpointer                    user_data)
+{
+	if (path == NULL || !parla_load_gst_play ()) {
+		return NULL;
+	}
+
+	g_autofree gchar *uri = g_filename_to_uri (path, NULL, NULL);
+	if (uri == NULL) {
+		return NULL;
+	}
+
+	ParlaGstAudioBackend *backend = g_new0 (ParlaGstAudioBackend, 1);
+	backend->play = gst_play_api.play_new (NULL);
+	if (backend->play == NULL) {
+		g_free (backend);
+		return NULL;
+	}
+	backend->callback = callback;
+	backend->user_data = user_data;
+	gst_play_api.set_uri (backend->play, uri);
+	backend->bus = gst_play_api.get_message_bus (backend->play);
+	if (backend->bus != NULL) {
+		backend->bus_watch = gst_play_api.bus_add_watch (
+			backend->bus, parla_gst_audio_message, backend);
+	}
+	return backend;
+}
+
+gboolean
+parla_audio_backend_play (gpointer handle)
+{
+	ParlaGstAudioBackend *backend = handle;
+	if (backend == NULL) {
+		return FALSE;
+	}
+	gst_play_api.play (backend->play);
+	backend->playing = TRUE;
+	return TRUE;
+}
+
+void
+parla_audio_backend_pause (gpointer handle)
+{
+	ParlaGstAudioBackend *backend = handle;
+	if (backend == NULL) return;
+	gst_play_api.pause (backend->play);
+	backend->playing = FALSE;
+}
+
+void
+parla_audio_backend_stop (gpointer handle)
+{
+	ParlaGstAudioBackend *backend = handle;
+	if (backend == NULL) return;
+	gst_play_api.stop (backend->play);
+	backend->playing = FALSE;
+}
+
+void
+parla_audio_backend_seek (gpointer handle, gint64 position_us)
+{
+	ParlaGstAudioBackend *backend = handle;
+	if (backend == NULL) return;
+	gst_play_api.seek (backend->play,
+	                   (guint64) MAX ((gint64) 0, position_us) * 1000);
+}
+
+void
+parla_audio_backend_set_rate (gpointer handle, gdouble rate)
+{
+	ParlaGstAudioBackend *backend = handle;
+	if (backend != NULL) gst_play_api.set_rate (backend->play, rate);
+}
+
+static gint64
+parla_gst_time_to_us (guint64 time_ns)
+{
+	return time_ns == G_MAXUINT64 ? 0 : (gint64) (time_ns / 1000);
+}
+
+gint64
+parla_audio_backend_get_position (gpointer handle)
+{
+	ParlaGstAudioBackend *backend = handle;
+	return backend == NULL ? 0 : parla_gst_time_to_us (
+		gst_play_api.get_position (backend->play));
+}
+
+gint64
+parla_audio_backend_get_duration (gpointer handle)
+{
+	ParlaGstAudioBackend *backend = handle;
+	return backend == NULL ? 0 : parla_gst_time_to_us (
+		gst_play_api.get_duration (backend->play));
+}
+
+gboolean
+parla_audio_backend_is_playing (gpointer handle)
+{
+	ParlaGstAudioBackend *backend = handle;
+	return backend != NULL && backend->playing;
+}
+
+gboolean
+parla_audio_backend_can_seek (gpointer handle)
+{
+	return parla_audio_backend_get_duration (handle) > 0;
+}
+
+void
+parla_audio_backend_free (gpointer handle)
+{
+	ParlaGstAudioBackend *backend = handle;
+	if (backend == NULL) return;
+	if (backend->bus_watch != 0) {
+		g_source_remove (backend->bus_watch);
+	}
+	if (backend->bus != NULL) {
+		gst_play_api.bus_set_flushing (backend->bus, TRUE);
+		g_object_unref (backend->bus);
+	}
+	gst_play_api.stop (backend->play);
+	g_object_unref (backend->play);
+	g_free (backend);
 }
 #endif

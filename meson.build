@@ -32,6 +32,7 @@ add_project_arguments(
 
 deps = [
   dependency('glib-2.0'),
+  dependency('gmodule-2.0'),
   dependency('gio-2.0'),
   dependency('gtk4'),
   dependency('libadwaita-1', version: '>= 1.5'),
@@ -150,7 +151,7 @@ if host_machine.system() == 'darwin'
     'src/tray_macos.m',
     'src/tray_macos.vala',
   )
-  deps += dependency('appleframeworks', modules: ['Cocoa'])
+  deps += dependency('appleframeworks', modules: ['Cocoa', 'AVFoundation'])
 else
   sources += files('src/tray_icon.vala')
 endif
