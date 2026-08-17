@@ -379,3 +379,37 @@ webxdc_security_test = executable(
 )
 
 test('webxdc-security', webxdc_security_test)
+
+rpc_transport_test_sources = files(
+  'tests/rpc_transport_test.vala',
+  'src/rpc_transport.vala',
+  'src/rpc_params.vala',
+  'src/subprocess.vala',
+)
+rpc_transport_test_deps = [
+  dependency('glib-2.0'),
+  dependency('gobject-2.0'),
+  dependency('gio-2.0'),
+  dependency('json-glib-1.0'),
+]
+if host_machine.system() == 'windows'
+  rpc_transport_test_sources += files(
+    'src/platform.vala',
+    'src/platform.c',
+    'src/platform_win32.c',
+  )
+  rpc_transport_test_deps += [
+    dependency('gmodule-2.0'),
+    dependency('gtk4'),
+    dependency('gio-windows-2.0'),
+  ]
+endif
+rpc_transport_test = executable(
+  'rpc-transport-test',
+  rpc_transport_test_sources,
+  dependencies: rpc_transport_test_deps,
+  include_directories: src_inc,
+  install: false,
+)
+
+test('rpc-transport', rpc_transport_test, timeout: 30)
