@@ -108,6 +108,7 @@ static char parla_drop_subclass_key;
 	AVAudioFile *file;
 	ParlaMacosPlaybackState *state;
 	AVAudioFramePosition segment_start_frame;
+	AVAudioFramePosition current_frame;
 	BOOL segment_scheduled;
 }
 - (id)initWithPath:(const gchar *)path
@@ -196,6 +197,7 @@ static char parla_drop_subclass_key;
 	NSUInteger generation = [state beginSchedule];
 	ParlaMacosPlaybackState *scheduled_state = state;
 	segment_start_frame = start_frame;
+	current_frame = start_frame;
 	segment_scheduled = YES;
 	[player scheduleSegment:file
 	          startingFrame:start_frame
@@ -226,6 +228,9 @@ static char parla_drop_subclass_key;
 
 - (void)pauseAudio
 {
+	/* playerTimeForNodeTime: becomes unavailable after pausing, so retain the
+	   last rendered source frame before stopping the render clock. */
+	(void) [self positionSeconds];
 	[player pause];
 }
 
@@ -234,6 +239,7 @@ static char parla_drop_subclass_key;
 	[state cancelSchedule];
 	[player stop];
 	segment_start_frame = 0;
+	current_frame = 0;
 	segment_scheduled = NO;
 }
 
@@ -247,6 +253,7 @@ static char parla_drop_subclass_key;
 	[player stop];
 	segment_scheduled = NO;
 	segment_start_frame = target;
+	current_frame = target;
 	if ([self scheduleFromFrame:target] && was_playing) [player play];
 }
 
@@ -261,12 +268,12 @@ static char parla_drop_subclass_key;
 	AVAudioTime *node_time = player.lastRenderTime;
 	AVAudioTime *player_time = node_time == nil
 		? nil : [player playerTimeForNodeTime:node_time];
-	AVAudioFramePosition frame = segment_start_frame;
+	AVAudioFramePosition frame = current_frame;
 	if (player_time != nil && player_time.sampleTime >= 0) {
-		frame += player_time.sampleTime;
+		frame = segment_start_frame + player_time.sampleTime;
+		current_frame = MIN (frame, file.length);
 	}
-	frame = MIN (frame, file.length);
-	return frame / file.processingFormat.sampleRate;
+	return current_frame / file.processingFormat.sampleRate;
 }
 
 - (NSTimeInterval)durationSeconds
