@@ -35,15 +35,17 @@ BUILTIN = {
 
 
 def bundled_icons():
-    tree = ET.parse(os.path.join(ROOT, "data", "parla.gresource.xml"))
     names = set()
-    for node in tree.iter("file"):
-        base = os.path.basename(node.text.strip())
-        names.add(base[:-4] if base.endswith(".svg") else base)
-        path = os.path.join(ROOT, "data", "icons", "hicolor", node.text.strip())
-        if not os.path.exists(path):
-            print(f"gresource lists missing file: {node.text}")
-            return None
+    for xml in ("parla.gresource.xml", "parla-fallback-icons.gresource.xml"):
+        tree = ET.parse(os.path.join(ROOT, "data", xml))
+        for node in tree.iter("file"):
+            rel = node.text.strip()
+            base = os.path.basename(rel)
+            names.add(base[:-4] if base.endswith(".svg") else base)
+            if not os.path.exists(os.path.join(ROOT, "data", "icons",
+                                               "hicolor", rel)):
+                print(f"{xml} lists missing file: {rel}")
+                return None
     return names
 
 
@@ -64,12 +66,12 @@ def main():
         return 1
     missing = sorted(referenced_icons() - bundled - BUILTIN)
     if missing:
-        print("symbolic icons used in src/ but neither bundled in "
-              "data/parla.gresource.xml nor built into GTK4/libadwaita:")
+        print("symbolic icons used in src/ but neither bundled in a "
+              "data/*.gresource.xml nor built into GTK4/libadwaita:")
         for name in missing:
             print("  " + name)
         print("copy the SVG from adwaita-icon-theme into data/icons/hicolor/"
-              "scalable/<context>/ and list it in data/parla.gresource.xml")
+              "scalable/<context>/ and list it in data/parla-fallback-icons.gresource.xml")
         return 1
     return 0
 

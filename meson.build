@@ -75,6 +75,13 @@ resources = gnome.compile_resources(
   'data/parla.gresource.xml',
   source_dir: 'data/icons/hicolor',
 )
+if get_option('bundle_icons')
+  resources += gnome.compile_resources(
+    'parla-fallback-icons',
+    'data/parla-fallback-icons.gresource.xml',
+    source_dir: 'data/icons/hicolor',
+  )
+endif
 
 src_inc = include_directories('src')
 sources = files(

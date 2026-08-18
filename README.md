@@ -225,6 +225,12 @@ meson setup builddir -Dwebxdc=true
 meson compile -C builddir
 ```
 
+Parla embeds the Adwaita symbolic icons it uses as `hicolor` fallbacks so
+the UI renders on desktops whose icon theme lacks them (XFCE, LXQt, ...);
+the active icon theme still takes precedence. Packagers who prefer to depend
+on `adwaita-icon-theme` can leave them out with `make BUNDLE_ICONS=0` or
+`meson setup builddir -Dbundle_icons=false`.
+
 On Windows, use the `WITH_WEBXDC=1` bundle command above. For a direct Meson
 build, extract the official `Microsoft.Web.WebView2` NuGet package and pass
 its root as `-Dwebview2_sdk=/path/to/package` together with `-Dwebxdc=true`.
