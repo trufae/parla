@@ -98,6 +98,34 @@ namespace Dc {
             widget.grab_focus ();
         }
 
+        /**
+         * Swaps the navigation list without disturbing what is on screen:
+         * the entry matching the currently shown path becomes the new
+         * position. Used once the full chat media list arrives after the
+         * viewer was opened from the (partially loaded) conversation.
+         */
+        public void replace_list (string[] image_paths) {
+            if (!widget.visible || index < 0 || index >= paths.length) return;
+            string current = paths[index];
+            int found = -1;
+            for (int i = 0; i < image_paths.length; i++) {
+                if (image_paths[i] == current) { found = i; break; }
+            }
+            if (found < 0) return;
+            paths = image_paths;
+            index = found;
+            update_nav_buttons ();
+        }
+
+        /** Path of the image currently on screen, or null when hidden. */
+        public string? current_path {
+            get {
+                if (!widget.visible || index < 0 || index >= paths.length)
+                    return null;
+                return paths[index];
+            }
+        }
+
         public void hide () {
             widget.visible = false;
             picture.paintable = null;

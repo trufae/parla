@@ -1775,6 +1775,17 @@ namespace Dc {
             image_viewer.show_list (paths, start_index);
         }
 
+        public string? image_viewer_path () {
+            return image_viewer.current_path;
+        }
+
+        /** Extends the open viewer's list; no-op unless it still shows
+            `expected_path`. */
+        public void replace_image_list (string[] paths, string expected_path) {
+            if (image_viewer.current_path != expected_path) return;
+            image_viewer.replace_list (paths);
+        }
+
         private void show_gallery_dialog () {
             if (current_chat_id <= 0 || !can_show_rpc_modal ()) return;
             var entry = find_chat_entry (chat_store, current_chat_id);

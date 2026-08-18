@@ -2457,6 +2457,7 @@ namespace Dc {
                 int start;
                 collect_image_paths (msg.file_path, out paths, out start);
                 window.show_image_list (paths, start);
+                extend_image_list.begin (msg.file_path);
             } else if (msg.is_video_file ()) {
                 window.show_video (msg.file_path, msg.file_name);
             } else if (msg.is_audio_file ()) {
@@ -2513,6 +2514,42 @@ namespace Dc {
             }
             paths = list.steal ();
             start_index = found >= 0 ? found : 0;
+        }
+
+        /* Types matching the gallery's Images tab; the client-side filter
+           below matches collect_image_paths so both lists agree. */
+        private const string[] CHAT_IMAGE_TYPES = { "Sticker", "Gif", "Image" };
+        private const int IMAGE_LIST_CHUNK = 50;
+
+        /**
+         * The viewer opens instantly on the rows the conversation has
+         * loaded so far, which stops at the oldest fetched message. Fetch
+         * the chat's whole image list (a metadata-only core query, like the
+         * gallery does) and hand it to the viewer so prev/next reach every
+         * picture in the chat, not just the loaded window.
+         */
+        private async void extend_image_list (string current_path) {
+            Message[] all = {};
+            try {
+                var ids = yield rpc.get_chat_media (chat_id, CHAT_IMAGE_TYPES);
+                if (closed || window.image_viewer_path () != current_path) return;
+                for (int off = 0; off < ids.length; off += IMAGE_LIST_CHUNK) {
+                    int len = int.min (IMAGE_LIST_CHUNK, ids.length - off);
+                    var msgs = yield rpc.get_parsed_messages (ids[off : off + len]);
+                    if (closed || window.image_viewer_path () != current_path) return;
+                    foreach (var m in msgs) all += m;
+                }
+            } catch (Error e) {
+                debug ("chat image list: %s", e.message);
+                return;
+            }
+            var list = new GLib.GenericArray<string> ();
+            foreach (var m in all) {
+                if (!m.has_local_file || !m.is_image_file ()) continue;
+                list.add (m.file_path);
+            }
+            if (list.length == 0) return;
+            window.replace_image_list (list.steal (), current_path);
         }
 
         /**
