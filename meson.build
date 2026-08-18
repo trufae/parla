@@ -380,6 +380,10 @@ webxdc_security_test = executable(
 
 test('webxdc-security', webxdc_security_test)
 
+# Every symbolic icon used by the UI must be bundled in the GResource or
+# built into GTK4/libadwaita, so it renders without a system icon theme.
+test('bundled-icons', python, args: [files('tests/check_icons.py')])
+
 rpc_transport_test_sources = files(
   'tests/rpc_transport_test.vala',
   'src/rpc_transport.vala',

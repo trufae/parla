@@ -1047,7 +1047,7 @@ namespace Dc {
                 if (mime.has_prefix ("video/")) return "video-x-generic-symbolic";
                 if (mime.has_prefix ("audio/")) return "audio-x-generic-symbolic";
                 if (mime.has_prefix ("image/")) return "image-x-generic-symbolic";
-                if (mime == "application/pdf") return "application-pdf-symbolic";
+                if (mime == "application/pdf") return "x-office-document-symbolic";
                 if (mime.has_prefix ("text/")) return "text-x-generic-symbolic";
                 if (mime == "application/zip" || mime == "application/x-tar" ||
                     mime == "application/gzip" || mime == "application/x-7z-compressed" ||
@@ -1056,7 +1056,7 @@ namespace Dc {
                     return "package-x-generic-symbolic";
             }
             var lower = file_path.down ();
-            if (lower.has_suffix (".pdf")) return "application-pdf-symbolic";
+            if (lower.has_suffix (".pdf")) return "x-office-document-symbolic";
             if (lower.has_suffix (".zip") || lower.has_suffix (".tar") ||
                 lower.has_suffix (".tgz") || lower.has_suffix (".gz") ||
                 lower.has_suffix (".7z") || lower.has_suffix (".rar") ||
