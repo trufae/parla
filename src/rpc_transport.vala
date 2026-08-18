@@ -24,12 +24,13 @@ namespace Dc {
 
         public bool is_connected { get; private set; default = false; }
 
+        [CCode (cheader_filename = "sigpipe_compat.h", cname = "parla_ignore_sigpipe")]
+        private static extern void ignore_sigpipe ();
+
         construct {
-#if !WINDOWS
             /* A child may close its stdin while the writer is active. Convert
                that condition into EPIPE instead of terminating the process. */
-            Posix.signal (Posix.Signal.PIPE, Posix.SIG_IGN);
-#endif
+            ignore_sigpipe ();
             try {
                 /* GUnixOutputStream may perform the first write of an async
                    operation synchronously. A single worker is therefore the

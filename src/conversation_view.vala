@@ -215,19 +215,19 @@ namespace Dc {
                 new ConversationSignalHandler (source, handler_id));
         }
 
-        private uint add_view_tick_callback (owned Gtk.TickCallback callback) {
-            uint callback_id = 0;
-            callback_id = message_listview.add_tick_callback ((widget, clock) => {
-                if (closed) {
-                    forget_tick_callback (callback_id);
-                    return Source.REMOVE;
-                }
-                bool keep = callback (widget, clock);
-                if (!keep) forget_tick_callback (callback_id);
-                return keep;
-            });
+        /* Tick callbacks are registered directly on message_listview and
+           only their ids are tracked here (storing an owned delegate makes
+           valac emit code clang rejects under -Werror=unused-value).  Every
+           callback must bail out with end_tick_callback() when the view is
+           closed and use it instead of a bare Source.REMOVE so the id list
+           stays in sync. */
+        private void track_tick_callback (uint callback_id) {
             tick_callback_ids += callback_id;
-            return callback_id;
+        }
+
+        private bool end_tick_callback (uint callback_id) {
+            forget_tick_callback (callback_id);
+            return Source.REMOVE;
         }
 
         private void forget_tick_callback (uint callback_id) {
@@ -1278,7 +1278,9 @@ namespace Dc {
             update_conversation_media_bar ();
 
             /* Wait for row height changes to update the scroll range. */
-            add_view_tick_callback ((w, clock) => {
+            uint tick_id = 0;
+            tick_id = message_listview.add_tick_callback ((w, clock) => {
+                if (closed) return end_tick_callback (tick_id);
                 restore_scroll_value (was_at_bottom ? max_scroll_value () : saved_value);
                 loading_chat = was_loading;
                 if (goal != ViewportGoal.ANCHOR) {
@@ -1286,8 +1288,9 @@ namespace Dc {
                         ? ViewportGoal.BOTTOM : ViewportGoal.FREE;
                 }
                 scroll_down_btn.visible = !is_near_bottom ();
-                return Source.REMOVE;
+                return end_tick_callback (tick_id);
             });
+            track_tick_callback (tick_id);
         }
 
         /** Rebind a row after changing transient properties on its existing
@@ -1458,10 +1461,13 @@ namespace Dc {
         public void restore_scroll_value_deferred (double v) {
             if (goal == ViewportGoal.ANCHOR) return;
             freeze_scroll_handler (250);
-            add_view_tick_callback ((w, clock) => {
+            uint tick_id = 0;
+            tick_id = message_listview.add_tick_callback ((w, clock) => {
+                if (closed) return end_tick_callback (tick_id);
                 restore_scroll_value (v);
-                return Source.REMOVE;
+                return end_tick_callback (tick_id);
             });
+            track_tick_callback (tick_id);
         }
 
         /* Hold position when a row click would otherwise focus-scroll.
@@ -1556,10 +1562,11 @@ namespace Dc {
             double want = wanted_top;
             uint stable_frames = 0;
             uint elapsed_frames = 0;
-            add_view_tick_callback ((w, clock) => {
-                if (generation != goal_generation
+            uint tick_id = 0;
+            tick_id = message_listview.add_tick_callback ((w, clock) => {
+                if (closed || generation != goal_generation
                         || goal != ViewportGoal.ANCHOR)
-                    return Source.REMOVE;
+                    return end_tick_callback (tick_id);
 
                 double current_top;
                 var row = find_message_row (
@@ -1609,8 +1616,9 @@ namespace Dc {
                 goal = is_near_bottom ()
                     ? ViewportGoal.BOTTOM : ViewportGoal.FREE;
                 scroll_down_btn.visible = goal != ViewportGoal.BOTTOM;
-                return Source.REMOVE;
+                return end_tick_callback (tick_id);
             });
+            track_tick_callback (tick_id);
         }
 
         /* ================================================================
@@ -2533,6 +2541,7 @@ namespace Dc {
             }
 
             webxdc_bar.close ();
+            compose_bar.close ();
 
             /* Detach the virtualized rows before clearing the store. This
                immediately releases row widgets, textures, and messages even

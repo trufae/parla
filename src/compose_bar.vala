@@ -104,6 +104,7 @@ namespace Dc {
         private string[] suspended_extra_draft_captions = {};
         private int suspended_replying_msg_id = 0;
         private string suspended_reply_label = "";
+        private bool closed = false;
         /* Last natural height a resize was queued for; guards the
            vadjustment-driven requeue below against self-feeding. */
 
@@ -413,11 +414,30 @@ namespace Dc {
             build_mention_popover ();
         }
 
-        ~ComposeBar () {
+        /** Release resources that are parented outside the normal box tree or
+            connected to process-wide helpers. ConversationView calls this
+            before removing an evicted chat from its GtkStack. */
+        public void close () {
+            if (closed) return;
+            closed = true;
             stop_recording_timer ();
-            if (transcriber_handler != 0)
+            if (transcriber_handler != 0) {
                 Transcriber.shared ().disconnect (transcriber_handler);
-            if (audio_recorder != null) audio_recorder.cancel ();
+                transcriber_handler = 0;
+            }
+            if (audio_recorder != null) {
+                audio_recorder.cancel ();
+                audio_recorder = null;
+            }
+            mention_popup_visible = false;
+            mention_popover.popdown ();
+            if (mention_popover.get_parent () != null)
+                mention_popover.unparent ();
+        }
+
+        public override void dispose () {
+            close ();
+            base.dispose ();
         }
 
         private void build_mention_popover () {
