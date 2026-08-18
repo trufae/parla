@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-"""Ensure every symbolic icon referenced from src/ resolves without relying
-on a system icon theme (issue #61).
+"""Ensure every symbolic icon referenced from src/ is accounted for
+(issue #61).
 
-An icon name is acceptable when it is either compiled into the binary via
-data/parla.gresource.xml or shipped inside GTK4/libadwaita's own resources.
-Anything else would render as a broken "image-missing" glyph on desktops
-whose icon theme lacks Adwaita's symbolic set (XFCE, LXQt, ...).
+An icon name is acceptable when it is either listed in a
+data/*.gresource.xml (Parla's own icons, or the Adwaita copies compiled in
+with -Dbundle_icons=true) or shipped inside GTK4/libadwaita's own
+resources. Anything else would render as a broken "image-missing" glyph
+on desktops whose icon theme lacks it, and would escape the runtime
+Adwaita fallback's -Dbundle_icons=true counterpart.
 """
 import os
 import re

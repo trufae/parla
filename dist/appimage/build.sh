@@ -89,7 +89,9 @@ main() {
     rm -rf "$APPDIR"
     mkdir -p "$APPDIR" "$OUT_DIR"
 
-    make -C "$ROOT" all BUILD_DIR="$BUILD_DIR" BUILDTYPE="$BUILDTYPE" PREFIX=/usr
+    # The host may have no Adwaita icon theme at all, so compile the stock
+    # symbolic icons into the binary (see data/icons/hicolor/README.md).
+    make -C "$ROOT" all BUILD_DIR="$BUILD_DIR" BUILDTYPE="$BUILDTYPE" PREFIX=/usr BUNDLE_ICONS=1
     DESTDIR="$APPDIR" meson install -C "$BUILD_DIR"
     install_rpc_server
 

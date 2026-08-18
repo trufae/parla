@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Adwaita symbolic icons the UI depends on, bundled so they resolve on
+     desktops whose icon theme lacks them (GTK treats resource icons as
+     hicolor fallbacks: the user theme still wins). Compiled in only when
+     -Dbundle_icons=true (default); packagers that instead depend on
+     adwaita-icon-theme can disable it. See data/icons/hicolor/README.md. -->
+<gresources>
+  <gresource prefix="/io/github/trufae/Parla/icons">
+    <file>scalable/actions/action-unavailable-symbolic.svg</file>
+    <file>scalable/actions/contact-new-symbolic.svg</file>
+    <file>scalable/actions/document-edit-symbolic.svg</file>
+    <file>scalable/actions/edit-undo-symbolic.svg</file>
+    <file>scalable/actions/mail-forward-symbolic.svg</file>
+    <file>scalable/actions/mail-message-new-symbolic.svg</file>
+    <file>scalable/actions/mail-reply-sender-symbolic.svg</file>
+    <file>scalable/actions/media-skip-backward-symbolic.svg</file>
+    <file>scalable/actions/media-skip-forward-symbolic.svg</file>
+    <file>scalable/actions/sidebar-show-symbolic.svg</file>
+    <file>scalable/actions/system-log-out-symbolic.svg</file>
+    <file>scalable/actions/view-pin-symbolic.svg</file>
+    <file>scalable/categories/preferences-other-symbolic.svg</file>
+    <file>scalable/categories/preferences-system-symbolic.svg</file>
+    <file>scalable/devices/audio-input-microphone-symbolic.svg</file>
+    <file>scalable/devices/phone-symbolic.svg</file>
+    <file>scalable/actions/system-users-symbolic.svg</file>
+    <file>scalable/actions/web-browser-symbolic.svg</file>
+    <file>scalable/mimetypes/audio-x-generic-symbolic.svg</file>
+    <file>scalable/mimetypes/image-x-generic-symbolic.svg</file>
+    <file>scalable/mimetypes/package-x-generic-symbolic.svg</file>
+    <file>scalable/mimetypes/video-x-generic-symbolic.svg</file>
+    <file>scalable/mimetypes/x-office-document-symbolic.svg</file>
+    <file>scalable/status/image-missing-symbolic.svg</file>
+    <file>scalable/status/mail-attachment-symbolic.svg</file>
+    <file>scalable/status/network-offline-symbolic.svg</file>
+    <file>scalable/status/network-transmit-receive-symbolic.svg</file>
+    <file>scalable/status/non-starred-symbolic.svg</file>
+    <file>scalable/status/starred-symbolic.svg</file>
+  </gresource>
+</gresources>

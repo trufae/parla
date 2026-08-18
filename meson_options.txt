@@ -12,5 +12,5 @@ option('rpc_server_path',
   description: 'Absolute path to a fixed deltachat-rpc-server (Delta Chat jsonrpc server) binary. When set, Parla uses this binary as the Custom server and disables engine auto-updates.')
 option('bundle_icons',
   type: 'boolean',
-  value: true,
-  description: 'Compile the Adwaita symbolic icons Parla uses into the binary as hicolor fallbacks, so the UI renders on desktops whose icon theme lacks them (XFCE, LXQt, ...). Disable to rely on an installed adwaita-icon-theme instead.')
+  value: false,
+  description: 'Compile the Adwaita symbolic icons Parla uses into the binary as hicolor fallbacks. Off by default: at runtime Parla inherits them from the installed adwaita-icon-theme (a GTK4 dependency) when the active icon theme lacks them. Enable for builds that cannot rely on an installed Adwaita.')

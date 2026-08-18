@@ -90,6 +90,7 @@ sources = files(
   'src/subprocess.vala',
   'src/platform.c',
   'src/application.vala',
+  'src/icon_fallback.vala',
   'src/window.vala',
   'src/rpc_transport.vala',
   'src/rpc_params.vala',

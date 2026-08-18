@@ -485,6 +485,9 @@ namespace Dc {
                     theme.add_search_path (project_icons.get_path ());
                 }
             }
+            /* Desktops whose icon theme lacks the Adwaita symbolics
+               (issue #61): inherit them from the installed Adwaita. */
+            IconFallback.install (theme);
         }
 
         private void load_css () {
