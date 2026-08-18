@@ -22,6 +22,29 @@ namespace Dc {
         }
     }
 
+    /* Signal closures connected to widgets owned by a ConversationView can
+       otherwise form view -> widget -> closure -> view reference cycles.
+       Keep their ids together so close() can break every cycle explicitly. */
+    private class ConversationSignalHandler : Object {
+        private GLib.Object? source;
+        private ulong handler_id;
+
+        public ConversationSignalHandler (GLib.Object source,
+                                          ulong handler_id) {
+            this.source = source;
+            this.handler_id = handler_id;
+        }
+
+        public void disconnect_handler () {
+            if (source != null && handler_id != 0 &&
+                    SignalHandler.is_connected (source, handler_id)) {
+                source.disconnect (handler_id);
+            }
+            handler_id = 0;
+            source = null;
+        }
+    }
+
     /**
      * Per-chat conversation view. One instance per chat, cached by the
      * window so each conversation keeps its own draft, scroll position,
@@ -61,6 +84,10 @@ namespace Dc {
         private ConversationMediaBar media_bar;
         private ulong playback_message_handler = 0;
         private ulong playback_finished_handler = 0;
+        private GenericArray<ConversationSignalHandler> signal_handlers =
+            new GenericArray<ConversationSignalHandler> ();
+        private uint[] tick_callback_ids = {};
+        private bool closed = false;
 
         /* Exactly one owner of the vertical position at any time:
            BOTTOM follows the newest message, ANCHOR pins one row while a
@@ -87,6 +114,12 @@ namespace Dc {
         private bool draft_loaded = false;
         private bool draft_rpc_available = true;
         private uint draft_save_timer = 0;
+        private bool draft_save_pending = false;
+        private string pending_draft_text = "";
+        private string? pending_draft_file_path = null;
+        private string? pending_draft_file_name = null;
+        private int pending_draft_quote_msg_id = 0;
+        private bool pending_draft_voice = false;
         private int64 scroll_freeze_until_us = 0;
         private Queue<PendingSend> send_queue = new Queue<PendingSend> ();
         private bool sending_queue = false;
@@ -130,53 +163,103 @@ namespace Dc {
             message_store = new GLib.ListStore (typeof (Message));
             pinned = new PinnedMessagesManager (message_store, settings);
             pinned.set_rpc (rpc);
-            pinned.scroll_requested.connect ((mid) => { scroll_to_message (mid); });
-            pinned.operation_failed.connect ((message) => {
+            track_signal (pinned, pinned.scroll_requested.connect ((mid) => {
+                scroll_to_message (mid);
+            }));
+            track_signal (pinned, pinned.operation_failed.connect ((message) => {
                 window.show_toast (message);
-            });
+            }));
 
             webxdc_bar = new WebxdcAppsBar ();
             webxdc_bar.set_rpc (rpc);
             webxdc_bar.set_pinned (pinned);
-            webxdc_bar.scroll_requested.connect ((mid) => {
+            track_signal (webxdc_bar, webxdc_bar.scroll_requested.connect ((mid) => {
                 scroll_to_message (mid);
-            });
-            webxdc_bar.forward_requested.connect ((mid) => {
+            }));
+            track_signal (webxdc_bar, webxdc_bar.forward_requested.connect ((mid) => {
                 msg_actions.start_forwarding (mid);
-            });
-            webxdc_bar.save_requested.connect ((mid) => {
+            }));
+            track_signal (webxdc_bar, webxdc_bar.save_requested.connect ((mid) => {
                 save_webxdc_from_bar.begin (mid);
-            });
+            }));
 
             media_bar = new ConversationMediaBar ();
-            media_bar.previous_requested.connect (() => {
+            track_signal (media_bar, media_bar.previous_requested.connect (() => {
                 window.navigate_voice_playback (-1);
-            });
-            media_bar.next_requested.connect (() => {
+            }));
+            track_signal (media_bar, media_bar.next_requested.connect (() => {
                 window.navigate_voice_playback (1);
-            });
-            media_bar.message_requested.connect ((acct_id, origin_chat_id, mid) => {
+            }));
+            track_signal (media_bar, media_bar.message_requested.connect (
+                    (acct_id, origin_chat_id, mid) => {
                 window.open_media_message.begin (
                     acct_id, origin_chat_id, mid);
-            });
+            }));
 
             var playback = AudioPlayback.shared ();
-            playback_message_handler = playback.notify["current-item"].connect (
-                update_conversation_media_bar);
-            playback_finished_handler = playback.finished.connect ((mid) => {
-                var item = playback.current_item;
-                if (item != null && item.account_id == rpc.account_id
-                        && item.chat_id == chat_id && item.message_id == mid)
-                    queue_next_voice_message (mid);
-            });
+            playback_message_handler = connect_playback_updates (playback, this);
+            playback_finished_handler = connect_playback_finished (playback, this);
 
             build_ui ();
 
             msg_actions = new MessageActions (window, rpc, message_store,
                                               pinned, compose_bar, settings);
             msg_actions.set_reaction_roster (reaction_roster);
-            msg_actions.select_requested.connect ((mid) => {
+            track_signal (msg_actions, msg_actions.select_requested.connect ((mid) => {
                 begin_selection_mode (mid);
+            }));
+        }
+
+        private void track_signal (GLib.Object source, ulong handler_id) {
+            signal_handlers.add (
+                new ConversationSignalHandler (source, handler_id));
+        }
+
+        private uint add_view_tick_callback (owned Gtk.TickCallback callback) {
+            uint callback_id = 0;
+            callback_id = message_listview.add_tick_callback ((widget, clock) => {
+                if (closed) {
+                    forget_tick_callback (callback_id);
+                    return Source.REMOVE;
+                }
+                bool keep = callback (widget, clock);
+                if (!keep) forget_tick_callback (callback_id);
+                return keep;
+            });
+            tick_callback_ids += callback_id;
+            return callback_id;
+        }
+
+        private void forget_tick_callback (uint callback_id) {
+            uint[] remaining = {};
+            foreach (uint id in tick_callback_ids) {
+                if (id != callback_id) remaining += id;
+            }
+            tick_callback_ids = remaining;
+        }
+
+        private static ulong connect_playback_updates (
+                AudioPlayback playback, ConversationView target) {
+            WeakRef view_ref = WeakRef (target);
+            return playback.notify["current-item"].connect (() => {
+                var view = view_ref.get () as ConversationView;
+                if (view != null && !view.closed)
+                    view.update_conversation_media_bar ();
+            });
+        }
+
+        private static ulong connect_playback_finished (
+                AudioPlayback playback, ConversationView target) {
+            WeakRef view_ref = WeakRef (target);
+            return playback.finished.connect ((mid) => {
+                var view = view_ref.get () as ConversationView;
+                if (view == null || view.closed) return;
+                var item = AudioPlayback.shared ().current_item;
+                if (item != null && item.account_id == view.rpc.account_id
+                        && item.chat_id == view.chat_id
+                        && item.message_id == mid) {
+                    view.queue_next_voice_message (mid);
+                }
             });
         }
 
@@ -188,9 +271,12 @@ namespace Dc {
             message_scroll.valign = Gtk.Align.FILL;
             message_scroll.hscrollbar_policy = Gtk.PolicyType.NEVER;
 
-            message_scroll.vadjustment.notify["upper"].connect (on_scroll_bounds_changed);
-            message_scroll.vadjustment.notify["page-size"].connect (on_scroll_bounds_changed);
-            message_scroll.vadjustment.notify["value"].connect (() => {
+            var adjustment = message_scroll.vadjustment;
+            track_signal (adjustment,
+                adjustment.notify["upper"].connect (on_scroll_bounds_changed));
+            track_signal (adjustment,
+                adjustment.notify["page-size"].connect (on_scroll_bounds_changed));
+            track_signal (adjustment, adjustment.notify["value"].connect (() => {
                 if (loading_chat) return;
                 if (GLib.get_monotonic_time () < scroll_freeze_until_us) return;
                 /* While a row is anchored the engine owns the viewport:
@@ -208,7 +294,7 @@ namespace Dc {
                 if (is_near_top () && !loading_more && loaded_start_index > 0) {
                     load_earlier_messages.begin ();
                 }
-            });
+            }));
 
             /* Real user input outranks every programmatic scroll: wheel or
                touchpad over the list and any press on the scrollbar cancel
@@ -218,30 +304,24 @@ namespace Dc {
             var wheel = new Gtk.EventControllerScroll (
                 Gtk.EventControllerScrollFlags.BOTH_AXES);
             wheel.propagation_phase = Gtk.PropagationPhase.CAPTURE;
-            wheel.scroll.connect ((dx, dy) => {
+            track_signal (wheel, wheel.scroll.connect ((dx, dy) => {
                 on_user_scroll_input ();
                 return false;
-            });
+            }));
             message_scroll.add_controller (wheel);
 
             var scrollbar_press = new Gtk.GestureClick ();
             scrollbar_press.propagation_phase = Gtk.PropagationPhase.CAPTURE;
-            scrollbar_press.pressed.connect ((n, x, y) => {
+            track_signal (scrollbar_press, scrollbar_press.pressed.connect ((n, x, y) => {
                 on_user_scroll_input ();
-            });
+            }));
             message_scroll.get_vscrollbar ().add_controller (scrollbar_press);
 
-            message_filter = new Gtk.CustomFilter ((item) => {
-                if (!message_search_revealer.reveal_child) return true;
-                string query = message_search_entry.text.strip ().down ();
-                if (query.length == 0) return true;
-                var msg = (Message) item;
-                return msg.text != null && msg.text.down ().contains (query);
-            });
+            message_filter = create_message_filter (this);
             filtered_message_store = new Gtk.FilterListModel (message_store, message_filter);
 
             var factory = new Gtk.SignalListItemFactory ();
-            factory.bind.connect ((obj) => {
+            track_signal (factory, factory.bind.connect ((obj) => {
                 var li = (Gtk.ListItem) obj;
                 var msg = (Message) li.item;
                 Message? prev = null;
@@ -275,22 +355,24 @@ namespace Dc {
                     mention_roster,
                     reaction_roster,
                     rpc.account_id);
-                row.selection_toggled.connect ((mid, active) => {
-                    update_selection_actions ();
-                });
-                row.quote_clicked.connect ((qid) => { scroll_to_message (qid); });
+                Signal.connect_object (row, "selection-toggled",
+                    (Callback) on_row_selection_toggled,
+                    this, (ConnectFlags) 0);
+                Signal.connect_object (row, "quote-clicked",
+                    (Callback) on_row_quote_clicked,
+                    this, (ConnectFlags) 0);
                 Signal.connect_object (row, "action-requested",
                     (Callback) on_message_row_action_requested,
                     this, (ConnectFlags) 0);
-                row.full_message_requested.connect ((mid) => {
-                    toggle_full_message.begin (mid);
-                });
-                row.full_message_view_requested.connect ((mid) => {
-                    view_full_message.begin (mid);
-                });
-                row.checkbox_toggle_requested.connect ((mid, new_text) => {
-                    msg_actions.edit_message.begin (mid, new_text);
-                });
+                Signal.connect_object (row, "full-message-requested",
+                    (Callback) on_row_full_message_requested,
+                    this, (ConnectFlags) 0);
+                Signal.connect_object (row, "full-message-view-requested",
+                    (Callback) on_row_full_message_view_requested,
+                    this, (ConnectFlags) 0);
+                Signal.connect_object (row, "checkbox-toggle-requested",
+                    (Callback) on_row_checkbox_toggle_requested,
+                    this, (ConnectFlags) 0);
                 if (msg.highlighted) {
                     msg.highlighted = false;
                     row.highlight ();
@@ -302,7 +384,7 @@ namespace Dc {
                 li.selectable = false;
                 li.activatable = false;
                 li.focusable = false;
-            });
+            }));
             /* bind builds a fresh row tree; drop it as soon as the list item
                is recycled so widgets, textures, and messages can finalize. */
             factory.unbind.connect (unbind_message_list_item);
@@ -326,12 +408,12 @@ namespace Dc {
                and breaks URL clicks. */
             var rc = new Gtk.GestureClick ();
             rc.button = 3;
-            rc.pressed.connect ((n, x, y) => {
+            track_signal (rc, rc.pressed.connect ((n, x, y) => {
                 var row = pick_message_row (x, y);
                 if (row != null)
                     msg_actions.show_context_menu (row.message_id,
                         row.is_outgoing, x, y, message_listview);
-            });
+            }));
             message_listview.add_controller (rc);
 
             var dc = new Gtk.GestureClick ();
@@ -345,7 +427,7 @@ namespace Dc {
             dc.propagation_phase = Gtk.PropagationPhase.CAPTURE;
             int dc_last_id = -1;
             int64 dc_last_time = 0;
-            dc.pressed.connect ((n, x, y) => {
+            track_signal (dc, dc.pressed.connect ((n, x, y) => {
                 var row = pick_message_row (x, y);
                 if (row == null) return;
                 if (selection_mode) {
@@ -408,7 +490,7 @@ namespace Dc {
                         on_message_activated (msg);
                     }
                 }
-            });
+            }));
             message_listview.add_controller (dc);
 
             message_scroll.child = message_listview;
@@ -420,9 +502,10 @@ namespace Dc {
             message_search_entry.margin_end = 8;
             message_search_entry.margin_top = 4;
             message_search_entry.margin_bottom = 4;
-            message_search_entry.search_changed.connect (() => {
+            track_signal (message_search_entry,
+                message_search_entry.search_changed.connect (() => {
                 message_filter.changed (Gtk.FilterChange.DIFFERENT);
-            });
+            }));
             message_search_revealer = new Gtk.Revealer ();
             message_search_revealer.child = message_search_entry;
             message_search_revealer.reveal_child = false;
@@ -442,7 +525,9 @@ namespace Dc {
             scroll_down_btn.valign = Gtk.Align.END;
             scroll_down_btn.margin_bottom = 12;
             scroll_down_btn.visible = false;
-            scroll_down_btn.clicked.connect (() => { scroll_to_bottom (); });
+            track_signal (scroll_down_btn, scroll_down_btn.clicked.connect (() => {
+                scroll_to_bottom ();
+            }));
 
             /* "Loading…" pill shown at the top while older messages are
                pulled from the JSON-RPC server (see load_earlier_messages).
@@ -486,16 +571,21 @@ namespace Dc {
                                     "clean-pasted-links", BindingFlags.SYNC_CREATE);
             settings.bind_property ("link-previews", compose_bar,
                                     "link-previews", BindingFlags.SYNC_CREATE);
-            compose_bar.link_previews_requested.connect (on_link_previews_requested);
-            compose_bar.send_message.connect (on_send_message);
-            compose_bar.send_voice_message.connect (on_send_voice_message);
-            compose_bar.draft_changed.connect (on_draft_changed);
-            compose_bar.edit_message.connect ((msg_id, new_text) => {
+            track_signal (compose_bar, compose_bar.link_previews_requested.connect (
+                on_link_previews_requested));
+            track_signal (compose_bar, compose_bar.send_message.connect (
+                on_send_message));
+            track_signal (compose_bar, compose_bar.send_voice_message.connect (
+                on_send_voice_message));
+            track_signal (compose_bar, compose_bar.draft_changed.connect (
+                on_draft_changed));
+            track_signal (compose_bar, compose_bar.edit_message.connect (
+                    (msg_id, new_text) => {
                 msg_actions.edit_message.begin (msg_id, new_text);
-            });
-            compose_bar.edit_last_requested.connect (() => {
+            }));
+            track_signal (compose_bar, compose_bar.edit_last_requested.connect (() => {
                 msg_actions.start_editing_last ();
-            });
+            }));
             append (compose_bar);
 
             selection_bar = build_selection_bar ();
@@ -513,8 +603,54 @@ namespace Dc {
         private static void on_message_row_action_requested (
                 MessageRow row, string action, Gtk.Widget anchor,
                 ConversationView view) {
+            if (view.closed) return;
             view.on_row_action (row.message_id, row.is_outgoing,
                                 action, anchor);
+        }
+
+        private static void on_row_selection_toggled (
+                MessageRow row, int msg_id, bool active,
+                ConversationView view) {
+            if (!view.closed) view.update_selection_actions ();
+        }
+
+        private static void on_row_quote_clicked (
+                MessageRow row, int quote_id, ConversationView view) {
+            if (!view.closed) view.scroll_to_message (quote_id);
+        }
+
+        private static void on_row_full_message_requested (
+                MessageRow row, int msg_id, ConversationView view) {
+            if (!view.closed) view.toggle_full_message.begin (msg_id);
+        }
+
+        private static void on_row_full_message_view_requested (
+                MessageRow row, int msg_id, ConversationView view) {
+            if (!view.closed) view.view_full_message.begin (msg_id);
+        }
+
+        private static void on_row_checkbox_toggle_requested (
+                MessageRow row, int msg_id, string new_text,
+                ConversationView view) {
+            if (!view.closed)
+                view.msg_actions.edit_message.begin (msg_id, new_text);
+        }
+
+        private static Gtk.CustomFilter create_message_filter (
+                ConversationView target) {
+            WeakRef view_ref = WeakRef (target);
+            return new Gtk.CustomFilter ((item) => {
+                var view = view_ref.get () as ConversationView;
+                return view == null || view.closed || view.filter_message (item);
+            });
+        }
+
+        private bool filter_message (GLib.Object item) {
+            if (!message_search_revealer.reveal_child) return true;
+            string query = message_search_entry.text.strip ().down ();
+            if (query.length == 0) return true;
+            var msg = (Message) item;
+            return msg.text != null && msg.text.down ().contains (query);
         }
 
         private static void unbind_message_list_item (Object obj) {
@@ -715,23 +851,25 @@ namespace Dc {
             selection_delete_btn = new Gtk.Button.with_label ("Delete");
             selection_delete_btn.add_css_class ("destructive-action");
             selection_delete_btn.hexpand = true;
-            selection_delete_btn.clicked.connect (() => {
+            track_signal (selection_delete_btn,
+                selection_delete_btn.clicked.connect (() => {
                 delete_selected_messages.begin ();
-            });
+            }));
             bar.append (selection_delete_btn);
 
             selection_forward_btn = new Gtk.Button.with_label ("Forward");
             selection_forward_btn.hexpand = true;
-            selection_forward_btn.clicked.connect (() => {
+            track_signal (selection_forward_btn,
+                selection_forward_btn.clicked.connect (() => {
                 forward_selected_messages ();
-            });
+            }));
             bar.append (selection_forward_btn);
 
             var cancel_btn = new Gtk.Button.with_label ("Cancel");
             cancel_btn.hexpand = true;
-            cancel_btn.clicked.connect (() => {
+            track_signal (cancel_btn, cancel_btn.clicked.connect (() => {
                 end_selection_mode ();
-            });
+            }));
             bar.append (cancel_btn);
 
             return bar;
@@ -763,13 +901,17 @@ namespace Dc {
             var block_btn = new Gtk.Button.with_label ("Block");
             block_btn.add_css_class ("destructive-action");
             block_btn.add_css_class ("pill");
-            block_btn.clicked.connect (() => { block_request.begin (); });
+            track_signal (block_btn, block_btn.clicked.connect (() => {
+                block_request.begin ();
+            }));
             buttons.append (block_btn);
 
             var accept_btn = new Gtk.Button.with_label ("Accept");
             accept_btn.add_css_class ("suggested-action");
             accept_btn.add_css_class ("pill");
-            accept_btn.clicked.connect (() => { accept_request.begin (); });
+            track_signal (accept_btn, accept_btn.clicked.connect (() => {
+                accept_request.begin ();
+            }));
             buttons.append (accept_btn);
 
             bar.append (buttons);
@@ -1136,7 +1278,7 @@ namespace Dc {
             update_conversation_media_bar ();
 
             /* Wait for row height changes to update the scroll range. */
-            message_listview.add_tick_callback ((w, clock) => {
+            add_view_tick_callback ((w, clock) => {
                 restore_scroll_value (was_at_bottom ? max_scroll_value () : saved_value);
                 loading_chat = was_loading;
                 if (goal != ViewportGoal.ANCHOR) {
@@ -1316,7 +1458,7 @@ namespace Dc {
         public void restore_scroll_value_deferred (double v) {
             if (goal == ViewportGoal.ANCHOR) return;
             freeze_scroll_handler (250);
-            message_listview.add_tick_callback ((w, clock) => {
+            add_view_tick_callback ((w, clock) => {
                 restore_scroll_value (v);
                 return Source.REMOVE;
             });
@@ -1414,7 +1556,7 @@ namespace Dc {
             double want = wanted_top;
             uint stable_frames = 0;
             uint elapsed_frames = 0;
-            message_listview.add_tick_callback ((w, clock) => {
+            add_view_tick_callback ((w, clock) => {
                 if (generation != goal_generation
                         || goal != ViewportGoal.ANCHOR)
                     return Source.REMOVE;
@@ -2011,7 +2153,7 @@ namespace Dc {
         }
 
         private void queue_send (PendingSend job) {
-            cancel_pending_draft_save ();
+            discard_pending_draft_save ();
             remove_draft.begin ();
             send_queue.push_tail (job);
             process_send_queue.begin ();
@@ -2054,20 +2196,57 @@ namespace Dc {
         private void on_draft_changed (string text, string? file_path,
                                        string? file_name, int quote_msg_id,
                                        bool voice) {
-            if (!draft_rpc_available || rpc.account_id <= 0) return;
-            cancel_pending_draft_save ();
+            if (closed || !draft_rpc_available || rpc.account_id <= 0) return;
+            cancel_pending_draft_timer ();
+            draft_save_pending = true;
+            pending_draft_text = text;
+            pending_draft_file_path = file_path;
+            pending_draft_file_name = file_name;
+            pending_draft_quote_msg_id = quote_msg_id;
+            pending_draft_voice = voice;
             draft_save_timer = Timeout.add (600, () => {
                 draft_save_timer = 0;
-                save_draft.begin (text, file_path, file_name, quote_msg_id,
-                    voice);
+                flush_pending_draft_save ();
                 return Source.REMOVE;
             });
         }
 
-        private void cancel_pending_draft_save () {
+        private void cancel_pending_draft_timer () {
             if (draft_save_timer == 0) return;
             Source.remove (draft_save_timer);
             draft_save_timer = 0;
+        }
+
+        private void clear_pending_draft_snapshot () {
+            draft_save_pending = false;
+            pending_draft_text = "";
+            pending_draft_file_path = null;
+            pending_draft_file_name = null;
+            pending_draft_quote_msg_id = 0;
+            pending_draft_voice = false;
+        }
+
+        private void discard_pending_draft_save () {
+            cancel_pending_draft_timer ();
+            clear_pending_draft_snapshot ();
+        }
+
+        private void flush_pending_draft_save () {
+            cancel_pending_draft_timer ();
+            if (!draft_save_pending) return;
+
+            string text = pending_draft_text;
+            string? file_path = pending_draft_file_path;
+            string? file_name = pending_draft_file_name;
+            int quote_msg_id = pending_draft_quote_msg_id;
+            bool voice = pending_draft_voice;
+            clear_pending_draft_snapshot ();
+
+            /* The RPC owns only this immutable snapshot, not the view. An
+               evicted conversation can therefore finalize even if the
+               transport takes a long time to answer. */
+            start_detached_draft_save (this, text, file_path, file_name,
+                quote_msg_id, voice);
         }
 
         private async void load_draft () {
@@ -2082,10 +2261,25 @@ namespace Dc {
             }
         }
 
-        private async void save_draft (string text, string? file_path,
-                                       string? file_name, int quote_msg_id,
-                                       bool voice) {
-            if (!draft_rpc_available || rpc.account_id <= 0) return;
+        private static void start_detached_draft_save (
+                ConversationView target, string text, string? file_path,
+                string? file_name, int quote_msg_id, bool voice) {
+            WeakRef view_ref = WeakRef (target);
+            save_draft_snapshot.begin (target.rpc, target.window,
+                target.chat_id, text, file_path, file_name, quote_msg_id,
+                voice, (obj, result) => {
+                    bool available = save_draft_snapshot.end (result);
+                    var view = view_ref.get () as ConversationView;
+                    if (view != null && !view.closed)
+                        view.draft_rpc_available = available;
+                });
+        }
+
+        private static async bool save_draft_snapshot (
+                RpcClient rpc, Window window, int chat_id, string text,
+                string? file_path, string? file_name, int quote_msg_id,
+                bool voice) {
+            if (rpc.account_id <= 0) return true;
             try {
                 bool has_text = text.length > 0;
                 bool has_file = file_path != null && file_path.length > 0;
@@ -2105,9 +2299,11 @@ namespace Dc {
                             : null);
                 }
                 window.request_reload_chats ();
+                return true;
             } catch (Error e) {
-                draft_rpc_available = !is_missing_draft_rpc (e);
-                if (draft_rpc_available) warning ("save_draft: %s", e.message);
+                bool available = !is_missing_draft_rpc (e);
+                if (available) warning ("save_draft: %s", e.message);
+                return available;
             }
         }
 
@@ -2122,7 +2318,7 @@ namespace Dc {
             }
         }
 
-        private bool is_missing_draft_rpc (Error e) {
+        private static bool is_missing_draft_rpc (Error e) {
             string msg = e.message.down ();
             return "method not found" in msg
                 || "procedure not found" in msg
@@ -2150,11 +2346,13 @@ namespace Dc {
 
         private void install_file_drop_target () {
             file_drop_target = new FileDropTarget (this);
-            file_drop_target.accept.connect (can_accept_file_attachment);
-            file_drop_target.dropped.connect (attach_local_file);
-            file_drop_target.failed.connect ((message) => {
+            track_signal (file_drop_target, file_drop_target.accept.connect (
+                can_accept_file_attachment));
+            track_signal (file_drop_target, file_drop_target.dropped.connect (
+                attach_local_file));
+            track_signal (file_drop_target, file_drop_target.failed.connect ((message) => {
                 window.show_toast ("Attach failed: " + message);
-            });
+            }));
         }
 
         private MessageRow? pick_message_row (double x, double y) {
@@ -2297,7 +2495,33 @@ namespace Dc {
             start_index = found >= 0 ? found : 0;
         }
 
-        public override void dispose () {
+        /**
+         * End every relationship that can outlive the GtkStack entry. This is
+         * intentionally explicit: waiting for dispose would deadlock on the
+         * signal cycles that close() is responsible for breaking.
+         */
+        public void close () {
+            if (closed) return;
+            closed = true;
+
+            flush_pending_draft_save ();
+            goal_generation++;
+            pending_scroll_message_id = 0;
+            pending_voice_direction = 0;
+            loading_more = false;
+
+            var active_ticks = tick_callback_ids;
+            tick_callback_ids = {};
+            foreach (uint callback_id in active_ticks) {
+                message_listview.remove_tick_callback (callback_id);
+            }
+
+            for (uint i = 0; i < signal_handlers.length; i++) {
+                signal_handlers[i].disconnect_handler ();
+            }
+            if (signal_handlers.length > 0)
+                signal_handlers.remove_range (0, signal_handlers.length);
+
             var playback = AudioPlayback.shared ();
             if (playback_message_handler != 0) {
                 playback.disconnect (playback_message_handler);
@@ -2307,6 +2531,26 @@ namespace Dc {
                 playback.disconnect (playback_finished_handler);
                 playback_finished_handler = 0;
             }
+
+            webxdc_bar.close ();
+
+            /* Detach the virtualized rows before clearing the store. This
+               immediately releases row widgets, textures, and messages even
+               if an already-running async RPC briefly keeps this view alive. */
+            message_listview.set_model (null);
+            message_listview.set_factory (null);
+            filtered_message_store.set_model (null);
+            message_store.remove_all ();
+            all_msg_ids = null;
+            pending_seen_ids = {};
+            mention_roster = null;
+            reaction_roster = null;
+            msg_actions.set_reaction_roster (null);
+            compose_bar.set_mention_roster (null);
+        }
+
+        public override void dispose () {
+            close ();
             base.dispose ();
         }
     }

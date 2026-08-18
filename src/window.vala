@@ -39,8 +39,11 @@ namespace Dc {
         private bool showing_archived = false;
         private int archived_count = 0;
 
-        /* Per-chat cached views */
+        /* Keep the active chat and two recent neighbours warm. Every view can
+           own a full message batch plus decoded media, so this cache must be
+           bounded rather than growing for the lifetime of the process. */
         private HashTable<int, ConversationView> views;
+        private int[] view_recency = {};
 
         /* Status */
         private Adw.StatusPage empty_status;
@@ -134,6 +137,7 @@ namespace Dc {
         private const double COLLAPSED_SIDEBAR_MAX_WIDTH = 10000;
         private const double COMPACT_SIDEBAR_WIDTH = 48;
         private const uint FONT_UPDATE_INTERVAL_MS = 16;
+        private const uint MAX_CACHED_CONVERSATION_VIEWS = 3;
 
         /* Modal dialog guard – only one at a time */
         private Adw.Dialog? active_modal = null;
@@ -377,6 +381,7 @@ namespace Dc {
             quit_requested = true;
             release_background_hold ();
             close_active_modal ();
+            discard_all_views ();
             if (tray != null) tray.hide ();
             var app = this.application;
             this.close ();
@@ -1340,6 +1345,8 @@ namespace Dc {
             reconnecting_rpc = true;
 
             var app = (Dc.Application) this.application;
+            /* Close views while their old RPC object is still valid. */
+            discard_all_views ();
             app.reset_rpc_client ();
             rpc = app.rpc;
             events = null;
@@ -1377,13 +1384,59 @@ namespace Dc {
                                                      ChatKind kind = ChatKind.UNKNOWN) {
             var v = views.lookup (chat_id);
             if (v != null) {
+                touch_cached_view (chat_id);
                 v.set_chat_kind (kind);
                 return v;
             }
             v = new ConversationView (chat_id, this, rpc, settings, kind);
             views.insert (chat_id, v);
             content_stack.add_named (v, "chat_%d".printf (chat_id));
+            touch_cached_view (chat_id);
+            evict_cached_views (chat_id);
             return v;
+        }
+
+        private void touch_cached_view (int chat_id) {
+            int[] next = {};
+            foreach (int id in view_recency) {
+                if (id != chat_id) next += id;
+            }
+            next += chat_id;
+            view_recency = next;
+        }
+
+        private void forget_cached_view (int chat_id) {
+            int[] next = {};
+            foreach (int id in view_recency) {
+                if (id != chat_id) next += id;
+            }
+            view_recency = next;
+        }
+
+        private void evict_cached_views (int keep_chat_id) {
+            while (views.size () > MAX_CACHED_CONVERSATION_VIEWS) {
+                int candidate = 0;
+                foreach (int id in view_recency) {
+                    if (id != keep_chat_id && id != current_chat_id) {
+                        candidate = id;
+                        break;
+                    }
+                }
+                if (candidate <= 0) return;
+                remove_cached_view (candidate);
+            }
+        }
+
+        private void remove_cached_view (int chat_id) {
+            var view = views.lookup (chat_id);
+            if (view == null) {
+                forget_cached_view (chat_id);
+                return;
+            }
+            view.close ();
+            content_stack.remove (view);
+            views.remove (chat_id);
+            forget_cached_view (chat_id);
         }
 
         public void request_messages_reload () {
@@ -2986,9 +3039,16 @@ namespace Dc {
             int k;
             ConversationView v;
             while (iter.next (out k, out v)) {
+                v.close ();
                 content_stack.remove (v);
             }
             views.remove_all ();
+            view_recency = {};
+        }
+
+        public override void dispose () {
+            discard_all_views ();
+            base.dispose ();
         }
 
         private void mark_all_views_messages_stale () {

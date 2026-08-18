@@ -23,6 +23,8 @@ namespace Dc {
         private Gtk.Box bar_content;
         private int chat_id = 0;
         private uint load_generation = 0;
+        private ulong monitor_handler = 0;
+        private bool closed = false;
 
         public WebxdcAppsBar () {
             bar_content = new Gtk.Box (Gtk.Orientation.VERTICAL, 0);
@@ -44,8 +46,15 @@ namespace Dc {
 
             /* Any start/stop can alter which rows exist, so rebuild from
                the runner's current state. */
-            Webxdc.Monitor.get_default ().changed.connect ((msg_id) => {
-                load_for_chat.begin (chat_id);
+            monitor_handler = connect_monitor (this);
+        }
+
+        private static ulong connect_monitor (WebxdcAppsBar target) {
+            WeakRef bar_ref = WeakRef (target);
+            return Webxdc.Monitor.get_default ().changed.connect ((msg_id) => {
+                var bar = bar_ref.get () as WebxdcAppsBar;
+                if (bar != null && !bar.closed)
+                    bar.load_for_chat.begin (bar.chat_id);
             });
         }
 
@@ -54,6 +63,7 @@ namespace Dc {
         public void set_pinned (PinnedMessagesManager p) { this.pinned = p; }
 
         public async void load_for_chat (int chat_id) {
+            if (closed) return;
             this.chat_id = chat_id;
             uint generation = ++load_generation;
             if (chat_id <= 0 || !Webxdc.AVAILABLE || rpc == null) {
@@ -72,7 +82,7 @@ namespace Dc {
 
             foreach (int app_id in app_ids) {
                 var info = yield Webxdc.card_info (app_id);
-                if (generation != load_generation) return;
+                if (closed || generation != load_generation) return;
                 if (!Webxdc.is_running (app_id)) continue;
                 next_content.append (build_row (app_id, info));
             }
@@ -181,6 +191,25 @@ namespace Dc {
             vbox.append (stop_btn);
 
             popover.popup ();
+        }
+
+        public void close () {
+            if (closed) return;
+            closed = true;
+            load_generation++;
+            chat_id = 0;
+            if (monitor_handler != 0) {
+                Webxdc.Monitor.get_default ().disconnect (monitor_handler);
+                monitor_handler = 0;
+            }
+            rpc = null;
+            pinned = null;
+            hide_bar ();
+        }
+
+        public override void dispose () {
+            close ();
+            base.dispose ();
         }
 
         private static Gtk.Button bar_button (string icon_name,
