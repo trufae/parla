@@ -120,6 +120,13 @@ namespace Dc {
         private string? pending_draft_file_name = null;
         private int pending_draft_quote_msg_id = 0;
         private bool pending_draft_voice = false;
+
+        private enum DraftSaveResult {
+            UNAVAILABLE,
+            FAILED,
+            SAVED
+        }
+
         private int64 scroll_freeze_until_us = 0;
         private Queue<PendingSend> send_queue = new Queue<PendingSend> ();
         private bool sending_queue = false;
@@ -2273,21 +2280,25 @@ namespace Dc {
                 ConversationView target, string text, string? file_path,
                 string? file_name, int quote_msg_id, bool voice) {
             WeakRef view_ref = WeakRef (target);
-            save_draft_snapshot.begin (target.rpc, target.window,
-                target.chat_id, text, file_path, file_name, quote_msg_id,
+            save_draft_snapshot.begin (target.rpc, target.chat_id,
+                text, file_path, file_name, quote_msg_id,
                 voice, (obj, result) => {
-                    bool available = save_draft_snapshot.end (result);
+                    var outcome = save_draft_snapshot.end (result);
                     var view = view_ref.get () as ConversationView;
-                    if (view != null && !view.closed)
-                        view.draft_rpc_available = available;
+                    if (view != null && !view.closed) {
+                        view.draft_rpc_available =
+                            outcome != DraftSaveResult.UNAVAILABLE;
+                        if (outcome == DraftSaveResult.SAVED)
+                            view.window.request_reload_chats ();
+                    }
                 });
         }
 
-        private static async bool save_draft_snapshot (
-                RpcClient rpc, Window window, int chat_id, string text,
+        private static async DraftSaveResult save_draft_snapshot (
+                RpcClient rpc, int chat_id, string text,
                 string? file_path, string? file_name, int quote_msg_id,
                 bool voice) {
-            if (rpc.account_id <= 0) return true;
+            if (rpc.account_id <= 0) return DraftSaveResult.FAILED;
             try {
                 bool has_text = text.length > 0;
                 bool has_file = file_path != null && file_path.length > 0;
@@ -2306,12 +2317,13 @@ namespace Dc {
                                     file_path, file_name))
                             : null);
                 }
-                window.request_reload_chats ();
-                return true;
+                return DraftSaveResult.SAVED;
             } catch (Error e) {
                 bool available = !is_missing_draft_rpc (e);
                 if (available) warning ("save_draft: %s", e.message);
-                return available;
+                return available
+                    ? DraftSaveResult.FAILED
+                    : DraftSaveResult.UNAVAILABLE;
             }
         }
 
