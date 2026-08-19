@@ -147,26 +147,17 @@ namespace Dc {
             var emoji_row2 = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 2);
             for (int i = 0; i < emojis.length; i++) {
                 string emoji = emojis[i];
-                var btn = new Gtk.Button.with_label (emoji);
-                btn.add_css_class ("flat");
+                var btn = new PopoverButton (popover, emoji);
                 bool is_more = (emoji == "…");
                 if (is_more) {
                     btn.tooltip_text = "More emojis…";
-                    btn.clicked.connect (() => {
-                        popover.popdown ();
-                        Idle.add (() => {
-                            show_emoji_picker (msg_id, parent, x, y);
-                            return Source.REMOVE;
-                        });
+                    btn.selected.connect (() => {
+                        show_emoji_picker (msg_id, parent, x, y);
                     });
                 } else {
                     if (has_my_reaction (msg, emoji)) btn.add_css_class ("suggested-action");
-                    btn.clicked.connect (() => {
-                        popover.popdown ();
-                        Idle.add (() => {
-                            send_reaction.begin (msg_id, emoji);
-                            return Source.REMOVE;
-                        });
+                    btn.selected.connect (() => {
+                        send_reaction.begin (msg_id, emoji);
                     });
                 }
                 if (i < 4) emoji_row1.append (btn);

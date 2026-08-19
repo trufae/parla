@@ -281,12 +281,12 @@ namespace Dc {
                chat only offers Unarchive (pinning would unarchive it). */
             if (!is_archived) {
                 append_menu_button (box, popover,
-                    is_pinned ? "Unpin" : "Pin").clicked.connect (() => {
+                    is_pinned ? "Unpin" : "Pin").selected.connect (() => {
                         toggle_pin.begin (chat_id, is_pinned);
                     });
             }
             append_menu_button (box, popover,
-                is_archived ? "Unarchive" : "Archive").clicked.connect (() => {
+                is_archived ? "Unarchive" : "Archive").selected.connect (() => {
                     toggle_archive.begin (chat_id, is_archived);
                 });
             /* Mute is normally managed from the Details dialog, but for
@@ -295,52 +295,42 @@ namespace Dc {
                earns a direct entry here. */
             if (is_archived) {
                 append_menu_button (box, popover,
-                    is_muted ? "Unmute" : "Mute").clicked.connect (() => {
+                    is_muted ? "Unmute" : "Mute").selected.connect (() => {
                         set_mute_state.begin (chat_id, !is_muted, null);
                     });
             }
             append_menu_button (box, popover,
                 has_unread ? "Mark as read" : "Mark as unread",
                 false, has_unread || chat_id != window.current_chat_id)
-                .clicked.connect (() => {
+                .selected.connect (() => {
                     set_unread_state.begin (chat_id, !has_unread);
                 });
             append_menu_button (box, popover, "View Media")
-                .clicked.connect (() => { show_media (chat_id); });
+                .selected.connect (() => { show_media (chat_id); });
             append_menu_button (box, popover, "Details…")
-                .clicked.connect (() => { show_info (chat_id); });
+                .selected.connect (() => { show_info (chat_id); });
             box.append (new Gtk.Separator (Gtk.Orientation.HORIZONTAL));
             append_menu_button (box, popover, "Clear Chat…", true)
-                .clicked.connect (() => {
+                .selected.connect (() => {
                     confirm_clear_history.begin (chat_id);
                 });
             if (entry != null && entry.kind == ChatKind.GROUP) {
                 append_menu_button (box, popover, "Leave…", true)
-                    .clicked.connect (() => { confirm_leave.begin (chat_id); });
+                    .selected.connect (() => { confirm_leave.begin (chat_id); });
             }
             append_menu_button (box, popover, "Delete…", true)
-                .clicked.connect (() => { confirm_delete.begin (chat_id); });
+                .selected.connect (() => { confirm_delete.begin (chat_id); });
 
             popover.child = box;
-            popover.closed.connect (() => { popover.unparent (); });
+            unparent_on_close (popover);
             popover.popup ();
         }
 
-        private static Gtk.Button make_menu_button (string label) {
-            var btn = new Gtk.Button.with_label (label);
-            btn.add_css_class ("flat");
-            ((Gtk.Label) btn.child).xalign = 0;
-            ((Gtk.Label) btn.child).halign = Gtk.Align.START;
-            return btn;
-        }
-
-        private static Gtk.Button append_menu_button (
+        private static PopoverButton append_menu_button (
                 Gtk.Box box, Gtk.Popover popover, string label,
                 bool destructive = false, bool sensitive = true) {
-            var btn = make_menu_button (label);
-            if (destructive) btn.add_css_class ("menu-destructive");
+            var btn = new PopoverButton (popover, label, destructive);
             btn.sensitive = sensitive;
-            btn.clicked.connect (() => { popover.popdown (); });
             box.append (btn);
             return btn;
         }

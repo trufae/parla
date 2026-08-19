@@ -51,6 +51,8 @@ namespace Dc {
         private void* native_backend = null;
         private bool native_backend_failed = false;
         private Gtk.MediaFile? media = null;
+        private ulong media_handler = 0;
+        private bool media_seek_pending = false;
         private GLib.Subprocess? proc = null;
         private Posix.pid_t proc_pid = 0;
         private GLib.Cancellable? proc_cancel = null;
@@ -395,48 +397,33 @@ namespace Dc {
 
         private void play_media (string file_path) {
             var m = Gtk.MediaFile.for_filename (file_path);
-            int played_id = current_message_id;
-            bool initial_seek_pending = position_us > 0;
             media = m;
-            m.notify["prepared"].connect (() => {
-                if (media == m && m.prepared && initial_seek_pending) {
-                    m.seek (position_us);
-                    initial_seek_pending = false;
-                }
-            });
-            m.notify["timestamp"].connect (() => {
-                if (media == m) sync_media_state (m);
-            });
-            m.notify["duration"].connect (() => {
-                if (media == m) sync_media_state (m);
-            });
-            m.notify["seekable"].connect (() => {
-                if (media == m) sync_media_state (m);
-            });
-            m.notify["playing"].connect (() => {
-                if (media == m) sync_media_state (m);
-            });
-            m.notify["ended"].connect (() => {
-                if (media == m && m.ended) {
-                    sync_media_state (m);
-                    playing = false;
-                    position_us = 0;
-                    stop_progress_timer ();
-                    if (current_message_id == played_id) finished (played_id);
-                }
-            });
-            m.notify["error"].connect (() => {
-                if (media == m && m.error != null) stop_backend ();
-            });
+            media_seek_pending = position_us > 0;
+            media_handler = Signal.connect_object (m, "notify",
+                (Callback) on_media_notify, this, (ConnectFlags) 0);
             m.play_now ();
-            if (m.prepared && initial_seek_pending) {
-                m.seek (position_us);
-                initial_seek_pending = false;
-            }
             sync_media_state (m);
         }
 
+        private static void on_media_notify (Gtk.MediaFile m, ParamSpec pspec,
+                                             AudioPlayback playback) {
+            if (playback.media != m) return;
+            playback.sync_media_state (m);
+            if (pspec.name == "ended" && m.ended) {
+                playback.playing = false;
+                playback.position_us = 0;
+                playback.stop_progress_timer ();
+                playback.finished (playback.current_message_id);
+            } else if (pspec.name == "error" && m.error != null) {
+                playback.stop_backend ();
+            }
+        }
+
         private void sync_media_state (Gtk.MediaFile m) {
+            if (media_seek_pending && m.prepared) {
+                media_seek_pending = false;
+                m.seek (position_us);
+            }
             position_us = int64.max (0, m.timestamp);
             duration_us = int64.max (0, m.duration);
             can_seek = m.seekable && duration_us > 0;
@@ -476,9 +463,12 @@ namespace Dc {
                 native_backend = null;
             }
             if (media != null) {
+                if (media_handler != 0) media.disconnect (media_handler);
+                media_handler = 0;
                 media.pause ();
                 media = null;
             }
+            media_seek_pending = false;
             playing = false;
             can_seek = false;
             external_backend = false;

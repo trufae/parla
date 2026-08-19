@@ -307,12 +307,7 @@ namespace Dc {
                 }
             });
             chooser.set_parent (btn);
-            chooser.closed.connect (() => {
-                Idle.add (() => {
-                    chooser.unparent ();
-                    return Source.REMOVE;
-                });
-            });
+            unparent_on_close (chooser);
             chooser.popup ();
         }
 

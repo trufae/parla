@@ -203,11 +203,8 @@ namespace Dc {
             vbox.margin_end = 4;
             vbox.margin_top = 4;
             vbox.margin_bottom = 4;
-
-            var save_btn = new Gtk.Button.with_label ("Save image");
-            save_btn.add_css_class ("flat");
-            save_btn.clicked.connect (() => {
-                popover.popdown ();
+            var save_btn = new PopoverButton (popover, "Save image");
+            save_btn.selected.connect (() => {
                 if (window != null) window.save_attachment.begin (
                     path, Path.get_basename (path));
             });
@@ -216,6 +213,7 @@ namespace Dc {
             popover.child = vbox;
             popover.set_parent (widget);
             popover.set_pointing_to ({ (int) x, (int) y, 1, 1 });
+            unparent_on_close (popover);
             popover.popup ();
         }
     }

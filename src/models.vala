@@ -5,6 +5,8 @@ namespace Dc {
     /** Flat, left-aligned button for hand-built popover menus. It closes
         its popover before emitting selected from an idle. */
     public class PopoverButton : Gtk.Button {
+        private WeakRef popover_ref;
+
         public signal void selected ();
 
         public PopoverButton (Gtk.Popover popover, string label,
@@ -18,14 +20,14 @@ namespace Dc {
                 label_widget.xalign = 0;
                 label_widget.halign = Gtk.Align.START;
             }
-            clicked.connect (() => {
-                sensitive = false;
-                popover.popdown ();
-                Idle.add (() => {
-                    selected ();
-                    return Source.REMOVE;
-                });
-            });
+            popover_ref = WeakRef (popover);
+        }
+
+        public override void clicked () {
+            sensitive = false;
+            var popover = popover_ref.get () as Gtk.Popover;
+            if (popover != null) popover.popdown ();
+            Idle.add (() => { selected (); return Source.REMOVE; });
         }
     }
 
@@ -99,22 +101,28 @@ namespace Dc {
     /** Unparent a manually-parented popover once it closes, from an idle:
         tearing it down inside its own closed handler upsets GTK. */
     public static void unparent_on_close (Gtk.Popover popover) {
-        popover.closed.connect (() => {
-            Idle.add (() => {
-                popover.unparent ();
-                return Source.REMOVE;
-            });
-        });
+        popover.closed.connect (on_popover_closed);
+    }
+
+    private static void on_popover_closed (Gtk.Popover popover) {
+        Idle.add (() => { popover.unparent (); return Source.REMOVE; });
     }
 
     public static void install_escape_close (Adw.Dialog dialog) {
         var kc = new Gtk.EventControllerKey ();
         kc.propagation_phase = Gtk.PropagationPhase.CAPTURE;
-        kc.key_pressed.connect ((kv, kc, st) => {
-            if (kv == Gdk.Key.Escape) { dialog.close (); return true; }
-            return false;
-        });
+        Signal.connect_object (kc, "key-pressed",
+            (Callback) on_dialog_key_pressed, dialog, (ConnectFlags) 0);
         ((Gtk.Widget) dialog).add_controller (kc);
+    }
+
+    private static bool on_dialog_key_pressed (Gtk.EventControllerKey controller,
+                                                uint keyval, uint keycode,
+                                                Gdk.ModifierType state,
+                                                Adw.Dialog dialog) {
+        if (keyval != Gdk.Key.Escape) return false;
+        dialog.close ();
+        return true;
     }
 
     public static Gdk.Texture? load_avatar (string? path) {
