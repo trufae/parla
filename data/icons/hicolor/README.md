@@ -21,10 +21,10 @@ builds that cannot rely on an installed `adwaita-icon-theme`. GTK treats
 resource icons as part of the `hicolor` fallback theme, so the user's icon
 theme still wins whenever it provides the icon.
 
-By default they are not bundled: `src/icon_fallback.vala` detects at
-runtime that the active theme chain lacks them and inherits the installed
-Adwaita after the user's theme and `hicolor` (issue #61). The copies kept
-here therefore double as the list of stock icons Parla relies on;
+By default they are not bundled: `src/icon_fallback.vala` always adds the
+installed Adwaita theme as a per-process fallback after the user's theme and
+`hicolor` (issue #61). The copies kept here therefore double as the list of
+stock icons Parla relies on;
 `tests/check_icons.py` fails when a `*-symbolic` name used in `src/` is
 neither listed here nor built into GTK4/libadwaita.
 
