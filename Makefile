@@ -13,6 +13,11 @@ MESON_OPTIONS?=
 # builds with the webkitgtk-6.0 dependency; a plain `make` reverts to the
 # stub because the option is passed explicitly on every reconfigure.
 MESON_OPTIONS+=-Dwebxdc=$(if $(filter 1,$(WITH_WEBXDC)),true,false)
+# `make BUNDLE_ICONS=1` compiles the Adwaita symbolic icons Parla uses into
+# the binary (issue #61); by default they come from the installed
+# adwaita-icon-theme, inherited at runtime when the active theme lacks them.
+BUNDLE_ICONS?=0
+MESON_OPTIONS+=-Dbundle_icons=$(if $(filter 1,$(BUNDLE_ICONS)),true,false)
 SANITIZER_DEBUG_OPTIONS=-Dstrip=false -Dvala_args=--debug -Dc_args=-g
 
 .PHONY: all asan tsan run clean install uninstall deb app macos appimage

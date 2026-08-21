@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <gresources>
   <gresource prefix="/io/github/trufae/Parla/icons">
+    <!-- App icons -->
     <file>scalable/apps/parla-welcome.svg</file>
     <file>scalable/apps/parla-tray.svg</file>
+    <!-- Parla-specific symbolic icons -->
     <file>scalable/actions/sticker-symbolic.svg</file>
     <file>scalable/actions/notifications-disabled-symbolic.svg</file>
     <file>scalable/actions/archive-symbolic.svg</file>
