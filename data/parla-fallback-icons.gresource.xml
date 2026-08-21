@@ -2,8 +2,8 @@
 <!-- Adwaita symbolic icons the UI depends on, bundled so they resolve on
      desktops whose icon theme lacks them (GTK treats resource icons as
      hicolor fallbacks: the user theme still wins). Compiled in only when
-     -Dbundle_icons=true (default); packagers that instead depend on
-     adwaita-icon-theme can disable it. See data/icons/hicolor/README.md. -->
+     -Dbundle_icons=true; it is off by default because normal GTK4 installs
+     provide adwaita-icon-theme. See data/icons/hicolor/README.md. -->
 <gresources>
   <gresource prefix="/io/github/trufae/Parla/icons">
     <file>scalable/actions/action-unavailable-symbolic.svg</file>

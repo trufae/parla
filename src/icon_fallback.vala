@@ -5,8 +5,8 @@ namespace Dc {
        GTK only consults the current icon theme, its `Inherits` chain and
        `hicolor`; it never falls back to Adwaita by itself, and Adwaita is
        marked Hidden so users of XFCE, LXQt, ... cannot select it even
-       though GTK4 depends on it being installed. When the sentinel icons
-       are missing we prepend a private search path whose
+       though GTK4 depends on it being installed. At startup we prepend a
+       private search path whose
        `hicolor/index.theme` is a copy of the system one with the fallback
        themes appended to `Inherits`. Because GTK loads hicolor's directories
        from *every* search path, nothing is lost, and the fallback themes are
@@ -14,28 +14,16 @@ namespace Dc {
        symbolic recolouring keeps working, unlike unthemed search-path
        icons, which GTK < 4.20 renders without recolouring.
 
-       This is a no-op whenever the current theme already provides the
-       icons, so GNOME, Breeze, Papirus, Yaru or a bundled Adwaita
-       (Windows/macOS packages, -Dbundle_icons=true) never take this path. */
+       The fallback is always present so partially complete themes and theme
+       changes made while Parla is running remain covered. GNOME, Breeze,
+       Papirus, Yaru or a bundled Adwaita still take precedence whenever
+       they provide an icon. */
     namespace IconFallback {
         /* Themes tried, in order, after the user's chain and hicolor. */
         private const string[] FALLBACK_THEMES = { "Adwaita" };
 
-        /* Icons that only Adwaita provides among the ones the UI uses; if
-           the theme chain resolves all of them, no fallback is needed. */
-        private const string[] SENTINELS = {
-            "sidebar-show-symbolic",
-            "starred-symbolic",
-            "mail-attachment-symbolic",
-        };
-
         public void install (Gtk.IconTheme theme) {
-            foreach (unowned string name in SENTINELS) {
-                if (!theme.has_icon (name)) {
-                    apply (theme);
-                    return;
-                }
-            }
+            apply (theme);
         }
 
         private void apply (Gtk.IconTheme theme) {
