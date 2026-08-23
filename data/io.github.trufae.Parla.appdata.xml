@@ -29,6 +29,22 @@
     <name translate="no">pancake</name>
   </developer>
   <releases>
+    <release version="0.8.2" date="2026-08-23">
+      <description>
+        <ul>
+          <li>Bundle adwaita icons as fallback when not available</li>
+          <li>Fix memory leaks in media playback</li>
+          <li>Navigating thru chat pictures not limited to chat cache</li>
+          <li>Fix memory leaks in chat switching and font/media scaling</li>
+          <li>Rpc bridge is now fully async, solving random gtk freezes</li>
+          <li>Select media playback speed</li>
+          <li>Add links in gallery panel</li>
+          <li>Link previews using the html og tags</li>
+          <li>Fix font contrast color for links</li>
+          <li>Filter tracking ids when pasting links (uBlock support)</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.8.0" date="2026-08-14">
       <description>
         <ul>
