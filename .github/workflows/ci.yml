@@ -163,6 +163,24 @@ jobs:
             glib-networking \
             adwaita-icon-theme
 
+      # VoiceOver only sees GTK through its AccessKit backend, which
+      # Homebrew's gtk4 does not enable, so the library is rebuilt
+      # with it (scripts/macos/gtk4-accesskit.sh). The cache keys on
+      # the installed gtk4 version, so the rebuild happens once per
+      # gtk4 release and runner flavor.
+      - name: Compute gtk4 rebuild cache key
+        id: gtk4
+        run: echo "version=$(brew list --versions gtk4 | awk '{ print $2; exit }')" >> "$GITHUB_OUTPUT"
+
+      - name: Cache AccessKit-enabled GTK libraries
+        uses: actions/cache@v4
+        with:
+          path: .cache/macos-a11y-libs
+          key: macos-gtk4-accesskit-${{ matrix.dmgname }}-${{ steps.gtk4.outputs.version }}
+
+      - name: Rebuild gtk4 with the AccessKit a11y backend
+        run: scripts/macos/gtk4-accesskit.sh
+
       - name: Build
         run: make BUILDTYPE=release WITH_WEBXDC=1
 

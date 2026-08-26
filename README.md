@@ -40,7 +40,7 @@ Want to build it yourself? See [Build](#build) below.
 - **Choose the conversation layout** &mdash; use familiar bubbles, compact IRC-style lines, or workspace rows. The split view adapts to narrow and phone-sized windows, where the sidebar becomes a single-pane navigation view.
 - **Keyboard-first when you want it** &mdash; quickly switch chats, create conversations, search, navigate, and focus the composer without leaving the keyboard.
 - **Desktop-aware** &mdash; configurable notifications, a tray icon for keeping Parla available in the background, and support for multiple accounts.
-- **Screen-reader support** &mdash; works with Orca on Linux; Windows builds ship GTK with the AccessKit backend so NVDA and JAWS can read the interface. See [docs/accessibility.md](docs/accessibility.md).
+- **Screen-reader support** &mdash; works with Orca on Linux; Windows and macOS builds ship GTK with the AccessKit backend so NVDA, JAWS and VoiceOver can read the interface. See [docs/accessibility.md](docs/accessibility.md).
 
 ## More features
 
