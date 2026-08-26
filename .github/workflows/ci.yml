@@ -128,6 +128,36 @@ jobs:
           path: dist/appimage/out/*.AppImage
           if-no-files-found: error
 
+  # Native Sailfish OS RPM: vendored GTK4/libadwaita stack plus the bundled
+  # Delta Chat engine, built with the Sailfish Platform SDK (see
+  # dist/sailfishos/README.md). Needs a 5.1+ target for lipstick xdg-shell.
+  build-sfos:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: aarch64
+            release: 5.1.0.11
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Fetch vendored sources
+        run: dist/sailfishos/fetch-sources.sh ${{ matrix.arch }}
+
+      - name: Build RPM with the Sailfish Platform SDK
+        uses: coderus/github-sfos-build@sfos5
+        with:
+          release: ${{ matrix.release }}
+          arch: ${{ matrix.arch }}
+
+      - name: Upload RPM artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: parla-sfos-${{ matrix.arch }}
+          path: RPMS/*.rpm
+          if-no-files-found: error
+
   build-macos:
     strategy:
       fail-fast: false
@@ -327,7 +357,7 @@ jobs:
 
   release:
     if: startsWith(github.ref, 'refs/tags/')
-    needs: [build-deb, build-flatpak, build-appimage, macos-sign, build-windows]
+    needs: [build-deb, build-flatpak, build-appimage, build-sfos, macos-sign, build-windows]
     runs-on: ubuntu-24.04
     steps:
       - name: Download artifacts
@@ -341,12 +371,13 @@ jobs:
           debs=(artifacts/**/*.deb)
           flatpaks=(artifacts/**/*.flatpak)
           appimages=(artifacts/**/*.AppImage)
+          rpms=(artifacts/parla-sfos-*/*.rpm)
           # One DMG per entry in the build-macos matrix
           dmgs=(artifacts/parla-macos-signed/*.dmg)
           zips=(artifacts/parla-windows-*/*.zip)
-          if (( ${#debs[@]} == 0 || ${#flatpaks[@]} == 0 || ${#appimages[@]} == 0 || ${#dmgs[@]} != 3 || ${#zips[@]} == 0 )); then
+          if (( ${#debs[@]} == 0 || ${#flatpaks[@]} == 0 || ${#appimages[@]} == 0 || ${#rpms[@]} == 0 || ${#dmgs[@]} != 3 || ${#zips[@]} == 0 )); then
             find artifacts -maxdepth 4 -type f
-            echo "::error::Missing release artifact (.deb, .flatpak, three .dmg files, .AppImage, or .zip)"
+            echo "::error::Missing release artifact (.deb, .flatpak, .AppImage, SailfishOS .rpm, three .dmg files, or .zip)"
             exit 1
           fi
           declare -A dmg_names
@@ -367,5 +398,6 @@ jobs:
             artifacts/**/*.deb
             artifacts/**/*.flatpak
             artifacts/**/*.AppImage
+            artifacts/parla-sfos-*/*.rpm
             artifacts/parla-macos-signed/*.dmg
             artifacts/parla-windows-*/*.zip

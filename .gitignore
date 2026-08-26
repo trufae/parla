@@ -8,6 +8,10 @@ dist/macos/
 dist/windows/
 dist/debian/parla/build/
 dist/debian/parla/control/
+# Vendored sources fetched by dist/sailfishos/fetch-sources.sh
+rpm/*.tar.*
+rpm/deltachat-rpc-server-*
+RPMS/
 dist/debian/parla/data/
 dist/debian/parla/debian-binary
 dist/debian/parla/root/

@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Parla
+Comment=Decentralized encrypted chat over email (Delta Chat)
+Icon=harbour-parla
+Exec=harbour-parla
+X-Nemo-Application-Type=generic
+
+[X-Sailjail]
+OrganizationName=io.github.trufae
+ApplicationName=Parla
+Permissions=Internet;Audio;Microphone;Pictures;Videos;Music;Documents;Downloads;RemovableMedia
