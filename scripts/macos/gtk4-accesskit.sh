@@ -31,12 +31,12 @@ ACCESSKIT_C_GIT="https://github.com/AccessKit/accesskit-c"
 
 GTK_LIB="$BREW_PREFIX/lib/libgtk-4.1.dylib"
 
-# The backend is compiled in, so its witness is in the library: a
-# load command for libaccesskit in the normal (shared) case, or at
-# least the backend's name string if it was ever linked statically.
+# The witness is the load commands: a GTK with the backend links the
+# accesskit dylib. Never scan strings for this — a stock GTK contains
+# the literal help text "accesskit - Disabled during GTK build", so a
+# strings match proves nothing.
 gtk_has_accesskit() {
-    otool -L "$1" 2>/dev/null | grep -qi accesskit \
-        || strings "$1" 2>/dev/null | grep -qw accesskit
+    otool -L "$1" 2>/dev/null | grep -qi accesskit
 }
 
 if gtk_has_accesskit "$GTK_LIB"; then

@@ -303,16 +303,17 @@ fi
 # local builds against a stock GTK.
 if [ "${REQUIRE_A11Y:-1}" = "1" ]; then
     bundled_gtk="$FRAMEWORKS/libgtk-4.1.dylib"
-    if ! otool -L "$bundled_gtk" | grep -qi accesskit \
-        && ! strings "$bundled_gtk" | grep -qw accesskit; then
+    # The witness is the load command for the accesskit dylib — never
+    # a strings scan, since a stock GTK contains the literal help text
+    # "accesskit - Disabled during GTK build".
+    if ! otool -L "$bundled_gtk" | grep -qi accesskit; then
         echo "error: bundled GTK lacks the AccessKit accessibility backend;" >&2
         echo "       run scripts/macos/gtk4-accesskit.sh first, or set REQUIRE_A11Y=0" >&2
         echo "       to build a bundle that VoiceOver cannot read" >&2
         exit 1
     fi
-    if otool -L "$bundled_gtk" | grep -qi accesskit \
-        && ! find "$FRAMEWORKS" -maxdepth 1 -name 'libaccesskit*.dylib' \
-            -print -quit | grep -q .; then
+    if ! find "$FRAMEWORKS" -maxdepth 1 -name 'libaccesskit*.dylib' \
+        -print -quit | grep -q .; then
         echo "error: bundled GTK links AccessKit but no libaccesskit dylib was bundled" >&2
         exit 1
     fi
