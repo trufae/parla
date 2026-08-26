@@ -22,3 +22,5 @@ src/config.vala
 .codex/
 scripts/stickers/.tools/
 ./*.zip
+.cache/
+builddir-gtk4-accesskit/
