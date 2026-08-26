@@ -201,6 +201,8 @@ jobs:
             zip
             unzip
             curl
+            git
+            base-devel
             mingw-w64-ucrt-x86_64-gcc
             mingw-w64-ucrt-x86_64-meson
             mingw-w64-ucrt-x86_64-vala
@@ -212,6 +214,30 @@ jobs:
             mingw-w64-ucrt-x86_64-librsvg
             mingw-w64-ucrt-x86_64-webp-pixbuf-loader
             mingw-w64-ucrt-x86_64-ntldd
+
+      # Windows screen readers only see GTK through its AccessKit
+      # backend, which MSYS2's gtk4 does not enable, so the package is
+      # rebuilt with it (scripts/windows/gtk4-accesskit.sh). The cache
+      # keys on the upstream PKGBUILD version the script builds from,
+      # so the ~30 minute rebuild happens once per gtk4 release.
+      - name: Compute gtk4 rebuild cache key
+        id: gtk4
+        run: |
+          ver="$(curl -sSL https://raw.githubusercontent.com/msys2/MINGW-packages/master/mingw-w64-gtk4/PKGBUILD \
+            | awk -F= '/^pkgver=/ { v = $2 } /^pkgrel=/ { r = $2 } END { print v "-" r }')"
+          if [ -z "$ver" ] || [ "$ver" = "-" ]; then
+            ver="$(pacman -Si mingw-w64-ucrt-x86_64-gtk4 | awk '/^Version/ { print $3; exit }')"
+          fi
+          echo "version=$ver" >> "$GITHUB_OUTPUT"
+
+      - name: Cache AccessKit-enabled gtk4 packages
+        uses: actions/cache@v4
+        with:
+          path: .cache/msys2-a11y-pkgs
+          key: msys2-gtk4-accesskit-${{ steps.gtk4.outputs.version }}
+
+      - name: Rebuild gtk4 with the AccessKit a11y backend
+        run: bash scripts/windows/gtk4-accesskit.sh
 
       - name: Build and bundle
         run: WITH_WEBXDC=1 bash scripts/windows/bundle.sh
