@@ -32,12 +32,12 @@ ACCESSKIT_C_GIT="https://github.com/AccessKit/accesskit-c"
 
 GTK_DLL="$PREFIX/bin/libgtk-4-1.dll"
 
-# The backend is compiled in, so its witness is in the DLL: an import
-# of libaccesskit.dll in the normal (shared) case, or at least the
-# backend's name string if it was ever linked statically.
+# The witness is the import table: a GTK with the backend links the
+# accesskit DLL. Never scan strings for this — a stock GTK contains
+# the literal help text "accesskit - Disabled during GTK build", so a
+# strings match proves nothing.
 gtk_has_accesskit() {
-    objdump -p "$GTK_DLL" 2>/dev/null | grep -qi accesskit \
-        || strings -a "$GTK_DLL" 2>/dev/null | grep -qw accesskit
+    objdump -p "$GTK_DLL" 2>/dev/null | awk '/DLL Name/' | grep -qi accesskit
 }
 
 if gtk_has_accesskit; then

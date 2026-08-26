@@ -108,19 +108,21 @@ fi
 # AccessKit backend (a UI Automation bridge), which the stock MSYS2
 # gtk4 does not compile in. CI rebuilds gtk4 with the backend enabled
 # (scripts/windows/gtk4-accesskit.sh); refuse to ship a GTK that would
-# present an empty window to screen readers. REQUIRE_A11Y=0 skips the
-# check for local builds against a stock GTK.
+# present an empty window to screen readers. The witness is the import
+# of the accesskit DLL — never a strings scan, since a stock GTK
+# contains the literal help text "accesskit - Disabled during GTK
+# build". REQUIRE_A11Y=0 skips the check for local builds against a
+# stock GTK.
 if [ "${REQUIRE_A11Y:-1}" = "1" ]; then
-    if ! objdump -p "$BIN/libgtk-4-1.dll" | grep -qi accesskit \
-        && ! strings -a "$BIN/libgtk-4-1.dll" | grep -qw accesskit; then
+    accesskit_dll="$(objdump -p "$BIN/libgtk-4-1.dll" \
+        | awk 'tolower($0) ~ /dll name:.*accesskit/ { print $3; exit }')"
+    if [ -z "$accesskit_dll" ]; then
         echo "error: bundled GTK lacks the AccessKit accessibility backend;" >&2
         echo "       run scripts/windows/gtk4-accesskit.sh first, or set REQUIRE_A11Y=0" >&2
         echo "       to build a bundle that Windows screen readers cannot read" >&2
         exit 1
     fi
-    accesskit_dll="$(objdump -p "$BIN/libgtk-4-1.dll" \
-        | awk 'tolower($0) ~ /dll name:.*accesskit/ { print $3; exit }')"
-    if [ -n "$accesskit_dll" ] && [ ! -f "$BIN/$accesskit_dll" ]; then
+    if [ ! -f "$BIN/$accesskit_dll" ]; then
         echo "error: bundled GTK imports $accesskit_dll but the DLL closure did not ship it" >&2
         exit 1
     fi
