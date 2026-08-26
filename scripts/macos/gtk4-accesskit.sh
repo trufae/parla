@@ -55,7 +55,11 @@ STAGE_CACHE="$CACHE_DIR/gtk4-$gtk_ver"
 
 deploy_stage() {
     local stage="$1" f base
-    rsync -a "$stage/" "$BREW_PREFIX/"
+    # No dir times or ownership: on Intel BREW_PREFIX is /usr/local,
+    # whose top directory is root-owned, and restoring its mtime makes
+    # rsync fail with utimensat EPERM (exit 23) even though every file
+    # lands fine.
+    rsync -a --omit-dir-times --no-owner --no-group "$stage/" "$BREW_PREFIX/"
     # Keep the keg copy identical: libadwaita and the gtk modules load
     # GTK through the keg's opt path, and a second, backend-less GTK
     # there would race ours for the one slot in the app bundle.
@@ -130,7 +134,7 @@ if ! pkg-config --exists "$ak_module"; then
         fi
     done
     rsync -a "$ak_stage/" "$STAGE/"
-    rsync -a "$ak_stage/" "$BREW_PREFIX/"
+    rsync -a --omit-dir-times --no-owner --no-group "$ak_stage/" "$BREW_PREFIX/"
     if ! pkg-config --exists "$ak_module"; then
         echo "error: $ak_module still not found after installing accesskit-c" >&2
         exit 1
