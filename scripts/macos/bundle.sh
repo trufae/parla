@@ -296,6 +296,28 @@ if otool -L "$webp_loader" | grep -qE "$BREW_PREFIX|/usr/local"; then
     exit 1
 fi
 
+# Screen reader support: VoiceOver only sees GTK through its AccessKit
+# backend, which Homebrew's stock gtk4 does not compile in.
+# scripts/macos/gtk4-accesskit.sh rebuilds it; refuse to ship an app
+# bundle VoiceOver cannot read. REQUIRE_A11Y=0 skips the check for
+# local builds against a stock GTK.
+if [ "${REQUIRE_A11Y:-1}" = "1" ]; then
+    bundled_gtk="$FRAMEWORKS/libgtk-4.1.dylib"
+    if ! otool -L "$bundled_gtk" | grep -qi accesskit \
+        && ! strings "$bundled_gtk" | grep -qw accesskit; then
+        echo "error: bundled GTK lacks the AccessKit accessibility backend;" >&2
+        echo "       run scripts/macos/gtk4-accesskit.sh first, or set REQUIRE_A11Y=0" >&2
+        echo "       to build a bundle that VoiceOver cannot read" >&2
+        exit 1
+    fi
+    if otool -L "$bundled_gtk" | grep -qi accesskit \
+        && ! find "$FRAMEWORKS" -maxdepth 1 -name 'libaccesskit*.dylib' \
+            -print -quit | grep -q .; then
+        echo "error: bundled GTK links AccessKit but no libaccesskit dylib was bundled" >&2
+        exit 1
+    fi
+fi
+
 if command -v gio-querymodules >/dev/null 2>&1 && [ -d "$RESOURCES/lib/gio/modules" ]; then
     gio-querymodules "$RESOURCES/lib/gio/modules"
 fi

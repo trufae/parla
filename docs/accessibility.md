@@ -19,7 +19,7 @@ backends compiled into GTK:
   A GTK built without it exposes *nothing*: the window is an empty
   rectangle to a screen reader, no matter what the app does.
 - **macOS**: same situation — VoiceOver is only reachable through the
-  AccessKit backend.
+  AccessKit backend (bridged to NSAccessibility).
 
 The backend is selected automatically: in a win32-only GTK build with
 AccessKit compiled in, AccessKit is the only real backend and is used
@@ -47,6 +47,40 @@ packages is unreadable by NVDA/JAWS. Therefore:
   local throwaway builds against a stock GTK.
 - If MSYS2 ever enables AccessKit in its own gtk4 package, the rebuild
   script detects that and becomes a no-op; it can then be deleted.
+
+## macOS bundle contract
+
+Homebrew's gtk4 bottle has the same gap (and Homebrew carries no
+accesskit-c formula at all), so:
+
+- CI rebuilds the same GTK release Homebrew installed from the
+  upstream tarball with the formula's macOS meson arguments plus
+  `-Daccesskit=enabled`, building accesskit-c first:
+  `scripts/macos/gtk4-accesskit.sh`. Only `libgtk-4*.dylib` is
+  replaced — in both `$(brew --prefix)/lib` and the gtk4 keg, because
+  libadwaita and the gtk modules reference GTK through the keg's opt
+  path. Headers and pkg-config files are identical for the same
+  release, so the app build is untouched. The built dylibs are cached
+  per gtk4 version and runner flavor.
+- `scripts/macos/bundle.sh` refuses to produce an app bundle whose
+  `libgtk-4.1.dylib` lacks the AccessKit backend, and checks that the
+  `libaccesskit` dylib made it into `Frameworks/` (the Mach-O closure
+  picks it up like any other dependency). Set `REQUIRE_A11Y=0` only
+  for local throwaway builds against a stock GTK.
+- If Homebrew ever ships gtk4 with AccessKit, the rebuild script
+  detects that and becomes a no-op; it can then be deleted.
+
+To smoke-test: turn on VoiceOver (Cmd+F5), start Parla, and move
+focus with Tab / VO-arrows; controls should be announced with names
+and roles.
+
+## Linux packaging
+
+Nothing special is required, but for the record: the deb uses distro
+GTK; the Flatpak uses the GNOME runtime's GTK and Flatpak proxies the
+accessibility bus by default (the manifest must never pass
+`--no-a11y-bus`); the AppImage bundles a distro GTK whose AT-SPI
+backend talks to the host a11y bus over D-Bus.
 
 ## Testing with NVDA
 
