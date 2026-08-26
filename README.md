@@ -134,6 +134,9 @@ make run
 **Flatpak:** `flatpak install io.github.trufae.Parla.flatpak`
 
 **AppImage:** `make appimage`
+
+**Sailfish OS (5.1+, experimental):** `harbour-parla` RPMs with a bundled
+GTK4/libadwaita stack; see [dist/sailfishos/README.md](dist/sailfishos/README.md).
 </details>
 
 <details>
