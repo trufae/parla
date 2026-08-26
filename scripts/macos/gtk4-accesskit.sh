@@ -55,11 +55,12 @@ STAGE_CACHE="$CACHE_DIR/gtk4-$gtk_ver"
 
 deploy_stage() {
     local stage="$1" f base
-    # No dir times or ownership: on Intel BREW_PREFIX is /usr/local,
-    # whose top directory is root-owned, and restoring its mtime makes
-    # rsync fail with utimensat EPERM (exit 23) even though every file
-    # lands fine.
-    rsync -a --omit-dir-times --no-owner --no-group "$stage/" "$BREW_PREFIX/"
+    # -rlt only, no -a: on Intel BREW_PREFIX is /usr/local, whose
+    # directories are root-owned, and any attempt to restore their
+    # metadata (mtime via utimensat, mode via fchmodat) fails with
+    # EPERM and kills rsync with exit 23 even though every file lands
+    # fine. Copy files and symlinks, touch no existing directory.
+    rsync -rlt --omit-dir-times "$stage/" "$BREW_PREFIX/"
     # Keep the keg copy identical: libadwaita and the gtk modules load
     # GTK through the keg's opt path, and a second, backend-less GTK
     # there would race ours for the one slot in the app bundle.
@@ -134,7 +135,9 @@ if ! pkg-config --exists "$ak_module"; then
         fi
     done
     rsync -a "$ak_stage/" "$STAGE/"
-    rsync -a --omit-dir-times --no-owner --no-group "$ak_stage/" "$BREW_PREFIX/"
+    # Same flags as deploy_stage: never touch existing directory
+    # metadata under the (possibly root-owned) Homebrew prefix.
+    rsync -rlt --omit-dir-times "$ak_stage/" "$BREW_PREFIX/"
     if ! pkg-config --exists "$ak_module"; then
         echo "error: $ak_module still not found after installing accesskit-c" >&2
         exit 1
