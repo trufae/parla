@@ -203,7 +203,7 @@ jobs:
         run: echo "version=$(brew list --versions gtk4 | awk '{ print $2; exit }')" >> "$GITHUB_OUTPUT"
 
       - name: Cache AccessKit-enabled GTK libraries
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: .cache/macos-a11y-libs
           key: macos-gtk4-accesskit-${{ matrix.dmgname }}-${{ steps.gtk4.outputs.version }}
@@ -279,7 +279,7 @@ jobs:
           echo "version=$ver" >> "$GITHUB_OUTPUT"
 
       - name: Cache AccessKit-enabled gtk4 packages
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: .cache/msys2-a11y-pkgs
           key: msys2-gtk4-accesskit-${{ steps.gtk4.outputs.version }}
