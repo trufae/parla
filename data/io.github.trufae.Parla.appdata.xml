@@ -29,6 +29,16 @@
     <name translate="no">pancake</name>
   </developer>
   <releases>
+    <release version="0.8.4" date="2026-08-31">
+      <description>
+        <ul>
+          <li>Accessibility support (AccessKit/A11Y)</li>
+          <li>WebDevTools for XDC apps</li>
+          <li>Fix WebXDC bugs, enabling more apps to work</li>
+          <li>Initial SailfishOS port</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.8.2" date="2026-08-23">
       <description>
         <ul>
