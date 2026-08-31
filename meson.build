@@ -56,7 +56,7 @@ appdata_vala = custom_target(
   output: 'appdata.vala',
   command: [
     python,
-    files('build-aux/gen-appdata.py'),
+    files('scripts/gen-appdata.py'),
     '@INPUT@',
     '@OUTPUT@',
   ],
@@ -238,7 +238,7 @@ if get_option('webxdc') \
     configuration: apparmor_conf,
   )
   meson.add_install_script(
-    'build-aux/install-apparmor-profile.sh',
+    'scripts/install-apparmor-profile.sh',
     apparmor_profile,
   )
 endif

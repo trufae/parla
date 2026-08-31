@@ -360,10 +360,15 @@ jobs:
     needs: [build-deb, build-flatpak, build-appimage, build-sfos, macos-sign, build-windows]
     runs-on: ubuntu-24.04
     steps:
+      - uses: actions/checkout@v7
+
       - name: Download artifacts
         uses: actions/download-artifact@v8
         with:
           path: artifacts
+
+      - name: Generate release notes
+        run: python3 scripts/release-notes.py > release-notes.md
 
       - name: Verify release artifacts
         run: |
@@ -393,6 +398,7 @@ jobs:
       - name: Publish release
         uses: softprops/action-gh-release@v3
         with:
+          body_path: release-notes.md
           fail_on_unmatched_files: true
           files: |
             artifacts/**/*.deb
