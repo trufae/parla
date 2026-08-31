@@ -37,6 +37,25 @@ namespace Dc {
         d.present (parent);
     }
 
+    // Vertically-centered flat button, shared by dialogs and header bars.
+    public static Gtk.Button flat_button (string label, bool error = false) {
+        var button = new Gtk.Button.with_label (label);
+        button.valign = Gtk.Align.CENTER;
+        button.add_css_class ("flat");
+        if (error) button.add_css_class ("error");
+        return button;
+    }
+
+    public static Gtk.Button flat_icon_button (string icon_name, string tooltip,
+                                               bool error = false) {
+        var button = new Gtk.Button.from_icon_name (icon_name);
+        button.valign = Gtk.Align.CENTER;
+        button.add_css_class ("flat");
+        if (error) button.add_css_class ("error");
+        button.tooltip_text = tooltip;
+        return button;
+    }
+
     public static bool is_dialog_dismissal (Error error) {
         return error is IOError.CANCELLED
             || error is Gtk.DialogError.CANCELLED
@@ -162,6 +181,19 @@ namespace Dc {
         var m = obj.get_member (key);
         if (m == null || m.is_null ()) return false;
         return obj.get_boolean_member (key);
+    }
+
+    // Decode a JSON-RPC result that is an array of ints; empty array when
+    // the node is missing or not an array.
+    public static int[] json_int_array (Json.Node? result) {
+        if (result == null || result.get_node_type () != Json.NodeType.ARRAY)
+            return {};
+        var arr = result.get_array ();
+        int[] ids = new int[arr.get_length ()];
+        for (uint i = 0; i < arr.get_length (); i++) {
+            ids[i] = (int) arr.get_int_element (i);
+        }
+        return ids;
     }
 
     /* ---- Widget helpers ---- */

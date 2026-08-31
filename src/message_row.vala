@@ -516,11 +516,7 @@ namespace Dc {
             if (!msg.is_forwarded && !outgoing && show_sender_name) {
                 string? author = effective_author_name (msg);
                 if (author != null) {
-                    var sender = new Gtk.Label (author);
-                    sender.add_css_class ("message-sender");
-                    sender.halign = Gtk.Align.START;
-                    sender.xalign = 0;
-                    sender.ellipsize = Pango.EllipsizeMode.END;
+                    var sender = make_label (author, "message-sender");
                     if (msg.sender_address != null && msg.sender_address.length > 0)
                         sender.tooltip_text = msg.sender_address;
                     bubble.append (sender);
@@ -827,11 +823,7 @@ namespace Dc {
             if (fallback.down ().has_suffix (".xdc")) {
                 fallback = fallback.substring (0, fallback.length - 4);
             }
-            var name = new Gtk.Label (fallback);
-            name.add_css_class ("webxdc-card-title");
-            name.halign = Gtk.Align.START;
-            name.xalign = 0;
-            name.ellipsize = Pango.EllipsizeMode.END;
+            var name = make_label (fallback, "webxdc-card-title");
             name.max_width_chars = 24;
             text.append (name);
             string status = !Webxdc.AVAILABLE
@@ -839,11 +831,7 @@ namespace Dc {
                 : !Webxdc.enabled ()
                 ? "Webxdc app · disabled in Settings"
                 : "Webxdc app · choose an action";
-            var subtitle = new Gtk.Label (status);
-            subtitle.add_css_class ("webxdc-card-subtitle");
-            subtitle.halign = Gtk.Align.START;
-            subtitle.xalign = 0;
-            subtitle.ellipsize = Pango.EllipsizeMode.END;
+            var subtitle = make_label (status, "webxdc-card-subtitle");
             subtitle.max_width_chars = 30;
             text.append (subtitle);
             inner.append (text);
@@ -978,16 +966,8 @@ namespace Dc {
                             picture, anim, animate_stickers);
                         picture.set_data<StickerAnimation> (
                             "parla-sticker-animation", sticker);
-                        picture.content_fit = Gtk.ContentFit.CONTAIN;
-                        picture.can_shrink = true;
-                        picture.halign = Gtk.Align.FILL;
-                        picture.valign = Gtk.Align.FILL;
-
-                        var frame = new ScaledPreviewFrame (
-                            dw, dh, "message-sticker");
-                        frame.child = picture;
-                        frame.halign = Gtk.Align.START;
-                        frame.valign = Gtk.Align.START;
+                        var frame = framed_preview (picture, dw, dh,
+                            "message-sticker");
                         var click = add_play_toggle (frame);
                         click.released.connect (() => sticker.toggle_playing ());
                         return frame;
@@ -1002,16 +982,8 @@ namespace Dc {
 
         private static Gtk.Widget load_video_sticker (string path) {
             var picture = new Gtk.Picture ();
-            picture.content_fit = Gtk.ContentFit.CONTAIN;
-            picture.can_shrink = true;
-            picture.halign = Gtk.Align.FILL;
-            picture.valign = Gtk.Align.FILL;
-
-            var frame = new ScaledPreviewFrame (
-                STICKER_MAX, STICKER_MAX, "message-sticker");
-            frame.child = picture;
-            frame.halign = Gtk.Align.START;
-            frame.valign = Gtk.Align.START;
+            var frame = framed_preview (picture, STICKER_MAX, STICKER_MAX,
+                "message-sticker");
 
             var sticker = new StickerVideoAnimation (
                 picture, frame, path, animate_stickers, STICKER_MAX);
@@ -1019,6 +991,32 @@ namespace Dc {
                 "parla-sticker-video-animation", sticker);
             var click = add_play_toggle (frame);
             click.released.connect (() => sticker.toggle_playing ());
+            return frame;
+        }
+
+        /** Start-aligned, single-line label that ellipsizes on overflow. */
+        private static Gtk.Label make_label (string text, string css) {
+            var lbl = new Gtk.Label (text);
+            lbl.add_css_class (css);
+            lbl.halign = Gtk.Align.START;
+            lbl.xalign = 0;
+            lbl.ellipsize = Pango.EllipsizeMode.END;
+            return lbl;
+        }
+
+        /** Configure a preview picture to fill its frame and wrap it in a
+            top-left-aligned ScaledPreviewFrame of the given natural size. */
+        private static ScaledPreviewFrame framed_preview (Gtk.Picture picture,
+                                                          int w, int h, string css) {
+            picture.content_fit = Gtk.ContentFit.CONTAIN;
+            picture.can_shrink = true;
+            picture.halign = Gtk.Align.FILL;
+            picture.valign = Gtk.Align.FILL;
+
+            var frame = new ScaledPreviewFrame (w, h, css);
+            frame.child = picture;
+            frame.halign = Gtk.Align.START;
+            frame.valign = Gtk.Align.START;
             return frame;
         }
 
@@ -1049,16 +1047,7 @@ namespace Dc {
                     path, dw, dh, true);
                 var texture = texture_from_pixbuf (pixbuf);
                 var picture = new Gtk.Picture.for_paintable (texture);
-                picture.content_fit = Gtk.ContentFit.CONTAIN;
-                picture.can_shrink = true;
-                picture.halign = Gtk.Align.FILL;
-                picture.valign = Gtk.Align.FILL;
-
-                var frame = new ScaledPreviewFrame (dw, dh, css_class);
-                frame.child = picture;
-                frame.halign = Gtk.Align.START;
-                frame.valign = Gtk.Align.START;
-                return frame;
+                return framed_preview (picture, dw, dh, css_class);
             } catch (Error e) {
                 stderr.printf ("  -> Image load failed: %s\n", e.message);
                 return null;

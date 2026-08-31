@@ -9,6 +9,9 @@ namespace Dc {
         3600, 28800, 86400, 604800, -1
     };
 
+    public delegate void RowActivated ();
+    public delegate void ComboSelected (uint index);
+
     public class ChatInfoDialog : Adw.Dialog {
 
         private unowned Window app_window;
@@ -34,28 +37,6 @@ namespace Dc {
             return list;
         }
 
-        private void style_flat_button (Gtk.Button button,
-                                        bool error = false) {
-            button.valign = Gtk.Align.CENTER;
-            button.add_css_class ("flat");
-            if (error) button.add_css_class ("error");
-        }
-
-        private Gtk.Button flat_button (string label, bool error = false) {
-            var button = new Gtk.Button.with_label (label);
-            style_flat_button (button, error);
-            return button;
-        }
-
-        private Gtk.Button flat_icon_button (string icon_name,
-                                             string tooltip,
-                                             bool error = false) {
-            var button = new Gtk.Button.from_icon_name (icon_name);
-            style_flat_button (button, error);
-            button.tooltip_text = tooltip;
-            return button;
-        }
-
         private Adw.ActionRow action_row (string title, string subtitle,
                                           string icon_name) {
             var row = new Adw.ActionRow ();
@@ -63,6 +44,31 @@ namespace Dc {
             row.subtitle = subtitle;
             row.add_prefix (new Gtk.Image.from_icon_name (icon_name));
             row.activatable = true;
+            return row;
+        }
+
+        // ActionRow carrying a trailing drop-down; on_selected fires with the
+        // chosen index.
+        private Adw.ActionRow dropdown_row (string title, string[] labels,
+                                            uint active, ComboSelected on_selected) {
+            var row = new Adw.ActionRow ();
+            row.title = title;
+            var combo = new Gtk.DropDown.from_strings (labels);
+            combo.selected = active;
+            combo.valign = Gtk.Align.CENTER;
+            combo.notify["selected"].connect (() => on_selected (combo.selected));
+            row.add_suffix (combo);
+            row.activatable_widget = combo;
+            return row;
+        }
+
+        // action_row + its activation handler + append, in one call.
+        private Adw.ActionRow add_action_row (Gtk.ListBox list, string title,
+                                              string subtitle, string icon,
+                                              RowActivated activate) {
+            var row = action_row (title, subtitle, icon);
+            row.activated.connect (() => activate ());
+            list.append (row);
             return row;
         }
 
@@ -221,21 +227,16 @@ namespace Dc {
 
                 if (is_group) {
                     var invite_list = boxed_list ();
-                    var invite_row = action_row ("Invite Link",
+                    add_action_row (invite_list, "Invite Link",
                         "Share a link or QR code for others to join",
-                        "mail-forward-symbolic");
-                    invite_row.activated.connect (() => {
+                        "mail-forward-symbolic", () => {
                         var dialog = new InviteCodeDialog (rpc, rpc.account_id, chat_id);
                         dialog.present (this);
                     });
-                    invite_list.append (invite_row);
                     content.append (invite_list);
                 }
 
                 int ephemeral_timer = (int) json_int (chat, "ephemeralTimer");
-
-                var ephem_row = new Adw.ActionRow ();
-                ephem_row.title = "Disappearing messages";
 
                 int[] timer_values = { 0, 60, 300, 1800, 3600, 21600, 86400, 604800, 2419200 };
                 string[] timer_labels = {
@@ -248,56 +249,42 @@ namespace Dc {
                         active_idx = i;
                     }
                 }
-                var combo = new Gtk.DropDown.from_strings (timer_labels);
-                combo.selected = active_idx;
-                combo.valign = Gtk.Align.CENTER;
-                combo.notify["selected"].connect (() => {
-                    uint idx = combo.selected;
+                var ephem_row = dropdown_row ("Disappearing messages",
+                    timer_labels, active_idx, (idx) => {
                     if (idx < timer_values.length) {
                         rpc.set_chat_ephemeral_timer.begin (
                             chat_id, timer_values[(int) idx]);
                     }
                 });
-                ephem_row.add_suffix (combo);
-                ephem_row.activatable_widget = combo;
 
                 /* Mute selector. Core only reports the boolean isMuted, not
                    the remaining time, so a timed mute shows as "Forever"
                    here; picking any entry always applies that duration. */
                 bool is_muted = json_bool (chat, "isMuted");
-                var mute_row = new Adw.ActionRow ();
-                mute_row.title = "Mute notifications";
                 string[] mute_labels = new string[MUTE_DURATION_LABELS.length + 1];
                 mute_labels[0] = "Off";
                 for (int i = 0; i < MUTE_DURATION_LABELS.length; i++) {
                     mute_labels[i + 1] = MUTE_DURATION_LABELS[i];
                 }
-                var mute_combo = new Gtk.DropDown.from_strings (mute_labels);
-                mute_combo.selected = is_muted ? mute_labels.length - 1 : 0;
-                mute_combo.valign = Gtk.Align.CENTER;
-                mute_combo.notify["selected"].connect (() => {
-                    uint idx = mute_combo.selected;
+                var mute_row = dropdown_row ("Mute notifications", mute_labels,
+                    is_muted ? mute_labels.length - 1 : 0, (idx) => {
                     if (idx < mute_labels.length) {
                         int secs = idx == 0
                             ? 0 : MUTE_DURATION_SECONDS[(int) idx - 1];
                         set_mute.begin (secs);
                     }
                 });
-                mute_row.add_suffix (mute_combo);
-                mute_row.activatable_widget = mute_combo;
 
                 var ephem_list = boxed_list ();
-                var media_row = action_row (
+                add_action_row (ephem_list,
                     "View Media",
                     "Browse apps and media shared in this chat",
-                    "view-grid-symbolic");
-                media_row.activated.connect (() => {
+                    "view-grid-symbolic", () => {
                     var dialog = new GalleryDialog (
                         app_window, rpc, chat_id, chat_name);
                     dialog.presenter_dialog = this;
                     dialog.present (this);
                 });
-                ephem_list.append (media_row);
                 ephem_list.append (mute_row);
                 ephem_list.append (ephem_row);
                 content.append (ephem_list);
@@ -352,53 +339,43 @@ namespace Dc {
                 var actions_list = boxed_list ();
 
                 if (is_group) {
-                    var duplicate_row = action_row (
+                    add_action_row (actions_list,
                         is_channel ? "New Channel with Same Members"
                                    : "New Group with Same Members",
                         "Start a new one without picking members again",
-                        "system-users-symbolic");
-                    duplicate_row.activated.connect (() =>
-                        show_duplicate_group_dialog.begin ());
-                    actions_list.append (duplicate_row);
+                        "system-users-symbolic",
+                        () => show_duplicate_group_dialog.begin ());
                 }
 
-                var clear_row = action_row ("Clear Chat",
+                add_action_row (actions_list, "Clear Chat",
                     "Remove messages from this device",
-                    "edit-clear-symbolic");
-                clear_row.activated.connect (() =>
-                    confirm_clear_history.begin (false));
-                actions_list.append (clear_row);
+                    "edit-clear-symbolic",
+                    () => confirm_clear_history.begin (false));
 
-                var clear_sent_row = action_row (
+                add_action_row (actions_list,
                     "Clear Sent Messages for Everyone",
                     "Delete messages you sent for all participants",
-                    "edit-delete-symbolic");
-                clear_sent_row.activated.connect (() =>
-                    confirm_clear_history.begin (true));
-                actions_list.append (clear_sent_row);
+                    "edit-delete-symbolic",
+                    () => confirm_clear_history.begin (true));
 
                 if (is_group) {
-                    var leave_row = action_row ("Leave Group",
+                    add_action_row (actions_list, "Leave Group",
                         "Stop receiving messages and remove the chat",
-                        "system-log-out-symbolic");
-                    leave_row.activated.connect (() => confirm_leave_group.begin ());
-                    actions_list.append (leave_row);
-                    var disband_row = action_row ("Disband Group",
+                        "system-log-out-symbolic",
+                        () => confirm_leave_group.begin ());
+                    add_action_row (actions_list, "Disband Group",
                         "Remove all members and delete messages",
-                        "edit-delete-symbolic");
-                    disband_row.activated.connect (() =>
-                        confirm_disband_group.begin ());
-                    actions_list.append (disband_row);
+                        "edit-delete-symbolic",
+                        () => confirm_disband_group.begin ());
                 }
 
                 if (dm_contact != null) {
                     actions_list.append (build_contact_block_row (dm_contact));
                 }
 
-                var delete_row = action_row ("Delete for Me",
-                    "Remove from your chat list", "user-trash-symbolic");
-                delete_row.activated.connect (() => confirm_delete_chat.begin ());
-                actions_list.append (delete_row);
+                add_action_row (actions_list, "Delete for Me",
+                    "Remove from your chat list", "user-trash-symbolic",
+                    () => confirm_delete_chat.begin ());
 
                 content.append (actions_list);
 

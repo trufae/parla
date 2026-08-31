@@ -1,6 +1,8 @@
 namespace Dc {
 
     public delegate void SettingWriter (KeyFile kf);
+    public delegate void SwitchSaved (bool active);
+    public delegate void ComboSaved (uint selected);
 
     public const int FONT_SIZE_SYSTEM = 0;
     public const int FONT_SIZE_MIN = 6;
@@ -695,42 +697,36 @@ namespace Dc {
             var appearance_group = settings_group (general_page, "Appearance");
 
             string[] theme_labels = { "System", "Light", "Dark" };
-            var theme_combo = row_combo (appearance_group,
+            row_combo (appearance_group,
                 "GTK theme", "Override the system light or dark theme",
-                theme_labels, (uint) app_window.settings.theme_override);
-            theme_combo.notify["selected"].connect (() => {
-                app_window.settings.save_theme_override (
-                    (ThemeOverride) theme_combo.selected);
+                theme_labels, (uint) app_window.settings.theme_override, (sel) => {
+                app_window.settings.save_theme_override ((ThemeOverride) sel);
                 apply_theme_override ();
             });
 
             string[] code_labels = {
                 "Adaptive", "Solarized", "Monokai", "Nord", "None"
             };
-            var code_combo = row_combo (appearance_group,
+            row_combo (appearance_group,
                 "Code highlighting", "Color scheme for code blocks in messages",
-                code_labels, (uint) app_window.settings.code_theme);
-            code_combo.notify["selected"].connect (() => {
-                app_window.settings.save_code_theme (
-                    (CodeTheme) code_combo.selected);
+                code_labels, (uint) app_window.settings.code_theme, (sel) => {
+                app_window.settings.save_code_theme ((CodeTheme) sel);
             });
 
             string[] style_labels = { "Bubbles", "IRC", "Workspace" };
-            var style_combo = row_combo (appearance_group,
+            row_combo (appearance_group,
                 "Message style", "Chat bubbles, compact IRC lines or workspace rows",
-                style_labels, (uint) app_window.settings.message_style);
-            style_combo.notify["selected"].connect (() => {
-                app_window.settings.save_message_style (
-                    (MessageStyle) style_combo.selected);
+                style_labels, (uint) app_window.settings.message_style, (sel) => {
+                app_window.settings.save_message_style ((MessageStyle) sel);
             });
 
             string[] avatar_labels = { "none", "other", "both" };
-            var avatar_combo = row_combo (appearance_group,
+            row_combo (appearance_group,
                 "Bubble avatars", "Show small avatars beside message bubbles",
-                avatar_labels, (uint) app_window.settings.bubble_avatar_display);
-            avatar_combo.notify["selected"].connect (() => {
+                avatar_labels, (uint) app_window.settings.bubble_avatar_display,
+                (sel) => {
                 app_window.settings.save_bubble_avatar_display (
-                    (BubbleAvatarDisplay) avatar_combo.selected);
+                    (BubbleAvatarDisplay) sel);
             });
 
             var direct_avatar_row = action_row (
@@ -758,17 +754,13 @@ namespace Dc {
             var font_dialog = new Gtk.FontDialog ();
             font_dialog.title = "Choose Font";
             font_dialog.modal = true;
-            font_btn = new Gtk.Button.with_label ("Choose");
-            font_btn.valign = Gtk.Align.CENTER;
-            font_btn.add_css_class ("flat");
+            font_btn = flat_button ("Choose");
             font_btn.tooltip_text = "Choose a font family, style and size";
             font_btn.clicked.connect (() => { on_choose_font.begin (font_dialog); });
             font_type_row.add_suffix (font_btn);
 
-            var font_reset_btn = new Gtk.Button.from_icon_name ("edit-undo-symbolic");
-            font_reset_btn.valign = Gtk.Align.CENTER;
-            font_reset_btn.add_css_class ("flat");
-            font_reset_btn.tooltip_text = "Reset font settings to defaults";
+            var font_reset_btn = flat_icon_button ("edit-undo-symbolic",
+                "Reset font settings to defaults");
             font_reset_btn.clicked.connect (() => {
                 app_window.settings.reset_font_defaults ();
                 sync_font_controls ();
@@ -790,10 +782,8 @@ namespace Dc {
                     hex_from_rgba (accent_btn.get_rgba ()));
             });
 
-            var accent_reset_btn = new Gtk.Button.from_icon_name ("edit-undo-symbolic");
-            accent_reset_btn.valign = Gtk.Align.CENTER;
-            accent_reset_btn.add_css_class ("flat");
-            accent_reset_btn.tooltip_text = "Use system accent color";
+            var accent_reset_btn = flat_icon_button ("edit-undo-symbolic",
+                "Use system accent color");
             accent_reset_btn.clicked.connect (() => {
                 app_window.settings.save_accent_color ("");
                 apply_hex_to_button (accent_btn, "");
@@ -841,41 +831,32 @@ namespace Dc {
                 "Do nothing"
             };
 
-            uint dblclick_selected = (uint) app_window.settings.double_click_action;
-            if (dblclick_selected == 4) dblclick_selected = 5;
-            else if (dblclick_selected == 5) dblclick_selected = 4;
-            var dblclick_combo = row_combo (behavior_group,
+            uint dblclick_selected = swap_dblclick_45 (
+                (uint) app_window.settings.double_click_action);
+            row_combo (behavior_group,
                 "Double-click on message",
                 "Action when a message is double-clicked",
-                dblclick_labels, dblclick_selected);
-            dblclick_combo.notify["selected"].connect (() => {
-                uint selected = dblclick_combo.selected;
-                int action = (int) selected;
-                if (selected == 4) action = 5;
-                else if (selected == 5) action = 4;
-                app_window.settings.save_double_click_action (action);
+                dblclick_labels, dblclick_selected, (sel) => {
+                app_window.settings.save_double_click_action (
+                    (int) swap_dblclick_45 (sel));
             });
 
             string[] md_labels = { "Enabled", "Stripped", "Disabled" };
-            var md_combo = row_combo (behavior_group,
+            row_combo (behavior_group,
                 "Markdown rendering", "Render, strip, or preserve markdown syntax",
-                md_labels, (uint) app_window.settings.markdown_mode);
-            md_combo.notify["selected"].connect (() => {
+                md_labels, (uint) app_window.settings.markdown_mode, (sel) => {
                 app_window.settings.save_markdown_mode (
-                    (MarkdownMode) md_combo.selected);
+                    (MarkdownMode) sel);
             });
 
-            var shift_row = action_row (
+            add_switch_row (behavior_group,
                 "Shift+Return sends message",
-                "When on, Return inserts a newline and Shift+Return sends");
-            var shift_switch = row_switch (
-                shift_row, app_window.settings.shift_enter_sends);
-            shift_switch.notify["active"].connect (() => {
-                app_window.settings.save_shift_enter_sends (shift_switch.active);
-            });
+                "When on, Return inserts a newline and Shift+Return sends",
+                app_window.settings.shift_enter_sends,
+                (v) => app_window.settings.save_shift_enter_sends (v));
 
-            behavior_group.add (shift_row);
-
+            // Created here but added to behavior_group further below, after
+            // the transcription and sticker rows, to keep their visual order.
             var audio_row = action_row (
                 "System audio tools",
                 "Prefer system programs for voice playback and recording "
@@ -888,7 +869,7 @@ namespace Dc {
 
             /* Backed by the StatusNotifierItem on freedesktop systems and
                by the NSStatusItem shim on macOS (tray_macos.m). */
-            var tray_row = action_row (
+            add_switch_row (behavior_group,
                 Platform.is_macos ()
                     ? "Minimize to menu bar"
                     : "Minimize to status bar",
@@ -897,41 +878,24 @@ namespace Dc {
                     + "icon; the Dock icon stays visible and notifications "
                     + "still appear"
                     : "Closing the window keeps Parla running in the status "
-                    + "bar; notifications still appear");
-            var tray_switch = row_switch (
-                tray_row, app_window.settings.minimize_to_tray);
-            tray_switch.notify["active"].connect (() => {
-                app_window.set_minimize_to_tray (tray_switch.active);
-            });
-
-            behavior_group.add (tray_row);
+                    + "bar; notifications still appear",
+                app_window.settings.minimize_to_tray,
+                (v) => app_window.set_minimize_to_tray (v));
 
             build_links_group (general_page);
 
             var notifications_group = settings_group (general_page, "Notifications");
-            var notif_row = action_row (
+            add_switch_row (notifications_group,
                 "Desktop notifications",
-                "Notify on incoming messages when the window is not focused");
-            var notif_switch = row_switch (
-                notif_row, app_window.settings.notifications_enabled);
-            notif_switch.notify["active"].connect (() => {
-                app_window.set_notifications_enabled (notif_switch.active);
-            });
+                "Notify on incoming messages when the window is not focused",
+                app_window.settings.notifications_enabled,
+                (v) => app_window.set_notifications_enabled (v));
 
-            notifications_group.add (notif_row);
-
-
-            var notification_contents_row = action_row (
+            add_switch_row (notifications_group,
                 "Show message contents in notifications",
-                "Include sender text and attachment names in desktop notifications");
-            var notification_contents_switch = row_switch (
-                notification_contents_row,
-                app_window.settings.show_notification_contents);
-            notification_contents_switch.notify["active"].connect (() => {
-                app_window.settings.save_show_notification_contents (
-                    notification_contents_switch.active);
-            });
-            notifications_group.add (notification_contents_row);
+                "Include sender text and attachment names in desktop notifications",
+                app_window.settings.show_notification_contents,
+                (v) => app_window.settings.save_show_notification_contents (v));
 
             var chatmail_group = settings_group (advanced_page, "Chatmail Core");
 
@@ -942,16 +906,12 @@ namespace Dc {
             rpc_row = rpc_source_dropdown;
             rpc_source_dropdown.notify["selected"].connect (on_rpc_source_changed);
 
-            rpc_choose_btn = new Gtk.Button.with_label ("Choose");
-            rpc_choose_btn.valign = Gtk.Align.CENTER;
-            rpc_choose_btn.add_css_class ("flat");
+            rpc_choose_btn = flat_button ("Choose");
             rpc_choose_btn.tooltip_text = "Choose a Chatmail Core binary";
             rpc_choose_btn.clicked.connect (() => { on_browse_rpc_server.begin (); });
             rpc_row.add_suffix (rpc_choose_btn);
 
-            rpc_check_btn = new Gtk.Button.with_label ("Check");
-            rpc_check_btn.valign = Gtk.Align.CENTER;
-            rpc_check_btn.add_css_class ("flat");
+            rpc_check_btn = flat_button ("Check");
             rpc_check_btn.tooltip_text = "Check for the latest Chatmail Core release";
             rpc_check_btn.clicked.connect (() => { check_rpc_updates.begin (); });
             rpc_row.add_suffix (rpc_check_btn);
@@ -975,21 +935,15 @@ namespace Dc {
             accounts_path_row = action_row ("Accounts Path");
             accounts_path_row.subtitle_lines = 2;
 
-            var accounts_path_change_btn = new Gtk.Button.from_icon_name (
-                "folder-symbolic");
-            accounts_path_change_btn.valign = Gtk.Align.CENTER;
-            accounts_path_change_btn.add_css_class ("flat");
-            accounts_path_change_btn.tooltip_text = "Choose a different folder";
+            var accounts_path_change_btn = flat_icon_button ("folder-symbolic",
+                "Choose a different folder");
             accounts_path_change_btn.clicked.connect (() => {
                 on_browse_accounts_path.begin ();
             });
             accounts_path_row.add_suffix (accounts_path_change_btn);
 
-            accounts_path_reset_btn = new Gtk.Button.from_icon_name (
-                "edit-undo-symbolic");
-            accounts_path_reset_btn.valign = Gtk.Align.CENTER;
-            accounts_path_reset_btn.add_css_class ("flat");
-            accounts_path_reset_btn.tooltip_text = "Use the default folder";
+            accounts_path_reset_btn = flat_icon_button ("edit-undo-symbolic",
+                "Use the default folder");
             accounts_path_reset_btn.clicked.connect (() => {
                 app_window.settings.reset_accounts_path ();
                 sync_accounts_path_row ();
@@ -1104,77 +1058,47 @@ namespace Dc {
                 return;
             }
 
-            var enable_row = action_row (
+            add_switch_row (webxdc_group,
                 "Webxdc apps",
-                "Run Delta Chat mini-apps shared in chats (experimental)");
-            var enable_switch = row_switch (
-                enable_row, app_window.settings.webxdc_apps);
-            enable_switch.notify["active"].connect (() => {
-                app_window.settings.save_webxdc_apps (enable_switch.active);
-            });
-            webxdc_group.add (enable_row);
+                "Run Delta Chat mini-apps shared in chats (experimental)",
+                app_window.settings.webxdc_apps,
+                (v) => app_window.settings.save_webxdc_apps (v));
 
-            var behavior_row = action_row (
+            add_switch_row (webxdc_group,
                 "Keep apps with their chat",
-                "Hide app windows when you leave the chat");
-            var behavior_switch = row_switch (
-                behavior_row, app_window.settings.webxdc_follow_chat);
-            behavior_switch.notify["active"].connect (() => {
-                app_window.settings.save_webxdc_follow_chat (
-                    behavior_switch.active);
-            });
-            webxdc_group.add (behavior_row);
+                "Hide app windows when you leave the chat",
+                app_window.settings.webxdc_follow_chat,
+                (v) => app_window.settings.save_webxdc_follow_chat (v));
 
-            var internet_row = action_row (
+            var internet_switch = add_switch_row (webxdc_group,
                 "Internet access",
-                "Allow apps to make direct network requests (unsafe)");
-            var internet_switch = row_switch (
-                internet_row, app_window.settings.webxdc_allow_internet);
-            internet_switch.notify["active"].connect (() => {
-                app_window.settings.save_webxdc_allow_internet (
-                    internet_switch.active);
-            });
-            webxdc_group.add (internet_row);
+                "Allow apps to make direct network requests (unsafe)",
+                app_window.settings.webxdc_allow_internet,
+                (v) => app_window.settings.save_webxdc_allow_internet (v));
 
-            var wasm_row = action_row (
+            var wasm_switch = add_switch_row (webxdc_group,
                 "WebAssembly",
-                "Allow apps to compile and run WebAssembly");
-            var wasm_switch = row_switch (
-                wasm_row, app_window.settings.webxdc_allow_wasm);
-            wasm_switch.notify["active"].connect (() => {
-                app_window.settings.save_webxdc_allow_wasm (
-                    wasm_switch.active);
-            });
-            webxdc_group.add (wasm_row);
+                "Allow apps to compile and run WebAssembly",
+                app_window.settings.webxdc_allow_wasm,
+                (v) => app_window.settings.save_webxdc_allow_wasm (v));
 
-            var webgl_row = action_row (
+            var webgl_switch = add_switch_row (webxdc_group,
                 "WebGL",
                 Platform.is_macos ()
                     ? "Best-effort restriction on macOS; WKWebView has no "
                     + "public hard-disable API"
-                    : "Allow apps to access accelerated 3D graphics");
-            var webgl_switch = row_switch (
-                webgl_row, app_window.settings.webxdc_allow_webgl);
-            webgl_switch.notify["active"].connect (() => {
-                app_window.settings.save_webxdc_allow_webgl (
-                    webgl_switch.active);
-            });
-            webxdc_group.add (webgl_row);
+                    : "Allow apps to access accelerated 3D graphics",
+                app_window.settings.webxdc_allow_webgl,
+                (v) => app_window.settings.save_webxdc_allow_webgl (v));
 
             Gtk.Switch? acceleration_switch = null;
             if (!Platform.is_macos () && !Platform.is_windows ()) {
-                var acceleration_row = action_row (
+                acceleration_switch = add_switch_row (webxdc_group,
                     "Hardware acceleration",
-                    "Allow WebKit to use GPU-accelerated rendering");
-                var acceleration = row_switch (acceleration_row,
-                    app_window.settings.webxdc_allow_hardware_acceleration);
-                acceleration.notify["active"].connect (() => {
-                    app_window.settings
-                        .save_webxdc_allow_hardware_acceleration (
-                            acceleration.active);
-                });
-                acceleration_switch = acceleration;
-                webxdc_group.add (acceleration_row);
+                    "Allow WebKit to use GPU-accelerated rendering",
+                    app_window.settings.webxdc_allow_hardware_acceleration,
+                    (v) => app_window.settings
+                        .save_webxdc_allow_hardware_acceleration (v));
             }
 
             var safest_row = action_row (
@@ -1206,18 +1130,14 @@ namespace Dc {
         private void build_links_group (Adw.PreferencesPage page) {
             var links_group = settings_group (page, "Links");
 
-            var previews_row = action_row (
+            add_switch_row (links_group,
                 "Link previews",
                 "Attach the picture and title a page advertises (Open "
                 + "Graph tags) when a link is pasted into the message field. "
                 + "Each pasted link becomes one image; remove it before "
-                + "sending if unwanted. The page is fetched from this device");
-            var previews_switch = row_switch (
-                previews_row, app_window.settings.link_previews);
-            previews_switch.notify["active"].connect (() => {
-                app_window.settings.save_link_previews (previews_switch.active);
-            });
-            links_group.add (previews_row);
+                + "sending if unwanted. The page is fetched from this device",
+                app_window.settings.link_previews,
+                (v) => app_window.settings.save_link_previews (v));
 
             var clean_links_row = action_row (
                 "Remove tracking from pasted links",
@@ -1251,11 +1171,8 @@ namespace Dc {
             tracking_filter_url_row.add_suffix (url_btn);
             tracking_filter_url_row.activatable_widget = url_btn;
 
-            tracking_filter_refresh_btn =
-                new Gtk.Button.from_icon_name ("view-refresh-symbolic");
-            tracking_filter_refresh_btn.valign = Gtk.Align.CENTER;
-            tracking_filter_refresh_btn.add_css_class ("flat");
-            tracking_filter_refresh_btn.tooltip_text = "Download the list again";
+            tracking_filter_refresh_btn = flat_icon_button (
+                "view-refresh-symbolic", "Download the list again");
             tracking_filter_refresh_btn.clicked.connect (() => {
                 update_tracking_filter.begin ();
             });
@@ -1413,12 +1330,26 @@ namespace Dc {
             return sw;
         }
 
+        // Build "title/subtitle + trailing switch" row, wire its toggle to
+        // save, add it to group. Returns the switch for the rare caller that
+        // needs to flip it later.
+        private static Gtk.Switch add_switch_row (Adw.PreferencesGroup group,
+                                                  string title, string? subtitle,
+                                                  bool active, SwitchSaved save) {
+            var row = action_row (title, subtitle);
+            var sw = row_switch (row, active);
+            sw.notify["active"].connect (() => save (sw.active));
+            group.add (row);
+            return sw;
+        }
+
         /* Adw.ComboRow (not a raw Gtk.DropDown suffix) so the row stays
            usable when narrow: its value renders as ellipsizable text
            instead of a button sized to the widest option label. */
         private static Adw.ComboRow row_combo (Adw.PreferencesGroup group,
                                                string title, string? subtitle,
-                                               string[] labels, uint selected) {
+                                               string[] labels, uint selected,
+                                               ComboSaved? save = null) {
             var row = new Adw.ComboRow ();
             row.title = title;
             if (subtitle != null) row.subtitle = subtitle;
@@ -1426,8 +1357,19 @@ namespace Dc {
             row.expression = new Gtk.PropertyExpression (
                 typeof (Gtk.StringObject), null, "string");
             row.selected = selected;
+            if (save != null)
+                row.notify["selected"].connect (() => save (row.selected));
             group.add (row);
             return row;
+        }
+
+        // The "Open profile"/"Open context menu" entries are shown swapped
+        // relative to their stored enum values; the 4<->5 swap is its own
+        // inverse, so one mapping serves both read and write directions.
+        private static uint swap_dblclick_45 (uint v) {
+            if (v == 4) return 5;
+            if (v == 5) return 4;
+            return v;
         }
 
         private void sync_font_controls () {
