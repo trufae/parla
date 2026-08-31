@@ -364,7 +364,13 @@ namespace Dc.Webxdc {
                 var res = yield rpc.call ("get_webxdc_blob", Params.begin ()
                     .add_int (account_id).add_int (msg_id)
                     .add_string (p).build ());
-                var data = Base64.decode (res.get_string ());
+                string blob = res.get_string ();
+                /* Core uses STANDARD_NO_PAD. GLib silently drops an
+                   unpadded final group, truncating one or two bytes. */
+                int rem = blob.length % 4;
+                if (rem == 2) blob += "==";
+                else if (rem == 3) blob += "=";
+                var data = Base64.decode (blob);
                 bool uncertain;
                 string ctype = ContentType.guess (p, data, out uncertain);
                 string mime = ContentType.get_mime_type (ctype)
