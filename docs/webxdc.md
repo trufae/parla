@@ -121,9 +121,11 @@ relax individual capabilities in Settings:
   the GPU opt-in because WebView2 has no stable per-controller acceleration
   setting.
 - **No developer tools.** Browser inspection and the JavaScript console are
-  disabled by default. The opt-in setting enables WebKitGTK's inspector,
-  makes the macOS WKWebView inspectable on supported system versions, and
-  enables WebView2 developer tools and its inspection context menu. While
+  disabled by default. The opt-in setting opens the engine's inspector in a
+  separate window when an app starts: WebKitGTK's public inspector on Linux,
+  WebView2 DevTools on Windows, and WebKit's private in-process inspector on
+  macOS. The macOS SPI is resolved at runtime and may stop working after an
+  OS update; the view remains inspectable through Safari as a fallback. While
   developer tools are off, the bridge displays the first uncaught JavaScript
   exception, unhandled promise rejection, or script-load failure inside the
   app window, and a failed `index.html` fetch gets a startup error page,

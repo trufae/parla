@@ -189,6 +189,31 @@ setup_webview (ParlaWebxdcController *c, WKContentRuleList *rules)
 
 @implementation ParlaWebxdcController
 
+/* WKWebView's public inspectable property only publishes the page to
+ * Safari. WebKit's own MiniBrowser uses this private inspector object to
+ * host Web Inspector in a separate application window. Resolve both
+ * selectors dynamically so a WebKit version which removes the SPI merely
+ * loses the optional inspector instead of preventing Webxdc from starting. */
+- (void)openDeveloperTools
+{
+	if (!developer_tools || !webview)
+		return;
+	SEL inspectorSelector = NSSelectorFromString (@"_inspector");
+	SEL showSelector = NSSelectorFromString (@"show");
+	if (![webview respondsToSelector:inspectorSelector]) {
+		g_warning ("webxdc: this WebKit has no in-process inspector");
+		return;
+	}
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+	id inspector = [webview performSelector:inspectorSelector];
+	if ([inspector respondsToSelector:showSelector])
+		[inspector performSelector:showSelector];
+	else
+		g_warning ("webxdc: this WebKit inspector cannot be shown");
+#pragma clang diagnostic pop
+}
+
 - (void)webView:(WKWebView *)wv
     startURLSchemeTask:(id<WKURLSchemeTask>)task
 {
@@ -237,6 +262,13 @@ setup_webview (ParlaWebxdcController *c, WKContentRuleList *rules)
 	decisionHandler ([scheme isEqualToString:@"webxdc"]
 	    ? WKNavigationActionPolicyAllow
 	    : WKNavigationActionPolicyCancel);
+}
+
+- (void)webView:(WKWebView *)wv
+    didFinishNavigation:(WKNavigation *)navigation
+{
+	(void)wv; (void)navigation;
+	[self openDeveloperTools];
 }
 
 - (WKWebView *)webView:(WKWebView *)wv
@@ -351,15 +383,32 @@ parla_webxdc_finish_task (gpointer handle, gpointer task_ptr,
 	}
 	if (![c->live_tasks containsObject:task])
 		return;
-	NSMutableDictionary *headers = [NSMutableDictionary dictionaryWithObject:
-	    [NSString stringWithUTF8String:mime] forKey:@"Content-Type"];
-	if (!c->allow_wasm) {
+	NSURL *url = [[task request] URL];
+	NSString *mime_string = [NSString stringWithUTF8String:mime];
+	NSURLResponse *resp;
+	if (!c->allow_wasm
+	    && [mime_string caseInsensitiveCompare:@"text/html"]
+	        == NSOrderedSame) {
+		/* CSP is meaningful on the document response. Keep an HTTP-style
+		 * response for its headers, but provide the required resource size. */
+		NSMutableDictionary *headers =
+		    [NSMutableDictionary dictionaryWithObjectsAndKeys:
+		        mime_string, @"Content-Type",
+		        [NSString stringWithFormat:@"%d", data_length],
+		        @"Content-Length", nil];
 		headers[@"Content-Security-Policy"] =
 		    @"script-src 'self' 'unsafe-inline' data: blob: http: https:";
+		resp = [[NSHTTPURLResponse alloc]
+		    initWithURL:url statusCode:200 HTTPVersion:@"HTTP/1.1"
+		    headerFields:headers];
+	} else {
+		/* WKURLSchemeTask serves a non-HTTP URL. NSURLResponse supplies
+		 * WebKit with both the MIME type and expected byte count. */
+		resp = [[NSURLResponse alloc]
+		    initWithURL:url MIMEType:mime_string
+		    expectedContentLength:(NSInteger)data_length
+		    textEncodingName:nil];
 	}
-	NSHTTPURLResponse *resp = [[NSHTTPURLResponse alloc]
-	    initWithURL:[[task request] URL]
-	    statusCode:200 HTTPVersion:@"HTTP/1.1" headerFields:headers];
 	@try {
 		[task didReceiveResponse:resp];
 		[task didReceiveData:[NSData dataWithBytes:data

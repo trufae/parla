@@ -1113,7 +1113,8 @@ namespace Dc {
 
             var developer_tools_switch = add_switch_row (webxdc_group,
                 "Web developer tools",
-                "Allow inspecting apps and using the JavaScript console",
+                "Open the browser inspector and JavaScript console when "
+                + "apps start",
                 app_window.settings.webxdc_developer_tools,
                 (v) => app_window.settings.save_webxdc_developer_tools (v));
 

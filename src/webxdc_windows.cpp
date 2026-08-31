@@ -195,6 +195,7 @@ struct WebxdcWindow {
     void fail (const char *stage, HRESULT error);
     void cleanup ();
     void notify_closed ();
+    void navigate ();
     void resize ();
     HRESULT environment_created (HRESULT result,
                                  ICoreWebView2Environment *created);
@@ -577,7 +578,7 @@ WebxdcWindow::controller_created (HRESULT result,
                 else if (!closed) {
                     script_ready = true;
                     if (load_requested)
-                        view->Navigate (kStartUri);
+                        navigate ();
                 }
                 return S_OK;
             });
@@ -587,6 +588,26 @@ WebxdcWindow::controller_created (HRESULT result,
     if (FAILED (result))
         fail ("install document-start policy", result);
     return S_OK;
+}
+
+void
+WebxdcWindow::navigate ()
+{
+    if (view == nullptr)
+        return;
+    HRESULT result = view->Navigate (kStartUri);
+    if (FAILED (result)) {
+        g_warning ("webxdc: could not navigate to app (HRESULT 0x%08lx)",
+                   static_cast<unsigned long> (result));
+        return;
+    }
+    if (developer_tools) {
+        result = view->OpenDevToolsWindow ();
+        if (FAILED (result))
+            g_warning ("webxdc: could not open developer tools "
+                       "(HRESULT 0x%08lx)",
+                       static_cast<unsigned long> (result));
+    }
 }
 
 static std::atomic<unsigned long> profile_serial { 0 };
@@ -859,7 +880,7 @@ parla_webxdc_win_load (gpointer handle, const char *)
         return;
     window->load_requested = true;
     if (window->script_ready && window->view != nullptr)
-        window->view->Navigate (kStartUri);
+        window->navigate ();
 }
 
 extern "C" void

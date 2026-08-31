@@ -779,6 +779,16 @@ for full diagnostics.</div></main>""".printf (message);
                 ? WebKit.HardwareAccelerationPolicy.ALWAYS
                 : WebKit.HardwareAccelerationPolicy.NEVER;
             view.decide_policy.connect (on_decide_policy);
+            if (developer_tools) {
+                bool inspector_opened = false;
+                view.load_changed.connect ((event) => {
+                    if (event == WebKit.LoadEvent.FINISHED
+                        && !inspector_opened) {
+                        inspector_opened = true;
+                        view.get_inspector ().show ();
+                    }
+                });
+            }
             view.vexpand = true;
 
             var toolbar = new Adw.ToolbarView ();
