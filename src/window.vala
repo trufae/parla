@@ -2346,15 +2346,22 @@ namespace Dc {
             "mail-attachment-symbolic", "Use invitation code", "Join via a dcaccount: link or QR code",
         };
 
+        // Modal Adw.Dialog with a vertical box whose first child is a header
+        // bar; the caller fills `box` and sets it as dialog content.
+        private Adw.Dialog make_modal (string title, int width, out Gtk.Box box) {
+            var dialog = new Adw.Dialog ();
+            dialog.title = title;
+            dialog.content_width = width;
+            box = new Gtk.Box (Gtk.Orientation.VERTICAL, 0);
+            box.append (new Adw.HeaderBar ());
+            return dialog;
+        }
+
         private void on_add_account () {
             if (active_modal != null) return;
 
-            var dialog = new Adw.Dialog ();
-            dialog.title = "Add Profile";
-            dialog.content_width = 460;
-
-            var box = new Gtk.Box (Gtk.Orientation.VERTICAL, 0);
-            box.append (new Adw.HeaderBar ());
+            Gtk.Box box;
+            var dialog = make_modal ("Add Profile", 460, out box);
 
             var intro = new Gtk.Label ("Choose how you want to add an account.");
             intro.halign = Gtk.Align.START;
@@ -2847,12 +2854,8 @@ namespace Dc {
                 return;
             }
 
-            var dialog = new Adw.Dialog ();
-            dialog.title = "Use Invite Link";
-            dialog.content_width = 460;
-
-            var box = new Gtk.Box (Gtk.Orientation.VERTICAL, 0);
-            box.append (new Adw.HeaderBar ());
+            Gtk.Box box;
+            var dialog = make_modal ("Use Invite Link", 460, out box);
 
             var content = new Gtk.Box (Gtk.Orientation.VERTICAL, 10);
             content.margin_start = 18;
@@ -3555,13 +3558,9 @@ namespace Dc {
         private void show_keyboard_shortcuts_dialog () {
             if (active_modal != null) return;
 
-            var dialog = new Adw.Dialog ();
-            dialog.title = "Shortcuts";
-            dialog.content_width = 400;
+            Gtk.Box box;
+            var dialog = make_modal ("Shortcuts", 400, out box);
             dialog.content_height = 380;
-
-            var box = new Gtk.Box (Gtk.Orientation.VERTICAL, 0);
-            box.append (new Adw.HeaderBar ());
 
             var scroller = new Gtk.ScrolledWindow ();
             scroller.hscrollbar_policy = Gtk.PolicyType.NEVER;

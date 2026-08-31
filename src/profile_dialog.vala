@@ -17,6 +17,15 @@ namespace Dc {
         return label;
     }
 
+    // Grid row: a centered heading in column 0, the field widget in column 1.
+    private void attach_field (Gtk.Grid grid, int row, string title,
+                               Gtk.Widget widget) {
+        var heading = heading_label (title);
+        heading.valign = Gtk.Align.CENTER;
+        grid.attach (heading, 0, row, 1, 1);
+        grid.attach (widget, 1, row, 1, 1);
+    }
+
     private Gtk.Box content_box (int side_margin = 16) {
         var box = new Gtk.Box (Gtk.Orientation.VERTICAL, 12);
         box.margin_start = side_margin;
@@ -120,10 +129,6 @@ namespace Dc {
             fields_grid.column_spacing = 12;
             fields_grid.row_spacing = 12;
 
-            var name_heading = heading_label ("Name");
-            name_heading.valign = Gtk.Align.CENTER;
-            fields_grid.attach (name_heading, 0, 0, 1, 1);
-
             name_entry = new Gtk.Entry ();
             name_entry.hexpand = true;
             name_entry.placeholder_text = "Your name";
@@ -131,26 +136,18 @@ namespace Dc {
                 avatar_widget.text = name_entry.text.length > 0
                     ? name_entry.text : "";
             });
-            fields_grid.attach (name_entry, 1, 0, 1, 1);
-
-            var status_heading = heading_label ("Status");
-            status_heading.valign = Gtk.Align.CENTER;
-            fields_grid.attach (status_heading, 0, 1, 1, 1);
+            attach_field (fields_grid, 0, "Name", name_entry);
 
             status_entry = new Gtk.Entry ();
             status_entry.hexpand = true;
             status_entry.placeholder_text = "Your status message";
-            fields_grid.attach (status_entry, 1, 1, 1, 1);
-
-            var email_heading = heading_label ("Email");
-            email_heading.valign = Gtk.Align.CENTER;
-            fields_grid.attach (email_heading, 0, 2, 1, 1);
+            attach_field (fields_grid, 1, "Status", status_entry);
 
             email_label = dim_label ("");
             email_label.selectable = true;
             email_label.hexpand = true;
             email_label.valign = Gtk.Align.CENTER;
-            fields_grid.attach (email_label, 1, 2, 1, 1);
+            attach_field (fields_grid, 2, "Email", email_label);
 
             content.append (fields_grid);
 
@@ -298,9 +295,8 @@ namespace Dc {
         }
 
         private void update_read_receipts_caption (bool enabled) {
-            read_receipts_caption_label.label = enabled
-                ? "Enabled. This affects this profile in every Delta Chat client, not only Parla."
-                : "Disabled. This affects this profile in every Delta Chat client, not only Parla.";
+            read_receipts_caption_label.label = (enabled ? "Enabled. " : "Disabled. ")
+                + "This affects this profile in every Delta Chat client, not only Parla.";
             read_receipts_caption_label.tooltip_text = null;
         }
 

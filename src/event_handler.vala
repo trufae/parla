@@ -63,11 +63,7 @@ namespace Dc {
                     }
                     if (kind == "ConfigureProgress") {
                         int progress = (int) event.get_int_member ("progress");
-                        string? comment = null;
-                        if (event.has_member ("comment") &&
-                            !event.get_member ("comment").is_null ()) {
-                            comment = event.get_string_member ("comment");
-                        }
+                        string? comment = json_str (event, "comment");
                         configure_progress (ctx, progress, comment);
                         continue;
                     }
@@ -202,9 +198,7 @@ namespace Dc {
         }
 
         private static int event_chat_id (Json.Object event) {
-            if (!event.has_member ("chatId") || event.get_member ("chatId").is_null ())
-                return 0;
-            return (int) event.get_int_member ("chatId");
+            return (int) json_int (event, "chatId");
         }
 
         /* Events from an account other than the active one. We can't touch

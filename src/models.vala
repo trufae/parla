@@ -193,6 +193,14 @@ namespace Dc {
         return obj.get_string_member (key);
     }
 
+    // Object-valued member, or null when missing/null/not an object.
+    public static Json.Object? json_obj (Json.Object obj, string key) {
+        if (!obj.has_member (key)) return null;
+        var m = obj.get_member (key);
+        if (m == null || m.get_node_type () != Json.NodeType.OBJECT) return null;
+        return obj.get_object_member (key);
+    }
+
     public static int64 json_int (Json.Object obj, string key, int64 fallback = 0) {
         if (!obj.has_member (key)) return fallback;
         var m = obj.get_member (key);

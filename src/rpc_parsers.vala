@@ -37,8 +37,8 @@ namespace Dc {
             msg.has_html = json_bool (obj, "hasHtml");
             msg.download_state = json_str (obj, "downloadState") ?? "Done";
 
-            if (obj.has_member ("sender") && !obj.get_member ("sender").is_null ()) {
-                var sender = obj.get_object_member ("sender");
+            var sender = json_obj (obj, "sender");
+            if (sender != null) {
                 msg.sender_address = json_str (sender, "address");
                 msg.sender_name = json_str (sender, "displayName")
                     ?? json_str (sender, "name");
@@ -114,16 +114,11 @@ namespace Dc {
         }
 
         private static void parse_reactions (Json.Object obj, Message msg) {
-            if (!obj.has_member ("reactions") || obj.get_member ("reactions").is_null ())
-                return;
+            var reactions_obj = json_obj (obj, "reactions");
+            if (reactions_obj == null) return;
 
-            var reactions_obj = obj.get_object_member ("reactions");
-            if (reactions_obj == null ||
-                !reactions_obj.has_member ("reactionsByContact") ||
-                reactions_obj.get_member ("reactionsByContact").is_null ())
-                return;
-
-            var by_contact = reactions_obj.get_object_member ("reactionsByContact");
+            var by_contact = json_obj (reactions_obj, "reactionsByContact");
+            if (by_contact == null) return;
             var reaction_details = new GenericArray<MessageReaction> ();
             string[] r_emojis = {};
             int[] r_counts = {};
@@ -187,10 +182,8 @@ namespace Dc {
         }
 
         private static void parse_quote (Json.Object obj, Message msg) {
-            if (!obj.has_member ("quote") || obj.get_member ("quote").is_null ())
-                return;
-
-            var quote = obj.get_object_member ("quote");
+            var quote = json_obj (obj, "quote");
+            if (quote == null) return;
             msg.quote_text = json_str (quote, "text");
             msg.quote_sender_name = json_str (quote, "authorDisplayName");
             msg.quote_msg_id = (int) json_int (quote, "messageId");
