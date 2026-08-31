@@ -70,11 +70,11 @@ needs conditional compilation and linking stays trivial.
   start the app, offering only **Download File** and **Cancel**. Builds
   compiled without Webxdc support use the same download-only flow.
 - The same section has opt-in switches for direct Internet access,
-  WebAssembly, WebGL, and (on WebKitGTK) hardware acceleration. All default
-  to off, including when upgrading from a version which did not have these
-  settings. **Use safest** resets every capability at once. Changing any
-  security switch closes running app windows so the next launch cannot retain
-  an older, broader policy.
+  WebAssembly, WebGL, developer tools, and (on WebKitGTK) hardware
+  acceleration. All default to off, including when upgrading from a version
+  which did not have these settings. **Use safest** resets every capability
+  at once. Changing any security switch closes running app windows so the next
+  launch cannot retain an older, broader policy.
 - Sending an `.xdc` file from Parla announces it with the `Webxdc`
   viewtype, so other clients show it as an app too.
 - Every window gets its own isolated web context. WebKit uses a custom
@@ -120,6 +120,14 @@ relax individual capabilities in Settings:
   same document-start canvas restriction. Enabling WebGL on Windows is also
   the GPU opt-in because WebView2 has no stable per-controller acceleration
   setting.
+- **No developer tools.** Browser inspection and the JavaScript console are
+  disabled by default. The opt-in setting enables WebKitGTK's inspector,
+  makes the macOS WKWebView inspectable on supported system versions, and
+  enables WebView2 developer tools and its inspection context menu. While
+  developer tools are off, the bridge displays the first uncaught JavaScript
+  exception, unhandled promise rejection, or script-load failure inside the
+  app window, and a failed `index.html` fetch gets a startup error page,
+  instead of leaving an unexplained blank or broken view.
 - **No hardware acceleration on WebKitGTK.** Its public per-view policy is
   set to `NEVER` by default. WKWebView exposes no equivalent public setting,
   so Parla does not show a misleading hardware-acceleration switch on macOS.

@@ -43,6 +43,7 @@ static NSString *const kParlaWebxdcBlockRules =
 	BOOL allow_internet;
 	BOOL allow_wasm;
 	BOOL allow_webgl;
+	BOOL developer_tools;
 	ParlaWebxdcBlobFn blob_cb;
 	ParlaWebxdcMsgFn message_cb;
 	ParlaWebxdcClosedFn closed_cb;
@@ -169,6 +170,8 @@ setup_webview (ParlaWebxdcController *c, WKContentRuleList *rules)
 	    initWithFrame:[[c->window contentView] bounds]
 	    configuration:cfg];
 	[cfg release];
+	if (@available(macOS 13.3, *))
+		[c->webview setInspectable:c->developer_tools];
 	[c->webview setNavigationDelegate:c];
 	[c->webview setUIDelegate:c];
 	[c->webview setAutoresizingMask:
@@ -271,6 +274,7 @@ parla_webxdc_open (const char *title, ParlaWebxdcBlobFn blob,
                    ParlaWebxdcMsgFn message, ParlaWebxdcClosedFn closed,
                    gboolean allow_internet, gboolean allow_wasm,
                    gboolean allow_webgl,
+                   gboolean developer_tools,
                    gpointer user_data)
 {
 	ParlaWebxdcController *c = [[ParlaWebxdcController alloc] init];
@@ -281,6 +285,7 @@ parla_webxdc_open (const char *title, ParlaWebxdcBlobFn blob,
 	c->allow_internet = allow_internet;
 	c->allow_wasm = allow_wasm;
 	c->allow_webgl = allow_webgl;
+	c->developer_tools = developer_tools;
 	c->live_tasks = [[NSMutableSet alloc] init];
 	c->stopped_tasks = [[NSMutableSet alloc] init];
 

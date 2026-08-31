@@ -19,6 +19,7 @@ gpointer parla_webxdc_win_open (
     gboolean                  allow_internet,
     gboolean                  allow_wasm,
     gboolean                  allow_webgl,
+    gboolean                  developer_tools,
     gpointer                  user_data);
 
 void parla_webxdc_win_load (gpointer handle, const char *uri);

@@ -104,6 +104,8 @@ namespace Dc {
             WebxdcSecurity.SAFE_ALLOW_WEBGL; }
         public bool webxdc_allow_hardware_acceleration { get; set; default =
             WebxdcSecurity.SAFE_ALLOW_HARDWARE_ACCELERATION; }
+        public bool webxdc_developer_tools { get; set; default =
+            WebxdcSecurity.SAFE_DEVELOPER_TOOLS; }
         public int auto_download_limit { get; set; default = AUTO_DOWNLOAD_DEFAULT; }
         public string rpc_server_path { get; set; default = ""; }
         /* An empty value deliberately means the standard Parla account store. */
@@ -219,6 +221,9 @@ namespace Dc {
             webxdc_allow_hardware_acceleration = kf_bool (kf,
                 "webxdc_allow_hardware_acceleration",
                 WebxdcSecurity.SAFE_ALLOW_HARDWARE_ACCELERATION);
+            webxdc_developer_tools = kf_bool (kf,
+                "webxdc_developer_tools",
+                WebxdcSecurity.SAFE_DEVELOPER_TOOLS);
             auto_download_limit = normalize_auto_download_limit (
                 kf_int (kf, "auto_download_limit", AUTO_DOWNLOAD_DEFAULT));
             rpc_server_path = kf_str (kf, "rpc_server_path", "");
@@ -400,6 +405,11 @@ namespace Dc {
         public void save_webxdc_allow_hardware_acceleration (bool v) {
             webxdc_allow_hardware_acceleration = v;
             save_bool ("webxdc_allow_hardware_acceleration", v);
+        }
+
+        public void save_webxdc_developer_tools (bool v) {
+            webxdc_developer_tools = v;
+            save_bool ("webxdc_developer_tools", v);
         }
 
         public void save_auto_download_limit (int bytes) {
@@ -1101,6 +1111,12 @@ namespace Dc {
                         .save_webxdc_allow_hardware_acceleration (v));
             }
 
+            var developer_tools_switch = add_switch_row (webxdc_group,
+                "Web developer tools",
+                "Allow inspecting apps and using the JavaScript console",
+                app_window.settings.webxdc_developer_tools,
+                (v) => app_window.settings.save_webxdc_developer_tools (v));
+
             var safest_row = action_row (
                 "Safest defaults",
                 "Turn off extra access and close running apps");
@@ -1120,6 +1136,8 @@ namespace Dc {
                             WebxdcSecurity
                                 .SAFE_ALLOW_HARDWARE_ACCELERATION);
                 }
+                developer_tools_switch.active =
+                    WebxdcSecurity.SAFE_DEVELOPER_TOOLS;
                 app_window.show_toast ("Webxdc safest defaults restored");
             });
             safest_row.add_suffix (safest_button);

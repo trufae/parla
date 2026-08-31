@@ -167,6 +167,7 @@ struct WebxdcWindow {
     bool allow_internet = false;
     bool allow_wasm = false;
     bool allow_webgl = false;
+    bool developer_tools = false;
     ParlaWebxdcWinBlobFn blob_cb = nullptr;
     ParlaWebxdcWinMsgFn message_cb = nullptr;
     ParlaWebxdcWinClosedFn closed_cb = nullptr;
@@ -458,8 +459,9 @@ WebxdcWindow::controller_created (HRESULT result,
         settings->put_IsWebMessageEnabled (TRUE);
         settings->put_AreDefaultScriptDialogsEnabled (FALSE);
         settings->put_IsStatusBarEnabled (FALSE);
-        settings->put_AreDevToolsEnabled (FALSE);
-        settings->put_AreDefaultContextMenusEnabled (FALSE);
+        settings->put_AreDevToolsEnabled (developer_tools ? TRUE : FALSE);
+        settings->put_AreDefaultContextMenusEnabled (
+            developer_tools ? TRUE : FALSE);
         settings->put_AreHostObjectsAllowed (FALSE);
         settings->put_IsBuiltInErrorPageEnabled (FALSE);
         settings->Release ();
@@ -771,7 +773,8 @@ parla_webxdc_win_open (const char *title, ParlaWebxdcWinBlobFn blob,
                        ParlaWebxdcWinMsgFn message,
                        ParlaWebxdcWinClosedFn closed,
                        gboolean allow_internet, gboolean allow_wasm,
-                       gboolean allow_webgl, gpointer user_data)
+                       gboolean allow_webgl, gboolean developer_tools,
+                       gpointer user_data)
 {
     auto *window = new WebxdcWindow ();
     window->blob_cb = blob;
@@ -781,6 +784,7 @@ parla_webxdc_win_open (const char *title, ParlaWebxdcWinBlobFn blob,
     window->allow_internet = allow_internet;
     window->allow_wasm = allow_wasm;
     window->allow_webgl = allow_webgl;
+    window->developer_tools = developer_tools;
 
     HRESULT result = CoInitializeEx (nullptr, COINIT_APARTMENTTHREADED);
     window->co_initialized = SUCCEEDED (result);

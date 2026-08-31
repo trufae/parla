@@ -111,6 +111,9 @@ namespace Dc.Webxdc {
             });
             settings.notify["webxdc-allow-hardware-acceleration"].connect (
                 () => { schedule_security_close (); });
+            settings.notify["webxdc-developer-tools"].connect (() => {
+                schedule_security_close ();
+            });
         }
     }
 
@@ -261,6 +264,7 @@ namespace Dc.Webxdc {
         private bool allow_wasm = false;
         private bool allow_webgl = false;
         private bool allow_hardware_acceleration = false;
+        private bool developer_tools = false;
         /* Whether follow-chat mode currently keeps the window hidden;
            tracked so mode/chat changes only touch window state on an
            actual transition (a plain show would un-minimize, say). */
@@ -278,6 +282,7 @@ namespace Dc.Webxdc {
                 allow_webgl = config.webxdc_allow_webgl;
                 allow_hardware_acceleration =
                     config.webxdc_allow_hardware_acceleration;
+                developer_tools = config.webxdc_developer_tools;
             }
             create_view (app_name);
             present ();
@@ -367,6 +372,24 @@ namespace Dc.Webxdc {
                 deliver (token, data, mime);
             } catch (Error e) {
                 warning ("webxdc blob '%s': %s", path, e.message);
+                if (!developer_tools && p == "index.html") {
+                    var message = Markup.escape_text (e.message);
+                    var html = """<!doctype html><meta charset="utf-8">
+<title>Webxdc app error</title>
+<style>
+html,body{height:100%%;margin:0}body{box-sizing:border-box;display:flex;
+align-items:center;justify-content:center;padding:24px;background:#292929;
+color:#222;font:14px system-ui,sans-serif}.dialog{box-sizing:border-box;
+width:min(520px,100%%);max-height:80vh;overflow:auto;border-radius:12px;
+padding:20px;background:#fff;box-shadow:0 12px 40px #0008}h1{font-size:18px;
+margin:0 0 10px}pre{white-space:pre-wrap;overflow-wrap:anywhere;
+font:12px ui-monospace,monospace}.hint{color:#555}
+</style><main class="dialog" role="alert"><h1>This Webxdc app could not start</h1>
+<pre>%s</pre><div class="hint">Enable Web developer tools in Settings → Advanced
+for full diagnostics.</div></main>""".printf (message);
+                    deliver (token, html.data, "text/html");
+                    return;
+                }
                 fail (token);
             }
         }
@@ -377,12 +400,87 @@ namespace Dc.Webxdc {
             return Json.to_string (node, false);
         }
 
+        /* Without an inspector, a broken app would otherwise leave only a
+           blank window and a warning in Parla's terminal log. Install this
+           before the app's own code (webxdc.js is conventionally its first
+           script) and show the first uncaught runtime or script-load error
+           inside the app window. This is host UI, not window.alert(), so
+           apps still cannot create arbitrary modal-dialog spam. */
+        private string runtime_error_reporter_js () {
+            if (developer_tools) return "";
+            return """(function () {
+    'use strict';
+    var reported = false;
+    function text(value) {
+        if (value instanceof Error) return value.stack || value.message;
+        if (typeof value === 'string') return value;
+        try { return JSON.stringify(value); } catch (e) { return String(value); }
+    }
+    function show(message) {
+        if (reported) return;
+        reported = true;
+        function render() {
+            var shade = document.createElement('div');
+            shade.setAttribute('role', 'alertdialog');
+            shade.setAttribute('aria-modal', 'true');
+            shade.style.cssText = 'position:fixed;inset:0;z-index:2147483647;'
+                + 'display:flex;align-items:center;justify-content:center;'
+                + 'padding:24px;background:rgba(0,0,0,.58);color:#222;'
+                + 'font:14px system-ui,sans-serif';
+            var box = document.createElement('div');
+            box.style.cssText = 'box-sizing:border-box;width:min(520px,100%);'
+                + 'max-height:80vh;overflow:auto;border-radius:12px;'
+                + 'padding:20px;background:#fff;box-shadow:0 12px 40px #0008';
+            var heading = document.createElement('div');
+            heading.textContent = 'This Webxdc app encountered an error';
+            heading.style.cssText = 'font-size:18px;font-weight:700;margin-bottom:10px';
+            var details = document.createElement('pre');
+            details.textContent = message || 'Unknown JavaScript error';
+            details.style.cssText = 'white-space:pre-wrap;overflow-wrap:anywhere;'
+                + 'margin:0 0 12px;font:12px ui-monospace,monospace';
+            var hint = document.createElement('div');
+            hint.textContent = 'Enable Web developer tools in Settings → Advanced '
+                + 'for full diagnostics.';
+            hint.style.cssText = 'margin-bottom:16px;color:#555';
+            var close = document.createElement('button');
+            close.textContent = 'Dismiss';
+            close.style.cssText = 'float:right;padding:7px 14px';
+            close.addEventListener('click', function () { shade.remove(); });
+            box.append(heading, details, hint, close);
+            shade.appendChild(box);
+            (document.body || document.documentElement).appendChild(shade);
+            close.focus();
+        }
+        if (document.readyState === 'loading')
+            document.addEventListener('DOMContentLoaded', render, { once: true });
+        else
+            render();
+    }
+    window.addEventListener('error', function (event) {
+        if (event.target && event.target !== window) {
+            var tag = event.target.tagName || 'resource';
+            var url = event.target.src || event.target.href || '';
+            if (tag === 'SCRIPT')
+                show('Failed to load ' + tag.toLowerCase() + (url ? ': ' + url : ''));
+            return;
+        }
+        var where = event.filename
+            ? '\n' + event.filename + ':' + event.lineno + ':' + event.colno : '';
+        show(text(event.error || event.message) + where);
+    }, true);
+    window.addEventListener('unhandledrejection', function (event) {
+        show('Unhandled promise rejection: ' + text(event.reason));
+    });
+})();
+""";
+        }
+
         /* The window.webxdc object, limited to the documented API used by
            the official Delta Chat clients: selfAddr, selfName, sendUpdate
            and setUpdateListener. Serial de-duplication happens here so a
            pull racing an event push never delivers an update twice. */
         private string bridge_js () {
-            return """window.webxdc = (function () {
+            return runtime_error_reporter_js () + """window.webxdc = (function () {
     'use strict';
     var handler = window.webkit.messageHandlers.webxdc;
     var listener = null;
@@ -518,6 +616,7 @@ namespace Dc.Webxdc {
                                                bool allow_internet,
                                                bool allow_wasm,
                                                bool allow_webgl,
+                                               bool developer_tools,
                                                void* user_data);
         [CCode (cheader_filename = "webxdc_platform.h",
                 cname = "parla_webxdc_load")]
@@ -579,7 +678,7 @@ namespace Dc.Webxdc {
         private void create_view (string title) {
             handle = shim_open (title, on_raw_blob, on_raw_message,
                                 on_raw_closed, allow_internet, allow_wasm,
-                                allow_webgl, this);
+                                allow_webgl, developer_tools, this);
         }
 
         public void present () {
@@ -669,7 +768,7 @@ namespace Dc.Webxdc {
                 "network-session", session,
                 "user-content-manager", ucm);
             var s = view.get_settings ();
-            s.enable_developer_extras = false;
+            s.enable_developer_extras = developer_tools;
             s.allow_modal_dialogs = false;
             s.javascript_can_open_windows_automatically = false;
             /* The proxy covers URL loads; WebRTC can create direct UDP
