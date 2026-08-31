@@ -442,8 +442,20 @@ namespace Dc {
                                     string? file_name = null,
                                     int quoted_msg_id = 0,
                                     string? view_type = null) throws Error {
+            return yield send_msg_for (account_id, chat_id, text, file_path,
+                                       file_name, quoted_msg_id, view_type);
+        }
+
+        /* Same as send_msg but targets an explicit account. Used by
+           cross-account forwarding, where the destination lives in a
+           different account than the one currently selected. */
+        public async int send_msg_for (int acct_id, int chat_id, string? text,
+                                        string? file_path = null,
+                                        string? file_name = null,
+                                        int quoted_msg_id = 0,
+                                        string? view_type = null) throws Error {
             var p = Params.begin ()
-                .add_int (account_id)
+                .add_int (acct_id)
                 .add_int (chat_id)
                 .begin_object ()
                 .set_string_member ("text", text)
@@ -566,36 +578,53 @@ namespace Dc {
         }
 
         public async int create_contact (string email) throws Error {
+            return yield create_contact_for (account_id, email);
+        }
+
+        public async int create_contact_for (int acct_id, string email) throws Error {
             return yield call_int ("create_contact",
                 Params.begin ()
-                    .add_int (account_id)
+                    .add_int (acct_id)
                     .add_string (email)
                     .add_string (null)
                     .build ());
         }
 
         public async int lookup_contact (string email) throws Error {
+            return yield lookup_contact_for (account_id, email);
+        }
+
+        public async int lookup_contact_for (int acct_id, string email) throws Error {
             var result = yield call ("lookup_contact_id_by_addr",
-                Params.begin ().add_int (account_id).add_string (email).build ());
+                Params.begin ().add_int (acct_id).add_string (email).build ());
             if (result == null || result.is_null ()) return 0;
             return (int) result.get_int ();
         }
 
         public async int get_or_create_contact (string email) throws Error {
-            int contact_id = yield lookup_contact (email);
+            return yield get_or_create_contact_for (account_id, email);
+        }
+
+        public async int get_or_create_contact_for (int acct_id, string email) throws Error {
+            int contact_id = yield lookup_contact_for (acct_id, email);
             if (contact_id == 0) {
-                contact_id = yield create_contact (email);
+                contact_id = yield create_contact_for (acct_id, email);
             }
             return contact_id;
         }
 
         public async int get_or_create_chat_by_contact (int contact_id) throws Error {
+            return yield get_or_create_chat_by_contact_for (account_id, contact_id);
+        }
+
+        public async int get_or_create_chat_by_contact_for (int acct_id,
+                                                             int contact_id) throws Error {
             var result = yield call ("get_chat_id_by_contact_id",
-                Params.begin ().add_int (account_id).add_int (contact_id).build ());
+                Params.begin ().add_int (acct_id).add_int (contact_id).build ());
             if (result != null && !result.is_null () && result.get_int () > 0)
                 return (int) result.get_int ();
             result = yield call ("create_chat_by_contact_id",
-                Params.begin ().add_int (account_id).add_int (contact_id).build ());
+                Params.begin ().add_int (acct_id).add_int (contact_id).build ());
             return (int) result.get_int ();
         }
 

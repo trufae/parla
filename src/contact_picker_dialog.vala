@@ -5,6 +5,12 @@ namespace Dc {
         public signal void contact_picked (int contact_id, string email);
         public signal void chat_picked (int chat_id);
 
+        /* The account whose chat/contact was picked. Callers read this after
+           a pick signal to know which account to act on — it equals the
+           current account unless the account selector is enabled and the user
+           switched to another one (used by cross-account forwarding). */
+        public int selected_account_id { get; private set; default = 0; }
+
         private RpcClient rpc;
         private GLib.ListStore? chat_store;
         private Gtk.SearchEntry search_entry;
@@ -15,11 +21,24 @@ namespace Dc {
         private Gtk.Button use_email_btn;
         private GenericArray<Contact> all_contacts = new GenericArray<Contact> ();
 
+        /* Account selector state — only used when enable_account_selector is
+           set. When active, chats are loaded from the RPC for the selected
+           account instead of the passed-in chat_store. */
+        private bool account_selector_enabled = false;
+        private Gtk.DropDown? account_dropdown = null;
+        private int[] account_ids = {};
+        private GenericArray<ChatEntry> loaded_chats = new GenericArray<ChatEntry> ();
+        private uint chat_load_gen = 0;
+        private uint contact_load_gen = 0;
+
         public ContactPickerDialog (RpcClient rpc,
                                      GLib.ListStore? chat_store = null,
-                                     string? title = null) {
+                                     string? title = null,
+                                     bool enable_account_selector = false) {
             this.rpc = rpc;
             this.chat_store = chat_store;
+            this.account_selector_enabled = enable_account_selector;
+            this.selected_account_id = rpc.account_id;
             this.title = title ?? (chat_store != null
                 ? "Select Destination" : "Select Contact");
             this.content_width = 360;
@@ -36,6 +55,16 @@ namespace Dc {
             content.margin_end = 12;
             content.margin_top = 8;
             content.margin_bottom = 12;
+
+            /* Account selector — lets the user forward into a different
+               account. Populated asynchronously from get_all_accounts. */
+            if (account_selector_enabled) {
+                account_dropdown = new Gtk.DropDown (new Gtk.StringList (null), null);
+                account_dropdown.hexpand = true;
+                account_dropdown.tooltip_text = "Destination account";
+                account_dropdown.notify["selected"].connect (on_account_changed);
+                content.append (account_dropdown);
+            }
 
             /* Search / filter entry */
             search_entry = new Gtk.SearchEntry ();
@@ -97,34 +126,127 @@ namespace Dc {
             /* Close on Escape — cancels the picker without side effects */
             install_escape_close (this);
 
-            /* Load contacts */
+            /* Load contacts for the initially-selected account. */
             load_contacts.begin ();
 
-            /* Populate chat rows (synchronous — chat_store is already loaded) */
-            if (chat_store != null) {
+            if (account_selector_enabled) {
+                /* Chats come from the RPC so any account can be shown; also
+                   populates the account dropdown. */
+                load_accounts.begin ();
+                load_chats_for_account.begin (selected_account_id);
+            } else if (chat_store != null) {
+                /* Populate chat rows (synchronous — chat_store is already
+                   loaded for the current account). */
                 rebuild_chat_list ("");
             }
         }
 
-        private async void load_contacts () {
+        /* Fill the account dropdown with every configured account and preselect
+           the current one. */
+        private async void load_accounts () {
+            if (account_dropdown == null) return;
+            var model = (Gtk.StringList) account_dropdown.model;
+            int[] ids = {};
+            int selected_idx = 0;
             try {
-                var ids = yield rpc.get_contact_ids_for (rpc.account_id, null);
+                var accounts_node = yield rpc.get_all_accounts ();
+                if (accounts_node != null
+                    && accounts_node.get_node_type () == Json.NodeType.ARRAY) {
+                    var accounts = accounts_node.get_array ();
+                    for (uint i = 0; i < accounts.get_length (); i++) {
+                        var acct = accounts.get_object_element (i);
+                        if (acct == null) continue;
+                        int id = (int) acct.get_int_member ("id");
+                        if (id <= 0 || !(yield rpc.is_configured (id))) continue;
+
+                        string? name = yield rpc.get_config ("displayname", id);
+                        string? addr = yield rpc.get_config ("addr", id);
+                        string label = (name != null && name.length > 0)
+                            ? name : (addr ?? "Account #%d".printf (id));
+                        if (name != null && name.length > 0
+                            && addr != null && addr.length > 0)
+                            label = "%s (%s)".printf (name, addr);
+
+                        if (id == selected_account_id)
+                            selected_idx = ids.length;
+                        ids += id;
+                        model.append (label);
+                    }
+                }
+            } catch (Error e) {
+                /* Leave the dropdown as-is; the current account still works. */
+            }
+            account_ids = ids;
+            /* Setting selected here won't spuriously reload: on_account_changed
+               is a no-op when the id doesn't actually change. */
+            if (ids.length > 0) account_dropdown.selected = selected_idx;
+        }
+
+        private void on_account_changed () {
+            if (account_dropdown == null) return;
+            int idx = (int) account_dropdown.selected;
+            if (idx < 0 || idx >= account_ids.length) return;
+            int id = account_ids[idx];
+            if (id == selected_account_id) return;
+
+            selected_account_id = id;
+            search_entry.text = "";
+            load_contacts.begin ();
+            load_chats_for_account.begin (id);
+        }
+
+        /* Fetch the chat list for an account via the RPC and rebuild the chat
+           section. Used only in account-selector mode. */
+        private async void load_chats_for_account (int acct_id) {
+            uint gen = ++chat_load_gen;
+            var chats = new GenericArray<ChatEntry> ();
+            try {
+                var entries = yield rpc.get_chatlist_entries_for (
+                    acct_id, null, RpcClient.GCL_NO_SPECIALS);
+                if (entries != null) {
+                    var items = yield rpc.get_chatlist_items_by_entries_for (
+                        acct_id, entries);
+                    for (uint i = 0; i < entries.get_length (); i++) {
+                        int chat_id = (int) entries.get_int_element (i);
+                        string id_str = chat_id.to_string ();
+                        if (items != null && items.has_member (id_str)) {
+                            var item = items.get_object_member (id_str);
+                            chats.add (RpcParsers.parse_chat_item (chat_id, item));
+                        }
+                    }
+                }
+            } catch (Error e) {
+                /* Fall through with whatever was collected. */
+            }
+            if (gen != chat_load_gen) return; /* superseded by a newer switch */
+            loaded_chats = chats;
+            rebuild_chat_list (search_entry.text.strip ());
+        }
+
+        private async void load_contacts () {
+            uint gen = ++contact_load_gen;
+            int acct_id = selected_account_id;
+            var collected = new GenericArray<Contact> ();
+            try {
+                var ids = yield rpc.get_contact_ids_for (acct_id, null);
                 if (ids == null) return;
 
                 for (uint i = 0; i < ids.get_length (); i++) {
                     int cid = (int) ids.get_int_element (i);
                     if (cid <= 1) continue; /* skip self (1) and special IDs */
 
-                    var obj = yield rpc.get_contact_for (rpc.account_id, cid);
+                    var obj = yield rpc.get_contact_for (acct_id, cid);
                     if (obj == null) continue;
 
                     var ci = RpcParsers.parse_contact (cid, obj);
                     if (ci.address.length == 0) continue;
 
-                    all_contacts.add (ci);
+                    collected.add (ci);
                 }
 
-                rebuild_contact_list ("");
+                if (gen != contact_load_gen) return; /* superseded */
+                all_contacts = collected;
+                rebuild_contact_list (search_entry.text.strip ());
             } catch (Error e) {
                 var lbl = new Gtk.Label ("Failed to load contacts: " + e.message);
                 lbl.add_css_class ("dim-label");
@@ -154,17 +276,28 @@ namespace Dc {
 
         private void rebuild_chat_list (string query) {
             clear_listbox (chat_listbox);
-            if (chat_store == null) return;
 
             string q = query.strip ().down ();
             bool any = false;
 
-            for (uint i = 0; i < chat_store.get_n_items (); i++) {
-                var chat = (ChatEntry) chat_store.get_item (i);
-                if (q.length > 0 && !chat.name.down ().contains (q)) continue;
+            /* In account-selector mode chats come from the RPC (loaded_chats);
+               otherwise from the current account's chat_store. */
+            if (account_selector_enabled) {
+                for (uint i = 0; i < loaded_chats.length; i++) {
+                    var chat = loaded_chats[i];
+                    if (q.length > 0 && !chat.name.down ().contains (q)) continue;
+                    chat_listbox.append (chat_pick_row (chat));
+                    any = true;
+                }
+            } else {
+                if (chat_store == null) return;
+                for (uint i = 0; i < chat_store.get_n_items (); i++) {
+                    var chat = (ChatEntry) chat_store.get_item (i);
+                    if (q.length > 0 && !chat.name.down ().contains (q)) continue;
 
-                chat_listbox.append (chat_pick_row (chat));
-                any = true;
+                    chat_listbox.append (chat_pick_row (chat));
+                    any = true;
+                }
             }
 
             chats_header.visible = any;
@@ -181,7 +314,8 @@ namespace Dc {
         private void on_search_changed () {
             string text = search_entry.text.strip ();
             rebuild_contact_list (text);
-            if (chat_store != null) rebuild_chat_list (text);
+            if (chat_store != null || account_selector_enabled)
+                rebuild_chat_list (text);
 
             /* Show "use this email" button if text looks like an email
                and doesn't exactly match an existing contact */

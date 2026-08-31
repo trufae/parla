@@ -280,14 +280,20 @@ namespace Dc {
                 Window window, RpcClient rpc, int[] msg_ids) {
             if (msg_ids.length == 0) return null;
             int[] forward_ids = msg_ids.copy ();
+            /* The message being forwarded lives in the currently-selected
+               account; capture it so we know the source when the destination
+               is a different account. */
+            int src_acct = rpc.account_id;
             var picker = new ContactPickerDialog (rpc, window.chat_store,
-                                                  "Forward To");
+                                                  "Forward To", true);
             picker.chat_picked.connect ((chat_id) => {
                 forward_to_chat.begin (window, rpc, forward_ids.copy (),
+                                       src_acct, picker.selected_account_id,
                                        chat_id);
             });
             picker.contact_picked.connect ((contact_id, email) => {
                 forward_to_contact.begin (window, rpc, forward_ids.copy (),
+                                          src_acct, picker.selected_account_id,
                                           contact_id, email);
             });
             picker.present (window);
@@ -296,11 +302,25 @@ namespace Dc {
 
         private static async void forward_to_chat (Window window, RpcClient rpc,
                                                     owned int[] msg_ids,
+                                                    int src_acct, int dest_acct,
                                                     int chat_id) {
             try {
-                yield rpc.forward_messages (msg_ids, chat_id);
-                window.request_reload_chats ();
-                window.request_chat_messages_reload (chat_id);
+                if (dest_acct == src_acct) {
+                    /* Same account: use core's native forward so messages keep
+                       their "Forwarded" flag. */
+                    yield rpc.forward_messages (msg_ids, chat_id);
+                } else {
+                    /* Cross-account: core can't forward across accounts, so
+                       copy each message's text + attachment and re-send it into
+                       the destination account. */
+                    yield copy_messages_to_account (rpc, msg_ids, src_acct,
+                                                    dest_acct, chat_id);
+                }
+                /* Only the active account's views are on screen. */
+                if (dest_acct == rpc.account_id) {
+                    window.request_reload_chats ();
+                    window.request_chat_messages_reload (chat_id);
+                }
                 window.show_toast (msg_ids.length == 1
                     ? "Message forwarded" : "Messages forwarded");
             } catch (Error e) {
@@ -308,23 +328,49 @@ namespace Dc {
             }
         }
 
+        /* Re-send msg_ids (read from src_acct) into chat_id of dest_acct by
+           copying text and any attachment file. */
+        private static async void copy_messages_to_account (RpcClient rpc,
+                                                            int[] msg_ids,
+                                                            int src_acct,
+                                                            int dest_acct,
+                                                            int chat_id) throws Error {
+            foreach (int msg_id in msg_ids) {
+                var m = yield rpc.fetch_message_for (src_acct, msg_id, null);
+                if (m == null) continue;
+
+                string? text = m.has_text ? m.text : null;
+                string? file_path = m.has_local_file ? m.file_path : null;
+                string? file_name = file_path != null ? m.file_name : null;
+                /* Skip empty info/system messages with nothing to carry over. */
+                if (text == null && file_path == null) continue;
+
+                yield rpc.send_msg_for (dest_acct, chat_id, text,
+                                        file_path, file_name, 0, m.view_type);
+            }
+        }
+
         private static async void forward_to_contact (Window window,
                                                        RpcClient rpc,
                                                        owned int[] msg_ids,
+                                                       int src_acct,
+                                                       int dest_acct,
                                                        int contact_id,
                                                        string email) {
             int chat_id;
             try {
                 int cid = contact_id;
                 if (cid <= 0) {
-                    cid = yield rpc.get_or_create_contact (email);
+                    cid = yield rpc.get_or_create_contact_for (dest_acct, email);
                 }
-                chat_id = yield rpc.get_or_create_chat_by_contact (cid);
+                chat_id = yield rpc.get_or_create_chat_by_contact_for (dest_acct,
+                                                                       cid);
             } catch (Error e) {
                 window.show_toast ("Forward failed: " + e.message);
                 return;
             }
-            yield forward_to_chat (window, rpc, (owned) msg_ids, chat_id);
+            yield forward_to_chat (window, rpc, (owned) msg_ids, src_acct,
+                                   dest_acct, chat_id);
         }
 
         public async void edit_message (int msg_id, string new_text) {
