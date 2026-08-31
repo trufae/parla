@@ -3110,28 +3110,8 @@ namespace Dc {
 
         private void apply_sidebar_mode (bool update_visibility) {
             var mode = settings.sidebar_mode;
-            switch (mode) {
-            case SidebarMode.FULL:
-                if (update_visibility) split_view.show_sidebar = true;
-                split_view.sidebar_width_unit = Adw.LengthUnit.SP;
-                split_view.min_sidebar_width = split_view.collapsed
-                    ? COLLAPSED_SIDEBAR_MIN_WIDTH
-                    : FULL_SIDEBAR_MIN_WIDTH;
-                split_view.max_sidebar_width = split_view.collapsed
-                    ? COLLAPSED_SIDEBAR_MAX_WIDTH
-                    : FULL_SIDEBAR_MAX_WIDTH;
-                split_view.sidebar_width_fraction = 0.32;
-                sidebar_box.remove_css_class ("sidebar-compact");
-                search_entry.visible = true;
-                sidebar_menu_button.visible = true;
-                sidebar_title.visible = true;
-                sidebar_title.title = "Parla";
-                set_compact_header_chrome (false);
-                sidebar_toggle_btn.icon_name = "sidebar-show-symbolic";
-                sidebar_toggle_btn.tooltip_text = "Hide Sidebar (%s)".printf (
-                    Platform.primary_shortcut_text ("S"));
-                break;
-            case SidebarMode.COMPACT:
+            sidebar_toggle_btn.icon_name = "sidebar-show-symbolic";
+            if (mode == SidebarMode.COMPACT) {
                 if (update_visibility) split_view.show_sidebar = true;
                 split_view.sidebar_width_unit = Adw.LengthUnit.PX;
                 split_view.min_sidebar_width = COMPACT_SIDEBAR_WIDTH;
@@ -3143,12 +3123,12 @@ namespace Dc {
                 sidebar_title.visible = false;
                 sidebar_title.title = "";
                 set_compact_header_chrome (true);
-                sidebar_toggle_btn.icon_name = "sidebar-show-symbolic";
-                sidebar_toggle_btn.tooltip_text = "Hide Sidebar (%s)".printf (
-                    Platform.primary_shortcut_text ("S"));
-                break;
-            case SidebarMode.HIDDEN:
-                if (update_visibility) split_view.show_sidebar = false;
+                set_sidebar_toggle_tooltip (false);
+            } else {
+                /* FULL and HIDDEN share the expanded layout; they differ only
+                   in whether the sidebar starts shown and the toggle's verb. */
+                bool hidden = mode == SidebarMode.HIDDEN;
+                if (update_visibility) split_view.show_sidebar = !hidden;
                 split_view.sidebar_width_unit = Adw.LengthUnit.SP;
                 split_view.min_sidebar_width = split_view.collapsed
                     ? COLLAPSED_SIDEBAR_MIN_WIDTH
@@ -3163,13 +3143,16 @@ namespace Dc {
                 sidebar_title.visible = true;
                 sidebar_title.title = "Parla";
                 set_compact_header_chrome (false);
-                sidebar_toggle_btn.icon_name = "sidebar-show-symbolic";
-                sidebar_toggle_btn.tooltip_text = "Show Sidebar (%s)".printf (
-                    Platform.primary_shortcut_text ("S"));
-                break;
+                set_sidebar_toggle_tooltip (hidden);
             }
             apply_compact_to_rows (mode == SidebarMode.COMPACT);
             update_archived_toggle ();
+        }
+
+        private void set_sidebar_toggle_tooltip (bool hidden) {
+            sidebar_toggle_btn.tooltip_text =
+                (hidden ? "Show Sidebar (%s)" : "Hide Sidebar (%s)").printf (
+                    Platform.primary_shortcut_text ("S"));
         }
 
         private void set_compact_header_chrome (bool compact) {

@@ -74,6 +74,30 @@ namespace Dc {
         return (yield d.choose (parent, null)) == action_id;
     }
 
+    // Single-line text prompt with a suggested confirm action. Returns the
+    // entered text (unstripped) on confirm, null if cancelled/dismissed.
+    public static async string? prompt_text (Gtk.Widget parent, string title,
+                                             string? body, string action_label,
+                                             string initial = "",
+                                             string? placeholder = null) {
+        var d = new Adw.AlertDialog (title, body);
+        d.add_response ("cancel", "Cancel");
+        d.add_response ("ok", action_label);
+        d.set_response_appearance ("ok", Adw.ResponseAppearance.SUGGESTED);
+        d.default_response = "ok";
+        d.close_response = "cancel";
+
+        var entry = new Gtk.Entry ();
+        entry.text = initial;
+        entry.hexpand = true;
+        entry.activates_default = true;
+        if (placeholder != null) entry.placeholder_text = placeholder;
+        d.extra_child = entry;
+
+        if ((yield d.choose (parent, null)) != "ok") return null;
+        return entry.text;
+    }
+
     public static async DeleteChoice confirm_delete_options (
             Gtk.Widget parent, string title, string body,
             bool allow_delete_for_everyone) {

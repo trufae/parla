@@ -1,5 +1,8 @@
 namespace Dc {
 
+    private delegate void MessageFunc (Message msg);
+    private delegate bool WidgetTest (Gtk.Widget w);
+
     private class PendingSend : Object {
         public string text;
         public string? file_path;
@@ -723,11 +726,7 @@ namespace Dc {
                         ? loaded_start_index - 100 : 0;
                     var messages = yield fetch_messages_batch (
                         new_start, loaded_start_index);
-                    message_store.splice (
-                        0, 0, pinned_message_batch (messages));
-                    flush_pending_seen ();
-                    loaded_start_index = new_start;
-                    update_conversation_media_bar ();
+                    prepend_batch (messages, new_start);
 
                     msg = find_adjacent_voice_message (current_id, -1);
                     if (msg != null) break;
@@ -939,49 +938,49 @@ namespace Dc {
             compose_bar.visible = !selection_mode && !is_contact_request;
         }
 
+        // Apply fn to every loaded message in order.
+        private void foreach_message (MessageFunc fn) {
+            uint n = message_store.get_n_items ();
+            for (uint i = 0; i < n; i++) {
+                fn ((Message) message_store.get_item (i));
+            }
+        }
+
         private void begin_selection_mode (int initial_msg_id) {
             selection_mode = true;
-            for (uint i = 0; i < message_store.get_n_items (); i++) {
-                var msg = (Message) message_store.get_item (i);
+            foreach_message ((msg) => {
                 msg.selection_visible = true;
                 msg.notify_property ("selection-visible");
                 if (msg.id == initial_msg_id) {
                     msg.selected = true;
                     msg.notify_property ("selected");
                 }
-            }
+            });
             sync_bottom_bars ();
             update_selection_actions ();
         }
 
         private void end_selection_mode () {
             selection_mode = false;
-            for (uint i = 0; i < message_store.get_n_items (); i++) {
-                var msg = (Message) message_store.get_item (i);
+            foreach_message ((msg) => {
                 msg.selected = false;
                 msg.selection_visible = false;
                 msg.notify_property ("selected");
                 msg.notify_property ("selection-visible");
-            }
+            });
             sync_bottom_bars ();
             update_selection_actions ();
         }
 
         private int selected_message_count () {
             int count = 0;
-            for (uint i = 0; i < message_store.get_n_items (); i++) {
-                var msg = (Message) message_store.get_item (i);
-                if (msg.selected) count++;
-            }
+            foreach_message ((msg) => { if (msg.selected) count++; });
             return count;
         }
 
         private int[] selected_message_ids () {
             int[] ids = {};
-            for (uint i = 0; i < message_store.get_n_items (); i++) {
-                var msg = (Message) message_store.get_item (i);
-                if (msg.selected) ids += msg.id;
-            }
+            foreach_message ((msg) => { if (msg.selected) ids += msg.id; });
             return ids;
         }
 
@@ -1818,6 +1817,34 @@ namespace Dc {
             return batch;
         }
 
+        /* Prepend a batch above the loaded window in one splice (a per-row
+           relayout storm otherwise), flushing pending seen state and syncing
+           the media bar. */
+        private void prepend_batch (GLib.GenericArray<Message> messages,
+                                    uint new_start) {
+            message_store.splice (0, 0, pinned_message_batch (messages));
+            flush_pending_seen ();
+            loaded_start_index = new_start;
+            update_conversation_media_bar ();
+        }
+
+        /* prepend_batch, but pin the topmost visible row in place: GtkListView
+           estimates the list height, so without a real anchor every splice
+           re-estimates it and visibly jerks the viewport. */
+        private void prepend_batch_preserving_anchor (
+                GLib.GenericArray<Message> messages, uint new_start) {
+            double anchor_top;
+            var anchor = find_message_row (message_listview, 0, out anchor_top);
+            int anchor_id = anchor != null ? anchor.message_id : 0;
+
+            prepend_batch (messages, new_start);
+
+            if (anchor_id == 0) return;
+            int anchor_pos = find_message_index (filtered_message_store, anchor_id);
+            if (anchor_pos >= 0)
+                anchor_message (anchor_id, (uint) anchor_pos, anchor_top);
+        }
+
         private async void load_earlier_messages () {
             if (loading_more || all_msg_ids == null || loaded_start_index == 0) return;
             loading_more = true;
@@ -1828,26 +1855,7 @@ namespace Dc {
 
             try {
                 var messages = yield fetch_messages_batch (new_start, loaded_start_index);
-
-                double anchor_top;
-                var anchor = find_message_row (
-                    message_listview, 0, out anchor_top);
-                int anchor_id = anchor != null ? anchor.message_id : 0;
-
-                /* One splice avoids a per-row ListView relayout storm. */
-                message_store.splice (0, 0, pinned_message_batch (messages));
-                flush_pending_seen ();
-
-                loaded_start_index = new_start;
-                update_conversation_media_bar ();
-
-                /* Preserve a real row because GtkListView's upper is estimated. */
-                int anchor_pos = anchor_id != 0
-                    ? find_message_index (filtered_message_store, anchor_id)
-                    : -1;
-                if (anchor_pos >= 0) {
-                    anchor_message (anchor_id, (uint) anchor_pos, anchor_top);
-                }
+                prepend_batch_preserving_anchor (messages, new_start);
                 finish_loading_earlier ();
             } catch (Error e) {
                 pending_scroll_message_id = 0;
@@ -1903,29 +1911,9 @@ namespace Dc {
                        during the roundtrip. */
                     if (pending_scroll_message_id == 0) break;
 
-                    /* Keep whatever is on screen exactly where it is while
-                       the batch lands above it; without an anchor every
-                       splice re-estimates the list height and visibly
-                       jerks the viewport. */
-                    double anchor_top;
-                    var anchor_row = find_message_row (
-                        message_listview, 0, out anchor_top);
-
                     /* Keep the complete context between the old viewport and
                        the target instead of inserting only the pinned row. */
-                    message_store.splice (0, 0, pinned_message_batch (messages));
-                    flush_pending_seen ();
-                    loaded_start_index = new_start;
-                    update_conversation_media_bar ();
-
-                    if (anchor_row != null) {
-                        int anchor_pos = find_message_index (
-                            filtered_message_store, anchor_row.message_id);
-                        if (anchor_pos >= 0) {
-                            anchor_message (anchor_row.message_id,
-                                            (uint) anchor_pos, anchor_top);
-                        }
-                    }
+                    prepend_batch_preserving_anchor (messages, new_start);
                 }
             } catch (Error e) {
                 pending_scroll_message_id = 0;
@@ -2383,18 +2371,26 @@ namespace Dc {
             return w as MessageRow;
         }
 
+        /* True when any widget between the picked one and its MessageRow
+           ancestor (exclusive) satisfies test. */
+        private bool pick_ancestor_matches (double x, double y, WidgetTest test) {
+            var w = message_listview.pick (x, y, Gtk.PickFlags.DEFAULT);
+            while (w != null && !(w is MessageRow)) {
+                if (test (w)) return true;
+                w = w.get_parent ();
+            }
+            return false;
+        }
+
         /* True when the pointer sits over a selectable text label (the
            message body). There the I-beam cursor invites text selection,
            so a double click should select a word rather than fire the
            reply/react action. */
         private bool pointer_on_selectable_text (double x, double y) {
-            var w = message_listview.pick (x, y, Gtk.PickFlags.DEFAULT);
-            while (w != null && !(w is MessageRow)) {
+            return pick_ancestor_matches (x, y, (w) => {
                 var lbl = w as Gtk.Label;
-                if (lbl != null && lbl.selectable) return true;
-                w = w.get_parent ();
-            }
-            return false;
+                return lbl != null && lbl.selectable;
+            });
         }
 
         private bool pointer_on_message_bubble (double x, double y) {
@@ -2406,12 +2402,7 @@ namespace Dc {
            play/pause button drives playback, so the press must reach it rather
            than triggering the row action or arming a double-click reaction. */
         private bool pointer_on_audio (double x, double y) {
-            var w = message_listview.pick (x, y, Gtk.PickFlags.DEFAULT);
-            while (w != null && !(w is MessageRow)) {
-                if (w is AudioPlayer) return true;
-                w = w.get_parent ();
-            }
-            return false;
+            return pick_ancestor_matches (x, y, (w) => w is AudioPlayer);
         }
 
         private bool search_filter_active () {
@@ -2422,14 +2413,12 @@ namespace Dc {
         /* True when the picked widget or an ancestor inside the row carries
            one of the given CSS classes. */
         private bool pointer_on_css (double x, double y, string[] classes) {
-            var w = message_listview.pick (x, y, Gtk.PickFlags.DEFAULT);
-            while (w != null && !(w is MessageRow)) {
+            return pick_ancestor_matches (x, y, (w) => {
                 foreach (unowned string cls in classes) {
                     if (w.has_css_class (cls)) return true;
                 }
-                w = w.get_parent ();
-            }
-            return false;
+                return false;
+            });
         }
 
         private bool should_activate_message_at_pointer (

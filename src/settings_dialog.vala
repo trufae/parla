@@ -1230,27 +1230,15 @@ namespace Dc {
         }
 
         private async void prompt_tracking_filter_url () {
-            var d = new Adw.AlertDialog ("Filter List URL",
+            string current = app_window.settings.tracking_filter_url;
+            string? entered = yield prompt_text (this, "Filter List URL",
                 "Address of a uBlock Origin or AdGuard filter list with "
                 + "$removeparam rules, for example the AdGuard URL Tracking "
-                + "filter.");
-            d.add_response ("cancel", "Cancel");
-            d.add_response ("set", "Download");
-            d.set_response_appearance ("set", Adw.ResponseAppearance.SUGGESTED);
-            d.default_response = "set";
-            d.close_response = "cancel";
-
-            var entry = new Gtk.Entry ();
-            string current = app_window.settings.tracking_filter_url;
-            entry.text = current.length > 0 ? current
-                : RemoveParamFilter.DEFAULT_URL;
-            entry.placeholder_text = RemoveParamFilter.DEFAULT_URL;
-            entry.activates_default = true;
-            d.extra_child = entry;
-
-            string response = yield d.choose (this, null);
-            if (response != "set") return;
-            string url = entry.text.strip ();
+                + "filter.", "Download",
+                current.length > 0 ? current : RemoveParamFilter.DEFAULT_URL,
+                RemoveParamFilter.DEFAULT_URL);
+            if (entered == null) return;
+            string url = entered.strip ();
             if (!url.has_prefix ("https://") && !url.has_prefix ("http://")) {
                 app_window.show_toast ("The filter list URL must start with http(s)://");
                 return;

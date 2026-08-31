@@ -206,13 +206,13 @@ namespace Dc {
                     var edit_contact_btn = flat_icon_button (
                         "document-edit-symbolic", "Edit contact name");
                     edit_contact_btn.clicked.connect (() =>
-                        show_edit_contact_name_dialog (dm_contact_id, name_lbl));
+                        show_edit_contact_name_dialog.begin (dm_contact_id, name_lbl));
                     name_box.append (edit_contact_btn);
                 } else if (is_group) {
                     var edit_group_btn = flat_icon_button (
                         "document-edit-symbolic", "Edit group name");
                     edit_group_btn.clicked.connect (() =>
-                        show_edit_group_name_dialog (name_lbl));
+                        show_edit_group_name_dialog.begin (name_lbl));
                     name_box.append (edit_group_btn);
                 }
 
@@ -453,39 +453,13 @@ namespace Dc {
             return "this contact";
         }
 
-        private void show_edit_contact_name_dialog (int contact_id,
-                                                    Gtk.Label name_lbl) {
-            var dialog = new Adw.AlertDialog (
-                "Edit Contact Name",
-                "Leave empty to use the contact's own name."
-            );
-
-            var entry = new Gtk.Entry ();
-            entry.text = name_lbl.label;
-            entry.placeholder_text = "Contact name";
-            entry.activates_default = true;
-            entry.hexpand = true;
-
-            dialog.extra_child = entry;
-            dialog.add_response ("cancel", "Cancel");
-            dialog.add_response ("save", "Save");
-            dialog.set_response_appearance ("save", Adw.ResponseAppearance.SUGGESTED);
-            dialog.default_response = "save";
-            dialog.close_response = "cancel";
-
-            entry.activate.connect (() => {
-                dialog.response ("save");
-            });
-
-            dialog.response.connect ((resp) => {
-                if (resp == "save") {
-                    save_contact_name.begin (
-                        contact_id, entry.text.strip (), name_lbl);
-                }
-            });
-
-            dialog.present (this);
-            entry.grab_focus ();
+        private async void show_edit_contact_name_dialog (int contact_id,
+                                                           Gtk.Label name_lbl) {
+            string? name = yield prompt_text (this, "Edit Contact Name",
+                "Leave empty to use the contact's own name.", "Save",
+                name_lbl.label, "Contact name");
+            if (name != null)
+                yield save_contact_name (contact_id, name.strip (), name_lbl);
         }
 
         private async void save_contact_name (int contact_id, string new_name,
@@ -517,34 +491,14 @@ namespace Dc {
             }
         }
 
-        private void show_edit_group_name_dialog (Gtk.Label name_lbl) {
-            var dialog = new Adw.AlertDialog ("Edit Group Name", null);
-
-            var entry = new Gtk.Entry ();
-            entry.text = name_lbl.label;
-            entry.placeholder_text = "Group name";
-            entry.activates_default = true;
-            entry.hexpand = true;
-
-            dialog.extra_child = entry;
-            dialog.add_response ("cancel", "Cancel");
-            dialog.add_response ("save", "Save");
-            dialog.set_response_appearance ("save", Adw.ResponseAppearance.SUGGESTED);
-            dialog.default_response = "save";
-            dialog.close_response = "cancel";
-
-            entry.activate.connect (() => { dialog.response ("save"); });
-
-            dialog.response.connect ((resp) => {
-                if (resp != "save") return;
-                string new_name = entry.text.strip ();
-                /* Groups must keep a name, so ignore an empty entry. */
-                if (new_name.length > 0)
-                    save_group_name.begin (new_name, name_lbl);
-            });
-
-            dialog.present (this);
-            entry.grab_focus ();
+        private async void show_edit_group_name_dialog (Gtk.Label name_lbl) {
+            string? name = yield prompt_text (this, "Edit Group Name", null,
+                "Save", name_lbl.label, "Group name");
+            if (name == null) return;
+            string new_name = name.strip ();
+            /* Groups must keep a name, so ignore an empty entry. */
+            if (new_name.length > 0)
+                yield save_group_name (new_name, name_lbl);
         }
 
         private async void save_group_name (string new_name, Gtk.Label name_lbl) {

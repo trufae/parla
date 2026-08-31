@@ -60,7 +60,7 @@ namespace Dc {
             rename_pack_btn = new Gtk.Button.from_icon_name (
                 "document-edit-symbolic");
             rename_pack_btn.tooltip_text = "Rename the selected pack";
-            rename_pack_btn.clicked.connect (on_rename_pack);
+            rename_pack_btn.clicked.connect (() => on_rename_pack.begin ());
             pack_row.append (rename_pack_btn);
 
             delete_pack_btn = new Gtk.Button.from_icon_name (
@@ -111,23 +111,9 @@ namespace Dc {
         /* ---- pack picker prompts (also used from the message menu) ---- */
 
         public static async string? prompt_new_pack (Gtk.Widget parent) {
-            var d = new Adw.AlertDialog ("New Sticker Pack",
-                "Name for the new sticker pack.");
-            d.add_response ("cancel", "Cancel");
-            d.add_response ("create", "Create");
-            d.set_response_appearance ("create",
-                Adw.ResponseAppearance.SUGGESTED);
-            d.default_response = "create";
-            d.close_response = "cancel";
-
-            var entry = new Gtk.Entry ();
-            entry.placeholder_text = "Pack name";
-            entry.activates_default = true;
-            d.extra_child = entry;
-
-            string response = yield d.choose (parent, null);
-            if (response != "create") return null;
-            return StickerStore.sanitize_pack_name (entry.text);
+            string? name = yield prompt_text (parent, "New Sticker Pack",
+                "Name for the new sticker pack.", "Create", "", "Pack name");
+            return name != null ? StickerStore.sanitize_pack_name (name) : null;
         }
 
         /** Ask for the destination pack (existing or new) and copy the
@@ -369,48 +355,33 @@ namespace Dc {
             }
         }
 
-        private void on_rename_pack () {
+        private async void on_rename_pack () {
             string? pack = selected_pack ();
             if (pack == null) return;
-            var d = new Adw.AlertDialog ("Rename Sticker Pack",
-                "New name for the pack \"%s\".".printf (pack));
-            d.add_response ("cancel", "Cancel");
-            d.add_response ("rename", "Rename");
-            d.set_response_appearance ("rename",
-                Adw.ResponseAppearance.SUGGESTED);
-            d.default_response = "rename";
-            d.close_response = "cancel";
-
-            var entry = new Gtk.Entry ();
-            entry.text = pack;
-            entry.activates_default = true;
-            d.extra_child = entry;
-
-            d.response.connect ((r) => {
-                if (r != "rename") return;
-                string? new_pack = StickerStore.sanitize_pack_name (entry.text);
-                if (new_pack == null || new_pack == pack) return;
-                try {
-                    StickerStore.rename_pack (pack, new_pack);
-                } catch (Error e) {
-                    show_error (this, "Could not rename pack: " + e.message);
-                    return;
+            string? entered = yield prompt_text (this, "Rename Sticker Pack",
+                "New name for the pack \"%s\".".printf (pack), "Rename", pack);
+            if (entered == null) return;
+            string? new_pack = StickerStore.sanitize_pack_name (entered);
+            if (new_pack == null || new_pack == pack) return;
+            try {
+                StickerStore.rename_pack (pack, new_pack);
+            } catch (Error e) {
+                show_error (this, "Could not rename pack: " + e.message);
+                return;
+            }
+            /* Rewrite the in-memory list instead of rescanning the disk
+               so still-empty session packs survive, deduping in case the
+               rename merged two packs */
+            string[] updated = {};
+            foreach (string existing in packs) {
+                string name = existing == pack ? new_pack : existing;
+                bool seen = false;
+                foreach (string prev in updated) {
+                    if (prev == name) seen = true;
                 }
-                /* Rewrite the in-memory list instead of rescanning the disk
-                   so still-empty session packs survive, deduping in case the
-                   rename merged two packs */
-                string[] updated = {};
-                foreach (string existing in packs) {
-                    string name = existing == pack ? new_pack : existing;
-                    bool seen = false;
-                    foreach (string prev in updated) {
-                        if (prev == name) seen = true;
-                    }
-                    if (!seen) updated += name;
-                }
-                show_packs (updated, new_pack);
-            });
-            d.present (this);
+                if (!seen) updated += name;
+            }
+            show_packs (updated, new_pack);
         }
 
         private async void on_delete_pack () {

@@ -348,22 +348,22 @@ namespace Dc {
             resume_pending (request.pending);
         }
 
-        private PendingCall? find_pending (int id, uint generation) {
+        private int index_of_pending (int id, uint generation) {
             for (int i = 0; i < pending.length; i++) {
-                if (pending[i].id == id &&
-                    pending[i].generation == generation) return pending[i];
+                if (pending[i].id == id && pending[i].generation == generation)
+                    return i;
             }
-            return null;
+            return -1;
+        }
+
+        private PendingCall? find_pending (int id, uint generation) {
+            int i = index_of_pending (id, generation);
+            return i >= 0 ? pending[i] : null;
         }
 
         private void remove_pending (int id, uint generation) {
-            for (int i = 0; i < pending.length; i++) {
-                if (pending[i].id == id &&
-                    pending[i].generation == generation) {
-                    pending.remove_index (i);
-                    return;
-                }
-            }
+            int i = index_of_pending (id, generation);
+            if (i >= 0) pending.remove_index (i);
         }
 
         private void fail_pending (string reason, uint generation) {
