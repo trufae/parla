@@ -1,5 +1,8 @@
-# to release update version field below and:
-# vim data/io.github.trufae.Parla.appdata.xml
+# To release update version field below and:
+# ------------------------------------------
+# $ vim data/io.github.trufae.Parla.appdata.xml
+# $ vim rpm/harbour-parla.spec
+
 project('parla', ['vala', 'c'],
   version: '0.8.4',
   meson_version: '>= 0.59.0',
