@@ -14,3 +14,7 @@ option('bundle_icons',
   type: 'boolean',
   value: false,
   description: 'Compile the Adwaita symbolic icons Parla uses into the binary as hicolor fallbacks. Off by default: at runtime Parla inherits them from the installed adwaita-icon-theme (a GTK4 dependency) when the active icon theme lacks them. Enable for builds that cannot rely on an installed Adwaita.')
+option('sailfish',
+  type: 'boolean',
+  value: false,
+  description: 'Build the Sailfish OS port: disable GTK AT-SPI at startup and use phone-oriented scaling, layout and window chrome.')

@@ -177,11 +177,19 @@ namespace Dc.Platform {
 #endif
     }
 
+    public bool is_sailfish () {
+#if SAILFISHOS
+        return true;
+#else
+        return false;
+#endif
+    }
+
     /* Background/service mode is a freedesktop pattern: it depends on
        D-Bus-based single-instance ownership and activation. On macOS and
        Windows `--background` degrades to a normal launch. */
     public bool supports_background_mode () {
-        return !is_macos () && !is_windows ();
+        return !is_macos () && !is_windows () && !is_sailfish ();
     }
 
     public void setup_macos_bundle_environment () {

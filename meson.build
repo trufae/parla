@@ -13,6 +13,9 @@ add_project_arguments(['--pkg', 'posix'], language: 'vala')
 if host_machine.system() == 'windows'
   add_project_arguments(['--define=WINDOWS'], language: 'vala')
 endif
+if get_option('sailfish')
+  add_project_arguments(['--define=SAILFISHOS'], language: 'vala')
+endif
 
 # Silence warnings emitted by valac-generated C and lagging GTK/glib vapi
 # bindings (unused temporaries, g_once_init_enter atomics, const mismatches).
