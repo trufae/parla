@@ -564,6 +564,7 @@ namespace Dc {
             sidebar_box = new Gtk.Box (Gtk.Orientation.VERTICAL, 0);
 
             sidebar_header = new Adw.HeaderBar ();
+            configure_phone_header (sidebar_header);
             sidebar_title = new Adw.WindowTitle ("Parla", "");
             sidebar_header.title_widget = sidebar_title;
 
@@ -722,6 +723,7 @@ namespace Dc {
             content_box.valign = Gtk.Align.FILL;
 
             content_header = new Adw.HeaderBar ();
+            configure_phone_header (content_header);
             content_title_label = new Gtk.Label ("Select a chat");
             content_title_label.add_css_class ("heading");
             content_title_label.ellipsize = Pango.EllipsizeMode.END;
@@ -793,8 +795,10 @@ namespace Dc {
             toast_overlay.child = split_view;
 
             /* Auto-collapse on narrow widths — sidebar slides over content */
+            string collapse_condition = Platform.is_sailfish ()
+                ? "max-width: 720px" : "max-width: 600px";
             var breakpoint = new Adw.Breakpoint (
-                Adw.BreakpointCondition.parse ("max-width: 600px"));
+                Adw.BreakpointCondition.parse (collapse_condition));
             breakpoint.add_setter (split_view, "collapsed", true);
             this.add_breakpoint (breakpoint);
 
@@ -849,6 +853,14 @@ namespace Dc {
             scroll_ctrl.propagation_phase = Gtk.PropagationPhase.CAPTURE;
             scroll_ctrl.scroll.connect (on_chat_scroll);
             content_stack.add_controller (scroll_ctrl);
+        }
+
+        private static void configure_phone_header (Adw.HeaderBar header) {
+            if (!Platform.is_sailfish ()) return;
+            /* Lipstick owns the phone window; desktop minimize/maximize/close
+               buttons waste scarce header space and have no useful meaning. */
+            header.show_start_title_buttons = false;
+            header.show_end_title_buttons = false;
         }
 
         private Gtk.Popover build_account_popover () {

@@ -419,6 +419,7 @@ namespace Dc {
 
         protected override void startup () {
             base.startup ();
+            configure_sailfish_display ();
             load_css ();
             /* Apply the saved accent override before any window/widget is
                built, so named colors resolve to it from the first style
@@ -467,6 +468,28 @@ namespace Dc {
                 { primary + "minus", primary + "KP_Subtract" });
             set_action_accels (this, "win.font-reset",
                 { primary + "0", primary + "KP_0" });
+        }
+
+        private void configure_sailfish_display () {
+            if (!Platform.is_sailfish ()) return;
+
+            /* Lipstick exposes the panel as a scale-1 Wayland output and
+               GTK's Wayland backend does not use GDK_SCALE. Raise the font
+               DPI instead, which also grows controls to their text. 192 is
+               a usable 2x default for current phone panels; keep an escape
+               hatch for unusual devices and clamp accidental values. */
+            int dpi = 192;
+            string? requested = Environment.get_variable ("PARLA_GTK_DPI");
+            if (requested != null) {
+                int parsed = 0;
+                if (int.try_parse (requested, out parsed)) {
+                    dpi = parsed.clamp (96, 384);
+                }
+            }
+            var gtk_settings = Gtk.Settings.get_default ();
+            if (gtk_settings != null) {
+                gtk_settings.set ("gtk-xft-dpi", dpi * Pango.SCALE);
+            }
         }
 
         private void register_icons () {

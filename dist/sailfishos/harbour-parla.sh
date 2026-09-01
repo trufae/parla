@@ -40,11 +40,10 @@ else
     rm -f "$pixbuf_cache"
 fi
 
-# Wayland only. Lipstick >= 5.1 speaks xdg-shell but reports scale 1.0, so
-# map GTK's logical pixels to the physical panel by hand; override with
-# PARLA_GDK_SCALE when 2 does not fit the device.
+# Wayland only. The Sailfish build applies phone DPI inside Parla because
+# GTK's Wayland backend takes its output scale from the compositor and does
+# not honor GDK_SCALE. Override the 192-DPI default with PARLA_GTK_DPI.
 export GDK_BACKEND=wayland
-export GDK_SCALE="${PARLA_GDK_SCALE:-2}"
 
 # The GL renderer would run on top of libhybris EGL on real devices, which
 # is unproven for GTK4; default to the always-working software renderer and
