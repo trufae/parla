@@ -51,6 +51,14 @@ def bundled_icons():
     return names
 
 
+def core_icons():
+    tree = ET.parse(os.path.join(ROOT, "data", "parla.gresource.xml"))
+    return {
+        os.path.splitext(os.path.basename(node.text.strip()))[0]
+        for node in tree.iter("file")
+    }
+
+
 def referenced_icons():
     pat = re.compile(r'"([A-Za-z0-9._-]+-symbolic)"')
     names = set()
@@ -65,6 +73,13 @@ def referenced_icons():
 def main():
     bundled = bundled_icons()
     if bundled is None:
+        return 1
+    appdata = ET.parse(os.path.join(
+        ROOT, "data", "io.github.trufae.Parla.appdata.xml"))
+    app_id = appdata.getroot().findtext("id")
+    if app_id not in core_icons():
+        print(f"application icon {app_id} is not embedded in "
+              "data/parla.gresource.xml")
         return 1
     missing = sorted(referenced_icons() - bundled - BUILTIN)
     if missing:

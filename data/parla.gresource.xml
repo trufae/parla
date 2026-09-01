@@ -2,6 +2,7 @@
 <gresources>
   <gresource prefix="/io/github/trufae/Parla/icons">
     <!-- App icons -->
+    <file>scalable/apps/io.github.trufae.Parla.svg</file>
     <file>scalable/apps/parla-welcome.svg</file>
     <file>scalable/apps/parla-tray.svg</file>
     <!-- Parla-specific symbolic icons -->
