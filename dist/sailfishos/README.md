@@ -46,6 +46,10 @@ All currently sold/flashable Sailfish OS devices (Xperia 10 II-V, Jolla
 C2) are aarch64. The spec also knows armv7hl (Xperia XA2) and i486 asset
 names, but CI builds aarch64 only for now.
 
+For an aarch64 RPM, `Source5` resolves to
+`deltachat-rpc-server-aarch64-linux`. It is a statically linked 64-bit ARM
+ELF (not the Android arm64 asset), so it has no target glibc dependency.
+
 ## Known caveats (help wanted)
 
 This is a fresh port riding on compositor support that is only a couple of
