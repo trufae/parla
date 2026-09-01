@@ -23,12 +23,14 @@ The Delta Chat JSON-RPC engine (`deltachat-rpc-server`, a static-musl
 binary from [chatmail/core](https://github.com/chatmail/core) releases) is
 shipped inside the same RPM and pinned at build time via the
 `rpc_server_path` meson option, which also disables the in-app engine
-downloader. The `/usr/bin/harbour-parla` launcher forces the whole
-environment inside the Sailjail sandbox: the private library path, the
-bundled engine path (`PARLA_RPC_SERVER`), and Sailjail-compatible
+downloader. The `/usr/bin/harbour-parla` launcher forces the whole runtime
+environment: the private library path, the bundled engine path
+(`PARLA_RPC_SERVER`), and Sailfish-compatible
 `XDG_DATA_HOME`/`XDG_CONFIG_HOME`/`XDG_CACHE_HOME` under
 `~/.local/share/io.github.trufae/Parla` so both Parla and the engine write
-only where the sandbox permits.
+to one private location. The desktop entry disables Sailjail: the jail cannot
+launch the shell -> private GTK binary -> private RPC engine executable chain,
+which is why an affected build works from the terminal but not from its icon.
 
 ## Install
 
@@ -58,15 +60,17 @@ releases old. Feedback from real devices is welcome:
 - **On-screen keyboard**: lipstick's xdg-shell support is new and its
   text-input story for GTK apps is unverified; a hardware/bluetooth
   keyboard works regardless.
-- **Scaling**: lipstick reports scale 1.0, so the launcher sets
-  `GDK_SCALE=2`. Set `PARLA_GDK_SCALE=1` (or `3`) before launching if the
-  UI is too large/small for your panel.
+- **Scaling**: lipstick reports a scale-1 Wayland output and GTK's Wayland
+  backend does not use `GDK_SCALE`. Sailfish builds therefore default to
+  192 DPI, collapse to the phone layout below 720 px, and hide desktop window
+  buttons. Set `PARLA_GTK_DPI` to a value from 96 to 384 before launching if
+  the UI is too large or small for a particular panel.
 - **Rendering**: the launcher defaults to GTK's software renderer
   (`GSK_RENDERER=cairo`) for reliability on libhybris devices. Try
   `PARLA_GSK_RENDERER=ngl` for GPU rendering.
-- **Sailjail**: the app runs sandboxed. If it fails to start on your
-  device, add `Sandboxing=Disabled` under `[X-Sailjail]` in
-  `/usr/share/applications/harbour-parla.desktop` and report an issue.
+- **Accessibility**: Sailfish OS does not provide the AT-SPI bus expected by
+  GTK. The Sailfish build selects `GTK_A11Y=none` before GTK starts, avoiding
+  the D-Bus warning and startup delay.
 - Webxdc mini-apps are disabled (no WebKitGTK on Sailfish OS).
 
 ## Building locally
