@@ -10,3 +10,7 @@ X-Nemo-Application-Type=generic
 OrganizationName=io.github.trufae
 ApplicationName=Parla
 Permissions=Internet;Audio;Microphone;Pictures;Videos;Music;Documents;Downloads;RemovableMedia
+# The launcher execs a private GTK binary which in turn spawns the bundled
+# Delta Chat RPC engine. Sailjail does not support this executable chain;
+# direct terminal launches work precisely because they bypass the jail.
+Sandboxing=Disabled
