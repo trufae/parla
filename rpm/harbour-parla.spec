@@ -41,7 +41,7 @@
 
 Name:       harbour-parla
 Summary:    Delta Chat client
-Version:    0.8.4
+Version:    0.8.8
 Release:    1
 License:    GPLv3+
 URL:        https://github.com/trufae/parla

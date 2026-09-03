@@ -122,5 +122,8 @@ A working backend only exposes what widgets declare, so:
   reserves them for moving the focus out of a widget that consumes
   plain Tab (text views walk out on their own; the chat list has a
   handler that jumps back to the contact search entry or forward to
-  the message entry). Chat switching lives on Ctrl+Page Up /
-  Ctrl+Page Down.
+  the message entry). Ctrl+Page Up / Ctrl+Page Down only move focus
+  through chat rows; Enter opens the focused chat. This keeps unread
+  chats unread while a screen-reader user browses the list. The focused
+  row has an accent outline, separate from the highlight for the chat
+  already open.

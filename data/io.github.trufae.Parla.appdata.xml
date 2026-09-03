@@ -37,7 +37,14 @@
     <name translate="no">pancake</name>
   </developer>
   <releases>
-    <release version="0.8.6" date="2026-09-3">
+    <release version="0.8.8" date="2026-09-03">
+      <description>
+        <ul>
+          <li>Fix version number</li>
+        </ul>
+      </description>
+    </release>
+    <release version="0.8.6" date="2026-09-02">
       <description>
         <ul>
           <li>Forward across accounts (via copy)</li>
