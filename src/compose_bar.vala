@@ -68,6 +68,11 @@ namespace Dc {
         private string? pending_file = null;
         private string? pending_file_name = null;
         private bool pending_file_is_temp = false;
+        /* Empty for a regular attachment; otherwise this attachment is the
+           generated preview for the URL.  Keeping this association lets the
+           composer discard a preview when its URL leaves the draft without
+           disturbing user-selected files. */
+        private string pending_preview_url = "";
         /* The pending attachment is a voice recording: it must be sent as a
            Voice message, not as a plain audio file. */
         private bool pending_file_is_voice = false;
@@ -77,6 +82,8 @@ namespace Dc {
         /* Caption sent with each extra file; "" for plain attachments,
            the page title/description for a link preview. */
         private string[] extra_pending_captions = {};
+        /* Parallel to extra_pending_files. Empty entries are regular files. */
+        private string[] extra_pending_preview_urls = {};
         /* Bumped whenever the pending attachments are cleared or the
            composer switches chats, so late preview fetches for an old
            state are discarded. */
@@ -311,6 +318,11 @@ namespace Dc {
             entry_overlay.valign = Gtk.Align.CENTER;
 
             text_view.buffer.changed.connect (() => {
+                /* Previews are derived from the draft text, not just from
+                   the paste that initially inserted a URL.  This also
+                   invalidates in-flight results for a deleted or edited URL. */
+                if (!suppress_draft_signal)
+                    synchronize_link_previews (get_text ());
                 update_placeholder ();
                 update_send_stack ();
                 notify_draft_changed ();
@@ -924,17 +936,20 @@ namespace Dc {
         public void set_pending_attachment (string file_path,
                                             string? file_name = null,
                                             bool is_temp = false,
-                                            string caption = "") {
+                                            string caption = "",
+                                            string preview_url = "") {
             string name = file_name ?? Path.get_basename (file_path);
             if (pending_file == null) {
                 pending_file = file_path;
                 pending_file_name = name;
                 pending_file_is_temp = is_temp;
+                pending_preview_url = preview_url;
                 populate_attachment_preview (file_path, name);
             } else {
                 extra_pending_files += file_path;
                 extra_pending_file_names += name;
                 extra_pending_captions += caption;
+                extra_pending_preview_urls += preview_url;
                 if (is_temp) extra_pending_temp_files += file_path;
                 int count = 1 + extra_pending_files.length;
                 attachment_picture.paintable = null;
@@ -960,17 +975,20 @@ namespace Dc {
             takes no ownership of `image_path`) when the composer has
             moved on since `generation` was issued or cannot take
             attachments any more. */
-        public bool add_link_preview (uint generation, string image_path,
+        public bool add_link_preview (uint generation, string url,
+                                      string image_path,
                                       string file_name, string? title,
                                       string? description) {
             if (generation != preview_generation) return false;
             if (!can_accept_attachment ()) return false;
+            if (!contains_url (previewed_urls, url)) return false;
+            if (has_link_preview_for (url)) return false;
             string caption = title ?? "";
             if (description != null && description.length > 0)
                 caption = caption.length > 0
                     ? "%s\n%s".printf (caption, description) : description;
             bool primary = pending_file == null;
-            set_pending_attachment (image_path, file_name, true, caption);
+            set_pending_attachment (image_path, file_name, true, caption, url);
             if (primary) {
                 /* Show what the page advertises rather than the temp
                    file's name and size. */
@@ -984,19 +1002,136 @@ namespace Dc {
             return true;
         }
 
-        private void request_link_previews (string text) {
-            string[] fresh = {};
-            foreach (string url in LinkPreview.pick_urls (text)) {
-                bool seen = false;
-                foreach (string u in previewed_urls) {
-                    if (u == url) { seen = true; break; }
-                }
-                if (seen) continue;
-                previewed_urls += url;
-                fresh += url;
+        private static bool contains_url (string[] urls, string url) {
+            foreach (string item in urls) {
+                if (item == url) return true;
             }
-            if (fresh.length > 0)
-                link_previews_requested (fresh, preview_generation);
+            return false;
+        }
+
+        private static bool same_urls (string[] a, string[] b) {
+            if (a.length != b.length) return false;
+            for (int i = 0; i < a.length; i++) {
+                if (a[i] != b[i]) return false;
+            }
+            return true;
+        }
+
+        private bool has_link_preview_for (string url) {
+            if (pending_preview_url == url) return true;
+            return contains_url (extra_pending_preview_urls, url);
+        }
+
+        /* Remove only generated previews that no longer have a matching URL
+           in the composer.  Ordinary attachments survive URL edits. */
+        private void remove_stale_link_previews (string[] urls) {
+            bool remove_primary = pending_preview_url.length > 0
+                && !contains_url (urls, pending_preview_url);
+            if (remove_primary && pending_file_is_temp && pending_file != null)
+                GLib.FileUtils.unlink (pending_file);
+            if (remove_primary) {
+                pending_file = null;
+                pending_file_name = null;
+                pending_file_is_temp = false;
+                pending_file_is_voice = false;
+                pending_preview_url = "";
+            }
+
+            string[] kept_files = {};
+            string[] kept_names = {};
+            string[] kept_captions = {};
+            string[] kept_preview_urls = {};
+            string[] kept_temp_files = {};
+            for (int i = 0; i < extra_pending_files.length; i++) {
+                string preview_url = i < extra_pending_preview_urls.length
+                    ? extra_pending_preview_urls[i] : "";
+                bool remove = preview_url.length > 0
+                    && !contains_url (urls, preview_url);
+                string path = extra_pending_files[i];
+                bool is_temp = contains_url (extra_pending_temp_files, path);
+                if (remove) {
+                    if (is_temp) GLib.FileUtils.unlink (path);
+                    continue;
+                }
+                kept_files += path;
+                kept_names += i < extra_pending_file_names.length
+                    ? extra_pending_file_names[i] : Path.get_basename (path);
+                kept_captions += i < extra_pending_captions.length
+                    ? extra_pending_captions[i] : "";
+                kept_preview_urls += preview_url;
+                if (is_temp) kept_temp_files += path;
+            }
+
+            if (pending_file == null && kept_files.length > 0) {
+                pending_file = kept_files[0];
+                pending_file_name = kept_names[0];
+                pending_file_is_temp = contains_url (kept_temp_files,
+                    pending_file);
+                pending_preview_url = kept_preview_urls[0];
+                extra_pending_files = {};
+                extra_pending_file_names = {};
+                extra_pending_captions = {};
+                extra_pending_preview_urls = {};
+                extra_pending_temp_files = {};
+                for (int i = 1; i < kept_files.length; i++) {
+                    extra_pending_files += kept_files[i];
+                    extra_pending_file_names += kept_names[i];
+                    extra_pending_captions += kept_captions[i];
+                    extra_pending_preview_urls += kept_preview_urls[i];
+                    if (contains_url (kept_temp_files, kept_files[i]))
+                        extra_pending_temp_files += kept_files[i];
+                }
+            } else {
+                extra_pending_files = kept_files;
+                extra_pending_file_names = kept_names;
+                extra_pending_captions = kept_captions;
+                extra_pending_preview_urls = kept_preview_urls;
+                extra_pending_temp_files = kept_temp_files;
+            }
+            refresh_attachment_preview ();
+        }
+
+        private void refresh_attachment_preview () {
+            if (pending_file == null) {
+                cancel_attach_button.visible = false;
+                attachment_bar.visible = false;
+                attachment_picture.paintable = null;
+                attachment_name_label.label = "";
+                attachment_meta_label.label = "";
+                update_send_stack ();
+                return;
+            }
+            if (extra_pending_files.length == 0) {
+                populate_attachment_preview (pending_file,
+                    pending_file_name ?? Path.get_basename (pending_file));
+            } else {
+                int count = 1 + extra_pending_files.length;
+                attachment_picture.paintable = null;
+                attachment_picture.visible = false;
+                attachment_icon.icon_name = "mail-attachment-symbolic";
+                attachment_icon.visible = true;
+                attachment_name_label.label = "%d attachments".printf (count);
+                attachment_meta_label.label = "%s + %d more".printf (
+                    pending_file_name, count - 1);
+                attachment_bar.visible = true;
+            }
+            cancel_attach_button.visible = true;
+            update_send_stack ();
+        }
+
+        private void synchronize_link_previews (string text) {
+            if (!link_previews || !can_accept_attachment ()) return;
+            string[] urls = LinkPreview.pick_urls (text);
+            if (same_urls (previewed_urls, urls)) return;
+
+            /* A URL edit makes every outstanding response suspect. Request
+               the complete new set; add_link_preview() de-duplicates ones
+               that already finished before this edit. */
+            preview_generation++;
+            previewed_urls = urls;
+            remove_stale_link_previews (urls);
+            if (urls.length > 0)
+                link_previews_requested (urls, preview_generation);
         }
 
         private void populate_attachment_preview (string file_path, string file_name) {
@@ -1101,6 +1236,7 @@ namespace Dc {
             pending_file_name = null;
             pending_file_is_temp = false;
             pending_file_is_voice = false;
+            pending_preview_url = "";
             foreach (string path in extra_pending_temp_files) {
                 try {
                     var f = GLib.File.new_for_path (path);
@@ -1112,6 +1248,7 @@ namespace Dc {
             extra_pending_file_names = {};
             extra_pending_temp_files = {};
             extra_pending_captions = {};
+            extra_pending_preview_urls = {};
             preview_generation++;
             previewed_urls = {};
             cancel_attach_button.visible = false;
@@ -1603,8 +1740,6 @@ namespace Dc {
                 var text = yield clipboard.read_text_async (null);
                 if (text == null || text.length == 0 || !text_view.editable) return;
                 if (clean_pasted_links) text = LinkCleaner.clean_text (text);
-                if (link_previews && can_accept_attachment ())
-                    request_link_previews (text);
 
                 var buffer = text_view.buffer;
                 buffer.begin_user_action ();

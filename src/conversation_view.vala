@@ -2129,16 +2129,21 @@ namespace Dc {
         private void on_link_previews_requested (string[] urls, uint generation) {
             if (link_preview_fetcher == null)
                 link_preview_fetcher = new LinkPreviewFetcher (rpc);
-            foreach (string url in urls) {
-                link_preview_fetcher.fetch.begin (url, settings.clean_pasted_links,
-                    (obj, res) => {
-                        var r = link_preview_fetcher.fetch.end (res);
-                        if (r == null) return;
-                        if (!compose_bar.add_link_preview (generation, r.image_path,
-                                r.file_name, r.title, r.description))
-                            GLib.FileUtils.unlink (r.image_path);
-                    });
-            }
+            foreach (string url in urls)
+                fetch_link_preview (url, generation);
+        }
+
+        /* Keep each URL in its own async call frame so its completion cannot
+           accidentally be associated with another concurrent preview. */
+        private void fetch_link_preview (string url, uint generation) {
+            link_preview_fetcher.fetch.begin (url, settings.clean_pasted_links,
+                (obj, res) => {
+                    var r = link_preview_fetcher.fetch.end (res);
+                    if (r == null) return;
+                    if (!compose_bar.add_link_preview (generation, url, r.image_path,
+                            r.file_name, r.title, r.description))
+                        GLib.FileUtils.unlink (r.image_path);
+                });
         }
 
         private void on_send_message (string text, string? file_path,
