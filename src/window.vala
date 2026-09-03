@@ -3370,15 +3370,15 @@ namespace Dc {
             switch (lower_key) {
             case Gdk.Key.Page_Up:
             case Gdk.Key.KP_Page_Up:
-                return select_adjacent_chat (-1);
+                return focus_adjacent_chat (-1);
             case Gdk.Key.Page_Down:
             case Gdk.Key.KP_Page_Down:
-                return select_adjacent_chat (1);
+                return focus_adjacent_chat (1);
             /* Ctrl+Tab / Ctrl+Shift+Tab are deliberately not handled here:
                GTK4 reserves them for moving the focus out of a widget that
                eats plain Tab (text views; the chat list has its own handler
-               for this). Chat switching stays on Ctrl+Page_Up /
-               Ctrl+Page_Down (#57). */
+               for this). Ctrl+Page_Up / Ctrl+Page_Down browse chat rows;
+               Enter commits the focused chat (#57). */
             case Gdk.Key.a:
                 if ((state & Gdk.ModifierType.SHIFT_MASK) == 0) return false;
                 show_account_menu ();
@@ -3553,41 +3553,55 @@ namespace Dc {
             account_menu_button.popup ();
         }
 
-        private bool select_adjacent_chat (int delta) {
-            int row_count = 0;
+        /* Ctrl+Page Up/Down browse the chat list without committing to a
+           chat. This is especially important for screen-reader users: moving
+           through unread rows must not load their conversations or mark their
+           messages as seen. Enter (or a click) activates the focused row.
+           Prefer the keyboard-focused row as the next starting point, so
+           repeated presses continue through the list while the open chat
+           stays unchanged. */
+        private bool focus_adjacent_chat (int delta) {
+            Gtk.ListBoxRow[] visible_rows = {};
+            int focused_chat_id = focused_chat_row_id ();
             int current_index = -1;
             Gtk.ListBoxRow? row;
 
-            while ((row = chat_listbox.get_row_at_index (row_count)) != null) {
+            int index = 0;
+            while ((row = chat_listbox.get_row_at_index (index)) != null) {
+                index++;
+                if (!filter_chats (row)) continue;
                 var chat_row = row.child as ChatRow;
-                if (chat_row != null && chat_row.chat_id == current_chat_id) {
-                    current_index = row_count;
+                if (chat_row == null) continue;
+                visible_rows += row;
+                int visible_index = visible_rows.length - 1;
+                if (chat_row.chat_id == focused_chat_id) {
+                    current_index = visible_index;
+                } else if (focused_chat_id == 0
+                           && chat_row.chat_id == current_chat_id) {
+                    current_index = visible_index;
                 }
-                row_count++;
             }
 
-            if (row_count == 0) return false;
-            if (row_count == 1) return true;
+            if (visible_rows.length == 0) return false;
+            if (visible_rows.length == 1) {
+                visible_rows[0].grab_focus ();
+                return true;
+            }
 
             int target_index;
             if (current_index < 0) {
-                target_index = delta > 0 ? 0 : row_count - 1;
+                target_index = delta > 0 ? 0 : visible_rows.length - 1;
             } else {
                 target_index = current_index + delta;
                 if (target_index < 0) {
-                    target_index = row_count - 1;
-                } else if (target_index >= row_count) {
+                    target_index = visible_rows.length - 1;
+                } else if (target_index >= visible_rows.length) {
                     target_index = 0;
                 }
             }
 
-            row = chat_listbox.get_row_at_index (target_index);
-            if (row == null) return false;
-
-            var chat_row = row.child as ChatRow;
-            if (chat_row == null) return false;
-
-            return select_chat_by_id (chat_row.chat_id);
+            visible_rows[target_index].grab_focus ();
+            return true;
         }
 
         private void show_quick_switch_dialog () {
@@ -3636,8 +3650,8 @@ namespace Dc {
             "Quick switch chat",     "<Primary>k",
             "Focus message entry",   "<Primary>l",
             "Account menu",          "<Primary><Shift>a",
-            "Next conversation",     "<Primary>Page_Down",
-            "Previous conversation", "<Primary>Page_Up",
+            "Focus next chat",       "<Primary>Page_Down",
+            "Focus previous chat",   "<Primary>Page_Up",
             "Refresh messages",      "<Primary>r",
             "Toggle sidebar",        "<Primary>s",
             "Compact sidebar",       "<Primary><Shift>s",

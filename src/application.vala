@@ -842,6 +842,13 @@ namespace Dc {
                 box-shadow: inset 0 0 0 2px alpha(@accent_bg_color, 0.45);
             }
             .chat-row { border-radius: 8px; padding: 4px; }
+            /* The selected state marks the chat already open. Keep a clear,
+               separate focus ring for a chat being browsed with the keyboard
+               (for example Ctrl+Page Up/Down) before Enter opens it. */
+            list.navigation-sidebar > row:focus {
+                box-shadow: inset 0 0 0 2px @accent_bg_color;
+                border-radius: 10px;
+            }
             .chat-row-mention {
                 background-color: alpha(@accent_bg_color, 0.16);
             }
