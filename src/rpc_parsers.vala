@@ -79,6 +79,8 @@ namespace Dc {
             }
 
             entry.last_message_id = (int) json_int (obj, "lastMessageId");
+            entry.is_draft = (int) json_int (obj, "summaryStatus")
+                             == (int) MessageState.OUT_DRAFT;
             entry.unread_count = (int) json_int (obj, "freshMessageCounter");
             entry.timestamp = json_int (obj, "lastMessageTimestamp");
             entry.avatar_path = json_str (obj, "avatarPath");

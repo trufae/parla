@@ -82,6 +82,9 @@ namespace Dc {
         /* Row of the open chat. The list has no GTK selection (see the
            chat_listbox setup), so the highlight is tracked by hand. */
         private Gtk.ListBoxRow? current_chat_row = null;
+        /* Day the chat rows were built on; their time labels are relative
+           ("14:02" today, "Mon" later), so a new day forces a rebuild. */
+        private int chat_rows_day = 0;
         public int current_chat_id {
             get { return _current_chat_id; }
             private set {
@@ -1543,6 +1546,7 @@ namespace Dc {
 
                 int desired_chat_id = current_chat_id;
                 bool keep_empty_selection = desired_chat_id <= 0;
+                var shown_entry = find_chat_entry (chat_store, desired_chat_id);
 
                 ChatEntry[] parsed_entries = {};
                 int[] preview_msg_ids = {};
@@ -1554,14 +1558,32 @@ namespace Dc {
                         var item = items.get_object_member (id_str);
                         var entry = RpcParsers.parse_chat_item (chat_id, item);
                         entry.has_mention = mentioned_chats.contains (chat_id);
+                        /* The open chat keeps the preview it already shows
+                           instead of echoing the draft being typed into it.
+                           Every draft save would otherwise rewrite its row,
+                           and screen readers read the changed row out on
+                           each pause in typing. The draft shows up in the
+                           list once another chat is opened. */
+                        bool frozen = entry.is_draft && shown_entry != null
+                                      && chat_id == desired_chat_id;
+                        if (frozen) {
+                            entry.summary_prefix = shown_entry.summary_prefix;
+                            entry.last_message = shown_entry.last_message;
+                            entry.last_message_id = shown_entry.last_message_id;
+                        }
                         parsed_entries += entry;
-                        if (entry.last_message_id > 0) {
+                        if (entry.last_message_id > 0 && !frozen) {
                             preview_msg_ids += entry.last_message_id;
                         }
                     }
                 }
                 yield hydrate_chat_text_previews (parsed_entries,
                     preview_msg_ids);
+
+                /* Nothing visible changed (typically a draft save or a
+                   notice for the open chat): keep the rows, so focus, the
+                   highlight and the accessibility tree stay untouched. */
+                if (same_chat_rows (parsed_entries)) return;
 
                 /* Rebuilding the rows destroys the one holding the keyboard
                    focus; remember which chat it was so the user can keep
@@ -1571,6 +1593,7 @@ namespace Dc {
                 chat_store.remove_all ();
                 clear_listbox (chat_listbox);
                 current_chat_row = null;
+                chat_rows_day = today_stamp ();
 
                 Gtk.ListBoxRow? reselect_row = null;
                 Gtk.ListBoxRow? refocus_row = null;
@@ -1611,6 +1634,24 @@ namespace Dc {
             } catch (Error e) {
                 show_toast ("Failed to load chats: " + e.message);
             }
+        }
+
+        private static int today_stamp () {
+            var now = new DateTime.now_local ();
+            return now.get_year () * 1000 + now.get_day_of_year ();
+        }
+
+        /* Whether the rows currently in the list already show exactly what
+           `entries` describe, so load_chats can leave them alone. */
+        private bool same_chat_rows (ChatEntry[] entries) {
+            if (entries.length == 0) return false;
+            if (chat_store.get_n_items () != entries.length) return false;
+            if (chat_rows_day != today_stamp ()) return false;
+            for (int i = 0; i < entries.length; i++) {
+                var old = chat_store.get_item (i) as ChatEntry;
+                if (old == null || !old.same_display (entries[i])) return false;
+            }
+            return true;
         }
 
         private async void hydrate_chat_text_previews (ChatEntry[] entries,

@@ -364,6 +364,27 @@ namespace Dc {
         /* Client-side flag: an unseen message in this chat mentions the local
            user. Not persisted (see Window.mentioned_chats). */
         public bool has_mention { get; set; default = false; }
+        /* The summary describes the chat's draft, not its last message. */
+        public bool is_draft { get; set; default = false; }
+
+        /* True when a ChatRow built from `o` would look exactly like one
+           built from this entry (everything the row renders). */
+        public bool same_display (ChatEntry o) {
+            return id == o.id
+                && name == o.name
+                && last_message == o.last_message
+                && summary_prefix == o.summary_prefix
+                && timestamp == o.timestamp
+                && unread_count == o.unread_count
+                && avatar_path == o.avatar_path
+                && kind == o.kind
+                && is_muted == o.is_muted
+                && is_contact_request == o.is_contact_request
+                && is_pinned == o.is_pinned
+                && is_archived == o.is_archived
+                && was_seen_recently == o.was_seen_recently
+                && has_mention == o.has_mention;
+        }
     }
 
     public enum ChatKind {

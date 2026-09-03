@@ -108,6 +108,10 @@ A working backend only exposes what widgets declare, so:
   unnamed list item.
 - Purely decorative images/widgets should not be announced; give them
   `Gtk.AccessibleRole.PRESENTATION`.
+- Keep the chat list quiet while the user types: the open chat's row does
+  not echo the draft being written into it, and `load_chats` leaves the
+  rows alone when nothing displayed changed. Rebuilding rows on every
+  draft save made screen readers read the row out on each pause.
 - Never bind Ctrl+Tab or Ctrl+Shift+Tab application-wide. GTK4
   reserves them for moving the focus out of a widget that consumes
   plain Tab (text views walk out on their own; the chat list has a
