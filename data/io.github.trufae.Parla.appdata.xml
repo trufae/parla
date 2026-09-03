@@ -10,6 +10,14 @@
     <p>Chat over email, decentralized and encrypted.</p>
   </description>
   <launchable type="desktop-id">io.github.trufae.Parla.desktop</launchable>
+  <supports>
+    <control>keyboard</control>
+    <control>pointing</control>
+    <control>touch</control>
+  </supports>
+  <requires>
+    <display_length compare="ge">360</display_length>
+  </requires>
   <content_rating type="oars-1.1"/>
   <screenshots>
     <screenshot type="default">
