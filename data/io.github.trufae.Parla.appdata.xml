@@ -37,6 +37,20 @@
     <name translate="no">pancake</name>
   </developer>
   <releases>
+    <release version="0.8.6" date="2026-09-3">
+      <description>
+        <ul>
+          <li>Forward across accounts (via copy)</li>
+          <li>Address SailfishOS integration tests</li>
+          <li>Bundle app icon to fix about dialog</li>
+          <li>Take care of the accessibility comments</li>
+          <li>Stickers not tied to a fixed filetypes</li>
+          <li>WebXdc support enabled by default</li>
+          <li>Link previews refreshed when link changes</li>
+          <li>Fix bubble wrap problems on tight windows</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.8.4" date="2026-08-31">
       <description>
         <ul>
