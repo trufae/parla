@@ -1418,9 +1418,14 @@ namespace Dc {
                 }
             }
 
-            /* Escape (and dropping the active reply/edit/attachment mode) is
-               handled centrally in the window key handler so the two-press
-               behavior is consistent. */
+            /* macOS: Command+Backspace deletes to the line start; GTK has no binding for it. */
+            if (Platform.is_macos ()) {
+                if (keyval == Gdk.Key.BackSpace && (state & Gdk.ModifierType.META_MASK) != 0) {
+                    text_view.delete_from_cursor (Gtk.DeleteType.PARAGRAPH_ENDS, -1);
+                    return true;
+                }
+            }
+
             /* The emoji picker is opened by typing a second colon ("::"),
                so it only fires when one is already in front of the cursor. */
             if (is_plain_colon_key (keyval, state) && previous_char_is_colon ()) {
