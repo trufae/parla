@@ -66,6 +66,12 @@ namespace Dc {
         private bool chat_kind_loaded = false;
 
         private Gtk.ListView message_listview;
+        /* Keyboard-focus bookkeeping for the message list, see
+           on_focus_widget_changed. */
+        private WeakRef last_focus_item = WeakRef (null);
+        private bool focus_in_message_list = false;
+        private int64 list_press_us = 0;
+        private int64 focus_jump_until_us = 0;
         private Gtk.ScrolledWindow message_scroll;
         private GLib.ListStore message_store;
         private Gtk.FilterListModel filtered_message_store;
@@ -390,11 +396,16 @@ namespace Dc {
                 }
                 container.append (row);
                 li.child = container;
-                /* Non-focusable rows: else a focused item gets re-scrolled into
-                   view when a popover closes, jerking the chat to the top. */
+                /* Rows take the keyboard focus, so Up/Down walk the messages
+                   and screen readers announce the summary; Tab then moves
+                   into the row's selectable text. Neither selectable nor
+                   activatable: a click must not grab focus onto the row.
+                   on_focus_widget_changed keeps Tab from landing on the
+                   first (oldest) row. */
                 li.selectable = false;
                 li.activatable = false;
-                li.focusable = false;
+                li.focusable = true;
+                li.accessible_label = MessageRow.accessible_summary (msg);
             }));
             /* bind builds a fresh row tree; drop it as soon as the list item
                is recycled so widgets, textures, and messages can finalize. */
@@ -426,6 +437,40 @@ namespace Dc {
                         row.is_outgoing, x, y, message_listview);
             }));
             message_listview.add_controller (rc);
+
+            /* Menu / Shift+F10 open the message menu for the focused row,
+               anchored to it. A focused text label keeps GTK's own copy
+               menu, which handles the key before it reaches the list. */
+            var menu_keys = new Gtk.EventControllerKey ();
+            track_signal (menu_keys, menu_keys.key_pressed.connect ((keyval, keycode, state) => {
+                bool shift_f10 = keyval == Gdk.Key.F10 &&
+                    (state & Gdk.ModifierType.SHIFT_MASK) != 0;
+                if (keyval != Gdk.Key.Menu && !shift_f10) return false;
+                if (selection_mode) return false;
+                var row = focused_message_row ();
+                if (row == null) return false;
+                Graphene.Rect bounds;
+                if (!row.compute_bounds (message_listview, out bounds)) return false;
+                msg_actions.show_context_menu (row.message_id, row.is_outgoing,
+                    bounds.origin.x + bounds.size.width / 2,
+                    bounds.origin.y + bounds.size.height / 2,
+                    message_listview);
+                return true;
+            }));
+            message_listview.add_controller (menu_keys);
+
+            /* Pointer presses on the list are remembered so a click that
+               focuses a message's text is not mistaken for keyboard entry. */
+            var press_stamp = new Gtk.GestureClick ();
+            press_stamp.button = 0;
+            press_stamp.propagation_phase = Gtk.PropagationPhase.CAPTURE;
+            track_signal (press_stamp, press_stamp.pressed.connect ((n, x, y) => {
+                list_press_us = get_monotonic_time ();
+            }));
+            message_listview.add_controller (press_stamp);
+            track_signal (window, window.notify["focus-widget"].connect (() => {
+                on_focus_widget_changed ();
+            }));
 
             var dc = new Gtk.GestureClick ();
             dc.button = 1;
@@ -1535,6 +1580,9 @@ namespace Dc {
             if (pos < 0) return false;
             var msg = (Message) filtered_message_store.get_item (pos);
             msg.highlighted = true;
+            /* FOCUS lands on the target; keep on_focus_widget_changed from
+               treating that as Tab entering the list. */
+            focus_jump_until_us = get_monotonic_time () + 1000 * 1000;
             message_listview.scroll_to (pos, Gtk.ListScrollFlags.FOCUS, null);
             if ((uint) pos + 1 == filtered_message_store.get_n_items ()) {
                 /* Jumping to the last row is just going to the bottom. */
@@ -2368,6 +2416,103 @@ namespace Dc {
             track_signal (file_drop_target, file_drop_target.failed.connect ((message) => {
                 window.show_toast ("Attach failed: " + message);
             }));
+        }
+
+        /* GTK moves the focus into the list on its first item (or, tabbing
+           backwards, into the last row's text). In a conversation the first
+           item is the oldest loaded message, so the view jumped to the top:
+           the bug that once made the rows non-focusable. When the focus
+           enters the list, land on the row the user last focused if it is
+           still on screen, else on the bottom-most visible row. A pointer
+           press (clicking a message's text to select it) and a programmatic
+           jump (scroll_to with FOCUS) keep their own target. Moves inside
+           the list are never touched: Up/Down must be free to focus a row
+           GTK has not mapped yet. */
+        private void on_focus_widget_changed () {
+            if (closed) return;
+            var focus = window.focus_widget;
+            var item = message_list_item_of (focus);
+            bool entering = item != null && !focus_in_message_list;
+            focus_in_message_list = item != null;
+            if (item == null) return;
+            int64 now = get_monotonic_time ();
+            bool pointer = now - list_press_us < 500 * 1000;
+            if (entering && !pointer && now > focus_jump_until_us) {
+                var target = entry_item ();
+                if (target != null && target != focus) {
+                    /* The nested notification records the new row. */
+                    target.grab_focus ();
+                    return;
+                }
+            }
+            last_focus_item.set (item);
+        }
+
+        /* The list item (direct child of the list view) on the ancestry of
+           `w`, or null when `w` is outside the list. Popovers are parented
+           to the list view but count as outside. */
+        private Gtk.Widget? message_list_item_of (Gtk.Widget? w) {
+            Gtk.Widget? item = null;
+            for (var a = w; a != null; a = a.get_parent ()) {
+                if (a is Gtk.Popover) return null;
+                if (a == message_listview) return item;
+                item = a;
+            }
+            return null;
+        }
+
+        /* Item widgets GTK keeps pooled for reuse are unmapped and carry
+           stale bounds, so mapped-and-visible is checked first. */
+        private bool item_on_screen (Gtk.Widget item, out float y) {
+            y = 0;
+            if (!item.get_mapped () || !item.get_child_visible ()) return false;
+            Graphene.Rect bounds;
+            if (!item.compute_bounds (message_listview, out bounds)) return false;
+            if (bounds.size.height <= 0) return false;
+            y = bounds.origin.y;
+            return bounds.origin.y + bounds.size.height > 0 &&
+                   bounds.origin.y < message_listview.get_height ();
+        }
+
+        /* Where the keyboard focus should land when it enters the list. */
+        private Gtk.Widget? entry_item () {
+            float y;
+            var last = last_focus_item.get () as Gtk.Widget;
+            if (last != null && last.get_parent () == message_listview &&
+                item_on_screen (last, out y)) {
+                return last;
+            }
+            Gtk.Widget? best = null;
+            float best_y = -1;
+            for (var c = message_listview.get_first_child (); c != null;
+                 c = c.get_next_sibling ()) {
+                if (item_on_screen (c, out y) && y > best_y) {
+                    best = c;
+                    best_y = y;
+                }
+            }
+            return best;
+        }
+
+        /* The message row holding the keyboard focus, whether the focus
+           sits on the row's list item or on one of its children. */
+        private MessageRow? focused_message_row () {
+            var root = get_root ();
+            var f = root != null ? root.get_focus () : null;
+            if (f == null || !f.is_ancestor (message_listview)) return null;
+            for (var w = f; w != null && w != message_listview; w = w.get_parent ()) {
+                if (w is MessageRow) return (MessageRow) w;
+            }
+            return find_message_row_in (f);
+        }
+
+        private static MessageRow? find_message_row_in (Gtk.Widget w) {
+            for (var c = w.get_first_child (); c != null; c = c.get_next_sibling ()) {
+                if (c is MessageRow) return (MessageRow) c;
+                var inner = find_message_row_in (c);
+                if (inner != null) return inner;
+            }
+            return null;
         }
 
         private MessageRow? pick_message_row (double x, double y) {

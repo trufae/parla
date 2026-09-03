@@ -105,7 +105,13 @@ A working backend only exposes what widgets declare, so:
   `update_property (Gtk.AccessibleProperty.LABEL, "...", -1)`.
 - Composite rows (chat list, message rows) should carry a label
   summarizing their content, otherwise screen readers announce an
-  unnamed list item.
+  unnamed list item. Message rows get theirs from
+  `MessageRow.accessible_summary` through `ListItem.accessible_label`.
+- Message rows are focusable list items: Up/Down walk the messages,
+  Tab moves into a row's selectable text, Menu / Shift+F10 open the
+  message menu. `ConversationView.on_focus_widget_changed` decides where
+  Tab enters the list (GTK would pick the first, oldest row and scroll
+  the conversation to the top).
 - Purely decorative images/widgets should not be announced; give them
   `Gtk.AccessibleRole.PRESENTATION`.
 - Keep the chat list quiet while the user types: the open chat's row does

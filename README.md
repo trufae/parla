@@ -100,6 +100,7 @@ Want to build it yourself? See [Build](#build) below.
 | Search in conversation | `Ctrl+F` | `Command+F` |
 | Open chat info | `Ctrl+I` | `Command+I` |
 | Open the chat focused in the list | `Enter` | `Enter` |
+| Menu for the focused message | `Shift+F10` or `Menu` | `Shift+F10` |
 | Focus compose entry | `Esc` | `Esc` |
 | Refresh | `Ctrl+R` | `Command+R` |
 | Toggle sidebar | `Ctrl+S` | `Command+S` |

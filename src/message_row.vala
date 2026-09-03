@@ -2143,6 +2143,60 @@ namespace Dc {
             return dt.format ("%H:%M");
         }
 
+        /**
+         * One-line description of a message for the accessible name of its
+         * list row: sender, date and time, delivery state, flags and the
+         * content. Screen readers announce it when the row takes focus.
+         */
+        internal static string accessible_summary (Message msg) {
+            var sb = new StringBuilder ();
+            sb.append (msg.is_info ? "Info" : effective_sender_name (msg));
+            if (msg.timestamp > 0) {
+                sb.append (", ").append (format_date_label (msg.timestamp))
+                  .append (" ").append (format_timestamp (msg.timestamp));
+            }
+            if (msg.is_outgoing && !msg.is_info) {
+                if (msg.is_failed) sb.append (", sending failed");
+                else if (msg.is_read) sb.append (", read");
+                else if (msg.is_delivered) sb.append (", delivered");
+                else if (msg.is_pending) sb.append (", sending");
+                else sb.append (", sent");
+            }
+            if (msg.is_forwarded) sb.append (", forwarded");
+            if (msg.is_edited) sb.append (", edited");
+            if (msg.is_pinned) sb.append (", pinned");
+            if (msg.quote_msg_id > 0 || msg.quote_text != null) {
+                sb.append (", replying to ")
+                  .append (msg.quote_sender_name ?? "a message");
+            }
+            sb.append (": ");
+            string? attachment = attachment_summary (msg);
+            if (attachment != null) sb.append (attachment);
+            if (msg.has_text) {
+                if (attachment != null) sb.append (", ");
+                sb.append (msg.text.strip ().replace ("\n", " "));
+            } else if (attachment == null) {
+                sb.append ("empty message");
+            }
+            if (msg.reactions != null && msg.reactions.length > 0) {
+                sb.append (", reactions: ").append (msg.reactions);
+            }
+            return sb.str;
+        }
+
+        private static string? attachment_summary (Message msg) {
+            if (msg.is_webxdc ()) return "app " + (msg.file_name ?? "");
+            if (!msg.has_file) return null;
+            if (msg.is_sticker_file () || msg.is_video_sticker_file ()) {
+                return "sticker";
+            }
+            if (msg.is_image_file ()) return "photo";
+            if (msg.is_video_file ()) return "video";
+            if ((msg.view_type ?? "").down () == "voice") return "voice message";
+            if (msg.is_audio_file ()) return "audio";
+            return "file " + (msg.file_name ?? "");
+        }
+
         /** Build a centered date-separator label, styled like info rows. */
         internal static Gtk.Widget build_date_separator (int64 ts) {
             var label = new Gtk.Label (format_date_label (ts));
