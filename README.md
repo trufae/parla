@@ -99,6 +99,7 @@ Want to build it yourself? See [Build](#build) below.
 | Previous conversation | `Ctrl+Page Up` | `Command+Page Up` |
 | Search in conversation | `Ctrl+F` | `Command+F` |
 | Open chat info | `Ctrl+I` | `Command+I` |
+| Open the chat focused in the list | `Enter` | `Enter` |
 | Focus compose entry | `Esc` | `Esc` |
 | Refresh | `Ctrl+R` | `Command+R` |
 | Toggle sidebar | `Ctrl+S` | `Command+S` |

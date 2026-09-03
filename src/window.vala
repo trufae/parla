@@ -79,8 +79,9 @@ namespace Dc {
         /* State */
         private unowned RpcClient rpc;
         private int _current_chat_id = 0;
-        private bool suppress_reselect_scroll = false;
-        private bool suppress_chat_selection = false;
+        /* Row of the open chat. The list has no GTK selection (see the
+           chat_listbox setup), so the highlight is tracked by hand. */
+        private Gtk.ListBoxRow? current_chat_row = null;
         public int current_chat_id {
             get { return _current_chat_id; }
             private set {
@@ -172,6 +173,7 @@ namespace Dc {
             discard_all_views ();
             chat_store.remove_all ();
             clear_listbox (chat_listbox);
+            current_chat_row = null;
             search_entry.text = "";
             showing_archived = false;
             archived_count = 0;
@@ -674,25 +676,19 @@ namespace Dc {
             chat_scroll.hscrollbar_policy = Gtk.PolicyType.NEVER;
 
             chat_listbox = new Gtk.ListBox ();
-            chat_listbox.selection_mode = Gtk.SelectionMode.SINGLE;
+            /* No GTK selection: with SINGLE mode the selection follows the
+               keyboard cursor, so arrowing through the list would open (and
+               mark as read) every chat passed on the way. Arrow keys only
+               move the focus ring; Enter or a click activates the row and
+               opens the chat, and the open chat's row is highlighted by
+               mark_current_chat_row. */
+            chat_listbox.selection_mode = Gtk.SelectionMode.NONE;
             chat_listbox.add_css_class ("navigation-sidebar");
             chat_listbox.set_filter_func (filter_chats);
-            chat_listbox.row_selected.connect (on_chat_selected);
-            /* row_selected does not fire when tapping the already-selected
-               chat, so that tap would otherwise do nothing in collapsed
-               (mobile) mode. Close the sidebar to return to the conversation.
-               For different-chat taps row_selected runs first and has already
-               closed the sidebar, so this is a no-op. */
             chat_listbox.row_activated.connect ((row) => {
-                if (split_view.collapsed && split_view.show_sidebar) {
-                    split_view.show_sidebar = false;
-                    var v = current_view ();
-                    if (v != null && this.is_active) v.flush_pending_seen ();
-                }
-                /* Activation (Enter on the focused row, or a click) commits
-                   to the chat, so move the caret to the message entry; mere
-                   selection changes from arrowing the list keep the focus in
-                   the list. */
+                open_chat_row (row);
+                /* Activation commits to the chat, so move the caret to the
+                   message entry. */
                 var view = current_view ();
                 if (view != null) view.focus_entry ();
             });
@@ -1408,9 +1404,7 @@ namespace Dc {
 
         public void clear_chat_view () {
             current_chat_id = 0;
-            suppress_chat_selection = true;
-            chat_listbox.select_row (null);
-            suppress_chat_selection = false;
+            mark_current_chat_row (null);
             content_title_label.label = "Select a chat";
             content_mute_icon.visible = false;
             show_empty_status ("parla-welcome", "Parla",
@@ -1549,7 +1543,6 @@ namespace Dc {
 
                 int desired_chat_id = current_chat_id;
                 bool keep_empty_selection = desired_chat_id <= 0;
-                suppress_chat_selection = true;
 
                 ChatEntry[] parsed_entries = {};
                 int[] preview_msg_ids = {};
@@ -1570,10 +1563,17 @@ namespace Dc {
                 yield hydrate_chat_text_previews (parsed_entries,
                     preview_msg_ids);
 
+                /* Rebuilding the rows destroys the one holding the keyboard
+                   focus; remember which chat it was so the user can keep
+                   arrowing through the list after the refresh. */
+                int focused_chat_id = focused_chat_row_id ();
+
                 chat_store.remove_all ();
                 clear_listbox (chat_listbox);
+                current_chat_row = null;
 
                 Gtk.ListBoxRow? reselect_row = null;
+                Gtk.ListBoxRow? refocus_row = null;
                 foreach (var entry in parsed_entries) {
                     chat_store.append (entry);
 
@@ -1592,6 +1592,7 @@ namespace Dc {
                     row.child = chat_row;
                     chat_listbox.append (row);
 
+                    if (entry.id == focused_chat_id) refocus_row = row;
                     if (entry.id == desired_chat_id) {
                         reselect_row = row;
                         /* Refresh header state that can change while the
@@ -1601,18 +1602,13 @@ namespace Dc {
                     }
                 }
 
-                suppress_chat_selection = false;
-                if (reselect_row != null) {
-                    suppress_reselect_scroll = true;
-                    chat_listbox.select_row (reselect_row);
-                    suppress_reselect_scroll = false;
-                } else if (keep_empty_selection) {
-                    chat_listbox.select_row (null);
-                } else {
+                mark_current_chat_row (reselect_row);
+                if (reselect_row == null && !keep_empty_selection) {
+                    /* The open chat left the list (deleted, archived). */
                     clear_chat_view ();
                 }
+                if (refocus_row != null) refocus_row.grab_focus ();
             } catch (Error e) {
-                suppress_chat_selection = false;
                 show_toast ("Failed to load chats: " + e.message);
             }
         }
@@ -1723,25 +1719,55 @@ namespace Dc {
             return null;
         }
 
-        private void on_chat_selected (Gtk.ListBoxRow? row) {
-            if (suppress_chat_selection) return;
-            if (row == null) return;
+        /* Highlight `row` as the open chat (null: none). Rows are not
+           GTK-selected (see the chat_listbox setup), so the :selected look
+           and the accessible state are applied by hand. */
+        private void mark_current_chat_row (Gtk.ListBoxRow? row) {
+            if (current_chat_row == row) return;
+            if (current_chat_row != null) {
+                current_chat_row.unset_state_flags (Gtk.StateFlags.SELECTED);
+                current_chat_row.update_state (
+                    Gtk.AccessibleState.SELECTED, false, -1);
+            }
+            current_chat_row = row;
+            if (row != null) {
+                row.set_state_flags (Gtk.StateFlags.SELECTED, false);
+                row.update_state (Gtk.AccessibleState.SELECTED, true, -1);
+            }
+        }
 
+        /* Chat id of the chat-list row holding the keyboard focus, or 0. */
+        private int focused_chat_row_id () {
+            for (var w = get_focus (); w != null; w = w.get_parent ()) {
+                if (w == chat_listbox) return 0;
+                if (w is Gtk.ListBoxRow) {
+                    if (!w.is_ancestor (chat_listbox)) return 0;
+                    var chat_row = ((Gtk.ListBoxRow) w).child as ChatRow;
+                    return chat_row != null ? chat_row.chat_id : 0;
+                }
+            }
+            return 0;
+        }
+
+        /* Open the chat behind `row`: called for Enter/click on the row and
+           for every programmatic switch (shortcuts, search, quick switcher,
+           notifications). Merely moving the keyboard focus through the list
+           never gets here. */
+        private void open_chat_row (Gtk.ListBoxRow row) {
             var chat_row = row.child as ChatRow;
             if (chat_row == null) return;
 
             int chat_id = chat_row.chat_id;
+            mark_current_chat_row (row);
 
-            /* A selection change made while focus sits in the chat list is
-               the user arrowing through chats: show the chat but leave the
-               focus in the list so they can keep moving. Activating a row
-               (Enter or click) moves focus to the message entry instead.
-               In collapsed mode selecting always commits (the sidebar
-               closes), so keep grabbing the entry there. */
+            /* Opening from the list itself (Enter on the focused row) keeps
+               the focus there until the activation handler moves it; every
+               other path lands the caret in the message entry. In collapsed
+               mode opening always commits (the sidebar closes), so grab the
+               entry there too. */
             bool focus_compose = split_view.collapsed || !chat_list_has_focus ();
 
             if (chat_id == current_chat_id) {
-                if (suppress_reselect_scroll) return;
                 if (split_view.collapsed) {
                     split_view.show_sidebar = false;
                 }
@@ -3546,8 +3572,7 @@ namespace Dc {
             while ((row = chat_listbox.get_row_at_index (idx)) != null) {
                 var chat_row = row.child as ChatRow;
                 if (chat_row != null && chat_row.chat_id == chat_id) {
-                    chat_listbox.select_row (row);
-                    on_chat_selected (row);
+                    open_chat_row (row);
                     return true;
                 }
                 idx++;
