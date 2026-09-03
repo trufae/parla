@@ -937,13 +937,13 @@ namespace Dc {
         private const int STICKER_MAX = 200;
 
         /**
-         * Load a GIF/WebP/WebM attachment as a sticker: natural size capped at
-         * STICKER_MAX in both dimensions, never upscaled. Animated stickers
-         * start playing (or paused on their first frame) according to the
-         * "animate stickers" setting, and a click toggles playback. WebM uses
-         * a muted looping media paintable; raster files with a single frame
-         * (or that cannot be decoded as an animation) fall back to a static
-         * sticker.
+         * Load an attachment tagged as a sticker: natural size capped at
+         * STICKER_MAX in both dimensions, never upscaled. Animated raster
+         * stickers start playing (or paused on their first frame) according
+         * to the "animate stickers" setting, and a click toggles playback.
+         * WebM uses a muted looping media paintable; raster files with a
+         * single frame (or that cannot be decoded as an animation) fall back
+         * to a static sticker.
          */
         private static Gtk.Widget? load_sticker (string path,
                                                 bool video = false) {

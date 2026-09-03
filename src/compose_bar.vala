@@ -23,7 +23,7 @@ namespace Dc {
             uint generation);
 
         public signal void send_message (string text, string? file_path,
-            string? file_name, int quote_msg_id);
+            string? file_name, int quote_msg_id, string? view_type);
         /* `text` is the transcription typed into the composer alongside the
            recording, empty for a plain voice message. `temporary` marks a file
            the receiver of this signal owns and must delete after sending; a
@@ -745,7 +745,7 @@ namespace Dc {
             if (editing_msg_id > 0) return;
             int qid = replying_msg_id;
             send_message ("", StickerStore.sticker_path (sticker.file_name),
-                sticker.display_name, qid);
+                sticker.display_name, qid, "Sticker");
             suppress_draft_signal = true;
             cancel_reply ();
             suppress_draft_signal = false;
@@ -1313,14 +1313,16 @@ namespace Dc {
                     pending_file_is_temp);
             } else if (pending_file != null) {
                 send_message (text, pending_file,
-                    pending_file_name ?? Path.get_basename (pending_file), qid);
+                    pending_file_name ?? Path.get_basename (pending_file), qid,
+                    null);
             } else {
-                send_message (text, null, null, qid);
+                send_message (text, null, null, qid, null);
             }
             for (int i = 0; i < extra_pending_files.length; i++) {
                 send_message (
                     i < extra_pending_captions.length ? extra_pending_captions[i] : "",
-                    extra_pending_files[i], extra_pending_file_names[i], 0);
+                    extra_pending_files[i], extra_pending_file_names[i], 0,
+                    null);
             }
             suppress_draft_signal = true;
             cancel_reply ();

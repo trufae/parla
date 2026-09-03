@@ -364,6 +364,16 @@ attachment_types_test = executable(
 
 test('attachment-types', attachment_types_test)
 
+sticker_store_test = executable(
+  'sticker-store-test',
+  files('tests/sticker_store_test.vala', 'src/sticker_store.vala'),
+  dependencies: [dependency('glib-2.0'), dependency('gobject-2.0'),
+                 dependency('gio-2.0')],
+  install: false,
+)
+
+test('sticker-store', sticker_store_test)
+
 whisper_test = executable(
   'whisper-test',
   files('tests/whisper_test.vala', 'src/whisper.vala',

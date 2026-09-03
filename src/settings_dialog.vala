@@ -996,7 +996,7 @@ namespace Dc {
 
             var sticker_row = action_row (
                 "Sticker animations",
-                "Auto-play GIF, WebP and WebM stickers; " +
+                "Auto-play animated stickers; " +
                 "clicking a sticker toggles playback");
             var sticker_switch = row_switch (
                 sticker_row, app_window.settings.animate_stickers);

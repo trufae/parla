@@ -8,19 +8,20 @@ namespace Dc {
         public string? file_path;
         public string? file_name;
         public int quote_msg_id;
-        public bool voice;
+        public string? view_type;
         /* Delete file_path once the send RPC returns. False for a voice draft
            restored from the blob directory, which the message keeps using. */
         public bool owns_file;
 
         public PendingSend (string text, string? file_path,
                             string? file_name, int quote_msg_id,
-                            bool voice = false, bool owns_file = false) {
+                            string? view_type = null,
+                            bool owns_file = false) {
             this.text = text;
             this.file_path = file_path;
             this.file_name = file_name;
             this.quote_msg_id = quote_msg_id;
-            this.voice = voice;
+            this.view_type = view_type;
             this.owns_file = owns_file;
         }
     }
@@ -2147,9 +2148,10 @@ namespace Dc {
         }
 
         private void on_send_message (string text, string? file_path,
-                                      string? file_name, int quote_msg_id) {
+                                      string? file_name, int quote_msg_id,
+                                      string? view_type) {
             queue_send (new PendingSend (
-                text, file_path, file_name, quote_msg_id));
+                text, file_path, file_name, quote_msg_id, view_type));
         }
 
         /* `text` carries the transcription when the composer attached one to
@@ -2157,7 +2159,7 @@ namespace Dc {
         private void on_send_voice_message (string file_path, string text,
                                             int quote_msg_id, bool temporary) {
             queue_send (new PendingSend (text, file_path,
-                ComposeBar.VOICE_FILE_NAME, quote_msg_id, true, temporary));
+                ComposeBar.VOICE_FILE_NAME, quote_msg_id, "Voice", temporary));
         }
 
         private void queue_send (PendingSend job) {
@@ -2179,8 +2181,8 @@ namespace Dc {
         private async void do_send (PendingSend job) {
             try {
                 string? send_text = job.text.length > 0 ? job.text : null;
-                string? view_type = job.voice ? "Voice"
-                    : AttachmentTypes.infer_outgoing_view_type (
+                string? view_type = job.view_type
+                    ?? AttachmentTypes.infer_outgoing_view_type (
                         job.file_path, job.file_name);
                 int msg_id = yield rpc.send_msg (chat_id,
                     send_text, job.file_path, job.file_name,
