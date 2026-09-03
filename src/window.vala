@@ -712,6 +712,36 @@ namespace Dc {
             });
             chat_listbox.add_controller (right_click);
 
+            /* Ctrl+Tab / Ctrl+Shift+Tab are GTK's chord for leaving a widget
+               that consumes plain Tab. GtkListBox walks its rows on Tab (with
+               or without Ctrl), so make the chord actually jump out of the
+               list: backwards to the contact search entry, forwards to the
+               message entry. This is plain Ctrl on every platform (not the
+               primary modifier), matching GTK's own binding (#57). */
+            var list_keys = new Gtk.EventControllerKey ();
+            list_keys.key_pressed.connect ((keyval, keycode, state) => {
+                if ((state & Gdk.ModifierType.CONTROL_MASK) == 0) return false;
+                if ((state & Gdk.ModifierType.ALT_MASK) != 0) return false;
+                if (keyval != Gdk.Key.Tab && keyval != Gdk.Key.ISO_Left_Tab &&
+                    keyval != Gdk.Key.KP_Tab) return false;
+                bool backward = (state & Gdk.ModifierType.SHIFT_MASK) != 0 ||
+                                keyval == Gdk.Key.ISO_Left_Tab;
+                if (backward) {
+                    /* Hidden in compact sidebar mode; let GTK handle it then. */
+                    if (!search_entry.visible) return false;
+                    search_entry.grab_focus ();
+                    return true;
+                }
+                /* In collapsed (mobile) mode the conversation is not on
+                   screen while the list is; leave the default behaviour. */
+                if (split_view.collapsed) return false;
+                var v = current_view ();
+                if (v == null) return false;
+                v.focus_entry ();
+                return true;
+            });
+            chat_listbox.add_controller (list_keys);
+
             chat_scroll.child = chat_listbox;
             sidebar_box.append (chat_scroll);
 
@@ -3277,12 +3307,11 @@ namespace Dc {
             case Gdk.Key.Page_Down:
             case Gdk.Key.KP_Page_Down:
                 return select_adjacent_chat (1);
-            case Gdk.Key.Tab:
-            case Gdk.Key.ISO_Left_Tab:
-            case Gdk.Key.KP_Tab:
-                return select_adjacent_chat (
-                    ((state & Gdk.ModifierType.SHIFT_MASK) != 0 ||
-                     keyval == Gdk.Key.ISO_Left_Tab) ? -1 : 1);
+            /* Ctrl+Tab / Ctrl+Shift+Tab are deliberately not handled here:
+               GTK4 reserves them for moving the focus out of a widget that
+               eats plain Tab (text views; the chat list has its own handler
+               for this). Chat switching stays on Ctrl+Page_Up /
+               Ctrl+Page_Down (#57). */
             case Gdk.Key.a:
                 if ((state & Gdk.ModifierType.SHIFT_MASK) == 0) return false;
                 show_account_menu ();

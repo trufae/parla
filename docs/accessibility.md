@@ -108,3 +108,9 @@ A working backend only exposes what widgets declare, so:
   unnamed list item.
 - Purely decorative images/widgets should not be announced; give them
   `Gtk.AccessibleRole.PRESENTATION`.
+- Never bind Ctrl+Tab or Ctrl+Shift+Tab application-wide. GTK4
+  reserves them for moving the focus out of a widget that consumes
+  plain Tab (text views walk out on their own; the chat list has a
+  handler that jumps back to the contact search entry or forward to
+  the message entry). Chat switching lives on Ctrl+Page Up /
+  Ctrl+Page Down.
