@@ -35,11 +35,8 @@ namespace Dc {
         private const int ZOOM_COLUMNS_MAX = 12;
         private static int zoom_columns = ZOOM_COLUMNS_MAX;
 
-        /* The Images and Stickers tabs share viewtypes: anything Parla
-           renders as a sticker (webp/gif/webm or Sticker viewtype, see
-           Message.is_sticker_file) lands under Stickers, the rest under
-           Images. Filtering happens client-side because get_chat_media
-           can only match on viewtypes. */
+        /* Sticker gallery membership follows the semantic Sticker viewtype
+           (see Message.is_sticker_file), regardless of the file encoding. */
         private enum MediaFilter { ALL, STICKERS_ONLY, NO_STICKERS }
 
         private unowned Window app_window;
@@ -149,7 +146,7 @@ namespace Dc {
                 new GalleryTab () {
                     key = "stickers", title = "Stickers",
                     icon_name = "sticker-symbolic",
-                    types = { "Sticker", "Gif", "Image" },
+                    types = { "Sticker" },
                     filter = MediaFilter.STICKERS_ONLY,
                     empty_title = "No Stickers",
                     empty_description = "Stickers shared in this chat will appear here",

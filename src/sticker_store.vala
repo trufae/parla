@@ -18,14 +18,13 @@ namespace Dc {
 
     /**
      * Flat on-disk sticker storage: a single <parla data dir>/stickers
-     * directory where each gif/webp/webm file is named
+     * directory where each sticker file, regardless of media format, is named
      * "<pack>__<emoji>__<original name>", so the pack and the associated
      * emoji live in the file name and changing either is a rename. A pack
      * exists exactly while at least one file carries its prefix.
      */
     public class StickerStore : Object {
 
-        private const string[] STICKER_SUFFIXES = { ".gif", ".webp", ".webm" };
         private const string SEP = "__";
 
         public static string get_stickers_dir () {
@@ -38,11 +37,9 @@ namespace Dc {
         }
 
         public static bool is_sticker_filename (string name) {
-            string lower = name.down ();
-            foreach (string suffix in STICKER_SUFFIXES) {
-                if (lower.has_suffix (suffix)) return true;
-            }
-            return false;
+            string[] parts = name.split (SEP, 3);
+            return parts.length == 3 && parts[0].length > 0
+                && parts[2].length > 0;
         }
 
         /** Decode "<pack>__<emoji>__<name>"; null for foreign files. */

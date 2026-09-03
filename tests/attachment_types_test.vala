@@ -1,14 +1,10 @@
 using Dc;
 
-private void test_sticker_formats () {
-    assert (AttachmentTypes.infer_outgoing_view_type ("/tmp/a.gif") == "Sticker");
-    assert (AttachmentTypes.infer_outgoing_view_type ("/tmp/a.WEBP") == "Sticker");
-    assert (AttachmentTypes.infer_outgoing_view_type ("/tmp/a.webm") == "Sticker");
-}
-
-private void test_display_name_fallback () {
-    assert (AttachmentTypes.infer_outgoing_view_type (
-        "/tmp/blob-without-extension", "sticker.webp") == "Sticker");
+private void test_media_formats_are_not_semantic_types () {
+    assert (AttachmentTypes.infer_outgoing_view_type ("/tmp/a.gif") == null);
+    assert (AttachmentTypes.infer_outgoing_view_type ("/tmp/a.WEBP") == null);
+    assert (AttachmentTypes.infer_outgoing_view_type ("/tmp/a.webm") == null);
+    assert (AttachmentTypes.infer_outgoing_view_type ("/tmp/a.png") == null);
 }
 
 private void test_webxdc_apps () {
@@ -25,8 +21,8 @@ private void test_regular_attachments () {
 
 public int main (string[] args) {
     Test.init (ref args);
-    Test.add_func ("/attachment-types/sticker-formats", test_sticker_formats);
-    Test.add_func ("/attachment-types/display-name-fallback", test_display_name_fallback);
+    Test.add_func ("/attachment-types/media-formats",
+        test_media_formats_are_not_semantic_types);
     Test.add_func ("/attachment-types/webxdc", test_webxdc_apps);
     Test.add_func ("/attachment-types/regular", test_regular_attachments);
     return Test.run ();

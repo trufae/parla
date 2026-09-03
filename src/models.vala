@@ -414,9 +414,6 @@ namespace Dc {
         private const string[] IMAGE_EXTENSIONS = {
             ".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".svg"
         };
-        private const string[] STICKER_EXTENSIONS = {
-            ".gif", ".webp", ".webm"
-        };
         private const string[] VIDEO_EXTENSIONS = {
             ".mp4", ".m4v", ".webm", ".mkv", ".mov", ".avi", ".ogv", ".3gp", ".wmv", ".flv"
         };
@@ -535,13 +532,10 @@ namespace Dc {
                 || path_has_suffix (IMAGE_EXTENSIONS);
         }
 
-        /** GIF/WebP/WebM attachments render as stickers when supported. */
+        /** Sticker is a semantic Delta Chat view type, independent of the
+            attachment's encoded media format. */
         public bool is_sticker_file () {
-            return has_mime ("image/gif")
-                || has_mime ("image/webp")
-                || has_mime ("video/webm")
-                || view_type_is ("sticker", "gif")
-                || path_has_suffix (STICKER_EXTENSIONS);
+            return view_type_is ("sticker");
         }
 
         /** Webxdc mini-app attachment (runnable when built with -Dwebxdc). */
