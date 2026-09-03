@@ -57,9 +57,6 @@
         {
             "name": "parla",
             "buildsystem": "meson",
-            "config-opts": [
-                "-Dwebxdc=true"
-            ],
             "sources": [
                 {
                     "type": "dir",

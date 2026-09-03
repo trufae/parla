@@ -9,10 +9,11 @@ UNAME_S := $(shell uname -s)
 RUN_ENV := $(if $(filter Darwin,$(UNAME_S)),. ./scripts/macos/env.sh &&,)
 MACOS_APP_DIR?=dist/macos/Parla.app
 MESON_OPTIONS?=
-# Experimental Webxdc support (docs/webxdc.md): `make run WITH_WEBXDC=1`
-# builds with the webkitgtk-6.0 dependency; a plain `make` reverts to the
-# stub because the option is passed explicitly on every reconfigure.
-MESON_OPTIONS+=-Dwebxdc=$(if $(filter 1,$(WITH_WEBXDC)),true,false)
+# Webxdc support is enabled by default (docs/webxdc.md). Pass
+# `WITH_WEBXDC=0` to build the stub instead; this is passed explicitly on
+# every reconfigure so changing the variable always takes effect.
+WITH_WEBXDC?=1
+MESON_OPTIONS+=-Dwebxdc=$(if $(filter 0,$(WITH_WEBXDC)),false,true)
 # `make BUNDLE_ICONS=1` compiles the Adwaita symbolic icons Parla uses into
 # the binary (issue #61); by default they come from the installed
 # adwaita-icon-theme, inherited at runtime when the active theme lacks them.

@@ -2,9 +2,9 @@
 
 [Webxdc](https://webxdc.org/) apps are tiny offline web apps (`.xdc` zip
 archives) shared as Delta Chat attachments. Parla can run them in an
-embedded platform web view, but the feature is **off by default**: a web engine
-is a browser-sized attack surface (and on Linux a large extra dependency),
-so it will only be enabled once it has seen enough testing.
+embedded platform web view. The feature is **enabled by default**; it remains
+experimental because a web engine is a browser-sized attack surface (and on
+Linux a large extra dependency).
 
 Three view backends share the same core:
 
@@ -18,11 +18,11 @@ Three view backends share the same core:
 ## Building
 
 ```sh
-make run WITH_WEBXDC=1     # macOS: works out of the box
+make run                   # macOS: works out of the box
                            # linux: needs webkitgtk-6.0 pkg-config
-WITH_WEBXDC=1 bash scripts/windows/bundle.sh  # MSYS2/UCRT64
+bash scripts/windows/bundle.sh  # MSYS2/UCRT64
 # or directly:
-meson setup builddir -Dwebxdc=true
+meson setup builddir
 ```
 
 The Windows bundle script downloads and checksum-verifies a pinned official
@@ -31,10 +31,10 @@ build instead passes the extracted package root with
 `-Dwebview2_sdk=/path/to/package`. The SDK supplies headers and the loader;
 the application always uses the system-installed Evergreen runtime.
 
-A plain `make` (or `-Dwebxdc=false`) reverts to the default build, which
-links no web engine at all.
+To omit Webxdc, explicitly use `make WITH_WEBXDC=0` or configure Meson with
+`-Dwebxdc=false`. Those builds link no web engine at all.
 
-On native Linux installs, `sudo make install WITH_WEBXDC=1` also installs
+On native Linux installs, `sudo make install` also installs
 and loads an AppArmor profile when AppArmor is active. This is needed on
 Ubuntu 24.04 and newer, where the default user-namespace restriction can
 otherwise prevent WebKitGTK's bubblewrap sandbox from starting. Systems

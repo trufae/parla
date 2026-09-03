@@ -1,5 +1,5 @@
-/* No-op stand-in for webxdc.vala, compiled when -Dwebxdc=false (the
- * default) so the rest of the code links without WebKitGTK. */
+/* No-op stand-in for webxdc.vala, compiled when -Dwebxdc=false so the rest
+ * of the code links without WebKitGTK. */
 namespace Dc.Webxdc {
 
     public const bool AVAILABLE = false;

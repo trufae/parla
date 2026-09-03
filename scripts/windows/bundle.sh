@@ -16,10 +16,10 @@ ARCH="${MSYSTEM_CARCH:-x86_64}"
 PREFIX="${MINGW_PREFIX:-/ucrt64}"
 DIST="$ROOT/dist/windows/parla"
 ZIP="$ROOT/dist/windows/parla-$VERSION-windows-$ARCH.zip"
-WITH_WEBXDC="${WITH_WEBXDC:-0}"
+WITH_WEBXDC="${WITH_WEBXDC:-1}"
 
-meson_options=(-Dwerror=true -Dwebxdc=false)
-if [ "$WITH_WEBXDC" = "1" ]; then
+meson_options=(-Dwerror=true -Dwebxdc=true)
+if [ "$WITH_WEBXDC" != "0" ]; then
     WEBVIEW2_SDK_DIR="${WEBVIEW2_SDK_DIR:-$(
         bash "$ROOT/scripts/windows/fetch-webview2-sdk.sh"
     )}"

@@ -111,11 +111,9 @@ Want to build it yourself? See [Build](#build) below.
 ## Build
 
 ```sh
-# Install dependencies (Ubuntu)
-sudo apt install valac meson libgtk-4-dev libadwaita-1-dev libjson-glib-dev
-
-# Webxdc builds additionally need WebKitGTK (Ubuntu)
-sudo apt install libwebkitgtk-6.0-dev
+# Install dependencies (Ubuntu; Webxdc is enabled by default)
+sudo apt install valac meson libgtk-4-dev libadwaita-1-dev libjson-glib-dev \
+  libwebkitgtk-6.0-dev
 
 # Install the RPC backend for source builds
 pip install deltachat-rpc-server
@@ -173,8 +171,8 @@ pacman -S zip mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-meson \
   mingw-w64-ucrt-x86_64-librsvg mingw-w64-ucrt-x86_64-webp-pixbuf-loader \
   mingw-w64-ucrt-x86_64-ntldd
 
-bash scripts/windows/bundle.sh   # default build, Webxdc compiled out
-WITH_WEBXDC=1 bash scripts/windows/bundle.sh  # system Edge WebView2 backend
+bash scripts/windows/bundle.sh   # default build, system Edge WebView2 backend
+WITH_WEBXDC=0 bash scripts/windows/bundle.sh  # build without Webxdc
 ```
 
 The Webxdc build fetches a pinned official Microsoft WebView2 SDK package for
@@ -193,9 +191,9 @@ server and how to package it for Flatpak or distro packages.
 ## Webxdc apps (experimental)
 
 [Webxdc](https://webxdc.org/) apps are small offline web apps attached to
-Delta Chat messages. Support is experimental and disabled at build time by
-default because embedding a browser engine adds a large dependency and a
-significant attack surface. It can also be disabled at runtime under
+Delta Chat messages. Support is experimental and enabled at build time by
+default. Embedding a browser engine adds a large dependency and a significant
+attack surface, so it can be disabled at runtime under
 **Settings → Advanced → Webxdc apps**.
 
 That settings section also controls Internet access, WebAssembly, WebGL,
@@ -224,11 +222,14 @@ To build and run it from the source tree:
 # Ubuntu/Debian build dependency
 sudo apt install libwebkitgtk-6.0-dev
 
-make run WITH_WEBXDC=1
+make run
 # Or with Meson directly:
-meson setup builddir -Dwebxdc=true
+meson setup builddir
 meson compile -C builddir
 ```
+
+To build without Webxdc, explicitly pass `WITH_WEBXDC=0` to Make or
+`-Dwebxdc=false` to Meson.
 
 Parla's stock symbolic icons come from `adwaita-icon-theme` (a GTK4
 dependency). On desktops whose icon theme does not inherit Adwaita (XFCE,
@@ -238,9 +239,9 @@ builds that cannot rely on an installed Adwaita, `make BUNDLE_ICONS=1` or
 `meson setup builddir -Dbundle_icons=true` compiles the needed SVGs into
 the binary instead.
 
-On Windows, use the `WITH_WEBXDC=1` bundle command above. For a direct Meson
-build, extract the official `Microsoft.Web.WebView2` NuGet package and pass
-its root as `-Dwebview2_sdk=/path/to/package` together with `-Dwebxdc=true`.
+On Windows, use the bundle command above. For a direct Meson build, extract
+the official `Microsoft.Web.WebView2` NuGet package and pass its root as
+`-Dwebview2_sdk=/path/to/package`.
 
 Webxdc attachments contain untrusted JavaScript, so Parla deliberately does
 not fall back to running them without the web-engine sandbox. On Linux,
@@ -254,19 +255,19 @@ attached to the actual installed binary path, is installed only when AppArmor
 is active, and is loaded as part of the install:
 
 ```sh
-sudo make install WITH_WEBXDC=1
+sudo make install
 ```
 
 Staged native package installs include the profile without loading it on the
 build host; package lifecycle scripts load it only where the Ubuntu
 restriction is active. Direct installs on systems without that restriction do
 not install the policy.
-Running `make run WITH_WEBXDC=1` directly from a build directory is not covered
-by the installed-binary policy on restricted Ubuntu systems; install the
-binary first and run the installed `parla` executable. Parla detects this
-specific unsafe host state and refuses to launch the app with an error instead
-of disabling the WebKit sandbox or allowing WebKitGTK to abort. Flatpak uses
-its own sandbox and does not install a host AppArmor profile.
+Running `make run` directly from a build directory is not covered by the
+installed-binary policy on restricted Ubuntu systems; install the binary first
+and run the installed `parla` executable. Parla detects this specific unsafe
+host state and refuses to launch the app with an error instead of disabling the
+WebKit sandbox or allowing WebKitGTK to abort. Flatpak uses its own sandbox and
+does not install a host AppArmor profile.
 
 See [docs/webxdc.md](docs/webxdc.md) for the implementation, security
 boundaries, and currently exposed JavaScript API.

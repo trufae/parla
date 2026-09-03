@@ -228,7 +228,7 @@ namespace Dc.Webxdc {
         }
         message = "Ubuntu AppArmor is blocking the user namespace required "
             + "by WebKitGTK's sandbox. Install this Webxdc build with "
-            + "‘sudo make install WITH_WEBXDC=1’, then restart Parla. "
+            + "‘sudo make install’, then restart Parla. "
             + "Webxdc will not run without its web-engine sandbox.";
         return false;
     }

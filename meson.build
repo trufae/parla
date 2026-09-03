@@ -170,7 +170,7 @@ else
   sources += files('src/tray_icon.vala')
 endif
 
-# Experimental Webxdc runner (docs/webxdc.md), off by default. Linux uses
+# Experimental Webxdc runner (docs/webxdc.md), enabled by default. Linux uses
 # WebKitGTK, macOS uses its system WebKit framework, and Windows uses the
 # installed Evergreen WebView2 Runtime through Microsoft's SDK loader.
 # Native implementations remain isolated in their platform files.

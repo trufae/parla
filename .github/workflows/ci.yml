@@ -30,7 +30,7 @@ jobs:
             libwebkitgtk-6.0-dev
 
       - name: Setup
-        run: meson setup builddir -Dwebxdc=true
+        run: meson setup builddir
 
       - name: Build
         run: meson compile -C builddir
@@ -56,10 +56,10 @@ jobs:
             dpkg-dev
 
       - name: Build
-        run: make WITH_WEBXDC=1
+        run: make
 
       - name: Package .deb
-        run: make deb WITH_WEBXDC=1
+        run: make deb
 
       - name: Upload .deb artifact
         uses: actions/upload-artifact@v7
@@ -212,13 +212,12 @@ jobs:
         run: scripts/macos/gtk4-accesskit.sh
 
       - name: Build
-        run: make BUILDTYPE=release WITH_WEBXDC=1
+        run: make BUILDTYPE=release
 
       - name: Package ZIP
         id: zip
         env:
           ARCH: ${{ matrix.arch }}
-          WITH_WEBXDC: "1"
         run: scripts/macos/package-zip.sh
 
       - name: Upload ZIP artifact
@@ -288,7 +287,7 @@ jobs:
         run: bash scripts/windows/gtk4-accesskit.sh
 
       - name: Build and bundle
-        run: WITH_WEBXDC=1 bash scripts/windows/bundle.sh
+        run: bash scripts/windows/bundle.sh
 
       - name: Run tests
         run: meson test -C builddir-windows --print-errorlogs
