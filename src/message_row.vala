@@ -1149,6 +1149,9 @@ namespace Dc {
             label.margin_top = 4;
             label.margin_bottom = 4;
             label.wrap = true;
+            /* WORD wrapping alone cannot break a long token (an address, a
+               fingerprint), so it would widen the list past a narrow screen. */
+            label.wrap_mode = Pango.WrapMode.WORD_CHAR;
             this.append (label);
         }
 
@@ -1440,11 +1443,11 @@ namespace Dc {
                 unichar accel;
                 Pango.parse_markup (probe, -1, 0, out attrs, out parsed, out accel);
                 text.set_markup (markup);
-            } catch { /* fallback: plain text already in label */ }
-            /* An enlarged emoji pair must stay on one line: with wrapping
-               enabled the label breaks at the separating space and the
-               emoji stack vertically. */
-            text.wrap = emoji_count == 0;
+            } catch {
+                /* fallback: plain text already in label */
+	    }
+            bool enlarged = emoji_count == 1 || emoji_count == 2;
+            text.wrap = !enlarged;
             text.wrap_mode = Pango.WrapMode.WORD_CHAR;
             text.halign = Gtk.Align.START; text.xalign = 0;
             text.selectable = true;
