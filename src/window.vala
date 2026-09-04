@@ -610,7 +610,8 @@ namespace Dc {
             sidebar_menu_button.icon_name = "open-menu-symbolic";
             sidebar_menu_button.tooltip_text = "Main Menu";
             sidebar_menu_button.add_css_class ("flat");
-            sidebar_menu_button.menu_model = build_app_menu ();
+            sidebar_menu_button.set ("popover", build_app_menu ());
+            sidebar_menu_button.primary = true;
             sidebar_header.pack_end (sidebar_menu_button);
 
 
@@ -2876,7 +2877,12 @@ namespace Dc {
             }
         }
 
-        private GLib.MenuModel build_app_menu () {
+        /* Main menu. Hand-built rather than a GLib.Menu-backed
+           GtkPopoverMenu: GtkModelButton names itself through a
+           presentational label, which GTK's AccessKit backend leaves to
+           AccessKit to resolve, so NVDA read the menu as empty items
+           (#57). The win.* actions stay: the accelerators bind to them. */
+        private Gtk.Popover build_app_menu () {
             window_action ("new-chat").activate.connect (() => { on_new_chat (); });
             window_action ("new-group").activate.connect (() => { on_new_group (); });
             window_action ("new-channel").activate.connect (() => { on_new_channel (); });
@@ -2894,27 +2900,57 @@ namespace Dc {
                 settings.save_font_size (FONT_SIZE_SYSTEM);
             });
 
-            var s1 = new GLib.Menu ();
-            s1.append ("New Chat", "win.new-chat");
-            s1.append ("New Group", "win.new-group");
-            s1.append ("New Channel", "win.new-channel");
-            s1.append ("Use Invite Link", "win.use-invite-link");
-            var s2 = new GLib.Menu ();
-            s2.append ("Stickers", "win.stickers");
-            s2.append ("Apps", "win.webxdc-apps");
-            var s3 = new GLib.Menu ();
-            s3.append ("Settings", "win.settings");
-            s3.append ("Shortcuts", "win.shortcuts");
-            s3.append ("About", "win.about");
-            var s4 = new GLib.Menu ();
-            s4.append ("Quit", "win.quit");
+            var popover = new Gtk.Popover ();
+            var box = new Gtk.Box (Gtk.Orientation.VERTICAL, 4);
+            box.add_css_class ("menu");
+            popover.child = box;
+            foreach (unowned AppMenuEntry e in APP_MENU) {
+                if (e.label == null) {
+                    box.append (new Gtk.Separator (Gtk.Orientation.HORIZONTAL));
+                    continue;
+                }
+                string action = "win." + e.action;
+                var btn = new PopoverButton (popover, e.label, false, true,
+                                             accel_label (action));
+                btn.selected.connect (() => activate_action_variant (action, null));
+                box.append (btn);
+            }
+            return popover;
+        }
 
-            var menu = new GLib.Menu ();
-            menu.append_section (null, s1);
-            menu.append_section (null, s2);
-            menu.append_section (null, s3);
-            menu.append_section (null, s4);
-            return menu;
+        private struct AppMenuEntry {
+            public unowned string? label;
+            public unowned string? action;
+        }
+
+        /* Main-menu rows in order; a null label is a separator. */
+        private const AppMenuEntry[] APP_MENU = {
+            { "New Chat", "new-chat" },
+            { "New Group", "new-group" },
+            { "New Channel", "new-channel" },
+            { "Use Invite Link", "use-invite-link" },
+            { null, null },
+            { "Stickers", "stickers" },
+            { "Apps", "webxdc-apps" },
+            { null, null },
+            { "Settings", "settings" },
+            { "Shortcuts", "shortcuts" },
+            { "About", "about" },
+            { null, null },
+            { "Quit", "quit" },
+        };
+
+        /* Display form of an action's first accelerator, or null. The
+           window's application property is still unset while construct
+           runs, hence the process-wide default. */
+        private static string? accel_label (string action) {
+            var app = GLib.Application.get_default () as Gtk.Application;
+            var accels = app.get_accels_for_action (action);
+            if (accels.length == 0) return null;
+            uint key;
+            Gdk.ModifierType mods;
+            if (!Gtk.accelerator_parse (accels[0], out key, out mods)) return null;
+            return Gtk.accelerator_get_label (key, mods);
         }
 
         private SimpleAction window_action (string name) {

@@ -136,6 +136,14 @@ A working backend only exposes what widgets declare, so:
   the conversation to the top).
 - Purely decorative images/widgets should not be announced; give them
   `Gtk.AccessibleRole.PRESENTATION`.
+- Build menus from `PopoverButton`s in a plain `Gtk.Popover`, not from a
+  `GLib.Menu` model. GTK's `GtkModelButton` names itself through a
+  presentational inner label, which the AccessKit backend hands to
+  AccessKit unresolved, so NVDA announces every item of a
+  `GtkPopoverMenu` as empty (#57). The AT-SPI backend resolves the name
+  itself, which is why Orca never showed the problem. Actions and their
+  accelerators stay as `win.*` actions; `PopoverButton` takes the
+  shortcut hint and restates it as `KEY_SHORTCUTS`.
 - Keep the chat list quiet while the user types: the open chat's row does
   not echo the draft being written into it, and `load_chats` leaves the
   rows alone when nothing displayed changed. Rebuilding rows on every

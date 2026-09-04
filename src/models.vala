@@ -11,7 +11,7 @@ namespace Dc {
 
         public PopoverButton (Gtk.Popover popover, string label,
                               bool destructive = false,
-                              bool hexpand = false) {
+                              bool hexpand = false, string? accel = null) {
             Object (label: label, hexpand: hexpand);
             add_css_class ("flat");
             if (destructive) add_css_class ("menu-destructive");
@@ -20,14 +20,36 @@ namespace Dc {
                 label_widget.xalign = 0;
                 label_widget.halign = Gtk.Align.START;
             }
+            if (accel != null) add_accel_hint (label, accel);
             popover_ref = WeakRef (popover);
+        }
+
+        /* Right-aligned shortcut hint, as GtkPopoverMenu shows one. The
+           custom child drops GTK's own label relation, so the accessible
+           name and shortcut are restated by hand. */
+        private void add_accel_hint (string label, string accel) {
+            var text = child;
+            text.hexpand = true;
+            var hint = new Gtk.Label (accel);
+            hint.add_css_class ("dim-label");
+            var row = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 24);
+            child = row;
+            row.append (text);
+            row.append (hint);
+            /* Keep the padding of a label-only button. */
+            add_css_class ("text-button");
+#if A11Y
+            update_property (Gtk.AccessibleProperty.LABEL, label,
+                             Gtk.AccessibleProperty.KEY_SHORTCUTS, accel, -1);
+#endif
         }
 
         public override void clicked () {
             sensitive = false;
             var popover = popover_ref.get () as Gtk.Popover;
             if (popover != null) popover.popdown ();
-            Idle.add (() => { selected (); return Source.REMOVE; });
+            /* Re-enabled for popovers that outlive one activation. */
+            Idle.add (() => { selected (); sensitive = true; return Source.REMOVE; });
         }
     }
 
