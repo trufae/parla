@@ -11,9 +11,15 @@ namespace Dc {
 
         public PopoverButton (Gtk.Popover popover, string label,
                               bool destructive = false,
-                              bool hexpand = false, string? accel = null) {
+                              bool hexpand = false, string? accel = null,
+                              bool menu_item = false) {
             Object (label: label, hexpand: hexpand);
             add_css_class ("flat");
+            if (menu_item) {
+                /* Gtk.Button text follows the theme's bold button typography,
+                   unlike the GtkModelButton rows replaced for AccessKit. */
+                add_css_class ("menu-item");
+            }
             if (destructive) add_css_class ("menu-destructive");
             var label_widget = child as Gtk.Label;
             if (label_widget != null) {

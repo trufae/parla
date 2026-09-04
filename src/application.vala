@@ -540,6 +540,9 @@ namespace Dc {
         }
 
         private const string CSS = """
+            .menu-item {
+                font-weight: normal;
+            }
             .message-bubble {
                 padding: 8px 12px;
                 border-radius: 16px;

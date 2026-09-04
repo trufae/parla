@@ -2940,7 +2940,7 @@ namespace Dc {
                 }
                 string action = "win." + e.action;
                 var btn = new PopoverButton (popover, e.label, false, true,
-                                             accel_label (action));
+                                             accel_label (action), true);
                 btn.selected.connect (() => activate_action_variant (action, null));
                 box.append (btn);
             }
