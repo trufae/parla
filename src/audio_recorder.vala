@@ -1,6 +1,8 @@
 namespace Dc {
 
-    /* Mono AAC recorder with GStreamer/FFmpeg fallback. */
+    /* Mono AAC recorder. macOS records natively through AVAudioRecorder
+       (Platform.audio_recorder_*); elsewhere a GStreamer or FFmpeg child
+       process writes the file. */
     public class AudioRecorder : Object {
 
         public string output_path { get; private set; default = ""; }
@@ -10,6 +12,7 @@ namespace Dc {
         private bool tried_ffmpeg;
         private bool using_ffmpeg;
         private Subprocess? process;
+        private void* native = null;
         private bool stop_requested;
         private bool timed_out;
         private uint stop_timeout;
@@ -22,13 +25,27 @@ namespace Dc {
         }
 
         public void start () throws Error {
-            if (process != null || output_path.length > 0)
+            if (process != null || native != null || output_path.length > 0)
                 throw new IOError.BUSY ("An audio recording is already active");
 
             FileIOStream stream;
             output_path = File.new_tmp (
                 "parla-voice-XXXXXX.m4a", out stream).get_path ();
             stream.close ();
+            /* The recorder creates the file itself; an empty leftover would
+               otherwise pass as a finished recording. */
+            FileUtils.unlink (output_path);
+
+            if (Platform.audio_recorder_supported ()) {
+                native = Platform.audio_recorder_new (
+                    output_path, on_native_event, this);
+                if (native == null) {
+                    discard_output ();
+                    throw new IOError.FAILED (
+                        "The system audio recorder could not be created");
+                }
+                return;
+            }
             if (!spawn_next ()) {
                 discard_output ();
                 throw new IOError.NOT_SUPPORTED (
@@ -37,8 +54,16 @@ namespace Dc {
         }
 
         public void stop () {
+            if (stop_requested) return;
+            if (native != null) {
+                stop_requested = true;
+                Platform.audio_recorder_stop (native);
+                arm_stop_timeout ();
+                return;
+            }
+
             var active = process;
-            if (active == null || stop_requested) return;
+            if (active == null) return;
 
             stop_requested = true;
             if (using_ffmpeg) {
@@ -60,15 +85,7 @@ namespace Dc {
                 active.send_signal ((int) Posix.Signal.INT);
 #endif
             }
-
-            stop_timeout = Timeout.add_seconds (8, () => {
-                stop_timeout = 0;
-                if (process == active) {
-                    timed_out = true;
-                    active.force_exit ();
-                }
-                return Source.REMOVE;
-            });
+            arm_stop_timeout ();
         }
 
         public string take_output () {
@@ -79,10 +96,54 @@ namespace Dc {
 
         public void cancel () {
             clear_stop_timeout ();
+            release_native ();
             var active = process;
             process = null;
             if (active != null) active.force_exit ();
             discard_output ();
+        }
+
+        /* A backend that ignores the stop request would leave the composer
+           stuck on "Finishing recording…"; give up after a grace period. */
+        private void arm_stop_timeout () {
+            var active = process;
+            stop_timeout = Timeout.add_seconds (8, () => {
+                stop_timeout = 0;
+                if (native != null) {
+                    timed_out = true;
+                    release_native ();
+                    finish_stopped ();
+                } else if (active != null && process == active) {
+                    timed_out = true;
+                    active.force_exit ();
+                }
+                return Source.REMOVE;
+            });
+        }
+
+        private void release_native () {
+            if (native == null) return;
+            Platform.audio_recorder_free (native);
+            native = null;
+        }
+
+        private static void on_native_event (bool completed, string? message,
+                                             void* user_data) {
+            /* Hold a reference: handlers of failed() may drop the recorder. */
+            AudioRecorder self = (AudioRecorder) user_data;
+            if (self.native == null) return;
+            self.release_native ();
+            self.clear_stop_timeout ();
+
+            if (!completed) {
+                self.discard_output ();
+                self.failed (message ?? "The voice recording failed");
+            } else if (!self.stop_requested) {
+                self.discard_output ();
+                self.failed ("The recording ended unexpectedly");
+            } else {
+                self.finish_stopped ();
+            }
         }
 
         private bool spawn_next () {
@@ -126,14 +187,7 @@ namespace Dc {
             clear_stop_timeout ();
 
             if (stop_requested) {
-                if (!timed_out && output_size () > 512) {
-                    completed ();
-                } else {
-                    discard_output ();
-                    failed (timed_out
-                        ? "Audio recording did not stop cleanly"
-                        : "The recording was too short or could not be encoded");
-                }
+                finish_stopped ();
                 return;
             }
             if (spawn_next ()) return;
@@ -141,6 +195,17 @@ namespace Dc {
             discard_output ();
             failed ("Could not access the microphone; check microphone "
                 + "permission and the configured media tools");
+        }
+
+        private void finish_stopped () {
+            if (!timed_out && output_size () > 512) {
+                completed ();
+                return;
+            }
+            discard_output ();
+            failed (timed_out
+                ? "Audio recording did not stop cleanly"
+                : "The recording was too short or could not be encoded");
         }
 
         private void clear_stop_timeout () {
@@ -183,15 +248,12 @@ namespace Dc {
         private static string[]? ffmpeg_command (string output) {
             if (Environment.find_program_in_path ("ffmpeg") == null) return null;
 
-            string format;
-            string source;
 #if WINDOWS
-            format = "dshow";
-            source = "audio=default";
+            string format = "dshow";
+            string source = "audio=default";
 #else
-            bool macos = Platform.is_macos ();
-            format = macos ? "avfoundation" : "pulse";
-            source = macos ? ":0" : "default";
+            string format = "pulse";
+            string source = "default";
 #endif
             return {
                 "ffmpeg", "-hide_banner", "-loglevel", "error", "-nostats",

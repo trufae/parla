@@ -7,6 +7,11 @@ namespace Dc.Platform {
     public delegate void RawAudioFinishedCallback (bool completed,
                                                    void* user_data);
 
+    [CCode (has_target = false)]
+    public delegate void RawAudioRecorderCallback (bool completed,
+                                                   string? message,
+                                                   void* user_data);
+
     [CCode (cheader_filename = "platform.h", cname = "parla_get_executable_path")]
     private extern string? platform_get_executable_path ();
 
@@ -60,6 +65,19 @@ namespace Dc.Platform {
 
     [CCode (cheader_filename = "platform.h", cname = "parla_audio_backend_free")]
     private extern void platform_audio_backend_free (void* handle);
+
+    [CCode (cheader_filename = "platform.h", cname = "parla_audio_recorder_supported")]
+    private extern bool platform_audio_recorder_supported ();
+
+    [CCode (cheader_filename = "platform.h", cname = "parla_audio_recorder_new")]
+    private extern void* platform_audio_recorder_new (
+        string path, RawAudioRecorderCallback callback, void* user_data);
+
+    [CCode (cheader_filename = "platform.h", cname = "parla_audio_recorder_stop")]
+    private extern void platform_audio_recorder_stop (void* handle);
+
+    [CCode (cheader_filename = "platform.h", cname = "parla_audio_recorder_free")]
+    private extern void platform_audio_recorder_free (void* handle);
 
 #if WINDOWS
     [CCode (cheader_filename = "platform.h", cname = "parla_win32_spawn")]
@@ -251,6 +269,26 @@ namespace Dc.Platform {
 
     public void audio_backend_free (void* handle) {
         platform_audio_backend_free (handle);
+    }
+
+    /* Native voice recorder (AVAudioRecorder on macOS). The callback runs on
+       the main loop, after audio_recorder_new returned, and exactly once. */
+    public bool audio_recorder_supported () {
+        return platform_audio_recorder_supported ();
+    }
+
+    public void* audio_recorder_new (string path,
+                                     RawAudioRecorderCallback callback,
+                                     void* user_data) {
+        return platform_audio_recorder_new (path, callback, user_data);
+    }
+
+    public void audio_recorder_stop (void* handle) {
+        platform_audio_recorder_stop (handle);
+    }
+
+    public void audio_recorder_free (void* handle) {
+        platform_audio_recorder_free (handle);
     }
 
     public bool has_primary_modifier (Gdk.ModifierType state) {

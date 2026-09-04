@@ -760,8 +760,7 @@ namespace Dc {
 
             AudioPlayback.shared ().stop ();
 
-            var recorder = new AudioRecorder (
-                AudioPlayer.prefer_system || Platform.is_macos ());
+            var recorder = new AudioRecorder (AudioPlayer.prefer_system);
             recorder.completed.connect (() => {
                 if (audio_recorder != recorder) return;
                 recording_action_stack.visible_child_name = "send";

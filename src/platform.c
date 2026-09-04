@@ -542,4 +542,35 @@ parla_audio_backend_free (gpointer handle)
 	g_object_unref (backend->play);
 	g_free (backend);
 }
+
+/* No native recorder outside macOS: AudioRecorder spawns gst-launch or
+ * ffmpeg instead. */
+gboolean
+parla_audio_recorder_supported (void)
+{
+	return FALSE;
+}
+
+gpointer
+parla_audio_recorder_new (const gchar                *path,
+                          ParlaAudioRecorderCallback  callback,
+                          gpointer                    user_data)
+{
+	(void) path;
+	(void) callback;
+	(void) user_data;
+	return NULL;
+}
+
+void
+parla_audio_recorder_stop (gpointer handle)
+{
+	(void) handle;
+}
+
+void
+parla_audio_recorder_free (gpointer handle)
+{
+	(void) handle;
+}
 #endif

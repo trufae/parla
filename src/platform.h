@@ -40,6 +40,25 @@ gboolean parla_audio_backend_is_playing (gpointer handle);
 gboolean parla_audio_backend_can_seek (gpointer handle);
 void parla_audio_backend_free (gpointer handle);
 
+/*
+ * Voice-message recording. macOS records mono AAC with AVAudioRecorder
+ * after asking for microphone access; other platforms report no native
+ * recorder and spawn GStreamer or FFmpeg instead. The callback runs on the
+ * main loop and fires once: completed=TRUE after parla_audio_recorder_stop()
+ * once the file is closed, or completed=FALSE with a user-facing message
+ * when recording could not start or broke down.
+ */
+typedef void (*ParlaAudioRecorderCallback) (gboolean     completed,
+                                            const gchar *message,
+                                            gpointer     user_data);
+
+gboolean parla_audio_recorder_supported (void);
+gpointer parla_audio_recorder_new (const gchar                *path,
+                                   ParlaAudioRecorderCallback  callback,
+                                   gpointer                    user_data);
+void parla_audio_recorder_stop (gpointer handle);
+void parla_audio_recorder_free (gpointer handle);
+
 #ifdef _WIN32
 #include <gio/gio.h>
 

@@ -3,6 +3,7 @@
 #if defined(__APPLE__)
 
 #import <AVFoundation/AVFoundation.h>
+#import <AudioToolbox/AudioToolbox.h>
 #import <Cocoa/Cocoa.h>
 #import <dispatch/dispatch.h>
 #import <objc/message.h>
@@ -289,6 +290,192 @@ static char parla_drop_subclass_key;
 - (BOOL)canSeek
 {
 	return file.length > 0 && file.processingFormat.sampleRate > 0;
+}
+
+@end
+
+/*
+ * Voice-message recorder. Microphone access is requested through
+ * AVCaptureDevice so the system prompt appears on first use; the file is
+ * written by AVAudioRecorder from the default input device. Every callback
+ * is delivered on the main queue, after parla_audio_recorder_new() returned,
+ * and at most once.
+ */
+@interface ParlaMacosAudioRecorder : NSObject <AVAudioRecorderDelegate> {
+	AVAudioRecorder *recorder;
+	NSURL *url;
+	ParlaAudioRecorderCallback callback;
+	gpointer user_data;
+	BOOL active;
+	BOOL stop_requested;
+	BOOL reported;
+}
+- (id)initWithPath:(const gchar *)path
+          callback:(ParlaAudioRecorderCallback)cb
+          userData:(gpointer)data;
+- (void)start;
+- (void)stopRecording;
+- (void)invalidate;
+@end
+
+@implementation ParlaMacosAudioRecorder
+
+- (id)initWithPath:(const gchar *)path
+          callback:(ParlaAudioRecorderCallback)cb
+          userData:(gpointer)data
+{
+	self = [super init];
+	if (self == nil) return nil;
+
+	NSString *file_path = [NSString stringWithUTF8String:path];
+	if (file_path == nil) {
+		[self release];
+		return nil;
+	}
+	url = [[NSURL fileURLWithPath:file_path] retain];
+	callback = cb;
+	user_data = data;
+	active = YES;
+	return self;
+}
+
+- (void)dealloc
+{
+	[self invalidate];
+	[recorder release];
+	[url release];
+	[super dealloc];
+}
+
+- (void)invalidate
+{
+	active = NO;
+	if (recorder != nil) {
+		recorder.delegate = nil;
+		[recorder stop];
+	}
+}
+
+/* The Vala side may free this handle from inside the callback, so nothing
+   touches ivars after it returns. */
+- (void)report:(NSString *)message
+{
+	if (!active || reported) return;
+	reported = YES;
+	ParlaAudioRecorderCallback cb = callback;
+	gpointer data = user_data;
+	if (cb != NULL) {
+		cb (message == nil, message == nil ? NULL : [message UTF8String],
+		    data);
+	}
+}
+
+- (void)start
+{
+	if (!active) return;
+	AVAuthorizationStatus status = [AVCaptureDevice
+		authorizationStatusForMediaType:AVMediaTypeAudio];
+	switch (status) {
+	case AVAuthorizationStatusAuthorized:
+		[self beginRecording];
+		return;
+	case AVAuthorizationStatusNotDetermined:
+		[AVCaptureDevice requestAccessForMediaType:AVMediaTypeAudio
+		                         completionHandler:^(BOOL granted) {
+			dispatch_async (dispatch_get_main_queue (), ^{
+				if (granted) [self beginRecording];
+				else [self report:[self deniedMessage]];
+			});
+		}];
+		return;
+	case AVAuthorizationStatusRestricted:
+		[self report:@"Microphone access is restricted on this Mac "
+		             @"(Screen Time or a management profile)"];
+		return;
+	case AVAuthorizationStatusDenied:
+	default:
+		[self report:[self deniedMessage]];
+		return;
+	}
+}
+
+- (NSString *)deniedMessage
+{
+	return @"Microphone access is turned off for Parla. Allow it in "
+	       @"System Settings › Privacy & Security › Microphone";
+}
+
+- (NSString *)describeError:(NSError *)error fallback:(NSString *)fallback
+{
+	NSString *description = error == nil ? nil : error.localizedDescription;
+	return description.length > 0 ? description : fallback;
+}
+
+- (void)beginRecording
+{
+	if (!active || reported || recorder != nil) return;
+	if ([AVCaptureDevice defaultDeviceWithMediaType:AVMediaTypeAudio] == nil) {
+		[self report:@"No microphone is connected to this Mac"];
+		return;
+	}
+
+	NSDictionary *settings = @{
+		AVFormatIDKey: @(kAudioFormatMPEG4AAC),
+		AVAudioFileTypeKey: @(kAudioFileM4AType),
+		AVSampleRateKey: @48000.0,
+		AVNumberOfChannelsKey: @1,
+		AVEncoderBitRateKey: @64000,
+		AVEncoderAudioQualityKey: @(AVAudioQualityMedium),
+	};
+	NSError *error = nil;
+	recorder = [[AVAudioRecorder alloc] initWithURL:url
+	                                       settings:settings
+	                                          error:&error];
+	if (recorder == nil) {
+		[self report:[self describeError:error
+		                        fallback:@"Could not set up the AAC encoder"]];
+		return;
+	}
+	recorder.delegate = self;
+	if (![recorder prepareToRecord] || ![recorder record]) {
+		[self report:@"Could not start capturing from the default microphone"];
+		return;
+	}
+	if (stop_requested) [recorder stop];
+}
+
+- (void)stopRecording
+{
+	if (!active || stop_requested) return;
+	stop_requested = YES;
+	if (recorder == nil) {
+		/* Stopped while the permission prompt was still open. */
+		[self report:@"Recording stopped before the microphone was ready"];
+		return;
+	}
+	[recorder stop];
+}
+
+- (void)audioRecorderDidFinishRecording:(AVAudioRecorder *)sender
+                           successfully:(BOOL)flag
+{
+	(void) sender;
+	dispatch_async (dispatch_get_main_queue (), ^{
+		if (flag && stop_requested) [self report:nil];
+		else if (flag) [self report:@"The microphone stopped delivering audio"];
+		else [self report:@"The voice message could not be written"];
+	});
+}
+
+- (void)audioRecorderEncodeErrorDidOccur:(AVAudioRecorder *)sender
+                                   error:(NSError *)error
+{
+	(void) sender;
+	NSString *message = [self describeError:error
+	                               fallback:@"The AAC encoder failed"];
+	dispatch_async (dispatch_get_main_queue (), ^{
+		[self report:message];
+	});
 }
 
 @end
@@ -683,6 +870,44 @@ parla_audio_backend_free (gpointer handle)
 {
 	ParlaMacosAudioBackend *backend = handle;
 	[backend release];
+}
+
+gboolean
+parla_audio_recorder_supported (void)
+{
+	return TRUE;
+}
+
+gpointer
+parla_audio_recorder_new (const gchar                *path,
+                          ParlaAudioRecorderCallback  callback,
+                          gpointer                    user_data)
+{
+	if (path == NULL) return NULL;
+	ParlaMacosAudioRecorder *recorder = [[ParlaMacosAudioRecorder alloc]
+		initWithPath:path callback:callback userData:user_data];
+	if (recorder == nil) return NULL;
+	/* Defer so the caller holds the handle before any callback fires. */
+	dispatch_async (dispatch_get_main_queue (), ^{
+		[recorder start];
+	});
+	return recorder;
+}
+
+void
+parla_audio_recorder_stop (gpointer handle)
+{
+	ParlaMacosAudioRecorder *recorder = handle;
+	if (recorder != nil) [recorder stopRecording];
+}
+
+void
+parla_audio_recorder_free (gpointer handle)
+{
+	ParlaMacosAudioRecorder *recorder = handle;
+	if (recorder == nil) return;
+	[recorder invalidate];
+	[recorder release];
 }
 
 #endif
