@@ -737,7 +737,8 @@ namespace Dc {
                that consumes plain Tab. GtkListBox walks its rows on Tab (with
                or without Ctrl), so make the chord actually jump out of the
                list: backwards to the contact search entry, forwards to the
-               message entry. This is plain Ctrl on every platform (not the
+               conversation toolbar (its first button), keeping the natural
+               focus order. This is plain Ctrl on every platform (not the
                primary modifier), matching GTK's own binding (#57). */
             var list_keys = new Gtk.EventControllerKey ();
             list_keys.key_pressed.connect ((keyval, keycode, state) => {
@@ -756,9 +757,9 @@ namespace Dc {
                 /* In collapsed (mobile) mode the conversation is not on
                    screen while the list is; leave the default behaviour. */
                 if (split_view.collapsed) return false;
-                var v = current_view ();
-                if (v == null) return false;
-                v.focus_entry ();
+                if (current_view () == null) return false;
+                /* First button in the conversation header (Hide sidebar). */
+                sidebar_toggle_btn.grab_focus ();
                 return true;
             });
             chat_listbox.add_controller (list_keys);
