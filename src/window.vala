@@ -1603,15 +1603,9 @@ namespace Dc {
                     var row = new Gtk.ListBoxRow ();
                     var chat_row = new ChatRow (entry);
                     chat_row.set_compact (settings.sidebar_mode == SidebarMode.COMPACT);
-                    chat_row.accept_file_drop.connect (() => {
-                        return can_attach_file_to_chat (chat_row.chat_id);
-                    });
-                    chat_row.file_dropped.connect ((path, name) => {
-                        attach_file_to_chat (chat_row.chat_id, path, name);
-                    });
-                    chat_row.file_drop_failed.connect ((message) => {
-                        show_toast ("Attach failed: " + message);
-                    });
+                    chat_row.accept_file_drop.connect (() => can_attach_file_to_chat (chat_row.chat_id));
+                    chat_row.file_dropped.connect ((path, name) => attach_file_to_chat (chat_row.chat_id, path, name));
+                    chat_row.file_drop_failed.connect ((message) => show_toast ("Attach failed: " + message));
                     row.child = chat_row;
                     chat_listbox.append (row);
 
