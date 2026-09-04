@@ -6,6 +6,7 @@ Exec=parla %u
 Icon=io.github.trufae.Parla
 Terminal=false
 Type=Application
+StartupWMClass=io.github.trufae.Parla
 Categories=Network;Chat;InstantMessaging;GTK;
 Keywords=chat;messaging;email;deltachat;parla;
 MimeType=x-scheme-handler/openpgp4fpr;
