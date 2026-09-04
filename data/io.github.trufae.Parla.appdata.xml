@@ -37,6 +37,17 @@
     <name translate="no">pancake</name>
   </developer>
   <releases>
+    <release version="0.9.0" date="2026-09-04">
+      <description>
+        <ul>
+          <li>Fix more accessibility issues</li>
+          <li>Fix macOS audio recording</li>
+          <li>Focus input after attach file</li>
+          <li>Meta+Backspace clears input</li>
+          <li>Better ESC interactions</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.8.8" date="2026-09-03">
       <description>
         <ul>
