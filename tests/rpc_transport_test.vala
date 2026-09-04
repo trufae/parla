@@ -58,9 +58,11 @@ private string[] fake_server_argv (string mode) {
     return { test_executable, "--fake-rpc-server", mode };
 }
 
+#if !WINDOWS
 private string[] fake_server_argv_with_environment_output (string path) {
     return { test_executable, "--fake-rpc-server", "normal", path };
 }
+#endif
 
 private async void delay (uint milliseconds) {
     Timeout.add (milliseconds, delay.callback);
@@ -205,6 +207,7 @@ private void test_stale_generation () {
     assert (failure == null);
 }
 
+#if !WINDOWS
 private async void external_server_uses_host_libraries_async () throws Error {
     string output = Path.build_filename (Environment.get_tmp_dir (),
         "parla-rpc-transport-env-%u".printf (Random.next_int ()));
@@ -245,6 +248,7 @@ private void test_external_server_uses_host_libraries () {
     if (failure != null) Test.message ("%s", failure.message);
     assert (failure == null);
 }
+#endif
 
 public int main (string[] args) {
     if (args.length >= 3 && args[1] == "--fake-rpc-server") {
@@ -256,7 +260,9 @@ public int main (string[] args) {
     Test.add_func ("/rpc-transport/nonblocking-write", test_nonblocking_write);
     Test.add_func ("/rpc-transport/serialized-writes", test_serialized_writes);
     Test.add_func ("/rpc-transport/stale-generation", test_stale_generation);
+#if !WINDOWS
     Test.add_func ("/rpc-transport/external-server-uses-host-libraries",
         test_external_server_uses_host_libraries);
+#endif
     return Test.run ();
 }
