@@ -82,6 +82,17 @@ namespace Dc {
                 if (accounts_path != null) {
                     launcher.setenv ("DC_ACCOUNTS_PATH", accounts_path, true);
                 }
+                /* AppImage's AppRun sets LD_LIBRARY_PATH so Parla uses its
+                   bundled GTK stack.  Do not pass that path to a separately
+                   installed RPC server: on rolling distributions it can make
+                   the server load AppImage's older libcrypto instead of the
+                   system version it was built against.  A server bundled in
+                   the AppImage remains inside APPDIR and needs those libs. */
+                string? appdir = Environment.get_variable ("APPDIR");
+                if (appdir != null && appdir.length > 0 &&
+                    !path_is_inside (argv[0], appdir)) {
+                    launcher.unsetenv ("LD_LIBRARY_PATH");
+                }
                 process = SubprocessUtil.spawnv (launcher, argv);
                 writer = process.get_stdin_pipe ();
                 reader = new DataInputStream (process.get_stdout_pipe ());
@@ -135,6 +146,14 @@ namespace Dc {
             }
             is_connected = true;
         }
+
+#if !WINDOWS
+        private static bool path_is_inside (string path, string directory) {
+            string root = directory.has_suffix (Path.DIR_SEPARATOR_S)
+                ? directory : directory + Path.DIR_SEPARATOR_S;
+            return path == directory || path.has_prefix (root);
+        }
+#endif
 
         public void stop () {
             finish_generation (

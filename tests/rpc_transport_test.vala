@@ -2,7 +2,16 @@ using Dc;
 
 private string test_executable;
 
-private int run_fake_server (string mode) {
+private int run_fake_server (string mode, string? environment_output = null) {
+    if (environment_output != null) {
+        try {
+            FileUtils.set_contents (environment_output,
+                Environment.get_variable ("LD_LIBRARY_PATH") ?? "");
+        } catch (Error e) {
+            stderr.printf ("fake RPC server: %s\\n", e.message);
+            return 3;
+        }
+    }
     string? line;
     while ((line = stdin.read_line ()) != null) {
         try {
@@ -47,6 +56,10 @@ private int run_fake_server (string mode) {
 
 private string[] fake_server_argv (string mode) {
     return { test_executable, "--fake-rpc-server", mode };
+}
+
+private string[] fake_server_argv_with_environment_output (string path) {
+    return { test_executable, "--fake-rpc-server", "normal", path };
 }
 
 private async void delay (uint milliseconds) {
@@ -192,9 +205,50 @@ private void test_stale_generation () {
     assert (failure == null);
 }
 
+private async void external_server_uses_host_libraries_async () throws Error {
+    string output = Path.build_filename (Environment.get_tmp_dir (),
+        "parla-rpc-transport-env-%u".printf (Random.next_int ()));
+    string? old_appdir = Environment.get_variable ("APPDIR");
+    string? old_library_path = Environment.get_variable ("LD_LIBRARY_PATH");
+    Environment.set_variable ("APPDIR", "/tmp/parla-AppDir", true);
+    Environment.set_variable ("LD_LIBRARY_PATH", "/tmp/parla-AppDir/usr/lib", true);
+
+    try {
+        var transport = new RpcTransport ();
+        yield transport.start (fake_server_argv_with_environment_output (output));
+        transport.stop ();
+        string contents;
+        FileUtils.get_contents (output, out contents);
+        assert (contents == "");
+    } finally {
+        FileUtils.remove (output);
+        if (old_appdir != null) Environment.set_variable ("APPDIR", old_appdir, true);
+        else Environment.unset_variable ("APPDIR");
+        if (old_library_path != null)
+            Environment.set_variable ("LD_LIBRARY_PATH", old_library_path, true);
+        else Environment.unset_variable ("LD_LIBRARY_PATH");
+    }
+}
+
+private void test_external_server_uses_host_libraries () {
+    var loop = new MainLoop ();
+    Error? failure = null;
+    external_server_uses_host_libraries_async.begin ((obj, result) => {
+        try {
+            external_server_uses_host_libraries_async.end (result);
+        } catch (Error e) {
+            failure = e;
+        }
+        loop.quit ();
+    });
+    loop.run ();
+    if (failure != null) Test.message ("%s", failure.message);
+    assert (failure == null);
+}
+
 public int main (string[] args) {
-    if (args.length == 3 && args[1] == "--fake-rpc-server") {
-        return run_fake_server (args[2]);
+    if (args.length >= 3 && args[1] == "--fake-rpc-server") {
+        return run_fake_server (args[2], args.length > 3 ? args[3] : null);
     }
 
     test_executable = args[0];
@@ -202,5 +256,7 @@ public int main (string[] args) {
     Test.add_func ("/rpc-transport/nonblocking-write", test_nonblocking_write);
     Test.add_func ("/rpc-transport/serialized-writes", test_serialized_writes);
     Test.add_func ("/rpc-transport/stale-generation", test_stale_generation);
+    Test.add_func ("/rpc-transport/external-server-uses-host-libraries",
+        test_external_server_uses_host_libraries);
     return Test.run ();
 }
