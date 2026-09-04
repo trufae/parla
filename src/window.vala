@@ -3270,11 +3270,24 @@ namespace Dc {
                 toggle_collapsed_sidebar ();
                 return;
             }
+            bool showing = settings.sidebar_mode == SidebarMode.HIDDEN;
+            /* Whether focus is about to be orphaned by hiding the sidebar,
+               measured before the sidebar goes away. */
+            var focus = get_focus ();
+            bool focus_in_sidebar = focus != null
+                && focus.is_ancestor (sidebar_box);
             settings.save_sidebar_mode (
-                settings.sidebar_mode == SidebarMode.HIDDEN
-                    ? SidebarMode.FULL
-                    : SidebarMode.HIDDEN);
+                showing ? SidebarMode.FULL : SidebarMode.HIDDEN);
             apply_sidebar_mode (true);
+            /* Keep the keyboard where the user expects it: on the open
+               chat's row when the sidebar appears, on the header's first
+               button when it disappears and left focus behind (#57). */
+            if (showing) {
+                if (current_chat_row != null) current_chat_row.grab_focus ();
+                else search_entry.grab_focus ();
+            } else if (focus_in_sidebar) {
+                sidebar_toggle_btn.grab_focus ();
+            }
         }
 
         private void toggle_sidebar_width () {
