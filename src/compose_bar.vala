@@ -1519,13 +1519,20 @@ namespace Dc {
             dialog.open_multiple.begin (window, null, (obj, res) => {
                 try {
                     var files = dialog.open_multiple.end (res);
+                    bool attached = false;
                     for (uint i = 0; i < files.get_n_items (); i++) {
                         var file = files.get_item (i) as GLib.File;
                         if (file == null) continue;
                         var path = file.get_path ();
-                        if (path != null)
+                        if (path != null) {
                             set_pending_attachment (path, file.get_basename ());
+                            attached = true;
+                        }
                     }
+                    /* A native file chooser owns focus while it is open.
+                       Put it back in the composer once at least one file
+                       was accepted, so Return can immediately send it. */
+                    if (attached) grab_entry_focus ();
                 } catch (Error e) {
                     if (!is_dialog_dismissal (e))
                         warning ("attachment picker: %s", e.message);
