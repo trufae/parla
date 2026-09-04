@@ -53,7 +53,9 @@ namespace Dc {
         private Adw.ToastOverlay toasts;
         private Gtk.Button save_all_btn;
         private Gtk.MenuButton more_btn;
-        private SimpleAction section_action;
+        private Gtk.Popover more_popover;
+        private HashTable<string, Gtk.Button> more_items =
+            new HashTable<string, Gtk.Button> (str_hash, str_equal);
         private ImageViewer viewer;
         private VideoPlayer player;
 
@@ -225,24 +227,25 @@ namespace Dc {
             switcher.stack = view_stack;
             switcher.policy = Adw.ViewSwitcherPolicy.NARROW;
 
-            var more_menu = new GLib.Menu ();
+            /* Hand-built popover rather than a GLib.Menu-backed
+               GtkPopoverMenu: GtkModelButton labels itself through a
+               presentational child that GTK's AccessKit backend leaves
+               unresolved, so NVDA reads the menu as empty items (#57).
+               The rows carry a radio role and a checked state; the active
+               overflow section is synced from the stack in
+               sync_more_button, not here. */
+            more_popover = new Gtk.Popover ();
+            more_popover.has_arrow = false;
+            var more_list = new Gtk.Box (Gtk.Orientation.VERTICAL, 0);
+            more_list.add_css_class ("menu");
             foreach (var tab in tabs) {
                 if (!tab.overflow) continue;
                 view_stack.get_page (tab.stack).visible = false;
-                more_menu.append (tab.title,
-                                  "gallery.section('%s')".printf (tab.key));
+                var item = build_more_item (tab.key, tab.title);
+                more_list.append (item);
+                more_items.set (tab.key, item);
             }
-
-            /* Stateful so the active overflow section gets a checkmark in
-               the menu; the state is synced from the stack, not here. */
-            section_action = new SimpleAction.stateful ("section",
-                GLib.VariantType.STRING, new Variant.string ("images"));
-            section_action.activate.connect ((param) => {
-                view_stack.visible_child_name = param.get_string ();
-            });
-            var gallery_actions = new SimpleActionGroup ();
-            gallery_actions.add_action (section_action);
-            insert_action_group ("gallery", gallery_actions);
+            more_popover.child = more_list;
 
             var more_icon = new Gtk.Image.from_icon_name ("view-more-symbolic");
             var more_label = new Gtk.Label ("More");
@@ -254,7 +257,9 @@ namespace Dc {
 
             more_btn = new Gtk.MenuButton ();
             more_btn.child = more_box;
-            more_btn.menu_model = more_menu;
+            /* GTK 4.22 widened the setter to GtkWidget*; the property is
+               stable across the Vala 0.56 pointer signature. */
+            more_btn.set ("popover", more_popover);
             more_btn.direction = Gtk.ArrowType.UP;
             more_btn.add_css_class ("flat");
             more_btn.add_css_class ("gallery-more");
@@ -410,10 +415,44 @@ namespace Dc {
             load_tab.begin (find_tab ("images"));
         }
 
+        /* One "More" menu row: a flat, radio-roled button with a leading
+           checkmark (opacity-toggled by sync_more_button) and a real
+           label, so a screen reader announces its name and checked state. */
+        private Gtk.Button build_more_item (string key, string title) {
+            var check = new Gtk.Image.from_icon_name ("object-select-symbolic");
+            check.opacity = 0;
+            var label = new Gtk.Label (title);
+            label.xalign = 0;
+            label.hexpand = true;
+            var row = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 6);
+            row.append (check);
+            row.append (label);
+            var item = (Gtk.Button) Object.new (typeof (Gtk.Button),
+                "accessible-role", Gtk.AccessibleRole.MENU_ITEM_RADIO);
+            item.child = row;
+            item.add_css_class ("flat");
+            item.set_data ("gallery-check", check);
+#if A11Y
+            item.update_property (Gtk.AccessibleProperty.LABEL, title, -1);
+#endif
+            item.clicked.connect (() => {
+                more_popover.popdown ();
+                view_stack.visible_child_name = key;
+            });
+            return item;
+        }
+
         /* Highlight "More" while an overflow section is active. */
         private void sync_more_button () {
             var key = view_stack.visible_child_name ?? "";
-            section_action.set_state (new Variant.string (key));
+            more_items.foreach ((item_key, item) => {
+                bool active = item_key == key;
+                item.get_data<Gtk.Image> ("gallery-check").opacity =
+                    active ? 1 : 0;
+#if A11Y
+                item.update_state (Gtk.AccessibleState.CHECKED, active, -1);
+#endif
+            });
             var tab = find_tab (key);
             if (tab != null && tab.overflow) {
                 more_btn.add_css_class ("gallery-more-active");
