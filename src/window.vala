@@ -1607,6 +1607,10 @@ namespace Dc {
                     chat_row.file_dropped.connect ((path, name) => attach_file_to_chat (chat_row.chat_id, path, name));
                     chat_row.file_drop_failed.connect ((message) => show_toast ("Attach failed: " + message));
                     row.child = chat_row;
+#if A11Y
+                    row.update_property (Gtk.AccessibleProperty.LABEL,
+                        ChatRow.accessible_summary (entry), -1);
+#endif
                     chat_listbox.append (row);
 
                     if (entry.id == focused_chat_id) refocus_row = row;

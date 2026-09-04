@@ -187,6 +187,27 @@ namespace Dc {
             return marker;
         }
 
+#if A11Y
+        /* Accessible name for the list row holding a ChatRow. A list item
+           is named only by an explicit label (AccessKit exposes nothing
+           else, and the compact row hides all its labels), so without it
+           the sidebar reads as empty items (#57). */
+        public static string accessible_summary (ChatEntry entry) {
+            var sb = new StringBuilder (entry.name);
+            if (entry.is_contact_request) sb.append (", contact request");
+            else if (entry.unread_count > 0)
+                sb.append_printf (", %d unread", entry.unread_count);
+            if (entry.has_mention) sb.append (", mentioned you");
+            if (entry.is_pinned) sb.append (", pinned");
+            if (entry.is_muted) sb.append (", muted");
+            string time = format_time (entry.timestamp);
+            if (time.length > 0) sb.append (", ").append (time);
+            string preview = format_preview (entry);
+            if (preview.length > 0) sb.append (": ").append (preview);
+            return sb.str;
+        }
+#endif
+
         private static string format_preview (ChatEntry entry) {
             string preview = Markdown.single_line_preview (
                 entry.last_message ?? "", 0);
