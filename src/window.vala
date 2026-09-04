@@ -749,9 +749,11 @@ namespace Dc {
                 bool backward = (state & Gdk.ModifierType.SHIFT_MASK) != 0 ||
                                 keyval == Gdk.Key.ISO_Left_Tab;
                 if (backward) {
-                    /* Hidden in compact sidebar mode; let GTK handle it then. */
-                    if (!search_entry.visible) return false;
-                    search_entry.grab_focus ();
+                    /* The contacts search is the natural previous stop, but
+                       it is hidden in the compact sidebar; fall back to the
+                       account menu button, which stays in the header (#57). */
+                    if (search_entry.visible) search_entry.grab_focus ();
+                    else account_menu_button.grab_focus ();
                     return true;
                 }
                 /* In collapsed (mobile) mode the conversation is not on
