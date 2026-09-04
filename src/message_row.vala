@@ -755,6 +755,12 @@ namespace Dc {
             msg.bind_property ("selected", check, "active",
                                BindingFlags.SYNC_CREATE);
             check.set_data<Message> (MESSAGE_DATA, msg);
+#if A11Y
+            /* Name the checkbox so a screen reader says which message it
+               selects, not just "checkbox" (#57). */
+            check.update_property (Gtk.AccessibleProperty.LABEL,
+                "Select message, " + accessible_summary (msg), -1);
+#endif
             Signal.connect_object (check, "toggled",
                 (Callback) on_selection_toggled, this, (ConnectFlags) 0);
             this.append (check);
