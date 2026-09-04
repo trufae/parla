@@ -134,6 +134,9 @@ A working backend only exposes what widgets declare, so:
   message menu. `ConversationView.on_focus_widget_changed` decides where
   Tab enters the list (GTK would pick the first, oldest row and scroll
   the conversation to the top).
+- The chat-list rows answer the same Menu / Shift+F10 to open the chat
+  context menu, anchored to the focused row, in full and compact sidebar
+  modes and the archived list (`Window.focused_chat_row`).
 - Purely decorative images/widgets should not be announced; give them
   `Gtk.AccessibleRole.PRESENTATION`.
 - Build menus from `PopoverButton`s in a plain `Gtk.Popover`, not from a

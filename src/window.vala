@@ -712,6 +712,27 @@ namespace Dc {
             });
             chat_listbox.add_controller (right_click);
 
+            /* Menu / Shift+F10 open the same context menu from the keyboard,
+               anchored to the focused row (works in every sidebar mode and
+               in the archived list, #57). */
+            var menu_keys = new Gtk.EventControllerKey ();
+            menu_keys.key_pressed.connect ((keyval, keycode, state) => {
+                bool shift_f10 = keyval == Gdk.Key.F10 &&
+                    (state & Gdk.ModifierType.SHIFT_MASK) != 0;
+                if (keyval != Gdk.Key.Menu && !shift_f10) return false;
+                var row = focused_chat_row ();
+                var chat_row = row != null ? row.child as ChatRow : null;
+                if (chat_row == null || chat_menu == null) return false;
+                Graphene.Rect bounds;
+                if (!row.compute_bounds (chat_listbox, out bounds)) return false;
+                chat_menu.show (chat_row.chat_id,
+                    bounds.origin.x + bounds.size.width / 2,
+                    bounds.origin.y + bounds.size.height / 2,
+                    chat_listbox);
+                return true;
+            });
+            chat_listbox.add_controller (menu_keys);
+
             /* Ctrl+Tab / Ctrl+Shift+Tab are GTK's chord for leaving a widget
                that consumes plain Tab. GtkListBox walks its rows on Tab (with
                or without Ctrl), so make the chord actually jump out of the
@@ -1780,17 +1801,22 @@ namespace Dc {
             }
         }
 
-        /* Chat id of the chat-list row holding the keyboard focus, or 0. */
-        private int focused_chat_row_id () {
+        /* The chat-list row holding the keyboard focus, or null. */
+        private Gtk.ListBoxRow? focused_chat_row () {
             for (var w = get_focus (); w != null; w = w.get_parent ()) {
-                if (w == chat_listbox) return 0;
+                if (w == chat_listbox) return null;
                 if (w is Gtk.ListBoxRow) {
-                    if (!w.is_ancestor (chat_listbox)) return 0;
-                    var chat_row = ((Gtk.ListBoxRow) w).child as ChatRow;
-                    return chat_row != null ? chat_row.chat_id : 0;
+                    return w.is_ancestor (chat_listbox)
+                        ? (Gtk.ListBoxRow) w : null;
                 }
             }
-            return 0;
+            return null;
+        }
+
+        private int focused_chat_row_id () {
+            var row = focused_chat_row ();
+            var chat_row = row != null ? row.child as ChatRow : null;
+            return chat_row != null ? chat_row.chat_id : 0;
         }
 
         /* Open the chat behind `row`: called for Enter/click on the row and
