@@ -104,6 +104,27 @@ namespace Dc {
                     AudioPlayback.rate_for_index (speed_dropdown.selected));
                 sync_speed ();
             });
+            /* GtkDropDown pops its list up as-is (every GTK through 4.x),
+               so it opens scrolled to the top rather than to the current
+               value; a keyboard or screen-reader user then starts arrowing
+               from the first speed, not the active one. Scroll and focus the
+               selected row when the popup appears (#57). The popup and its
+               list are internal, so they are reached by type and the hook
+               degrades to a no-op if the structure ever changes. */
+            var speed_popup = first_descendant (speed_dropdown,
+                typeof (Gtk.Popover)) as Gtk.Popover;
+            if (speed_popup != null) {
+                speed_popup.notify["visible"].connect (() => {
+                    if (!speed_popup.visible) return;
+                    var list = first_descendant (speed_popup,
+                        typeof (Gtk.ListView)) as Gtk.ListView;
+                    if (list != null) {
+                        list.scroll_to (speed_dropdown.selected,
+                            Gtk.ListScrollFlags.FOCUS | Gtk.ListScrollFlags.SELECT,
+                            null);
+                    }
+                });
+            }
             metadata.append (speed_dropdown);
             details.append (metadata);
 
@@ -207,6 +228,18 @@ namespace Dc {
                     : "Seeking will be available after the audio loads");
             time_label.label = format_playing_time (position, duration);
             sync_speed ();
+        }
+
+        /* First descendant of `root` (depth-first) that is `type`, or null. */
+        private static Gtk.Widget? first_descendant (Gtk.Widget root,
+                                                     GLib.Type type) {
+            for (var c = root.get_first_child (); c != null;
+                 c = c.get_next_sibling ()) {
+                if (c.get_type ().is_a (type)) return c;
+                var inner = first_descendant (c, type);
+                if (inner != null) return inner;
+            }
+            return null;
         }
 
         private void sync_speed () {
