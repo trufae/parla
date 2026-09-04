@@ -19,6 +19,11 @@ endif
 if get_option('sailfish')
   add_project_arguments(['--define=SAILFISHOS'], language: 'vala')
 endif
+# A11Y gates the accessibility extras Parla adds by hand (accessible
+# labels and states); -Da11y=false also selects GTK's no-a11y backend.
+if get_option('a11y')
+  add_project_arguments(['--define=A11Y'], language: 'vala')
+endif
 
 # Silence warnings emitted by valac-generated C and lagging GTK/glib vapi
 # bindings (unused temporaries, g_once_init_enter atomics, const mismatches).

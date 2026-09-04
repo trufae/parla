@@ -1767,13 +1767,17 @@ namespace Dc {
             if (current_chat_row == row) return;
             if (current_chat_row != null) {
                 current_chat_row.unset_state_flags (Gtk.StateFlags.SELECTED);
+#if A11Y
                 current_chat_row.update_state (
                     Gtk.AccessibleState.SELECTED, false, -1);
+#endif
             }
             current_chat_row = row;
             if (row != null) {
                 row.set_state_flags (Gtk.StateFlags.SELECTED, false);
+#if A11Y
                 row.update_state (Gtk.AccessibleState.SELECTED, true, -1);
+#endif
             }
         }
 

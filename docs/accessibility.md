@@ -96,10 +96,32 @@ exists, no install needed).
 4. `GTK_A11Y=help parla.exe` from a console lists the compiled-in
    backends; "accesskit" must appear for any of the above to work.
 
+## Build-time switch
+
+Accessibility is a Meson option, `a11y`, enabled by default. Passing
+`-Da11y=false` at `meson setup` time:
+
+- starts GTK with `GTK_A11Y=none`, so no AT-SPI or AccessKit backend
+  is loaded and nothing is registered on the accessibility bus;
+- compiles out Parla's own accessibility extras, which live behind
+  `#if A11Y` in the Vala sources (message-row summaries, the
+  hand-applied selected state on chat rows, explicit accessible
+  labels).
+
+The Sailfish port (`-Dsailfish=true`) always sets `GTK_A11Y=none`
+because Sailfish OS has no accessibility bus, independently of the
+`a11y` option. CI builds the Linux tree both with and without `a11y`
+so both halves of every `#if A11Y` keep compiling.
+
 ## App-side rules
 
 A working backend only exposes what widgets declare, so:
 
+- Anything that only exists for assistive technology (explicit
+  accessible labels, `update_state` / `update_property` calls, the
+  helpers that compute them) goes inside `#if A11Y` ... `#endif` so a
+  `-Da11y=false` build stays free of it. Plain `tooltip_text` and
+  keyboard-focus handling stay unconditional: they serve everyone.
 - Icon-only buttons need an accessible name: set `tooltip_text` (GTK
   falls back to it) or call
   `update_property (Gtk.AccessibleProperty.LABEL, "...", -1)`.

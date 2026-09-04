@@ -14,6 +14,10 @@ option('bundle_icons',
   type: 'boolean',
   value: false,
   description: 'Compile the Adwaita symbolic icons Parla uses into the binary as hicolor fallbacks. Off by default: at runtime Parla inherits them from the installed adwaita-icon-theme (a GTK4 dependency) when the active icon theme lacks them. Enable for builds that cannot rely on an installed Adwaita.')
+option('a11y',
+  type: 'boolean',
+  value: true,
+  description: 'Expose the interface to screen readers: accessible names and states on the widgets Parla builds by hand, plus the GTK assistive-technology backend (AT-SPI, AccessKit) at startup. Enabled by default; pass -Da11y=false for a build that starts with GTK_A11Y=none and carries no accessibility code (see docs/accessibility.md).')
 option('sailfish',
   type: 'boolean',
   value: false,

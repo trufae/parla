@@ -94,8 +94,10 @@ namespace Dc {
             speed_dropdown.add_css_class ("conversation-media-speed");
             speed_dropdown.valign = Gtk.Align.CENTER;
             speed_dropdown.tooltip_text = "Playback speed";
+#if A11Y
             speed_dropdown.update_property (
                 Gtk.AccessibleProperty.LABEL, "Playback speed", -1);
+#endif
             speed_dropdown.notify["selected"].connect (() => {
                 if (syncing_speed) return;
                 playback.change_playback_rate (

@@ -2143,6 +2143,7 @@ namespace Dc {
             return dt.format ("%H:%M");
         }
 
+#if A11Y
         /**
          * One-line description of a message for the accessible name of its
          * list row: sender, date and time, delivery state, flags and the
@@ -2196,6 +2197,7 @@ namespace Dc {
             if (msg.is_audio_file ()) return "audio";
             return "file " + (msg.file_name ?? "");
         }
+#endif
 
         /** Build a centered date-separator label, styled like info rows. */
         internal static Gtk.Widget build_date_separator (int64 ts) {

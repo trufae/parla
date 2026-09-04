@@ -405,7 +405,9 @@ namespace Dc {
                 li.selectable = false;
                 li.activatable = false;
                 li.focusable = true;
+#if A11Y
                 li.accessible_label = MessageRow.accessible_summary (msg);
+#endif
             }));
             /* bind builds a fresh row tree; drop it as soon as the list item
                is recycled so widgets, textures, and messages can finalize. */

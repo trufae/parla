@@ -11,7 +11,15 @@ permissions:
   contents: write
 
 jobs:
+  # Plain Linux build, once with the accessibility extras (the default)
+  # and once with -Da11y=false so both halves of every #if A11Y keep
+  # compiling.
   build:
+    strategy:
+      fail-fast: false
+      matrix:
+        a11y: [true, false]
+    name: build (a11y=${{ matrix.a11y }})
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
@@ -30,7 +38,7 @@ jobs:
             libwebkitgtk-6.0-dev
 
       - name: Setup
-        run: meson setup builddir
+        run: meson setup builddir -Da11y=${{ matrix.a11y }}
 
       - name: Build
         run: meson compile -C builddir

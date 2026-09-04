@@ -233,6 +233,11 @@ meson compile -C builddir
 To build without Webxdc, explicitly pass `WITH_WEBXDC=0` to Make or
 `-Dwebxdc=false` to Meson.
 
+Screen-reader support is on by default; `meson setup builddir -Da11y=false`
+produces a build that starts GTK without an assistive-technology backend and
+leaves out Parla's own accessible labels and states (see
+[docs/accessibility.md](docs/accessibility.md)).
+
 Parla's stock symbolic icons come from `adwaita-icon-theme` (a GTK4
 dependency). On desktops whose icon theme does not inherit Adwaita (XFCE,
 LXQt, ...) Parla adds it at runtime as the last fallback after the active
