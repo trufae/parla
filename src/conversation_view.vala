@@ -334,6 +334,11 @@ namespace Dc {
             }));
             message_scroll.get_vscrollbar ().add_controller (scrollbar_press);
 
+            /* Connected before the filter model exists so it runs before
+               the list view learns of the change (see keep_focus_after_removal). */
+            track_signal (message_store, message_store.items_changed.connect ((pos, removed, added) => {
+                if (removed > 0) keep_focus_after_removal ();
+            }));
             message_filter = create_message_filter (this);
             filtered_message_store = new Gtk.FilterListModel (message_store, message_filter);
 
@@ -2494,6 +2499,36 @@ namespace Dc {
                 }
             }
             return best;
+        }
+
+        /* A reload replaces every row and a deletion drops one, and GTK
+           then parks the keyboard focus on the first (oldest) row. Runs
+           while the focused row is still bound to its message and the
+           filtered store still holds the old order: remember the message
+           and its neighbour above, then, once the list view has reacted,
+           put the focus back on whichever of the two survived (#57). */
+        private void keep_focus_after_removal () {
+            var row = focused_message_row ();
+            if (row == null) return;
+            int id = row.message_id;
+            /* The models are mid-update, so the neighbour comes from the
+               widget tree, whose children keep the item order. */
+            var above = message_list_item_of (row)?.get_prev_sibling ();
+            var above_row = above != null ? find_message_row_in (above) : null;
+            int neighbour_id = above_row != null ? above_row.message_id : 0;
+            Idle.add (() => {
+                if (closed) return Source.REMOVE;
+                int pos = find_message_index (filtered_message_store, id);
+                if (pos < 0) pos = find_message_index (filtered_message_store, neighbour_id);
+                var current = focused_message_row ();
+                if (pos < 0 || (current != null && current.message_id
+                        == ((Message) filtered_message_store.get_item (pos)).id)) {
+                    return Source.REMOVE;
+                }
+                focus_jump_until_us = get_monotonic_time () + 1000 * 1000;
+                message_listview.scroll_to (pos, Gtk.ListScrollFlags.FOCUS, null);
+                return Source.REMOVE;
+            });
         }
 
         /* The message row holding the keyboard focus, whether the focus
