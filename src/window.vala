@@ -3387,12 +3387,14 @@ namespace Dc {
             if (keyval == Gdk.Key.Escape) {
                 var v = current_view ();
                 bool dismissed = false;
+                /* Focus inside a presented dialog: defer to the dialog's own
+                   Escape. Adw pops a navigation subpage (About → What's New,
+                   an app's detail page) or closes honoring can_close; custom
+                   dialogs do the same through install_escape_close. Closing
+                   the whole dialog from this capture-phase controller would
+                   skip the step-back and collapse it instead. */
                 for (var w = this.focus_widget; w != null; w = w.get_parent ()) {
-                    if (w is Adw.Dialog) {
-                        ((Adw.Dialog) w).close ();
-                        dismissed = true;
-                        break;
-                    }
+                    if (w is Adw.Dialog) return false;
                 }
                 /* Focus can sit outside the dialog subtree (or nowhere at
                    all); close the presented modal anyway so Escape never

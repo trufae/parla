@@ -192,8 +192,29 @@ namespace Dc {
                                                 Gdk.ModifierType state,
                                                 Adw.Dialog dialog) {
         if (keyval != Gdk.Key.Escape) return false;
+        /* Step back through an inner navigation view (an app detail page,
+           say) before closing the whole dialog, matching Adw's own
+           Escape behaviour. */
+        var nav = find_navigation_view (dialog);
+        if (nav != null) {
+            var page = nav.get_visible_page ();
+            if (page != null && nav.get_previous_page (page) != null) {
+                nav.pop ();
+                return true;
+            }
+        }
         dialog.close ();
         return true;
+    }
+
+    private static Adw.NavigationView? find_navigation_view (Gtk.Widget root) {
+        for (var c = root.get_first_child (); c != null;
+             c = c.get_next_sibling ()) {
+            if (c is Adw.NavigationView) return (Adw.NavigationView) c;
+            var inner = find_navigation_view (c);
+            if (inner != null) return inner;
+        }
+        return null;
     }
 
     public static Gdk.Texture? load_avatar (string? path) {
