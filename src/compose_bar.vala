@@ -38,6 +38,7 @@ namespace Dc {
         private Gtk.TextView text_view;
         private Gtk.Label placeholder_label;
         private string placeholder_default = "Type a message";
+        private string placeholder_reply = "Type a message";
         private Gtk.Button attach_button;
         private Gtk.MenuButton emoji_button;
         private const string EMOJI_TRIGGER_START_MARK = "parla-emoji-trigger-start";
@@ -1338,6 +1339,7 @@ namespace Dc {
             cancel_edit ();
             replying_msg_id = msg_id;
             reply_label.label = "%s: %s".printf (sender_name, shorten_preview (preview));
+            placeholder_label.label = placeholder_reply;
             reply_bar.visible = true;
             text_view.grab_focus ();
             notify_draft_changed ();
