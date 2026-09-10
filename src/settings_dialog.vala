@@ -704,7 +704,19 @@ namespace Dc {
             advanced_page.icon_name = "preferences-other-symbolic";
             this.add (advanced_page);
 
-            var appearance_group = settings_group (general_page, "Appearance");
+            build_appearance_section (general_page);
+            build_behavior_section (general_page);
+            build_links_group (general_page);
+            build_notifications_section (general_page);
+
+            build_chatmail_core_section (advanced_page);
+            build_network_section (advanced_page);
+            build_webxdc_section (advanced_page);
+            build_factory_reset_section (advanced_page);
+        }
+
+        private void build_appearance_section (Adw.PreferencesPage page) {
+            var appearance_group = settings_group (page, "Appearance");
 
             string[] theme_labels = { "System", "Light", "Dark" };
             row_combo (appearance_group,
@@ -756,9 +768,6 @@ namespace Dc {
             font_type_row = action_row (
                 "Conversation font",
                 "Use the system font or choose another family, style and size");
-            /* Bound to 1/2 lines: this row's suffix (font chooser + reset
-               button) leaves little room, and without a cap the title can
-               collapse into vertical, one-letter-per-line wrapping. */
             font_type_row.title_lines = 1;
             font_type_row.subtitle_lines = 2;
             var font_dialog = new Gtk.FontDialog ();
@@ -812,7 +821,6 @@ namespace Dc {
             var bg_color_btn = new Gtk.ColorDialogButton (new Gtk.ColorDialog ());
             bg_color_btn.valign = Gtk.Align.CENTER;
             apply_hex_to_button (bg_color_btn, app_window.settings.background_color);
-            /* The picker only matters for Solid/Gradient; dim it for System. */
             bg_color_btn.sensitive =
                 app_window.settings.background_mode != BackgroundMode.SYSTEM;
 
@@ -829,16 +837,14 @@ namespace Dc {
             });
 
             bg_mode_combo.add_suffix (bg_color_btn);
+        }
 
-            var behavior_group = settings_group (general_page, "Behavior");
+        private void build_behavior_section (Adw.PreferencesPage page) {
+            var behavior_group = settings_group (page, "Behavior");
 
             string[] dblclick_labels = {
-                "Reply to message",
-                "React with ❤️",
-                "React with 👍",
-                "Open user profile",
-                "Open context menu",
-                "Do nothing"
+                "Reply to message", "React with ❤️", "React with 👍",
+                "Open user profile", "Open context menu", "Do nothing"
             };
 
             uint dblclick_selected = swap_dblclick_45 (
@@ -865,8 +871,6 @@ namespace Dc {
                 app_window.settings.shift_enter_sends,
                 (v) => app_window.settings.save_shift_enter_sends (v));
 
-            // Created here but added to behavior_group further below, after
-            // the transcription and sticker rows, to keep their visual order.
             var audio_row = action_row (
                 "System audio tools",
                 "Prefer system programs for voice playback and recording "
@@ -877,24 +881,55 @@ namespace Dc {
                 app_window.settings.save_system_audio_player (audio_switch.active);
             });
 
-            /* Backed by the StatusNotifierItem on freedesktop systems and
-               by the NSStatusItem shim on macOS (tray_macos.m). */
             add_switch_row (behavior_group,
+                Platform.is_macos () ? "Minimize to menu bar" : "Minimize to status bar",
                 Platform.is_macos ()
-                    ? "Minimize to menu bar"
-                    : "Minimize to status bar",
-                Platform.is_macos ()
-                    ? "Closing the window keeps Parla running as a menu bar "
-                    + "icon; the Dock icon stays visible and notifications "
-                    + "still appear"
-                    : "Closing the window keeps Parla running in the status "
-                    + "bar; notifications still appear",
+                    ? "Closing the window keeps Parla running as a menu bar icon; "
+                    + "the Dock icon stays visible and notifications still appear"
+                    : "Closing the window keeps Parla running in the status bar; "
+                    + "notifications still appear",
                 app_window.settings.minimize_to_tray,
                 (v) => app_window.set_minimize_to_tray (v));
 
-            build_links_group (general_page);
+            var sticker_row = action_row (
+                "Sticker animations",
+                "Auto-play animated stickers; clicking a sticker toggles playback");
+            var sticker_switch = row_switch (
+                sticker_row, app_window.settings.animate_stickers);
+            sticker_switch.notify["active"].connect (() => {
+                app_window.settings.save_animate_stickers (sticker_switch.active);
+            });
 
-            var notifications_group = settings_group (general_page, "Notifications");
+            string[] download_labels = {
+                "Never", "256 KB", "512 KB", "1 MB", "2 MB", "5 MB", "Unlimited"
+            };
+            var download_combo = row_combo (behavior_group,
+                "Auto-download attachments",
+                "Larger attachments wait for approval; applies to all profiles",
+                download_labels, auto_download_limit_index (
+                    app_window.settings.auto_download_limit));
+            download_combo.notify["selected"].connect (() => {
+                app_window.set_auto_download_limit.begin (
+                    auto_download_limit_for_index (download_combo.selected));
+            });
+
+            bool whisper_found = Transcriber.available ();
+            var transcription_row = action_row (
+                "Voice transcription",
+                whisper_found ? "Whisper is available in PATH" : "Whisper was not found in PATH");
+            var transcription_status = new Gtk.Label (
+                whisper_found ? "Available" : "Not found");
+            transcription_status.valign = Gtk.Align.CENTER;
+            transcription_status.add_css_class ("dim-label");
+            transcription_row.add_suffix (transcription_status);
+
+            behavior_group.add (audio_row);
+            behavior_group.add (transcription_row);
+            behavior_group.add (sticker_row);
+        }
+
+        private void build_notifications_section (Adw.PreferencesPage page) {
+            var notifications_group = settings_group (page, "Notifications");
             add_switch_row (notifications_group,
                 "Desktop notifications",
                 "Notify on incoming messages when the window is not focused",
@@ -906,8 +941,10 @@ namespace Dc {
                 "Include sender text and attachment names in desktop notifications",
                 app_window.settings.show_notification_contents,
                 (v) => app_window.settings.save_show_notification_contents (v));
+        }
 
-            var chatmail_group = settings_group (advanced_page, "Chatmail Core");
+        private void build_chatmail_core_section (Adw.PreferencesPage page) {
+            var chatmail_group = settings_group (page, "Chatmail Core");
 
             string[] rpc_source_labels = { "Auto", "Custom" };
             rpc_source_dropdown = row_combo (chatmail_group, "Source", null,
@@ -936,7 +973,6 @@ namespace Dc {
                 app_window.settings.save_rpc_check_updates_on_startup (
                     autocheck_switch.active);
             });
-            /* Updates are off entirely when the binary path is pinned. */
             rpc_autocheck_row.visible = !SettingsManager.rpc_server_path_is_fixed ();
             chatmail_group.add (rpc_autocheck_row);
 
@@ -963,8 +999,10 @@ namespace Dc {
             chatmail_group.add (accounts_path_row);
 
             sync_accounts_path_row ();
+        }
 
-            var network_group = settings_group (advanced_page, "Network");
+        private void build_network_section (Adw.PreferencesPage page) {
+            var network_group = settings_group (page, "Network");
 
             proxy_switch_row = action_row (
                 "Use Proxy",
@@ -993,50 +1031,10 @@ namespace Dc {
             network_group.add (proxy_url_row);
 
             load_proxy_settings.begin ();
+        }
 
-            var sticker_row = action_row (
-                "Sticker animations",
-                "Auto-play animated stickers; " +
-                "clicking a sticker toggles playback");
-            var sticker_switch = row_switch (
-                sticker_row, app_window.settings.animate_stickers);
-            sticker_switch.notify["active"].connect (() => {
-                app_window.settings.save_animate_stickers (
-                    sticker_switch.active);
-            });
-
-            string[] download_labels = {
-                "Never", "256 KB", "512 KB", "1 MB", "2 MB", "5 MB", "Unlimited"
-            };
-            var download_combo = row_combo (behavior_group,
-                "Auto-download attachments",
-                "Larger attachments wait for approval; applies to all profiles",
-                download_labels, auto_download_limit_index (
-                    app_window.settings.auto_download_limit));
-            download_combo.notify["selected"].connect (() => {
-                app_window.set_auto_download_limit.begin (
-                    auto_download_limit_for_index (download_combo.selected));
-            });
-
-            bool whisper_found = Transcriber.available ();
-            var transcription_row = action_row (
-                "Voice transcription",
-                whisper_found
-                    ? "Whisper is available in PATH"
-                    : "Whisper was not found in PATH");
-            var transcription_status = new Gtk.Label (
-                whisper_found ? "Available" : "Not found");
-            transcription_status.valign = Gtk.Align.CENTER;
-            transcription_status.add_css_class ("dim-label");
-            transcription_row.add_suffix (transcription_status);
-
-            behavior_group.add (audio_row);
-            behavior_group.add (transcription_row);
-            behavior_group.add (sticker_row);
-
-            build_webxdc_section (advanced_page);
-
-            var reset_group = settings_group (advanced_page, "Factory Reset");
+        private void build_factory_reset_section (Adw.PreferencesPage page) {
+            var reset_group = settings_group (page, "Factory Reset");
             var reset_row = action_row (
                 "Factory Reset",
                 "Remove all settings and close the app");
