@@ -436,12 +436,22 @@ namespace Dc {
                left-click controller competes with the label's link gesture
                and breaks URL clicks. */
             var rc = new Gtk.GestureClick ();
-            rc.button = 3;
+            rc.button = Gdk.BUTTON_SECONDARY;
+            /* Selectable labels normally consume secondary clicks for their
+               copy menu. Intercept them first so right-clicking unselected
+               message text opens the message menu; an existing selection is
+               still handed back to the label for its native menu. */
+            rc.propagation_phase = Gtk.PropagationPhase.CAPTURE;
             track_signal (rc, rc.pressed.connect ((n, x, y) => {
                 var row = pick_message_row (x, y);
-                if (row != null)
-                    msg_actions.show_context_menu (row.message_id,
-                        row.is_outgoing, x, y, message_listview);
+                if (row == null) return;
+                if (pointer_on_selected_text (x, y)) {
+                    rc.set_state (Gtk.EventSequenceState.DENIED);
+                    return;
+                }
+                rc.set_state (Gtk.EventSequenceState.CLAIMED);
+                msg_actions.show_context_menu (row.message_id,
+                    row.is_outgoing, x, y, message_listview);
             }));
             message_listview.add_controller (rc);
 
@@ -2579,6 +2589,15 @@ namespace Dc {
             return pick_ancestor_matches (x, y, (w) => {
                 var lbl = w as Gtk.Label;
                 return lbl != null && lbl.selectable;
+            });
+        }
+
+        private bool pointer_on_selected_text (double x, double y) {
+            return pick_ancestor_matches (x, y, (w) => {
+                var lbl = w as Gtk.Label;
+                int start, end;
+                return lbl != null && lbl.selectable &&
+                    lbl.get_selection_bounds (out start, out end);
             });
         }
 
