@@ -98,71 +98,21 @@ namespace Dc {
             this.content_height = 560;
 
             var box = new Gtk.Box (Gtk.Orientation.VERTICAL, 0);
-
-            var header = new Adw.HeaderBar ();
-            var save_btn = new Gtk.Button.with_label ("Save");
-            save_btn.add_css_class ("suggested-action");
-            save_btn.clicked.connect (() => {
-                do_save.begin ();
-            });
-            header.pack_end (save_btn);
-            box.append (header);
+            box.append (build_header ());
 
             var content = content_box ();
-
-            /* Avatar */
-            avatar_widget = new Adw.Avatar (96, "", true);
-            avatar_widget.halign = Gtk.Align.CENTER;
-            content.append (avatar_widget);
-
-            var avatar_btn = new Gtk.Button.with_label ("Change Avatar");
-            avatar_btn.halign = Gtk.Align.CENTER;
-            avatar_btn.add_css_class ("flat");
-            avatar_btn.clicked.connect (() => {
-                pick_avatar.begin ();
-            });
-            content.append (avatar_btn);
-
+            content.append (build_avatar_section ());
             content.append (new Gtk.Separator (Gtk.Orientation.HORIZONTAL));
-
-            var fields_grid = new Gtk.Grid ();
-            fields_grid.column_spacing = 12;
-            fields_grid.row_spacing = 12;
-
-            name_entry = new Gtk.Entry ();
-            name_entry.hexpand = true;
-            name_entry.placeholder_text = "Your name";
-            name_entry.changed.connect (() => {
-                avatar_widget.text = name_entry.text.length > 0
-                    ? name_entry.text : "";
-            });
-            attach_field (fields_grid, 0, "Name", name_entry);
-
-            status_entry = new Gtk.Entry ();
-            status_entry.hexpand = true;
-            status_entry.placeholder_text = "Your status message";
-            attach_field (fields_grid, 1, "Status", status_entry);
-
-            email_label = dim_label ("");
-            email_label.selectable = true;
-            email_label.hexpand = true;
-            email_label.valign = Gtk.Align.CENTER;
-            attach_field (fields_grid, 2, "Email", email_label);
-
-            content.append (fields_grid);
+            content.append (build_fields_grid ());
 
             var invite_button = append_profile_action_row (content, "Invite Code",
                 "Show a contact invite QR code", "Share your contact");
             invite_button.clicked.connect (show_invite_code_dialog);
 
             content.append (new Gtk.Separator (Gtk.Orientation.HORIZONTAL));
-
             content.append (build_read_receipts_row ());
-
             content.append (new Gtk.Separator (Gtk.Orientation.HORIZONTAL));
-
             content.append (build_connectivity_storage_section ());
-
             content.append (new Gtk.Separator (Gtk.Orientation.HORIZONTAL));
 
             var relays_button = append_profile_action_row (content, "Relays...",
@@ -193,6 +143,64 @@ namespace Dc {
             load_profile.begin ();
             load_read_receipt_settings.begin ();
             load_connectivity_summary.begin ();
+        }
+
+        private Gtk.Widget build_header () {
+            var header = new Adw.HeaderBar ();
+            var save_btn = new Gtk.Button.with_label ("Save");
+            save_btn.add_css_class ("suggested-action");
+            save_btn.clicked.connect (() => {
+                do_save.begin ();
+            });
+            header.pack_end (save_btn);
+            return header;
+        }
+
+        private Gtk.Widget build_avatar_section () {
+            var box = new Gtk.Box (Gtk.Orientation.VERTICAL, 12);
+            box.valign = Gtk.Align.CENTER;
+
+            avatar_widget = new Adw.Avatar (96, "", true);
+            avatar_widget.halign = Gtk.Align.CENTER;
+            box.append (avatar_widget);
+
+            var avatar_btn = new Gtk.Button.with_label ("Change Avatar");
+            avatar_btn.halign = Gtk.Align.CENTER;
+            avatar_btn.add_css_class ("flat");
+            avatar_btn.clicked.connect (() => {
+                pick_avatar.begin ();
+            });
+            box.append (avatar_btn);
+
+            return box;
+        }
+
+        private Gtk.Widget build_fields_grid () {
+            var fields_grid = new Gtk.Grid ();
+            fields_grid.column_spacing = 12;
+            fields_grid.row_spacing = 12;
+
+            name_entry = new Gtk.Entry ();
+            name_entry.hexpand = true;
+            name_entry.placeholder_text = "Your name";
+            name_entry.changed.connect (() => {
+                avatar_widget.text = name_entry.text.length > 0
+                    ? name_entry.text : "";
+            });
+            attach_field (fields_grid, 0, "Name", name_entry);
+
+            status_entry = new Gtk.Entry ();
+            status_entry.hexpand = true;
+            status_entry.placeholder_text = "Your status message";
+            attach_field (fields_grid, 1, "Status", status_entry);
+
+            email_label = dim_label ("");
+            email_label.selectable = true;
+            email_label.hexpand = true;
+            email_label.valign = Gtk.Align.CENTER;
+            attach_field (fields_grid, 2, "Email", email_label);
+
+            return fields_grid;
         }
 
         private Gtk.Button append_profile_action_row (Gtk.Box content,
