@@ -128,6 +128,18 @@ namespace Dc {
             margin_top = 6;
             margin_bottom = 6;
 
+            init_reply_bar ();
+            init_attachment_bar ();
+            init_long_msg_bar ();
+
+            var input_row = init_input_row ();
+            var recording_row = init_recording_row ();
+            init_mode_stack (input_row, recording_row);
+
+            build_mention_popover ();
+        }
+
+        private void init_reply_bar () {
             reply_bar = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 6);
             reply_bar.add_css_class ("reply-bar");
             reply_bar.visible = false;
@@ -150,7 +162,9 @@ namespace Dc {
             reply_bar.append (cancel_reply_button);
 
             append (reply_bar);
+        }
 
+        private void init_attachment_bar () {
             attachment_bar = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 8);
             attachment_bar.add_css_class ("attachment-bar");
             attachment_bar.visible = false;
@@ -196,7 +210,9 @@ namespace Dc {
             attachment_bar.append (remove_attachment_button);
 
             append (attachment_bar);
+        }
 
+        private void init_long_msg_bar () {
             long_msg_bar = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 6);
             long_msg_bar.add_css_class ("long-message-bar");
             long_msg_bar.visible = false;
@@ -213,14 +229,13 @@ namespace Dc {
             long_msg_label.wrap = true;
             long_msg_bar.append (long_msg_label);
             append (long_msg_bar);
+        }
 
+        private Gtk.Box init_input_row () {
             var input_row = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 6);
             input_row.hexpand = true;
             input_row.halign = Gtk.Align.FILL;
 
-            /* Action buttons stay pinned to the bottom of the row, so they
-               keep their place next to the last text line when a
-               multi-line draft makes the entry grow. */
             attach_button = icon_button (
                 "mail-attachment-symbolic", "Attach file");
             attach_button.clicked.connect (on_attach_clicked);
@@ -265,8 +280,6 @@ namespace Dc {
             text_view = new Gtk.TextView ();
             text_view.wrap_mode = Gtk.WrapMode.WORD_CHAR;
             text_view.accepts_tab = false;
-            /* Symmetric margins define the pill height (no CSS min-height),
-               so the text is always vertically centered. */
             text_view.top_margin = 8;
             text_view.bottom_margin = 8;
             text_view.left_margin = 12;
@@ -278,9 +291,6 @@ namespace Dc {
             text_view.vexpand = false;
             text_view.add_css_class ("compose-entry");
 
-            /* Placeholder is anchored to the top with the exact same
-               top margin as the text view, so its baseline matches the
-               first line of typed text instead of relying on valign. */
             placeholder_label = new Gtk.Label (placeholder_default);
             placeholder_label.add_css_class ("compose-placeholder");
             placeholder_label.halign = Gtk.Align.START;
@@ -290,19 +300,8 @@ namespace Dc {
             placeholder_label.can_target = false;
             placeholder_label.ellipsize = Pango.EllipsizeMode.END;
 
-            /* The entry grows with its content only up to a cap, then
-               scrolls internally. Without the cap a long draft makes the
-               compose bar taller than the window and pushes the send
-               button out of sight. The scrolled window also owns the text
-               view's vadjustment, replacing the manual stale-height
-               workaround a bare TextView needed here before. */
             var entry_scroll = new Gtk.ScrolledWindow ();
             entry_scroll.hscrollbar_policy = Gtk.PolicyType.NEVER;
-            /* AUTOMATIC (EXTERNAL skips natural-height propagation and
-               renders a restored multi-line draft blank). The scrollbar
-               slider's 40px theme minimum would put a two-row floor under
-               the empty entry, so it is shrunk in the CSS
-               (.compose-entry-scroll scrollbar slider). */
             entry_scroll.vscrollbar_policy = Gtk.PolicyType.AUTOMATIC;
             entry_scroll.propagate_natural_height = true;
             entry_scroll.min_content_height = 36;
@@ -318,9 +317,6 @@ namespace Dc {
             entry_overlay.valign = Gtk.Align.CENTER;
 
             text_view.buffer.changed.connect (() => {
-                /* Previews are derived from the draft text, not just from
-                   the paste that initially inserted a URL.  This also
-                   invalidates in-flight results for a deleted or edited URL. */
                 if (!suppress_draft_signal)
                     synchronize_link_previews (get_text ());
                 update_placeholder ();
@@ -329,8 +325,6 @@ namespace Dc {
                 update_mention_popup ();
                 update_long_message_hint ();
             });
-            /* AppKit invokes this action signal directly for Command+V, so
-               handle the signal rather than relying only on GDK key events. */
             text_view.paste_clipboard.connect (on_paste_clipboard);
             update_placeholder ();
 
@@ -368,7 +362,6 @@ namespace Dc {
             record_button.clicked.connect (start_audio_recording);
             idle_actions.append (record_button);
 
-            /* Idle actions collapse to one send button as soon as text appears. */
             send_stack = new Gtk.Stack ();
             send_stack.valign = Gtk.Align.END;
             send_stack.hhomogeneous = false;
@@ -377,6 +370,10 @@ namespace Dc {
             input_row.append (send_stack);
             update_send_stack ();
 
+            return input_row;
+        }
+
+        private Gtk.Box init_recording_row () {
             var recording_row = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 6);
             recording_row.hexpand = true;
 
@@ -394,9 +391,7 @@ namespace Dc {
                 "media-playback-stop-symbolic", "Stop recording", true,
                 "destructive-action");
             recording_stop_button.clicked.connect (stop_audio_recording);
-            /* Offered once the recording is finished: transcribe it and move
-               both the audio and its text into the composer, so the message
-               carries a readable version of what was said. */
+
             transcribe_button = new Gtk.Button.with_label ("Transcribe");
             transcribe_button.add_css_class ("flat");
             transcribe_button.valign = Gtk.Align.CENTER;
@@ -417,13 +412,15 @@ namespace Dc {
             recording_action_stack.add_named (recording_send_button, "send");
             recording_row.append (recording_action_stack);
 
+            return recording_row;
+        }
+
+        private void init_mode_stack (Gtk.Box input_row, Gtk.Box recording_row) {
             compose_mode_stack = new Gtk.Stack ();
             compose_mode_stack.add_named (input_row, "compose");
             compose_mode_stack.add_named (recording_row, "recording");
             compose_mode_stack.visible_child_name = "compose";
             append (compose_mode_stack);
-
-            build_mention_popover ();
         }
 
         /** Release resources that are parented outside the normal box tree or
