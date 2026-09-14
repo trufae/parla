@@ -38,7 +38,7 @@ namespace Dc {
         private Gtk.TextView text_view;
         private Gtk.Label placeholder_label;
         private string placeholder_default = "Type a message";
-        private string placeholder_reply = "Type a message";
+        private string placeholder_reply = "Type a reply";
         private Gtk.Button attach_button;
         private Gtk.MenuButton emoji_button;
         private const string EMOJI_TRIGGER_START_MARK = "parla-emoji-trigger-start";
@@ -300,6 +300,8 @@ namespace Dc {
             placeholder_label.margin_top = 8;
             placeholder_label.can_target = false;
             placeholder_label.ellipsize = Pango.EllipsizeMode.END;
+
+            placeholder_label.mnemonic_widget = text_view;
 
             var entry_scroll = new Gtk.ScrolledWindow ();
             entry_scroll.hscrollbar_policy = Gtk.PolicyType.NEVER;
