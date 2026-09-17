@@ -23,6 +23,8 @@ namespace Dc {
         private ImageViewer viewer;
         private string chat_name = "";
         private bool is_channel = false;
+        private bool can_edit_members = false;
+        private bool is_unpromoted = false;
         private Contact? dm_contact = null;
 
         public signal void chat_deleted (int chat_id);
@@ -75,7 +77,7 @@ namespace Dc {
             this.app_window = window;
             this.rpc = rpc;
             this.chat_id = chat_id;
-            this.title = "Chat Info";
+            this.title = "Chat Details";
             this.content_width = 360;
             this.content_height = 500;
 
@@ -152,8 +154,12 @@ namespace Dc {
                     && !json_bool (chat, "isSelfTalk")
                     && !json_bool (chat, "isDeviceChat");
 
-                is_group = chat_type == "Group" || chat_type == "Broadcast";
-                is_channel = chat_type == "Broadcast";
+                is_channel = chat_type == "Broadcast" || chat_type == "OutBroadcast"
+                    || chat_type == "InBroadcast";
+                is_group = chat_type == "Group" || is_channel;
+                can_edit_members = ChatActions.can_edit_members (
+                    chat_type, encrypted, json_bool (chat, "canSend"));
+                is_unpromoted = json_bool (chat, "isUnpromoted");
                 chat_name = name;
                 dm_contact = null;
 
@@ -185,7 +191,7 @@ namespace Dc {
                     content.append (avatar);
                 }
 
-                if (is_group) {
+                if (can_edit_members) {
                     var change_avatar_btn = flat_button ("Change Avatar");
                     change_avatar_btn.clicked.connect (() => pick_avatar.begin ());
                     change_avatar_btn.halign = Gtk.Align.CENTER;
@@ -207,9 +213,9 @@ namespace Dc {
                     edit_contact_btn.clicked.connect (() =>
                         show_edit_contact_name_dialog.begin (dm_contact_id, name_lbl));
                     name_box.append (edit_contact_btn);
-                } else if (is_group) {
+                } else if (can_edit_members) {
                     var edit_group_btn = flat_icon_button (
-                        "document-edit-symbolic", "Edit group name");
+                        "document-edit-symbolic", is_channel ? "Edit channel name" : "Edit group name");
                     edit_group_btn.clicked.connect (() =>
                         show_edit_group_name_dialog.begin (name_lbl));
                     name_box.append (edit_group_btn);
@@ -230,7 +236,7 @@ namespace Dc {
                 type_lbl.halign = Gtk.Align.CENTER;
                 content.append (type_lbl);
 
-                if (is_group) {
+                if (can_edit_members) {
                     var invite_list = boxed_list ();
                     add_action_row (invite_list, "Invite Link",
                         "Share a link or QR code for others to join",
@@ -261,6 +267,9 @@ namespace Dc {
                             chat_id, timer_values[(int) idx]);
                     }
                 });
+                ephem_row.sensitive = encrypted && json_bool (chat, "canSend")
+                    && chat_type != "Mailinglist" && chat_type != "InBroadcast";
+                ephem_row.subtitle = "Applies to new messages for everyone in this chat";
 
                 /* Mute selector. Core only reports the boolean isMuted, not
                    the remaining time, so a timed mute shows as "Forever"
@@ -308,7 +317,7 @@ namespace Dc {
                     members_lbl.hexpand = true;
                     header_box.append (members_lbl);
 
-                    if (is_group) {
+                    if (can_edit_members) {
                         var add_member_btn = flat_icon_button (
                             "list-add-symbolic", "Add member");
                         add_member_btn.clicked.connect (() =>
@@ -342,7 +351,7 @@ namespace Dc {
 
                 var actions_list = boxed_list ();
 
-                if (is_group) {
+                if (is_group && chat_type != "InBroadcast") {
                     add_action_row (actions_list,
                         is_channel ? "New Channel with Same Members"
                                    : "New Group with Same Members",
@@ -351,37 +360,43 @@ namespace Dc {
                         () => show_duplicate_group_dialog.begin ());
                 }
 
-                add_action_row (actions_list, "Clear Chat…",
+                if (dm_contact != null) {
+                    actions_list.append (build_contact_block_row (dm_contact));
+                } else if (chat_type == "Mailinglist" || chat_type == "InBroadcast") {
+                    add_action_row (actions_list, "Block Chat…",
+                        "Hide this chat and new messages; keep the history",
+                        "action-unavailable-symbolic", () => confirm_block_chat.begin ());
+                }
+                if (actions_list.get_first_child () != null) content.append (actions_list);
+
+                var deletion_list = boxed_list ();
+
+                add_action_row (deletion_list, "Clear Chat…",
                     "Delete messages for this profile and keep the chat",
                     "edit-clear-symbolic",
                     () => confirm_clear_history.begin (false));
 
                 if (MessageDeletion.can_delete_in_chat (chat)) {
-                    add_action_row (actions_list,
+                    add_action_row (deletion_list,
                         "Delete Sent Messages for Everyone…",
                         "Ask other participants to delete messages sent by this profile",
                         "edit-delete-symbolic",
                         () => confirm_clear_history.begin (true));
                 }
 
-                if (chat_type == "Group" && encrypted
-                        && json_bool (chat, "selfInGroup")
-                        && !json_bool (chat, "isContactRequest")) {
-                    add_action_row (actions_list, "Leave Group…",
+                if (can_leave_chat (chat)) {
+                    add_action_row (deletion_list,
+                        is_channel ? "Leave Channel…" : "Leave Group…",
                         "Stop receiving messages, with the option to keep the history",
                         "system-log-out-symbolic",
                         () => confirm_leave_group.begin ());
                 }
 
-                if (dm_contact != null) {
-                    actions_list.append (build_contact_block_row (dm_contact));
-                }
-
-                add_action_row (actions_list, "Delete Chat…",
+                add_action_row (deletion_list, "Delete Chat…",
                     "Delete the chat and its messages for this profile", "user-trash-symbolic",
                     () => confirm_delete_chat.begin ());
 
-                content.append (actions_list);
+                content.append (deletion_list);
 
             } catch (Error e) {
                 spinner.visible = false;
@@ -413,11 +428,11 @@ namespace Dc {
                 row.add_suffix (copy_btn);
             }
 
-            if (is_group && contact.id != 1) {
-                int cid = contact.id;
+            if (can_edit_members && contact.id > 1) {
                 var remove_btn = flat_icon_button (
-                    "user-trash-symbolic", "Remove from group", true);
-                remove_btn.clicked.connect (() => remove_member.begin (cid, row));
+                    "user-trash-symbolic",
+                    is_channel ? "Remove from channel…" : "Remove from group…", true);
+                remove_btn.clicked.connect (() => confirm_remove_member.begin (contact, row));
                 row.add_suffix (remove_btn);
             }
 
@@ -446,8 +461,8 @@ namespace Dc {
                 row.title = "Unblock Contact";
                 row.subtitle = "Allow messages from %s".printf (label);
             } else {
-                row.title = "Block Contact";
-                row.subtitle = "Stop receiving messages from %s".printf (label);
+                row.title = "Block Contact…";
+                row.subtitle = "Block direct messages from %s and keep the history".printf (label);
             }
         }
 
@@ -496,8 +511,9 @@ namespace Dc {
         }
 
         private async void show_edit_group_name_dialog (Gtk.Label name_lbl) {
-            string? name = yield prompt_text (this, "Edit Group Name", null,
-                "Save", name_lbl.label, "Group name");
+            string? name = yield prompt_text (this,
+                is_channel ? "Edit Channel Name" : "Edit Group Name", null,
+                "Save", name_lbl.label, is_channel ? "Channel name" : "Group name");
             if (name == null) return;
             string new_name = name.strip ();
             /* Groups must keep a name, so ignore an empty entry. */
@@ -516,10 +532,22 @@ namespace Dc {
             }
         }
 
-        private async void remove_member (int contact_id, Adw.ActionRow row) {
+        private async void confirm_remove_member (Contact contact, Adw.ActionRow row) {
+            int account_id = rpc.account_id;
+            string body = "Remove \"%s\" from \"%s\"? They keep messages already received.".printf (
+                contact_label (contact), chat_name);
+            body += is_channel
+                ? " They will no longer receive new messages sent to this channel."
+                : " They will no longer receive new group messages.";
+            if (!is_channel && !is_unpromoted) body += " Group members will be notified.";
+            if (!(yield confirm_action (this,
+                is_channel ? "Remove Subscriber?" : "Remove Member?",
+                body, "remove", is_channel ? "Remove Subscriber" : "Remove Member"))) return;
+            if (rpc.account_id != account_id) return;
             try {
-                yield rpc.remove_contact_from_chat (chat_id, contact_id);
+                yield rpc.remove_contact_from_chat (chat_id, contact.id);
                 members_list.remove (row);
+                chat_changed ();
             } catch (Error e) {
                 row.subtitle = "Remove failed: " + e.message;
             }
@@ -554,11 +582,24 @@ namespace Dc {
 
         private async void confirm_block_contact (Contact contact,
                                                   Adw.ActionRow row) {
-            string label = contact_label (contact);
-            if (yield confirm_action (this, "Block Contact",
-                "Block \"%s\"? You will no longer receive messages from this contact.".printf (label),
-                "block", "Block"))
-                set_contact_blocked.begin (contact, row, true);
+            int account_id = rpc.account_id;
+            if (yield confirm_chat_block (this, contact_label (contact), true)) {
+                if (rpc.account_id == account_id)
+                    set_contact_blocked.begin (contact, row, true);
+            }
+        }
+
+        private async void confirm_block_chat () {
+            int account_id = rpc.account_id;
+            if (!(yield confirm_chat_block (this, chat_name, false))) return;
+            if (rpc.account_id != account_id) return;
+            try {
+                yield rpc.block_chat (chat_id);
+                contact_blocked (chat_id);
+                this.close ();
+            } catch (Error e) {
+                show_error (this, e.message);
+            }
         }
 
         private async void set_contact_blocked (Contact contact,
@@ -580,20 +621,19 @@ namespace Dc {
         }
 
         private async void confirm_clear_history (bool for_all) {
-            if (yield confirm_chat_clear (this, chat_name, for_all))
-                do_clear_history.begin (for_all);
-        }
-
-        private async void do_clear_history (bool for_all) {
+            int account_id = rpc.account_id;
             try {
                 int[] ids = yield chat_message_ids_for_clear (
-                    rpc, rpc.account_id, chat_id, for_all);
+                    rpc, account_id, chat_id, for_all);
+                if (rpc.account_id != account_id) return;
                 if (ids.length == 0) {
                     app_window.show_toast (for_all
                         ? "No sent messages can be deleted for everyone"
                         : "No messages to clear");
                     return;
                 }
+                if (!(yield confirm_chat_clear (this, chat_name, for_all, ids.length))) return;
+                if (rpc.account_id != account_id) return;
                 if (for_all) yield rpc.delete_messages_for_all (ids);
                 else yield rpc.delete_messages (ids);
                 chat_changed ();
@@ -648,35 +688,38 @@ namespace Dc {
         }
 
         private async void confirm_leave_group () {
-            var choice = yield confirm_group_leave (this, chat_name);
+            var choice = yield confirm_group_leave (this, rpc, chat_id);
             if (choice != LeaveChoice.CANCEL)
                 do_leave_group.begin (choice == LeaveChoice.DELETE_HISTORY);
         }
 
         private async void do_leave_group (bool delete_history) {
+            int account_id = rpc.account_id;
             bool left = false;
             try {
                 yield rpc.leave_group (chat_id);
                 left = true;
                 if (delete_history) {
-                    yield rpc.delete_chat (chat_id);
+                    yield rpc.delete_chat (chat_id, account_id);
                     chat_deleted (chat_id);
                 } else {
                     chat_changed ();
-                    app_window.show_toast ("Group left; chat history kept");
+                    app_window.show_toast ("Chat left; history kept");
                 }
                 this.close ();
             } catch (Error e) {
-                if (left) chat_changed ();
+                chat_changed ();
                 show_error (this, (left
-                    ? "Group left, but the chat could not be deleted: "
-                    : "Could not leave group: ") + e.message);
+                    ? "Chat left, but its history could not be deleted: "
+                    : "Could not finish leaving; chat history was kept: ") + e.message);
             }
         }
 
         private async void confirm_delete_chat () {
-            if (yield confirm_chat_deletion (this, chat_name))
-                do_delete_chat_from_dialog.begin ();
+            int account_id = rpc.account_id;
+            if (yield confirm_chat_deletion (this, chat_name)) {
+                if (rpc.account_id == account_id) do_delete_chat_from_dialog.begin ();
+            }
         }
 
         private async void do_delete_chat_from_dialog () {

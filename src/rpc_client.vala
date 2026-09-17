@@ -650,9 +650,10 @@ namespace Dc {
                 Params.begin ().add_int (account_id).add_int (chat_id).build ());
         }
 
-        public async void delete_chat (int chat_id) throws Error {
+        public async void delete_chat (int chat_id, int acct_id = 0) throws Error {
             yield call ("delete_chat",
-                Params.begin ().add_int (account_id).add_int (chat_id).build ());
+                Params.begin ().add_int (acct_id > 0 ? acct_id : account_id)
+                    .add_int (chat_id).build ());
         }
 
         /* Accept an incoming contact-request chat: the chat leaves the
@@ -662,8 +663,7 @@ namespace Dc {
                 Params.begin ().add_int (account_id).add_int (chat_id).build ());
         }
 
-        /* Block a contact-request chat: the chat is moved out of the list and
-           future messages from the sender are silently dropped. */
+        // Groups are deleted by this RPC; use an explicit Delete Chat confirmation.
         public async void block_chat (int chat_id) throws Error {
             yield call ("block_chat",
                 Params.begin ().add_int (account_id).add_int (chat_id).build ());
@@ -674,9 +674,15 @@ namespace Dc {
                 Params.begin ().add_int (account_id).add_int (contact_id).build ());
         }
 
-        public async void unblock_contact (int contact_id) throws Error {
+        public async Json.Array? get_blocked_contacts (int acct_id) throws Error {
+            return yield call_array ("get_blocked_contacts",
+                Params.begin ().add_int (acct_id).build ());
+        }
+
+        public async void unblock_contact (int contact_id, int acct_id = 0) throws Error {
             yield call ("unblock_contact",
-                Params.begin ().add_int (account_id).add_int (contact_id).build ());
+                Params.begin ().add_int (acct_id > 0 ? acct_id : account_id)
+                    .add_int (contact_id).build ());
         }
 
         public async void change_contact_name (int contact_id, string name) throws Error {

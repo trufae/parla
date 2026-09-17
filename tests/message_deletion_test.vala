@@ -31,6 +31,10 @@ private void selection_scope () {
         assert (MessageDeletion.common_chat (messages, { 10, id }) == 0);
         assert (MessageDeletion.common_chat (messages, { id, 10 }) == 0);
     }
+    foreach (int id in new int[] { 16, 17, 18 }) {
+        assert (!MessageDeletion.can_delete_for_everyone (
+            MessageDeletion.message_by_id (messages, id)));
+    }
 }
 
 private void chat_scope () {
@@ -47,9 +51,34 @@ private void chat_scope () {
     assert (!MessageDeletion.can_delete_in_chat (new Json.Object ()));
 }
 
+private void chat_actions () {
+    foreach (string type in new string[] { "Group", "InBroadcast" }) {
+        assert (ChatActions.can_leave (type, true, true, false));
+        assert (!ChatActions.can_leave (type, true, false, false));
+    }
+    assert (!ChatActions.can_leave ("Group", false, true, false));
+    assert (!ChatActions.can_leave ("Group", true, true, true));
+    assert (ChatActions.can_leave ("InBroadcast", true, true, true));
+    foreach (string type in new string[] { "Single", "Mailinglist", "OutBroadcast", "Broadcast", "" }) {
+        assert (!ChatActions.can_leave (type, true, true, false));
+    }
+    foreach (string type in new string[] { "Group", "OutBroadcast", "Broadcast" }) {
+        assert (ChatActions.can_edit_members (type, true, true));
+        assert (!ChatActions.can_edit_members (type, false, true));
+        assert (!ChatActions.can_edit_members (type, true, false));
+    }
+    foreach (string type in new string[] { "Single", "InBroadcast", "Mailinglist", "" }) {
+        assert (!ChatActions.can_edit_members (type, true, true));
+    }
+    assert (ChatActions.request_action ("Group") == "Delete Request…");
+    assert (ChatActions.request_action ("Single") == "Block Contact…");
+    assert (ChatActions.request_action ("InBroadcast") == "Block Chat…");
+}
+
 int main (string[] args) {
     Test.init (ref args);
     Test.add_func ("/message-deletion/selection-scope", selection_scope);
     Test.add_func ("/message-deletion/chat-scope", chat_scope);
+    Test.add_func ("/chat-actions/permissions", chat_actions);
     return Test.run ();
 }

@@ -81,6 +81,8 @@ namespace Dc {
         private Gtk.Button selection_delete_btn;
         private Gtk.Button selection_forward_btn;
         private Gtk.Box request_bar;
+        private Gtk.Label request_notice;
+        private Gtk.Button request_block_btn;
         private bool is_contact_request = false;
         private bool selection_mode = false;
         private Gtk.Button scroll_down_btn;
@@ -917,7 +919,7 @@ namespace Dc {
             bar.hexpand = true;
             bar.visible = false;
 
-            selection_delete_btn = new Gtk.Button.with_label ("Delete");
+            selection_delete_btn = new Gtk.Button.with_label ("Delete…");
             selection_delete_btn.add_css_class ("destructive-action");
             selection_delete_btn.hexpand = true;
             track_signal (selection_delete_btn,
@@ -956,24 +958,23 @@ namespace Dc {
             bar.margin_bottom = 8;
             bar.visible = false;
 
-            var notice = new Gtk.Label ("This chat is a contact request. "
-                + "Accept it to reply, or block the sender.");
-            notice.add_css_class ("dim-label");
-            notice.wrap = true;
-            notice.justify = Gtk.Justification.CENTER;
-            notice.halign = Gtk.Align.CENTER;
-            bar.append (notice);
+            request_notice = new Gtk.Label (null);
+            request_notice.add_css_class ("dim-label");
+            request_notice.wrap = true;
+            request_notice.justify = Gtk.Justification.CENTER;
+            request_notice.halign = Gtk.Align.CENTER;
+            bar.append (request_notice);
 
             var buttons = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 12);
             buttons.halign = Gtk.Align.CENTER;
 
-            var block_btn = new Gtk.Button.with_label ("Block");
-            block_btn.add_css_class ("destructive-action");
-            block_btn.add_css_class ("pill");
-            track_signal (block_btn, block_btn.clicked.connect (() => {
+            request_block_btn = new Gtk.Button ();
+            request_block_btn.add_css_class ("destructive-action");
+            request_block_btn.add_css_class ("pill");
+            track_signal (request_block_btn, request_block_btn.clicked.connect (() => {
                 block_request.begin ();
             }));
-            buttons.append (block_btn);
+            buttons.append (request_block_btn);
 
             var accept_btn = new Gtk.Button.with_label ("Accept");
             accept_btn.add_css_class ("suggested-action");
@@ -990,8 +991,12 @@ namespace Dc {
         /* Swap the compose box for the Accept/Block bar (or back). Called by
            the window when a chat is opened, and by accept_request once the
            request has been accepted. */
-        public void set_contact_request (bool is_request) {
+        public void set_contact_request (bool is_request, string type = "") {
             is_contact_request = is_request;
+            request_block_btn.label = ChatActions.request_action (type);
+            request_notice.label = type == "Group"
+                ? "Accept this group invitation to reply, or delete the request."
+                : "Accept this chat request, or block it and keep its history.";
             sync_bottom_bars ();
         }
 
@@ -1113,14 +1118,29 @@ namespace Dc {
         }
 
         private async void block_request () {
+            int account_id = rpc.account_id;
+            request_block_btn.sensitive = false;
             try {
-                yield rpc.block_chat (chat_id);
+                var chat = yield rpc.get_full_chat_by_id_for (account_id, chat_id);
+                if (closed || rpc.account_id != account_id || chat == null
+                        || !json_bool (chat, "isContactRequest")) return;
+                string type = json_str (chat, "chatType") ?? "";
+                string name = json_str (chat, "name") ?? "this chat";
+                bool delete_request = type == "Group";
+                bool confirmed = delete_request
+                    ? yield confirm_chat_deletion (window, name)
+                    : yield confirm_chat_block (window, name, type == "Single");
+                if (!confirmed || closed || rpc.account_id != account_id) return;
+                if (delete_request) yield rpc.delete_chat (chat_id);
+                else yield rpc.block_chat (chat_id);
                 if (window.current_chat_id == chat_id) {
                     window.clear_chat_view ();
                 }
                 window.request_reload_chats ();
             } catch (Error e) {
-                window.show_toast ("Failed to block request: " + e.message);
+                window.show_toast ("Could not dismiss request: " + e.message);
+            } finally {
+                request_block_btn.sensitive = true;
             }
         }
 
