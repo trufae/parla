@@ -1,0 +1,67 @@
+name: Packages
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+    paths: ['rpm/**', 'scripts/**', 'vapi/**', 'sources.lock', '.github/workflows/packages.yml']
+  pull_request:
+    paths: ['rpm/**', 'scripts/**', 'vapi/**', 'sources.lock', '.github/workflows/packages.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - name: Fetch pinned sources
+        run: scripts/fetch-sources.sh
+      - name: Pull Sailfish SDK
+        id: sdk
+        run: |
+          docker pull coderus/sailfishos-platform-sdk-aarch64:5.1.0.11
+          echo "image=$(docker image inspect --format '{{.Id}}' coderus/sailfishos-platform-sdk-aarch64:5.1.0.11)" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@v6
+        with:
+          path: .cache/ccache
+          key: sfos-ccache-v1-aarch64-5.1.0.11-${{ steps.sdk.outputs.image }}-${{ github.sha }}
+          restore-keys: sfos-ccache-v1-aarch64-5.1.0.11-${{ steps.sdk.outputs.image }}-
+      - name: Build runtime and development RPMs
+        env:
+          SFOS_IMAGE: ${{ steps.sdk.outputs.image }}
+        run: scripts/build-rpm.sh
+      - name: Collect binaries, sources and checksums
+        env:
+          SFOS_IMAGE: ${{ steps.sdk.outputs.image }}
+        run: python3 scripts/make-release.py
+      - uses: actions/upload-artifact@v7
+        with:
+          name: sailfish-gnome-5.1.0.11-aarch64
+          path: out/*
+          if-no-files-found: error
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: sailfish-gnome-5.1.0.11-aarch64
+          path: out
+      - name: Publish versioned assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          version=$(awk '/^Version:/ {print $2}' rpm/sailfish-gnome.spec)
+          test "$RELEASE_TAG" = "v$version"
+          (cd out && sha256sum -c SHA256SUMS)
+          gh release create "$RELEASE_TAG" out/* --verify-tag \
+            --title "Sailfish GNOME $version · Sailfish OS 5.1.0.11 / aarch64" \
+            --notes-file RELEASE-NOTES.md

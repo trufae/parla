@@ -1,0 +1,29 @@
+#!/bin/sh
+set -eu
+release=${1:-5.1.0.11}
+arch=${2:-aarch64}
+case "$release/$arch" in
+    5.1.0.11/aarch64) ;;
+    *) echo "Supported target: 5.1.0.11 aarch64" >&2; exit 1 ;;
+esac
+cd "$(dirname "$0")/.."
+cache_dir="$PWD/.cache/ccache/$release-$arch"
+mkdir -p "$cache_dir" RPMS
+# The SDK uses mersdk, which has a different uid from the host runner.
+chmod -R a+rwX "$cache_dir"
+chmod a+w RPMS
+docker run --rm --privileged \
+    -v "$PWD:/workspace" \
+    -v "$cache_dir:/home/mersdk/.ccache" \
+    -e CCACHE_DIR=/home/mersdk/.ccache -e CCACHE_MAXSIZE=1G \
+    -e CCACHE_COMPILERCHECK=content \
+    "${SFOS_IMAGE:-coderus/sailfishos-platform-sdk-$arch:$release}" \
+    bash -euc '
+        mkdir -p build
+        cp -r /workspace/rpm /workspace/scripts /workspace/vapi build/
+        cd build
+        mb2 -t "SailfishOS-$1-$2" build
+        cp RPMS/*.rpm /workspace/RPMS/
+        rpm -qp --requires RPMS/*.rpm > /workspace/RPMS/requires.txt
+        rpm -qpl RPMS/*.rpm > /workspace/RPMS/files.txt
+    ' -- "$release" "$arch"

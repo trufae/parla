@@ -21,6 +21,6 @@ docker run --rm --privileged \
         mkdir -p build
         cp -r /workspace/* build/
         cd build
-        mb2 -t "SailfishOS-$1-$2" build
-        cp RPMS/*.rpm /workspace/RPMS/
+        mb2 -t "SailfishOS-$1-$2" --search-output-dir build
+        cp RPMS/harbour-parla-*.rpm /workspace/RPMS/
     ' -- "$release" "$arch"

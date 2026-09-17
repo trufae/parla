@@ -1,0 +1,10 @@
+# SHA256 filename URL. Keep rpm/sailfish-gnome.spec versions in sync.
+a37bb0e78a419dcbeaa9c7027bcff52f5ec2367c25ec859da31dfde2928f279a graphene-1.10.8.tar.xz https://download.gnome.org/sources/graphene/1.10/graphene-1.10.8.tar.xz
+072cda4b59dd098bba8c2363a6247299db1fa89411dc221c8b81b8ee8192e623 libepoxy-1.5.10.tar.xz https://download.gnome.org/sources/libepoxy/1.5/libepoxy-1.5.10.tar.xz
+5547f2b9f006b133993e070b87c17804e051efda3913feaca1108fa2be41e24d gtk-4.14.5.tar.xz https://download.gnome.org/sources/gtk/4.14/gtk-4.14.5.tar.xz
+2e276ae0e97455d5974e34503598408a7a2382cf3505a80fb4c56ad9c261d99a libadwaita-1.5.8.tar.xz https://download.gnome.org/sources/libadwaita/1.5/libadwaita-1.5.8.tar.xz
+103684ed37a45d0aed8f95e97294ed26945b5aeebf44734f3994081eecebb11c libxmlb_0.3.22.orig.tar.gz https://archive.ubuntu.com/ubuntu/pool/main/libx/libxmlb/libxmlb_0.3.22.orig.tar.gz
+5ab6f6cf644e7875a9508593962e56bb430f4e59ae0bf03be6be7029deb6baa4 AppStream-1.0.3.tar.xz https://old-releases.ubuntu.com/ubuntu/pool/main/a/appstream/appstream_1.0.3.orig.tar.xz
+4a9d45e56f649d604e86e0d81bfcd541ae24baf541577cc1bd08c3aa98bdb493 libsass_3.6.5+20231221.orig.tar.xz https://archive.ubuntu.com/ubuntu/pool/universe/libs/libsass/libsass_3.6.5+20231221.orig.tar.xz
+8377ba728fc94cd32a13fc31a6da06891984e8e5bc36b1ddd0c15be403c48791 sassc_3.6.1+20201027.orig.tar.xz https://archive.ubuntu.com/ubuntu/pool/universe/s/sassc/sassc_3.6.1+20201027.orig.tar.xz
+61ce5e8e036043f9d0e78c1596a621788e879c52aedf72ab5e78a8c44849411a webp-pixbuf-loader_0.2.7.orig.tar.gz https://deb.debian.org/debian/pool/main/w/webp-pixbuf-loader/webp-pixbuf-loader_0.2.7.orig.tar.gz

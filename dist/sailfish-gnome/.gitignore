@@ -1,0 +1,7 @@
+/.cache/
+/RPMS/
+/vendor/
+/_stage/
+/third-party-licenses/
+/rpm/*.tar.*
+/out/
