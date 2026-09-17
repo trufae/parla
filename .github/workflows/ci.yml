@@ -37,6 +37,10 @@ jobs:
             libjson-glib-dev \
             libwebkitgtk-6.0-dev
 
+      - name: Check Sailfish package download verification
+        if: matrix.a11y == true
+        run: python3 tests/sailfish_packages_test.py
+
       - name: Setup
         run: meson setup builddir -Da11y=${{ matrix.a11y }}
 
@@ -140,9 +144,7 @@ jobs:
           path: dist/appimage/out/*.AppImage
           if-no-files-found: error
 
-  # Native Sailfish OS RPM: vendored GTK4/libadwaita stack plus the bundled
-  # Delta Chat engine, built with the Sailfish Platform SDK (see
-  # dist/sailfishos/README.md). Needs a 5.1+ target for lipstick xdg-shell.
+  # The application job installs the shared RPMs and compiles only Parla.
   build-sfos:
     strategy:
       fail-fast: false
@@ -153,21 +155,32 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
-
-      - name: Fetch vendored sources
+      - name: Fetch pinned Sailfish GNOME packages
+        run: python3 dist/sailfishos/fetch-packages.py ${{ matrix.release }} ${{ matrix.arch }}
+      - name: Fetch Delta Chat engine
         run: dist/sailfishos/fetch-sources.sh ${{ matrix.arch }}
-
-      - name: Build RPM with the Sailfish Platform SDK
-        uses: coderus/github-sfos-build@sfos5
+      - name: Pull Sailfish SDK
+        id: sfos-sdk
+        run: |
+          image=coderus/sailfishos-platform-sdk-${{ matrix.arch }}:${{ matrix.release }}
+          docker pull "$image"
+          echo "image=$(docker image inspect --format '{{.Id}}' "$image")" >> "$GITHUB_OUTPUT"
+      - name: Cache Sailfish compiler output
+        uses: actions/cache@v6
         with:
-          release: ${{ matrix.release }}
-          arch: ${{ matrix.arch }}
-
+          path: .cache/sailfish-app-ccache
+          key: sfos-app-ccache-v1-${{ matrix.arch }}-${{ matrix.release }}-${{ steps.sfos-sdk.outputs.image }}-${{ github.sha }}
+          restore-keys: |
+            sfos-app-ccache-v1-${{ matrix.arch }}-${{ matrix.release }}-${{ steps.sfos-sdk.outputs.image }}-
+      - name: Build Parla with the Sailfish Platform SDK
+        env:
+          SFOS_IMAGE: ${{ steps.sfos-sdk.outputs.image }}
+        run: dist/sailfishos/build-rpm.sh ${{ matrix.release }} ${{ matrix.arch }}
       - name: Upload RPM artifact
         uses: actions/upload-artifact@v7
         with:
           name: parla-sfos-${{ matrix.arch }}
-          path: RPMS/*.rpm
+          path: RPMS/harbour-parla-*.rpm
           if-no-files-found: error
 
   build-macos:
@@ -379,7 +392,9 @@ jobs:
           path: artifacts
 
       - name: Generate release notes
-        run: python3 scripts/release-notes.py > release-notes.md
+        run: |
+          python3 scripts/release-notes.py > release-notes.md
+          cat dist/sailfishos/release-notes.md >> release-notes.md
 
       - name: Verify release artifacts
         run: |

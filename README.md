@@ -136,8 +136,11 @@ make run
 
 **AppImage:** `make appimage`
 
-**Sailfish OS (5.1+, experimental):** `harbour-parla` RPMs with a bundled
-GTK4/libadwaita stack; see [dist/sailfishos/README.md](dist/sailfishos/README.md).
+**Sailfish OS (5.1.0.11 / aarch64, experimental):** `harbour-parla` RPMs use
+the shared GTK4/libadwaita runtime from
+[sailfishos-gnome](https://github.com/trufae/sailfishos-gnome).
+Install the runtime alongside Parla; see
+[dist/sailfishos/README.md](dist/sailfishos/README.md).
 </details>
 
 <details>
