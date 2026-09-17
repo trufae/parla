@@ -1050,7 +1050,6 @@ namespace Dc {
                 yield load_self_identity ();
                 yield load_chats ();
                 yield load_profile_avatar ();
-                events.start.begin ();
                 events.reconcile_desktop_notifications.begin ();
 
                 /* A link that arrived before the profile was ready (e.g. the
@@ -1061,6 +1060,8 @@ namespace Dc {
                     show_use_invite_link_dialog (uri);
                 }
             }
+            // Account setup needs progress events before any profile is configured.
+            events.start.begin ();
         }
 
         private void clear_self_identity () {
