@@ -104,20 +104,15 @@ namespace Dc {
 
             var delete_btn = new PopoverButton (popover, "Delete…", true);
             delete_btn.selected.connect (() =>
-                confirm_delete_message.begin (msg_id, is_outgoing));
+                confirm_delete_message.begin (msg_id));
             vbox.append (delete_btn);
 
             preserve_scroll_until_closed (popover);
             popover.popup ();
         }
 
-        private async void confirm_delete_message (int msg_id,
-                                                   bool is_outgoing) {
-            string body = is_outgoing
-                ? "Delete this message from your device only, or from all participants? This cannot be undone."
-                : "Delete this message from your device? This cannot be undone.";
-            var choice = yield confirm_delete_options (
-                window, "Delete Message?", body, is_outgoing);
+        private async void confirm_delete_message (int msg_id) {
+            var choice = yield confirm_message_deletion (window, rpc, { msg_id });
             if (choice == DeleteChoice.FOR_ME)
                 delete_message.begin (msg_id, false);
             else if (choice == DeleteChoice.FOR_EVERYONE)

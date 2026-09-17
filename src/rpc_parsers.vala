@@ -87,6 +87,9 @@ namespace Dc {
             entry.kind = parse_chat_kind (obj);
             entry.is_muted = json_bool (obj, "isMuted");
             entry.is_contact_request = json_bool (obj, "isContactRequest");
+            entry.can_leave_group = json_str (obj, "chatType") == "Group"
+                && json_bool (obj, "isEncrypted")
+                && json_bool (obj, "isSelfInGroup") && !entry.is_contact_request;
             entry.is_pinned = json_bool (obj, "isPinned");
             entry.is_archived = json_bool (obj, "isArchived");
             entry.was_seen_recently = json_bool (obj, "wasSeenRecently");

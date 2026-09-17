@@ -1047,17 +1047,6 @@ namespace Dc {
             return ids;
         }
 
-        private bool selected_messages_all_outgoing () {
-            bool found = false;
-            for (uint i = 0; i < message_store.get_n_items (); i++) {
-                var msg = (Message) message_store.get_item (i);
-                if (!msg.selected) continue;
-                found = true;
-                if (!msg.is_outgoing) return false;
-            }
-            return found;
-        }
-
         private void update_selection_actions () {
             if (selection_delete_btn == null || selection_forward_btn == null) {
                 return;
@@ -1077,22 +1066,7 @@ namespace Dc {
         private async void delete_selected_messages () {
             int[] ids = selected_message_ids ();
             if (ids.length == 0) return;
-            string title = ids.length == 1
-                ? "Delete Message?"
-                : "Delete Messages?";
-            bool all_outgoing = selected_messages_all_outgoing ();
-            string body;
-            if (all_outgoing) {
-                body = ids.length == 1
-                    ? "Delete the selected message from your device only, or from all participants? This cannot be undone."
-                    : "Delete %d selected messages from your device only, or from all participants? This cannot be undone.".printf (ids.length);
-            } else {
-                body = ids.length == 1
-                    ? "Delete the selected message from your device? This cannot be undone."
-                    : "Delete %d selected messages from your device? This cannot be undone.".printf (ids.length);
-            }
-            var choice = yield confirm_delete_options (
-                window, title, body, all_outgoing);
+            var choice = yield confirm_message_deletion (window, rpc, ids);
             if (choice == DeleteChoice.FOR_ME)
                 delete_selected_messages_confirmed.begin (ids, false);
             else if (choice == DeleteChoice.FOR_EVERYONE)

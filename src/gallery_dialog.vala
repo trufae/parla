@@ -554,27 +554,15 @@ namespace Dc {
             var msgs = selected_messages ();
             if (msgs.length == 0) return;
             int[] ids = {};
-            bool all_outgoing = true;
             foreach (var m in msgs) {
                 ids += m.id;
-                if (!m.is_outgoing) all_outgoing = false;
             }
-            confirm_delete_ids.begin (ids, all_outgoing);
+            confirm_delete_ids.begin (ids);
         }
 
-        /** Confirmation shared by the selection bar and the item context
-            menu. Only fully-outgoing selections offer Delete for Everyone. */
-        private async void confirm_delete_ids (owned int[] ids,
-                                               bool all_outgoing) {
-            string title = ids.length == 1
-                ? "Delete Message?" : "Delete Messages?";
-            string what = ids.length == 1
-                ? "this message" : "these %d messages".printf (ids.length);
-            string body = all_outgoing
-                ? "Delete %s from your device only, or from all participants? This cannot be undone.".printf (what)
-                : "Delete %s from your device? This cannot be undone.".printf (what);
-            var choice = yield confirm_delete_options (
-                this, title, body, all_outgoing);
+        /** Confirmation shared by the selection bar and the item context menu. */
+        private async void confirm_delete_ids (owned int[] ids) {
+            var choice = yield confirm_message_deletion (this, rpc, ids);
             if (choice == DeleteChoice.FOR_ME)
                 delete_messages_ui.begin (ids, false);
             else if (choice == DeleteChoice.FOR_EVERYONE)
@@ -1380,10 +1368,9 @@ namespace Dc {
 
             vbox.append (new Gtk.Separator (Gtk.Orientation.HORIZONTAL));
 
-            bool is_outgoing = m.is_outgoing;
             var delete_btn = new PopoverButton (popover, "Delete…", true);
             delete_btn.selected.connect (() =>
-                confirm_delete_ids.begin ({ msg_id }, is_outgoing));
+                confirm_delete_ids.begin ({ msg_id }));
             vbox.append (delete_btn);
 
             popover.popup ();

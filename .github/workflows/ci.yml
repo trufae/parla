@@ -43,6 +43,10 @@ jobs:
       - name: Build
         run: meson compile -C builddir
 
+      - name: Test
+        if: matrix.a11y == true
+        run: meson test -C builddir --print-errorlogs
+
   build-deb:
     runs-on: ubuntu-24.04
     steps:
