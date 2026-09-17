@@ -113,6 +113,7 @@ sources = files(
   'src/models.vala',
   'src/message_history.vala',
   'src/message_deletion.vala',
+  'src/chat_actions.vala',
   'src/chat_row.vala',
   'src/markdown.vala',
   'src/syntax_highlight.vala',
@@ -403,7 +404,8 @@ test('message-history', message_history_test)
 
 message_deletion_test = executable(
   'message-deletion-test',
-  files('tests/message_deletion_test.vala', 'src/message_deletion.vala'),
+  files('tests/message_deletion_test.vala', 'src/message_deletion.vala',
+        'src/chat_actions.vala'),
   dependencies: [dependency('glib-2.0'), dependency('gobject-2.0'),
                  dependency('json-glib-1.0')],
   install: false,

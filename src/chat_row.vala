@@ -312,8 +312,9 @@ namespace Dc {
                 .selected.connect (() => {
                     confirm_clear_history.begin (chat_id);
                 });
-            if (entry != null && entry.can_leave_group) {
-                append_menu_button (box, popover, "Leave Group…", true)
+            if (entry != null && entry.can_leave_chat) {
+                append_menu_button (box, popover,
+                    entry.chat_type == "InBroadcast" ? "Leave Channel…" : "Leave Group…", true)
                     .selected.connect (() => { confirm_leave.begin (chat_id); });
             }
             append_menu_button (box, popover, "Delete Chat…", true)
@@ -420,7 +421,7 @@ namespace Dc {
             });
 
             dialog.contact_blocked.connect ((cid) => {
-                window.show_toast ("Contact blocked");
+                window.show_toast ("Chat blocked");
                 if (window.current_chat_id == cid)
                     window.clear_chat_view ();
                 window.request_reload_chats ();
@@ -430,32 +431,43 @@ namespace Dc {
         }
 
         private async void confirm_clear_history (int chat_id) {
+            int account_id = rpc.account_id;
             string chat_name = "this chat";
             var entry = find_chat_entry (chat_store, chat_id);
             if (entry != null) chat_name = entry.name;
 
-            if (yield confirm_chat_clear (window, chat_name, false))
-                do_clear_history.begin (chat_id);
+            try {
+                int[] ids = yield chat_message_ids_for_clear (rpc, account_id, chat_id, false);
+                if (rpc.account_id != account_id) return;
+                if (ids.length == 0) {
+                    window.show_toast ("No messages to clear");
+                    return;
+                }
+                if (yield confirm_chat_clear (window, chat_name, false, ids.length)) {
+                    if (rpc.account_id == account_id)
+                        do_clear_history.begin (chat_id, ids);
+                }
+            } catch (Error e) {
+                window.show_toast ("Could not load messages: " + e.message);
+            }
         }
 
         private async void confirm_leave (int chat_id) {
-            string chat_name = "this chat";
-            var entry = find_chat_entry (chat_store, chat_id);
-            if (entry != null) chat_name = entry.name;
-
-            var choice = yield confirm_group_leave (window, chat_name);
+            var choice = yield confirm_group_leave (window, rpc, chat_id);
             if (choice != LeaveChoice.CANCEL)
                 do_leave.begin (chat_id, choice == LeaveChoice.DELETE_HISTORY);
         }
 
         private async void do_leave (int chat_id, bool delete_history) {
+            int account_id = rpc.account_id;
             bool left = false;
             try {
                 yield rpc.leave_group (chat_id);
                 left = true;
-                if (delete_history) yield rpc.delete_chat (chat_id);
+                if (delete_history) yield rpc.delete_chat (chat_id, account_id);
+                if (rpc.account_id != account_id) return;
                 window.show_toast (delete_history
-                    ? "Group left and chat deleted" : "Group left; chat history kept");
+                    ? "Chat left and deleted" : "Chat left; history kept");
                 if (delete_history && window.current_chat_id == chat_id)
                     window.clear_chat_view ();
                 else if (window.current_chat_id == chat_id)
@@ -463,8 +475,8 @@ namespace Dc {
                 yield window.load_chats ();
             } catch (Error e) {
                 window.show_toast ((left
-                    ? "Group left, but the chat could not be deleted: "
-                    : "Could not leave group: ") + e.message);
+                    ? "Chat left, but its history could not be deleted: "
+                    : "Could not finish leaving; chat history was kept: ") + e.message);
                 window.request_reload_chats ();
                 if (window.current_chat_id == chat_id)
                     window.request_messages_reload ();
@@ -472,19 +484,19 @@ namespace Dc {
         }
 
         private async void confirm_delete (int chat_id) {
+            int account_id = rpc.account_id;
             string chat_name = "this chat";
             var entry = find_chat_entry (chat_store, chat_id);
             if (entry != null) chat_name = entry.name;
 
-            if (yield confirm_chat_deletion (window, chat_name))
-                do_delete.begin (chat_id);
+            if (yield confirm_chat_deletion (window, chat_name)) {
+                if (rpc.account_id == account_id) do_delete.begin (chat_id);
+            }
         }
 
-        private async void do_clear_history (int chat_id) {
+        private async void do_clear_history (int chat_id, int[] ids) {
             try {
-                int[] ids = yield chat_message_ids_for_clear (
-                    rpc, rpc.account_id, chat_id, false);
-                if (ids.length > 0) yield rpc.delete_messages (ids);
+                yield rpc.delete_messages (ids);
                 window.show_toast ("Chat cleared for this profile");
                 if (window.current_chat_id == chat_id)
                     window.request_messages_reload ();

@@ -124,6 +124,11 @@ namespace Dc {
                 "Use this profile on another device");
             second_device_button.clicked.connect (show_second_device_dialog);
 
+            var blocked_button = append_profile_action_row (content,
+                "Blocked Contacts", "Unblock contacts, channels and mailing lists",
+                "Manage blocked contacts for this profile");
+            blocked_button.clicked.connect (() => show_blocked_contacts.begin ());
+
             content.append (build_default_account_row ());
 
             var delete_button = append_profile_action_row (content,
@@ -487,6 +492,64 @@ namespace Dc {
             dialog.present (this);
         }
 
+        private async void show_blocked_contacts () {
+            try {
+                var contacts = yield rpc.get_blocked_contacts (account_id);
+                var dialog = new Adw.Dialog ();
+                dialog.title = "Blocked Contacts";
+                dialog.content_width = 360;
+                dialog.content_height = 420;
+                var box = new Gtk.Box (Gtk.Orientation.VERTICAL, 0);
+                box.append (new Adw.HeaderBar ());
+                var list = new Gtk.ListBox ();
+                list.selection_mode = Gtk.SelectionMode.NONE;
+                list.add_css_class ("boxed-list");
+                list.margin_start = list.margin_end = 12;
+                list.margin_top = list.margin_bottom = 12;
+                list.set_placeholder (new Gtk.Label ("No blocked contacts"));
+                var dialog_ref = WeakRef (dialog);
+                var list_ref = WeakRef (list);
+                var client = rpc;
+                int acct_id = account_id;
+                if (contacts != null) {
+                    for (uint i = 0; i < contacts.get_length (); i++) {
+                        var obj = contacts.get_object_element (i);
+                        int id = (int) json_int (obj, "id");
+                        var row = contact_row (RpcParsers.parse_contact (id, obj), false, false);
+                        var row_ref = WeakRef (row);
+                        var button = flat_button ("Unblock");
+                        button.clicked.connect (() => {
+                            var parent = dialog_ref.get () as Adw.Dialog;
+                            var rows = list_ref.get () as Gtk.ListBox;
+                            var target = row_ref.get () as Adw.ActionRow;
+                            if (parent == null || rows == null || target == null) return;
+                            target.sensitive = false;
+                            client.unblock_contact.begin (id, acct_id, (source, result) => {
+                                try {
+                                    client.unblock_contact.end (result);
+                                    rows.remove (target);
+                                } catch (Error e) {
+                                    target.sensitive = true;
+                                    show_error (parent, e.message);
+                                }
+                            });
+                        });
+                        row.add_suffix (button);
+                        list.append (row);
+                    }
+                }
+                var scroll = new Gtk.ScrolledWindow ();
+                scroll.vexpand = true;
+                scroll.hscrollbar_policy = Gtk.PolicyType.NEVER;
+                scroll.child = list;
+                box.append (scroll);
+                dialog.child = box;
+                dialog.present (this);
+            } catch (Error e) {
+                show_error (this, "Could not load blocked contacts: " + e.message);
+            }
+        }
+
         private async void confirm_delete_account () {
             string label = email_label.label.strip ();
             if (label.length == 0) {
@@ -497,7 +560,7 @@ namespace Dc {
             }
 
             if (yield confirm_action (this, "Remove Profile from This Device?",
-                "Remove \"%s\" and all its messages and keys from this device? Other devices and other participants keep their copies.\n\nWithout a backup or another device using this profile, access to it will be lost. This cannot be undone.".printf (label),
+                "Remove \"%s\" from this device, including its chats, contacts, downloaded attachments and keys? This does not delete the server account, backups or files saved elsewhere. Other devices and other participants keep their data.\n\nWithout a backup or another device using this profile, access to it will be lost. This cannot be undone.".printf (label),
                 "delete", "Remove Profile"))
                 do_delete_account.begin ();
         }
@@ -864,7 +927,7 @@ namespace Dc {
         private void show_clear_cache_info () {
             var dialog = new Adw.AlertDialog (
                 "Free Up Space",
-                "Delete messages or chats that are no longer needed. Parla removes unused attachment files automatically.\n\nDelete for Me also removes server copies and syncs deletion to other devices using this profile. It does not delete other participants’ copies. Parla cannot currently remove only downloaded files while keeping the messages."
+                "Delete messages or chats that are no longer needed. Unused attachment files are cleaned up automatically.\n\n" + DELETE_FOR_ME_DESCRIPTION + "\n\nParla cannot currently remove only downloaded files while keeping the messages. Files saved elsewhere and backups must be removed separately."
             );
             dialog.add_response ("ok", "OK");
             dialog.present (this);

@@ -597,7 +597,7 @@ namespace Dc {
             account_menu_button.child = avatar_overlay;
             account_menu_button.add_css_class ("flat");
             account_menu_button.add_css_class ("circular");
-            account_menu_button.tooltip_text = "Account Menu (%s)".printf (
+            account_menu_button.tooltip_text = "Profile Menu (%s)".printf (
                 Platform.primary_shortcut_text ("Shift+A"));
             /* GTK 4.22 widened the C setter from GtkPopover* to GtkWidget*,
                while Vala 0.56 still emits the old pointer type. The GObject
@@ -1863,7 +1863,8 @@ namespace Dc {
             }
             content_mute_icon.visible = entry != null && entry.is_muted;
             /* Contact requests swap the compose box for an Accept/Block bar. */
-            view.set_contact_request (entry != null && entry.is_contact_request);
+            view.set_contact_request (entry != null && entry.is_contact_request,
+                entry != null ? entry.chat_type : "");
 
             content_stack.visible_child_name = "chat_%d".printf (chat_id);
             view.on_activated (focus_compose);
@@ -2312,7 +2313,7 @@ namespace Dc {
                 foreach (var row in rows) account_menu_list.append (row);
                 if (rows.length == 0) {
                     var empty = new Adw.ActionRow ();
-                    empty.title = "No accounts";
+                    empty.title = "No profiles";
                     empty.subtitle = "Add a profile to get started";
                     account_menu_list.append (empty);
                 }

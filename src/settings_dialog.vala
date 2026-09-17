@@ -1826,7 +1826,7 @@ namespace Dc {
 
         private async void on_reset_settings () {
             if (yield confirm_action (app_window, "Reset Settings",
-                "Restore Parla’s preferences and close the app? Profiles and messages are kept. If a custom profile storage folder is in use, select it again after restarting",
+                "Restore Parla’s preferences and close the app? Profiles and messages are kept. If a custom profile storage folder is in use, select it again after restarting.",
                 "reset", "Reset and Close")) {
                 delete_parla_config ();
                 app_window.quit_application ();

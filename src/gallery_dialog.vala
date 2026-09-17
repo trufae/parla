@@ -291,6 +291,7 @@ namespace Dc {
             save_sel_btn.clicked.connect (() => { save_selection (); });
 
             delete_sel_btn = new Gtk.Button.with_label ("Delete…");
+            delete_sel_btn.tooltip_text = "Delete selected messages and their attachments";
             delete_sel_btn.add_css_class ("destructive-action");
             delete_sel_btn.clicked.connect (() => { delete_selection (); });
 
@@ -1368,7 +1369,7 @@ namespace Dc {
 
             vbox.append (new Gtk.Separator (Gtk.Orientation.HORIZONTAL));
 
-            var delete_btn = new PopoverButton (popover, "Delete…", true);
+            var delete_btn = new PopoverButton (popover, "Delete Message…", true);
             delete_btn.selected.connect (() =>
                 confirm_delete_ids.begin ({ msg_id }));
             vbox.append (delete_btn);
