@@ -11,6 +11,21 @@ describes the onboarding contract so that:
 See also [`rpc-server.md`](rpc-server.md) for the deeper build/packaging guidance
 (Flatpak modules, cargo vendoring, distro dependencies).
 
+## Set up the first profile
+
+Once the engine is ready, Parla shows the profile choices directly on its welcome
+screen when no configured profile exists:
+
+- **Create new profile** — choose a display name and a chatmail relay.
+- **Import from another device** — link this device to an existing profile using
+  the setup code from another device on the same network.
+- **Use classic email address** — sign in with an existing email account.
+- **Use invitation code** — create a profile from a `dcaccount:` link or QR code.
+
+Cancelling setup leaves these choices available. Removing the last configured
+profile returns to the same screen. Once a profile is ready, Parla shows its chat
+list; additional profiles can still be added through **Profiles → Add Profile**.
+
 ## How Parla finds the engine
 
 In the default `Auto` mode, Parla resolves `deltachat-rpc-server` in this order,
