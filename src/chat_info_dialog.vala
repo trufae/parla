@@ -23,7 +23,6 @@ namespace Dc {
         private ImageViewer viewer;
         private string chat_name = "";
         private bool is_channel = false;
-        private int[] member_contact_ids = {};
         private Contact? dm_contact = null;
 
         public signal void chat_deleted (int chat_id);
@@ -218,8 +217,14 @@ namespace Dc {
 
                 content.append (name_box);
 
-                string type_str = chat_type;
-                if (encrypted) type_str += " (encrypted)";
+                string type_str = chat_type == "Broadcast" || chat_type == "OutBroadcast"
+                        || chat_type == "InBroadcast" ? "Channel"
+                    : chat_type == "Group" ? "Group"
+                    : chat_type == "Mailinglist" ? "Mailing List"
+                    : json_bool (chat, "isSelfTalk") ? "Saved Messages"
+                    : json_bool (chat, "isDeviceChat") ? "Device Messages"
+                    : chat_type == "Single" ? "Direct Chat" : "Chat";
+                if (encrypted) type_str += " · End-to-end encrypted";
                 var type_lbl = new Gtk.Label (type_str);
                 type_lbl.add_css_class ("dim-label");
                 type_lbl.halign = Gtk.Align.CENTER;
@@ -317,7 +322,6 @@ namespace Dc {
 
                     for (uint i = 0; i < ids.get_length (); i++) {
                         int cid = (int) ids.get_int_element (i);
-                        member_contact_ids += cid;
                         var contact_obj = yield rpc.get_contact_for (
                             rpc.account_id, cid);
                         var contact = contact_obj != null
@@ -347,34 +351,34 @@ namespace Dc {
                         () => show_duplicate_group_dialog.begin ());
                 }
 
-                add_action_row (actions_list, "Clear Chat",
-                    "Remove messages from this device",
+                add_action_row (actions_list, "Clear Chat…",
+                    "Delete messages for this profile and keep the chat",
                     "edit-clear-symbolic",
                     () => confirm_clear_history.begin (false));
 
-                add_action_row (actions_list,
-                    "Clear Sent Messages for Everyone",
-                    "Delete messages you sent for all participants",
-                    "edit-delete-symbolic",
-                    () => confirm_clear_history.begin (true));
+                if (MessageDeletion.can_delete_in_chat (chat)) {
+                    add_action_row (actions_list,
+                        "Delete Sent Messages for Everyone…",
+                        "Ask other participants to delete messages sent by this profile",
+                        "edit-delete-symbolic",
+                        () => confirm_clear_history.begin (true));
+                }
 
-                if (is_group) {
-                    add_action_row (actions_list, "Leave Group",
-                        "Stop receiving messages and remove the chat",
+                if (chat_type == "Group" && encrypted
+                        && json_bool (chat, "selfInGroup")
+                        && !json_bool (chat, "isContactRequest")) {
+                    add_action_row (actions_list, "Leave Group…",
+                        "Stop receiving messages, with the option to keep the history",
                         "system-log-out-symbolic",
                         () => confirm_leave_group.begin ());
-                    add_action_row (actions_list, "Disband Group",
-                        "Remove all members and delete messages",
-                        "edit-delete-symbolic",
-                        () => confirm_disband_group.begin ());
                 }
 
                 if (dm_contact != null) {
                     actions_list.append (build_contact_block_row (dm_contact));
                 }
 
-                add_action_row (actions_list, "Delete for Me",
-                    "Remove from your chat list", "user-trash-symbolic",
+                add_action_row (actions_list, "Delete Chat…",
+                    "Delete the chat and its messages for this profile", "user-trash-symbolic",
                     () => confirm_delete_chat.begin ());
 
                 content.append (actions_list);
@@ -576,31 +580,26 @@ namespace Dc {
         }
 
         private async void confirm_clear_history (bool for_all) {
-            string title = for_all ? "Clear Sent Messages for Everyone" : "Clear Chat";
-            string body = for_all
-                ? "Delete messages you sent for all participants? Messages from other people can only be cleared from your device."
-                : "Remove all messages from this device? The chat will stay in your conversation list.";
-            string action_label = for_all ? "Clear Sent Messages" : "Clear Chat";
-            if (yield confirm_action (
-                    this, title, body, "clear", action_label))
+            if (yield confirm_chat_clear (this, chat_name, for_all))
                 do_clear_history.begin (for_all);
         }
 
         private async void do_clear_history (bool for_all) {
             try {
-                yield delete_all_messages (for_all);
+                int[] ids = yield chat_message_ids_for_clear (
+                    rpc, rpc.account_id, chat_id, for_all);
+                if (ids.length == 0) {
+                    app_window.show_toast (for_all
+                        ? "No sent messages can be deleted for everyone"
+                        : "No messages to clear");
+                    return;
+                }
+                if (for_all) yield rpc.delete_messages_for_all (ids);
+                else yield rpc.delete_messages (ids);
                 chat_changed ();
             } catch (Error e) {
                 show_error (this, e.message);
             }
-        }
-
-        private async void delete_all_messages (bool for_all) throws Error {
-            int[] ids = yield chat_message_ids_for_clear (
-                rpc, rpc.account_id, chat_id, for_all);
-            if (ids.length == 0) return;
-            if (for_all) yield rpc.delete_messages_for_all (ids);
-            else yield rpc.delete_messages (ids);
         }
 
         /* Query the member list at activation time rather than reusing the
@@ -649,53 +648,34 @@ namespace Dc {
         }
 
         private async void confirm_leave_group () {
-            if (yield confirm_action (this, "Leave Group",
-                "Leave \"%s\"? You will stop receiving messages and the chat will be removed from your list.".printf (chat_name),
-                "leave", "Leave"))
-                do_leave_group.begin ();
+            var choice = yield confirm_group_leave (this, chat_name);
+            if (choice != LeaveChoice.CANCEL)
+                do_leave_group.begin (choice == LeaveChoice.DELETE_HISTORY);
         }
 
-        private async void do_leave_group () {
+        private async void do_leave_group (bool delete_history) {
+            bool left = false;
             try {
                 yield rpc.leave_group (chat_id);
-                yield rpc.delete_chat (chat_id);
-                chat_deleted (chat_id);
-                this.close ();
-            } catch (Error e) {
-                show_error (this, e.message);
-            }
-        }
-
-        private async void confirm_disband_group () {
-            if (yield confirm_action (this, "Disband Group",
-                "Remove all members from \"%s\" and delete your sent messages for everyone? Other messages will only be removed locally.".printf (chat_name),
-                "disband", "Disband"))
-                do_disband_group.begin ();
-        }
-
-        private async void do_disband_group () {
-            try {
-                foreach (int cid in member_contact_ids) {
-                    if (cid != 1) {
-                        yield rpc.remove_contact_from_chat (chat_id, cid);
-                    }
+                left = true;
+                if (delete_history) {
+                    yield rpc.delete_chat (chat_id);
+                    chat_deleted (chat_id);
+                } else {
+                    chat_changed ();
+                    app_window.show_toast ("Group left; chat history kept");
                 }
-
-                yield delete_all_messages (true);
-                yield rpc.leave_group (chat_id);
-                yield rpc.delete_chat (chat_id);
-
-                chat_deleted (chat_id);
                 this.close ();
             } catch (Error e) {
-                show_error (this, e.message);
+                if (left) chat_changed ();
+                show_error (this, (left
+                    ? "Group left, but the chat could not be deleted: "
+                    : "Could not leave group: ") + e.message);
             }
         }
 
         private async void confirm_delete_chat () {
-            if (yield confirm_action (this, "Delete for Me",
-                "Remove \"%s\" from your chat list? You may still receive messages if you are a member.".printf (chat_name),
-                "delete", "Delete"))
+            if (yield confirm_chat_deletion (this, chat_name))
                 do_delete_chat_from_dialog.begin ();
         }
 

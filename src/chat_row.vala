@@ -298,25 +298,25 @@ namespace Dc {
                     });
             }
             append_menu_button (box, popover,
-                has_unread ? "Mark as read" : "Mark as unread",
+                has_unread ? "Mark as Read" : "Mark as Unread",
                 false, has_unread || chat_id != window.current_chat_id)
                 .selected.connect (() => {
                     set_unread_state.begin (chat_id, !has_unread);
                 });
             append_menu_button (box, popover, "View Media")
                 .selected.connect (() => { show_media (chat_id); });
-            append_menu_button (box, popover, "Details…")
+            append_menu_button (box, popover, "Chat Details")
                 .selected.connect (() => { show_info (chat_id); });
             box.append (new Gtk.Separator (Gtk.Orientation.HORIZONTAL));
             append_menu_button (box, popover, "Clear Chat…", true)
                 .selected.connect (() => {
                     confirm_clear_history.begin (chat_id);
                 });
-            if (entry != null && entry.kind == ChatKind.GROUP) {
-                append_menu_button (box, popover, "Leave…", true)
+            if (entry != null && entry.can_leave_group) {
+                append_menu_button (box, popover, "Leave Group…", true)
                     .selected.connect (() => { confirm_leave.begin (chat_id); });
             }
-            append_menu_button (box, popover, "Delete…", true)
+            append_menu_button (box, popover, "Delete Chat…", true)
                 .selected.connect (() => { confirm_delete.begin (chat_id); });
 
             popover.child = box;
@@ -434,10 +434,8 @@ namespace Dc {
             var entry = find_chat_entry (chat_store, chat_id);
             if (entry != null) chat_name = entry.name;
 
-            if (yield confirm_action (window, "Clear Chat",
-                "Remove all messages in \"%s\" from this device? The chat will stay in your conversation list.".printf (chat_name),
-                "clear", "Clear Chat"))
-                do_clear_history.begin (chat_id, false);
+            if (yield confirm_chat_clear (window, chat_name, false))
+                do_clear_history.begin (chat_id);
         }
 
         private async void confirm_leave (int chat_id) {
@@ -445,22 +443,31 @@ namespace Dc {
             var entry = find_chat_entry (chat_store, chat_id);
             if (entry != null) chat_name = entry.name;
 
-            if (yield confirm_action (window, "Leave Group",
-                "Leave \"%s\"? You will stop receiving messages and the chat will be removed from your list.".printf (chat_name),
-                "leave", "Leave"))
-                do_leave.begin (chat_id);
+            var choice = yield confirm_group_leave (window, chat_name);
+            if (choice != LeaveChoice.CANCEL)
+                do_leave.begin (chat_id, choice == LeaveChoice.DELETE_HISTORY);
         }
 
-        private async void do_leave (int chat_id) {
+        private async void do_leave (int chat_id, bool delete_history) {
+            bool left = false;
             try {
                 yield rpc.leave_group (chat_id);
-                yield rpc.delete_chat (chat_id);
-                window.show_toast ("You left the chat");
-                if (window.current_chat_id == chat_id)
+                left = true;
+                if (delete_history) yield rpc.delete_chat (chat_id);
+                window.show_toast (delete_history
+                    ? "Group left and chat deleted" : "Group left; chat history kept");
+                if (delete_history && window.current_chat_id == chat_id)
                     window.clear_chat_view ();
+                else if (window.current_chat_id == chat_id)
+                    window.request_messages_reload ();
                 yield window.load_chats ();
             } catch (Error e) {
-                window.show_toast ("Leave failed: " + e.message);
+                window.show_toast ((left
+                    ? "Group left, but the chat could not be deleted: "
+                    : "Could not leave group: ") + e.message);
+                window.request_reload_chats ();
+                if (window.current_chat_id == chat_id)
+                    window.request_messages_reload ();
             }
         }
 
@@ -469,25 +476,16 @@ namespace Dc {
             var entry = find_chat_entry (chat_store, chat_id);
             if (entry != null) chat_name = entry.name;
 
-            if (yield confirm_action (window, "Delete Chat",
-                "Remove \"%s\" from your conversation list? You may still receive new messages if you are a member.".printf (chat_name),
-                "delete", "Delete"))
+            if (yield confirm_chat_deletion (window, chat_name))
                 do_delete.begin (chat_id);
         }
 
-        private async void do_clear_history (int chat_id, bool for_all) {
+        private async void do_clear_history (int chat_id) {
             try {
                 int[] ids = yield chat_message_ids_for_clear (
-                    rpc, rpc.account_id, chat_id, for_all);
-                if (ids.length > 0) {
-                    if (for_all) yield rpc.delete_messages_for_all (ids);
-                    else yield rpc.delete_messages (ids);
-                } else if (for_all) {
-                    window.show_toast ("No sent messages to clear for everyone");
-                    return;
-                }
-                window.show_toast (for_all
-                    ? "Sent messages cleared for everyone" : "Chat cleared");
+                    rpc, rpc.account_id, chat_id, false);
+                if (ids.length > 0) yield rpc.delete_messages (ids);
+                window.show_toast ("Chat cleared for this profile");
                 if (window.current_chat_id == chat_id)
                     window.request_messages_reload ();
                 window.request_reload_chats ();

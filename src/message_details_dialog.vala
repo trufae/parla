@@ -518,11 +518,7 @@ namespace Dc {
         }
 
         private async void confirm_delete_message () {
-            string body = msg.is_outgoing
-                ? "Delete this message from your device only, or from all participants? This cannot be undone."
-                : "Delete this message from your device? This cannot be undone.";
-            var choice = yield confirm_delete_options (
-                this, "Delete Message?", body, msg.is_outgoing);
+            var choice = yield confirm_message_deletion (this, rpc, { msg.id });
             if (choice == DeleteChoice.CANCEL) return;
             actions.delete_message.begin (
                 msg.id, choice == DeleteChoice.FOR_EVERYONE);

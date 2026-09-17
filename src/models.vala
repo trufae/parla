@@ -1,6 +1,11 @@
 namespace Dc {
 
     public enum DeleteChoice { CANCEL, FOR_ME, FOR_EVERYONE }
+    public enum LeaveChoice { CANCEL, KEEP_HISTORY, DELETE_HISTORY }
+
+    // Manual deletion is synced by core; it is not a device-only cache purge.
+    public const string DELETE_FOR_ME_DESCRIPTION =
+        "Messages are deleted from this device and the server. Deletion syncs to other devices using this profile. Other participants keep their copies.";
 
     /** Flat, left-aligned button for hand-built popover menus. It closes
         its popover before emitting selected from an idle. */
@@ -126,9 +131,24 @@ namespace Dc {
         return entry.text;
     }
 
-    public static async DeleteChoice confirm_delete_options (
-            Gtk.Widget parent, string title, string body,
-            bool allow_delete_for_everyone) {
+    public static async DeleteChoice confirm_message_deletion (
+            Gtk.Widget parent, RpcClient rpc, int[] ids) {
+        if (ids.length == 0) return DeleteChoice.CANCEL;
+        bool allow_delete_for_everyone;
+        try {
+            allow_delete_for_everyone = yield can_delete_messages_for_everyone (
+                rpc, ids);
+        } catch (Error e) {
+            show_error (parent, "Could not check message deletion options: " + e.message);
+            return DeleteChoice.CANCEL;
+        }
+        string title = ids.length == 1 ? "Delete Message?"
+            : "Delete %d Messages?".printf (ids.length);
+        string body = "Delete for Me: " + DELETE_FOR_ME_DESCRIPTION;
+        if (allow_delete_for_everyone) {
+            body += "\n\nDelete for Everyone also asks other participants’ apps to delete these messages. Saved or forwarded copies may remain.";
+        }
+        body += "\n\nThis cannot be undone.";
         var d = new Adw.AlertDialog (title, body);
         d.add_response ("cancel", "Cancel");
         d.add_response ("delete_me", "Delete for Me");
@@ -144,6 +164,56 @@ namespace Dc {
         if (response == "delete_me") return DeleteChoice.FOR_ME;
         if (response == "delete_all") return DeleteChoice.FOR_EVERYONE;
         return DeleteChoice.CANCEL;
+    }
+
+    public static async bool can_delete_messages_for_everyone (
+            RpcClient rpc, int[] ids) throws Error {
+        if (ids.length == 0) return false;
+        int account_id = rpc.account_id;
+        var messages = yield rpc.get_messages_for (account_id, ids);
+        if (messages == null) return false;
+        int chat_id = MessageDeletion.common_chat (messages, ids);
+        if (chat_id == 0) return false;
+        var chat = yield rpc.get_full_chat_by_id_for (account_id, chat_id);
+        return chat != null && MessageDeletion.can_delete_in_chat (chat);
+    }
+
+    public static async bool confirm_chat_deletion (Gtk.Widget parent,
+                                                    string name) {
+        return yield confirm_action (parent, "Delete Chat?",
+            "Delete \"%s\" and its messages?\n\n".printf (name)
+            + DELETE_FOR_ME_DESCRIPTION
+            + "\n\nThis does not leave a group or block a contact. New messages may make the chat appear again. This cannot be undone.",
+            "delete", "Delete for Me");
+    }
+
+    public static async bool confirm_chat_clear (Gtk.Widget parent,
+                                                string name, bool for_all) {
+        string body = for_all
+            ? "Delete encrypted messages sent by this profile in \"%s\" for everyone? Other participants’ apps are asked to delete them, but saved or forwarded copies may remain. Messages from other people and unencrypted messages are kept.".printf (name)
+            : "Clear the messages in \"%s\"?\n\n".printf (name)
+                + DELETE_FOR_ME_DESCRIPTION;
+        return yield confirm_action (parent,
+            for_all ? "Delete Sent Messages for Everyone?" : "Clear Chat?",
+            body + "\n\nThe chat stays in the chat list. This cannot be undone.",
+            "clear", for_all ? "Delete for Everyone" : "Clear for Me");
+    }
+
+    public static async LeaveChoice confirm_group_leave (Gtk.Widget parent,
+                                                         string name) {
+        var d = new Adw.AlertDialog ("Leave Group?",
+            "Leave \"%s\" and stop receiving new messages? Other members will be notified.\n\nLeave Group keeps the chat history. Leave and Delete also deletes the chat and its messages for this profile, including on linked devices. Other members keep their history. Deletion cannot be undone.".printf (name));
+        d.add_response ("cancel", "Cancel");
+        d.add_response ("leave", "Leave Group");
+        d.add_response ("delete", "Leave and Delete");
+        d.set_response_appearance ("leave", Adw.ResponseAppearance.DESTRUCTIVE);
+        d.set_response_appearance ("delete", Adw.ResponseAppearance.DESTRUCTIVE);
+        d.default_response = "cancel";
+        d.close_response = "cancel";
+        string response = yield d.choose (parent, null);
+        if (response == "leave") return LeaveChoice.KEEP_HISTORY;
+        if (response == "delete") return LeaveChoice.DELETE_HISTORY;
+        return LeaveChoice.CANCEL;
     }
 
     /** Skeleton for hand-built popover menus: a no-arrow popover pointing
@@ -305,9 +375,8 @@ namespace Dc {
         foreach (int msg_id in all_ids) {
             string key = msg_id.to_string ();
             if (!map.has_member (key)) continue;
-            var msg = RpcParsers.parse_message (
-                map.get_object_member (key), rpc.self_email);
-            if (msg.is_outgoing) ids += msg_id;
+            if (MessageDeletion.can_delete_for_everyone (
+                    map.get_object_member (key))) ids += msg_id;
         }
         return ids;
     }
@@ -407,6 +476,7 @@ namespace Dc {
         public ChatKind kind { get; set; default = ChatKind.UNKNOWN; }
         public bool is_muted { get; set; default = false; }
         public bool is_contact_request { get; set; default = false; }
+        public bool can_leave_group { get; set; default = false; }
         public bool is_pinned { get; set; default = false; }
         public bool is_archived { get; set; default = false; }
         public bool was_seen_recently { get; set; default = false; }
@@ -429,6 +499,7 @@ namespace Dc {
                 && kind == o.kind
                 && is_muted == o.is_muted
                 && is_contact_request == o.is_contact_request
+                && can_leave_group == o.can_leave_group
                 && is_pinned == o.is_pinned
                 && is_archived == o.is_archived
                 && was_seen_recently == o.was_seen_recently
