@@ -65,14 +65,14 @@ needs conditional compilation and linking stays trivial.
   card shows the app's real name and icon read from the archive. Running
   instances are still limited to one window per app.
 - Besides the compile-time option there is a runtime switch: **Settings →
-  Advanced → Webxdc apps** (`webxdc_apps` in `settings.ini`). Disabled,
+  Advanced → In-Chat Apps** (`webxdc_apps` in `settings.ini`). Disabled,
   the app card stays recognizable and the dialog explains why it cannot
   start the app, offering only **Download File** and **Cancel**. Builds
   compiled without Webxdc support use the same download-only flow.
 - The same section has opt-in switches for direct Internet access,
   WebAssembly, WebGL, developer tools, and (on WebKitGTK) hardware
   acceleration. All default to off, including when upgrading from a version
-  which did not have these settings. **Use safest** resets every capability
+  which did not have these settings. **Restrict** resets every capability
   at once. Changing any security switch closes running app windows so the next
   launch cannot retain an older, broader policy.
 - Sending an `.xdc` file from Parla announces it with the `Webxdc`

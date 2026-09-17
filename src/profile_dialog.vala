@@ -93,7 +93,7 @@ namespace Dc {
             this.settings = settings;
             this.events = events;
             this.account_id = acct_id > 0 ? acct_id : rpc.account_id;
-            this.title = "My Profile";
+            this.title = "Profile";
             this.content_width = 420;
             this.content_height = 560;
 
@@ -115,20 +115,20 @@ namespace Dc {
             content.append (build_connectivity_storage_section ());
             content.append (new Gtk.Separator (Gtk.Orientation.HORIZONTAL));
 
-            var relays_button = append_profile_action_row (content, "Relays...",
-                "Manage chatmail relays for this profile", "Manage transports");
+            var relays_button = append_profile_action_row (content, "Relays",
+                "Manage chatmail relays for this profile", "Manage the servers used by this profile");
             relays_button.clicked.connect (show_relays_dialog);
             var second_device_button = append_profile_action_row (
-                content, "Add Second Device",
+                content, "Add Second Device…",
                 "Show a setup QR code for another device",
-                "Transfer to another device");
+                "Use this profile on another device");
             second_device_button.clicked.connect (show_second_device_dialog);
 
             content.append (build_default_account_row ());
 
             var delete_button = append_profile_action_row (content,
-                "Delete Profile",
-                "Delete local profile data", "Delete local profile data",
+                "Remove Profile…",
+                "Remove this profile from this device", "Remove the profile and its messages from this device",
                 "destructive-action");
             delete_button.clicked.connect (() => confirm_delete_account.begin ());
 
@@ -164,7 +164,7 @@ namespace Dc {
             avatar_widget.halign = Gtk.Align.CENTER;
             box.append (avatar_widget);
 
-            var avatar_btn = new Gtk.Button.with_label ("Change Avatar");
+            var avatar_btn = new Gtk.Button.with_label ("Change Profile Picture…");
             avatar_btn.halign = Gtk.Align.CENTER;
             avatar_btn.add_css_class ("flat");
             avatar_btn.clicked.connect (() => {
@@ -191,8 +191,8 @@ namespace Dc {
 
             status_entry = new Gtk.Entry ();
             status_entry.hexpand = true;
-            status_entry.placeholder_text = "Your status message";
-            attach_field (fields_grid, 1, "Status", status_entry);
+            status_entry.placeholder_text = "About this profile";
+            attach_field (fields_grid, 1, "Bio", status_entry);
 
             email_label = dim_label ("");
             email_label.selectable = true;
@@ -236,7 +236,7 @@ namespace Dc {
             default_make_button = new Gtk.Button.with_label ("Make Default");
             default_make_button.halign = Gtk.Align.END;
             default_make_button.valign = Gtk.Align.CENTER;
-            default_make_button.tooltip_text = "Open this account when Parla starts";
+            default_make_button.tooltip_text = "Open This Profile When Parla Starts";
             default_make_button.clicked.connect (make_account_default);
             box.append (default_make_button);
 
@@ -255,7 +255,7 @@ namespace Dc {
             labels.append (title);
 
             read_receipts_caption_label = dim_label (
-                "This affects this profile in every Delta Chat client, not only Parla.",
+                "Let contacts know when their messages have been read. This setting syncs to other devices using this profile.",
                 true);
             labels.append (read_receipts_caption_label);
             box.append (labels);
@@ -303,8 +303,9 @@ namespace Dc {
         }
 
         private void update_read_receipts_caption (bool enabled) {
-            read_receipts_caption_label.label = (enabled ? "Enabled. " : "Disabled. ")
-                + "This affects this profile in every Delta Chat client, not only Parla.";
+            read_receipts_caption_label.label = enabled
+                ? "Contacts can see when their messages have been read. This setting syncs to other devices using this profile."
+                : "Read receipts are not sent. This setting syncs to other devices using this profile.";
             read_receipts_caption_label.tooltip_text = null;
         }
 
@@ -355,15 +356,15 @@ namespace Dc {
                 && settings.default_account_addr.down ().strip ()
                     == account_addr.down ().strip ();
             default_caption_label.label = is_default
-                ? "This is your default account, opened when Parla starts"
-                : "Open this account automatically when Parla starts";
+                ? "This profile opens when Parla starts"
+                : "Open this profile automatically when Parla starts";
             default_make_button.visible = loaded && !is_default;
         }
 
         private Gtk.Widget build_connectivity_storage_section () {
             var section = new Gtk.Box (Gtk.Orientation.VERTICAL, 8);
 
-            section.append (heading_label ("Storage & Connectivity"));
+            section.append (heading_label ("Storage and Connection"));
 
             var conn_row = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 8);
             var conn_icon = new Gtk.Image.from_icon_name ("network-transmit-receive-symbolic");
@@ -393,8 +394,8 @@ namespace Dc {
             });
             actions.append (refresh_btn);
 
-            var details_btn = new Gtk.Button.with_label ("Details…");
-            details_btn.tooltip_text = "Show storage by conversation";
+            var details_btn = new Gtk.Button.with_label ("Storage Details");
+            details_btn.tooltip_text = "Show Storage by Chat";
             details_btn.clicked.connect (() => {
                 var dialog = new StorageDetailsDialog (rpc, account_id);
                 dialog.present (this);
@@ -492,12 +493,12 @@ namespace Dc {
                 label = name_entry.text.strip ();
             }
             if (label.length == 0) {
-                label = "this account";
+                label = "this profile";
             }
 
-            if (yield confirm_action (this, "Delete Profile",
-                "Delete \"%s\"? This will remove all local data for this profile.".printf (label),
-                "delete", "Delete Profile"))
+            if (yield confirm_action (this, "Remove Profile from This Device?",
+                "Remove \"%s\" and all its messages and keys from this device? Other devices and other participants keep their copies.\n\nWithout a backup or another device using this profile, access to it will be lost. This cannot be undone.".printf (label),
+                "delete", "Remove Profile"))
                 do_delete_account.begin ();
         }
 
@@ -601,7 +602,7 @@ namespace Dc {
             local_total_label = dim_label ("Scanning local files…");
             content.append (local_total_label);
 
-            clear_cache_btn = new Gtk.Button.with_label ("Clear Local Cache…");
+            clear_cache_btn = new Gtk.Button.with_label ("How to Free Up Space");
             clear_cache_btn.halign = Gtk.Align.START;
             clear_cache_btn.tooltip_text = "Explain what can be safely cleared";
             clear_cache_btn.clicked.connect (show_clear_cache_info);
@@ -609,7 +610,7 @@ namespace Dc {
 
             content.append (new Gtk.Separator (Gtk.Orientation.HORIZONTAL));
 
-            content.append (heading_label ("Conversations by Storage Size"));
+            content.append (heading_label ("Chats by Storage Size"));
 
             scan_status_label = dim_label ("Preparing scan…");
             content.append (scan_status_label);
@@ -636,7 +637,7 @@ namespace Dc {
             known_attachment_bytes = 0;
             unique_local_file_bytes = 0;
             global_local_paths.remove_all ();
-            scan_status_label.label = "Scanning conversations…";
+            scan_status_label.label = "Scanning chats…";
             local_total_label.label = "Scanning local files…";
 
             try {
@@ -670,13 +671,13 @@ namespace Dc {
                         StorageQuota.format_mb (unique_local_file_bytes),
                         StorageQuota.format_mb (known_attachment_bytes));
                 local_total_label.label = account_bytes > 0
-                    ? "%s local account data · %s".printf (
+                    ? "%s local profile data · %s".printf (
                         StorageQuota.format_mb (account_bytes), file_summary)
                     : file_summary;
 
                 scan_status_label.label = usages.length == 0
-                    ? "No downloaded message files found in conversations."
-                    : "%d conversations with local or attached files.".printf (usages.length);
+                    ? "No downloaded files found in chats"
+                    : "%d chats with local or attached files".printf (usages.length);
             } catch (Error e) {
                 scan_status_label.label = "Storage scan failed: " + e.message;
             }
@@ -862,8 +863,8 @@ namespace Dc {
 
         private void show_clear_cache_info () {
             var dialog = new Adw.AlertDialog (
-                "Clear Local Cache",
-                "Parla can show downloaded local files, but Delta Chat does not expose a safe cache-only purge for message blobs through this RPC server. Deleting those files directly can break attachments and forwarded messages.\n\nUse the conversation list above to decide which chats or messages to remove. Delta Chat housekeeping then cleans unused local files."
+                "Free Up Space",
+                "Delete messages or chats that are no longer needed. Parla removes unused attachment files automatically.\n\nDelete for Me also removes server copies and syncs deletion to other devices using this profile. It does not delete other participants’ copies. Parla cannot currently remove only downloaded files while keeping the messages."
             );
             dialog.add_response ("ok", "OK");
             dialog.present (this);

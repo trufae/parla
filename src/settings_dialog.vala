@@ -692,6 +692,7 @@ namespace Dc {
         public SettingsDialog (Window window, RpcClient rpc) {
             this.app_window = window;
             this.rpc = rpc;
+            this.title = "Settings";
             this.content_width = 640;
             this.content_height = 576;
 
@@ -721,7 +722,7 @@ namespace Dc {
 
             string[] theme_labels = { "System", "Light", "Dark" };
             row_combo (appearance_group,
-                "GTK theme", "Override the system light or dark theme",
+                "Appearance", "Use the system style or choose light or dark",
                 theme_labels, (uint) app_window.settings.theme_override, (sel) => {
                 app_window.settings.save_theme_override ((ThemeOverride) sel);
                 apply_theme_override ();
@@ -736,16 +737,16 @@ namespace Dc {
                 app_window.settings.save_code_theme ((CodeTheme) sel);
             });
 
-            string[] style_labels = { "Bubbles", "IRC", "Workspace" };
+            string[] style_labels = { "Bubbles", "Compact", "Rows" };
             row_combo (appearance_group,
-                "Message style", "Chat bubbles, compact IRC lines or workspace rows",
+                "Message layout", "Choose how messages are arranged",
                 style_labels, (uint) app_window.settings.message_style, (sel) => {
                 app_window.settings.save_message_style ((MessageStyle) sel);
             });
 
-            string[] avatar_labels = { "none", "other", "both" };
+            string[] avatar_labels = { "None", "Other People", "Everyone" };
             row_combo (appearance_group,
-                "Bubble avatars", "Show small avatars beside message bubbles",
+                "Profile pictures", "Choose whose picture appears beside message bubbles",
                 avatar_labels, (uint) app_window.settings.bubble_avatar_display,
                 (sel) => {
                 app_window.settings.save_bubble_avatar_display (
@@ -753,8 +754,8 @@ namespace Dc {
             });
 
             var direct_avatar_row = action_row (
-                "Use avatars in 1:1 chats",
-                "Use the bubble avatar setting in direct conversations");
+                "Show profile pictures in direct chats",
+                "Apply the profile picture setting to direct chats too");
             var direct_avatar_check = new Gtk.CheckButton ();
             direct_avatar_check.active =
                 app_window.settings.bubble_avatars_in_direct_chats;
@@ -767,14 +768,14 @@ namespace Dc {
             appearance_group.add (direct_avatar_row);
 
             font_type_row = action_row (
-                "Conversation font",
+                "Message font",
                 "Use the system font or choose another family, style and size");
             font_type_row.title_lines = 1;
             font_type_row.subtitle_lines = 2;
             var font_dialog = new Gtk.FontDialog ();
             font_dialog.title = "Choose Font";
             font_dialog.modal = true;
-            font_btn = flat_button ("Choose");
+            font_btn = flat_button ("Choose…");
             font_btn.tooltip_text = "Choose a font family, style and size";
             font_btn.clicked.connect (() => { on_choose_font.begin (font_dialog); });
             font_type_row.add_suffix (font_btn);
@@ -841,41 +842,40 @@ namespace Dc {
         }
 
         private void build_behavior_section (Adw.PreferencesPage page) {
-            var behavior_group = settings_group (page, "Behavior");
+            var behavior_group = settings_group (page, "Chats");
 
             string[] dblclick_labels = {
-                "Reply to message", "React with ❤️", "React with 👍",
-                "Open user profile", "Open context menu", "Do nothing"
+                "Reply to Message", "React with ❤️", "React with 👍",
+                "Show Contact Details", "Show Message Menu", "Do Nothing"
             };
 
             uint dblclick_selected = swap_dblclick_45 (
                 (uint) app_window.settings.double_click_action);
             row_combo (behavior_group,
-                "Double-click on message",
+                "Double-click action",
                 "Action when a message is double-clicked",
                 dblclick_labels, dblclick_selected, (sel) => {
                 app_window.settings.save_double_click_action (
                     (int) swap_dblclick_45 (sel));
             });
 
-            string[] md_labels = { "Enabled", "Stripped", "Disabled" };
+            string[] md_labels = { "Format Text", "Hide Formatting Marks", "Show Original Text" };
             row_combo (behavior_group,
-                "Markdown rendering", "Render, strip, or preserve markdown syntax",
+                "Message formatting", "Choose how Markdown formatting is displayed",
                 md_labels, (uint) app_window.settings.markdown_mode, (sel) => {
                 app_window.settings.save_markdown_mode (
                     (MarkdownMode) sel);
             });
 
             add_switch_row (behavior_group,
-                "Shift+Return sends message",
-                "When on, Return inserts a newline and Shift+Return sends",
+                "Send with Shift+Enter",
+                "Enter inserts a new line; Shift+Enter sends the message",
                 app_window.settings.shift_enter_sends,
                 (v) => app_window.settings.save_shift_enter_sends (v));
 
             var audio_row = action_row (
-                "System audio tools",
-                "Prefer system programs for voice playback and recording "
-                + "instead of Parla's GTK/GStreamer media path");
+                "Use External Audio Tools",
+                "Use installed audio programs for voice playback and recording");
             var audio_switch = row_switch (
                 audio_row, app_window.settings.system_audio_player);
             audio_switch.notify["active"].connect (() => {
@@ -883,7 +883,7 @@ namespace Dc {
             });
 
             add_switch_row (behavior_group,
-                Platform.is_macos () ? "Minimize to menu bar" : "Minimize to status bar",
+                "Keep Running in Background",
                 Platform.is_macos ()
                     ? "Closing the window keeps Parla running as a menu bar icon; "
                     + "the Dock icon stays visible and notifications still appear"
@@ -893,8 +893,8 @@ namespace Dc {
                 (v) => app_window.set_minimize_to_tray (v));
 
             var sticker_row = action_row (
-                "Sticker animations",
-                "Auto-play animated stickers; clicking a sticker toggles playback");
+                "Animate Stickers",
+                "Play stickers automatically; click a sticker to pause or resume");
             var sticker_switch = row_switch (
                 sticker_row, app_window.settings.animate_stickers);
             sticker_switch.notify["active"].connect (() => {
@@ -905,8 +905,8 @@ namespace Dc {
                 "Never", "256 KB", "512 KB", "1 MB", "2 MB", "5 MB", "Unlimited"
             };
             var download_combo = row_combo (behavior_group,
-                "Auto-download attachments",
-                "Larger attachments wait for approval; applies to all profiles",
+                "Automatic download limit",
+                "Download attachments up to this size for all profiles; larger files can be downloaded manually",
                 download_labels, auto_download_limit_index (
                     app_window.settings.auto_download_limit));
             download_combo.notify["selected"].connect (() => {
@@ -917,7 +917,7 @@ namespace Dc {
             bool whisper_found = Transcriber.available ();
             var transcription_row = action_row (
                 "Voice transcription",
-                whisper_found ? "Whisper is available in PATH" : "Whisper was not found in PATH");
+                whisper_found ? "Transcribe voice messages on this device with Whisper" : "Install Whisper to transcribe voice messages on this device");
             var transcription_status = new Gtk.Label (
                 whisper_found ? "Available" : "Not found");
             transcription_status.valign = Gtk.Align.CENTER;
@@ -932,14 +932,14 @@ namespace Dc {
         private void build_notifications_section (Adw.PreferencesPage page) {
             var notifications_group = settings_group (page, "Notifications");
             add_switch_row (notifications_group,
-                "Desktop notifications",
-                "Notify on incoming messages when the window is not focused",
+                "Desktop Notifications",
+                "Show notifications for new messages when Parla is not the active window",
                 app_window.settings.notifications_enabled,
                 (v) => app_window.set_notifications_enabled (v));
 
             add_switch_row (notifications_group,
-                "Show message contents in notifications",
-                "Include sender text and attachment names in desktop notifications",
+                "Show Message Content",
+                "Include message text and attachment names in notifications",
                 app_window.settings.show_notification_contents,
                 (v) => app_window.settings.save_show_notification_contents (v));
         }
@@ -947,25 +947,29 @@ namespace Dc {
         private void build_chatmail_core_section (Adw.PreferencesPage page) {
             var chatmail_group = settings_group (page, "Chatmail Core");
 
-            string[] rpc_source_labels = { "Auto", "Custom" };
+            string[] rpc_source_labels = { "Automatic", "Custom" };
             rpc_source_dropdown = row_combo (chatmail_group, "Source", null,
                 rpc_source_labels,
                 (uint) app_window.settings.effective_rpc_server_source ());
             rpc_row = rpc_source_dropdown;
             rpc_source_dropdown.notify["selected"].connect (on_rpc_source_changed);
 
-            rpc_choose_btn = flat_button ("Choose");
+            rpc_choose_btn = flat_button ("Choose…");
             rpc_choose_btn.tooltip_text = "Choose a Chatmail Core binary";
             rpc_choose_btn.clicked.connect (() => { on_browse_rpc_server.begin (); });
             rpc_row.add_suffix (rpc_choose_btn);
 
+            var update_row = action_row ("Check for Updates",
+                "Check for a new Chatmail Core version");
             rpc_check_btn = flat_button ("Check");
             rpc_check_btn.tooltip_text = "Check for the latest Chatmail Core release";
             rpc_check_btn.clicked.connect (() => { check_rpc_updates.begin (); });
-            rpc_row.add_suffix (rpc_check_btn);
+            update_row.add_suffix (rpc_check_btn);
+            update_row.activatable_widget = rpc_check_btn;
+            chatmail_group.add (update_row);
 
             var rpc_autocheck_row = action_row (
-                "Check for updates on startup",
+                "Check for Updates on Startup",
                 "Notify when a newer Chatmail Core version is available");
             var autocheck_switch = row_switch (
                 rpc_autocheck_row,
@@ -979,7 +983,7 @@ namespace Dc {
 
             update_rpc_row ();
 
-            accounts_path_row = action_row ("Accounts Path");
+            accounts_path_row = action_row ("Profile Storage Folder");
             accounts_path_row.subtitle_lines = 2;
 
             var accounts_path_change_btn = flat_icon_button ("folder-symbolic",
@@ -1035,14 +1039,14 @@ namespace Dc {
         }
 
         private void build_factory_reset_section (Adw.PreferencesPage page) {
-            var reset_group = settings_group (page, "Factory Reset");
+            var reset_group = settings_group (page, "Reset Settings");
             var reset_row = action_row (
-                "Factory Reset",
-                "Remove all settings and close the app");
-            var reset_btn = new Gtk.Button.with_label ("Factory Reset");
+                "Reset Settings",
+                "Restore Parla’s preferences and close the app; profiles and messages are kept");
+            var reset_btn = new Gtk.Button.with_label ("Reset…");
             reset_btn.valign = Gtk.Align.CENTER;
             reset_btn.add_css_class ("destructive-action");
-            reset_btn.tooltip_text = "Delete all Parla configuration and start fresh";
+            reset_btn.tooltip_text = "Reset Settings and Close Parla";
             reset_btn.clicked.connect (() => { on_reset_settings.begin (); });
             reset_row.add_suffix (reset_btn);
             reset_group.add (reset_row);
@@ -1052,13 +1056,12 @@ namespace Dc {
             app windows behave. Builds without -Dwebxdc=true say so instead
             of offering switches that cannot work. */
         private void build_webxdc_section (Adw.PreferencesPage page) {
-            var webxdc_group = settings_group (page, "Webxdc Apps");
+            var webxdc_group = settings_group (page, "In-Chat Apps");
 
             if (!Webxdc.AVAILABLE) {
                 var unavailable_row = action_row (
-                    "Webxdc apps",
-                    "This build of Parla was compiled without Webxdc "
-                    + "support");
+                    "In-Chat Apps",
+                    "In-chat apps are unavailable in this version of Parla");
                 var status = new Gtk.Label ("Unavailable");
                 status.valign = Gtk.Align.CENTER;
                 status.add_css_class ("dim-label");
@@ -1068,20 +1071,20 @@ namespace Dc {
             }
 
             add_switch_row (webxdc_group,
-                "Webxdc apps",
-                "Run Delta Chat mini-apps shared in chats (experimental)",
+                "In-Chat Apps",
+                "Open interactive apps shared in chats (Webxdc, experimental)",
                 app_window.settings.webxdc_apps,
                 (v) => app_window.settings.save_webxdc_apps (v));
 
             add_switch_row (webxdc_group,
-                "Keep apps with their chat",
-                "Hide app windows when you leave the chat",
+                "Follow the Current Chat",
+                "Hide app windows when switching to another chat",
                 app_window.settings.webxdc_follow_chat,
                 (v) => app_window.settings.save_webxdc_follow_chat (v));
 
             var internet_switch = add_switch_row (webxdc_group,
-                "Internet access",
-                "Allow apps to make direct network requests (unsafe)",
+                "Internet Access",
+                "Allow apps to contact websites, which can reveal your IP address and app data",
                 app_window.settings.webxdc_allow_internet,
                 (v) => app_window.settings.save_webxdc_allow_internet (v));
 
@@ -1094,8 +1097,7 @@ namespace Dc {
             var webgl_switch = add_switch_row (webxdc_group,
                 "WebGL",
                 Platform.is_macos ()
-                    ? "Best-effort restriction on macOS; WKWebView has no "
-                    + "public hard-disable API"
+                    ? "macOS may still allow 3D graphics when this is turned off"
                     : "Allow apps to access accelerated 3D graphics",
                 app_window.settings.webxdc_allow_webgl,
                 (v) => app_window.settings.save_webxdc_allow_webgl (v));
@@ -1103,24 +1105,24 @@ namespace Dc {
             Gtk.Switch? acceleration_switch = null;
             if (!Platform.is_macos () && !Platform.is_windows ()) {
                 acceleration_switch = add_switch_row (webxdc_group,
-                    "Hardware acceleration",
-                    "Allow WebKit to use GPU-accelerated rendering",
+                    "Hardware Acceleration",
+                    "Use the graphics processor to display apps",
                     app_window.settings.webxdc_allow_hardware_acceleration,
                     (v) => app_window.settings
                         .save_webxdc_allow_hardware_acceleration (v));
             }
 
             var developer_tools_switch = add_switch_row (webxdc_group,
-                "Web developer tools",
+                "Developer Tools",
                 "Open the browser inspector and JavaScript console when "
                 + "apps start",
                 app_window.settings.webxdc_developer_tools,
                 (v) => app_window.settings.save_webxdc_developer_tools (v));
 
             var safest_row = action_row (
-                "Safest defaults",
-                "Turn off extra access and close running apps");
-            var safest_button = new Gtk.Button.with_label ("Use safest");
+                "Restrict App Permissions",
+                "Turn off internet access, advanced graphics, WebAssembly, and developer tools; running apps will close");
+            var safest_button = new Gtk.Button.with_label ("Restrict");
             safest_button.valign = Gtk.Align.CENTER;
             safest_button.clicked.connect (() => {
                 internet_switch.active =
@@ -1138,7 +1140,7 @@ namespace Dc {
                 }
                 developer_tools_switch.active =
                     WebxdcSecurity.SAFE_DEVELOPER_TOOLS;
-                app_window.show_toast ("Webxdc safest defaults restored");
+                app_window.show_toast ("In-chat app permissions restricted");
             });
             safest_row.add_suffix (safest_button);
             webxdc_group.add (safest_row);
@@ -1149,19 +1151,14 @@ namespace Dc {
             var links_group = settings_group (page, "Links");
 
             add_switch_row (links_group,
-                "Link previews",
-                "Attach the picture and title a page advertises (Open "
-                + "Graph tags) when a link is pasted into the message field. "
-                + "Each pasted link becomes one image; remove it before "
-                + "sending if unwanted. The page is fetched from this device",
+                "Link Previews",
+                "Attach a preview image when pasting a link. Parla contacts the website from this device; previews can be removed before sending",
                 app_window.settings.link_previews,
                 (v) => app_window.settings.save_link_previews (v));
 
             var clean_links_row = action_row (
-                "Remove tracking from pasted links",
-                "Strip known tracking parameters (YouTube, X, Instagram, "
-                + "Facebook, LinkedIn and others) from links pasted into "
-                + "the message field");
+                "Remove Link Tracking",
+                "Remove known tracking information from pasted links");
             var clean_links_switch = row_switch (
                 clean_links_row, app_window.settings.clean_pasted_links);
             links_group.add (clean_links_row);
@@ -1169,19 +1166,17 @@ namespace Dc {
             /* Optional uBlock Origin / AdGuard $removeparam list that
                replaces the built-in rules above. */
             var filter_row = action_row (
-                "Use a uBlock removeparam filter list",
-                "Replace the built-in rules with the $removeparam rules of "
-                + "a uBlock Origin / AdGuard filter list, downloaded through "
-                + "the active account and refreshed when it expires");
+                "Use a Custom Filter List",
+                "Replace the built-in rules with a uBlock Origin or AdGuard list that supports $removeparam. The list is downloaded through the active profile and refreshed automatically");
             var filter_switch = row_switch (
                 filter_row, app_window.settings.tracking_filter_enabled);
             links_group.add (filter_row);
 
-            tracking_filter_url_row = action_row ("Filter list URL");
+            tracking_filter_url_row = action_row ("Filter list address");
             /* URL on the first line, status on the second; a URL has no
                break points, so ellipsize instead of wrapping. */
             tracking_filter_url_row.subtitle_lines = 2;
-            var url_btn = new Gtk.Button.with_label ("Set URL…");
+            var url_btn = new Gtk.Button.with_label ("Set Address…");
             url_btn.valign = Gtk.Align.CENTER;
             url_btn.clicked.connect (() => {
                 prompt_tracking_filter_url.begin ();
@@ -1745,14 +1740,15 @@ namespace Dc {
         private void sync_accounts_path_row () {
             string path = app_window.settings.effective_accounts_path ();
             accounts_path_row.subtitle = path;
-            accounts_path_row.tooltip_text = path;
+            accounts_path_row.tooltip_text =
+                "Changing this folder switches the profiles Parla opens; existing data is not moved";
             accounts_path_reset_btn.sensitive =
                 !app_window.settings.uses_default_accounts_path ();
         }
 
         private async void on_browse_accounts_path () {
             var dlg = new Gtk.FileDialog ();
-            dlg.title = "Choose accounts folder";
+            dlg.title = "Choose Profile Storage Folder";
             dlg.modal = true;
 
             string path = app_window.settings.effective_accounts_path ();
@@ -1767,7 +1763,7 @@ namespace Dc {
                     if (selected_path != null) {
                         app_window.settings.save_accounts_path (selected_path);
                         sync_accounts_path_row ();
-                        app_window.show_toast ("Accounts path saved");
+                        app_window.show_toast ("Profile storage folder changed");
                         app_window.reconnect_rpc_server.begin ();
                     }
                 }
@@ -1830,10 +1826,9 @@ namespace Dc {
         }
 
         private async void on_reset_settings () {
-            if (yield confirm_action (app_window, "Factory Reset",
-                "This will delete all Parla configuration files and close the application. " +
-                "Your Delta Chat accounts and messages are not affected.",
-                "reset", "Reset & Close")) {
+            if (yield confirm_action (app_window, "Reset Settings",
+                "Restore Parla’s preferences and close the app? Profiles and messages are kept. If a custom profile storage folder is in use, select it again after restarting",
+                "reset", "Reset and Close")) {
                 delete_parla_config ();
                 app_window.quit_application ();
             }

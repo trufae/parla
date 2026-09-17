@@ -161,8 +161,8 @@ namespace Dc {
                     }
                 }
                 description =
-                    "No Delta Chat accounts configured.\n" +
-                    "Add an account from the top left empty avatar icon to connect.";
+                    "No profiles configured.\n" +
+                    "Open the profile menu to add a profile.";
             } catch (Error e) {
                 toast_msg = "Account setup error: " + e.message;
             }

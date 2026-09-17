@@ -47,7 +47,7 @@ Want to build it yourself? See [Build](#build) below.
 ### Messaging
 
 - **Rich compose bar** — multi-line text, file attachments via picker or drag-and-drop, paste images or files straight from the clipboard.
-- **Reply, edit, delete, forward** — full message actions via right-click; delete-for-self or delete-for-everyone on your own messages.
+- **Reply, edit, delete, forward** — full message actions via right-click; Delete for Me syncs to linked devices, while Delete for Everyone requests deletion of eligible sent messages from other participants too. Leave Group keeps the history; Leave and Delete removes it for your profile.
 - **Emoji reactions** — quick-pick 👍 ❤️ 😂 😮 😢 👎 shown as badges on the message.
 - **Pinned messages** — pin any message in a chat; a pinned-messages bar at the top of the conversation lets you jump back to them.
 - **Reply previews** — quoted sender and text preview (capped at 3 lines) above the compose entry and inside bubbles.
@@ -74,7 +74,7 @@ Want to build it yourself? See [Build](#build) below.
 - **Private Parla account store** in Parla's XDG data directory.
 - **Auto-discovery of standalone `deltachat-rpc-server`** from the Parla bundle, distro packages, `$PATH`, `~/.local/bin`, and `~/.cargo/bin`.
 - **Multi-account** switching from the settings dialog.
-- **My Profile** dialog to edit display name, status and avatar.
+- **Profile** dialog to edit the display name, bio, and profile picture.
 - **End-to-end encryption** via Autocrypt, handled by the Delta Chat core.
 
 ### Settings
@@ -196,14 +196,14 @@ server and how to package it for Flatpak or distro packages.
 Delta Chat messages. Support is experimental and enabled at build time by
 default. Embedding a browser engine adds a large dependency and a significant
 attack surface, so it can be disabled at runtime under
-**Settings → Advanced → Webxdc apps**.
+**Settings → Advanced → In-Chat Apps**.
 
 That settings section also controls Internet access, WebAssembly, WebGL,
 web developer tools, and WebKitGTK hardware acceleration for mini-apps. These
-capabilities are disabled by default, and a **Use safest** button restores all
+capabilities are disabled by default, and a **Restrict** button restores all
 safe defaults.
-Direct Internet access is marked unsafe because standard Webxdc apps are
-expected to remain offline;
+The Internet Access setting explains that apps can reveal an IP address or
+app data to websites; standard Webxdc apps are expected to remain offline;
 the macOS WebGL restriction is best-effort because WKWebView offers no public
 hard-disable API.
 
