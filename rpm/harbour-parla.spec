@@ -62,6 +62,7 @@ BuildRequires: ninja
 BuildRequires: vala
 BuildRequires: gcc
 BuildRequires: gcc-c++
+BuildRequires: ccache
 BuildRequires: autoconf
 BuildRequires: automake
 BuildRequires: libtool
@@ -147,9 +148,9 @@ for module in graphene-%{graphene_version} libepoxy-%{epoxy_version} \
               libxmlb-%{xmlb_version} gtk-%{gtk_version} \
               AppStream-%{appstream_version} libadwaita-%{adw_version} \
               webp-pixbuf-loader-%{webp_loader_version}; do
-    DESTDIR=%{buildroot} meson install -C vendor/$module/_build
+    DESTDIR=%{buildroot} meson install --no-rebuild -C vendor/$module/_build
 done
-DESTDIR=%{buildroot} meson install -C _build
+DESTDIR=%{buildroot} meson install --no-rebuild -C _build
 
 install -D -m 0755 vendor/deltachat-rpc-server \
     %{buildroot}%{vendor_prefix}/bin/deltachat-rpc-server

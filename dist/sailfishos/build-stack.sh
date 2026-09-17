@@ -23,6 +23,10 @@ PREFIX=${PREFIX:-/usr/share/harbour-parla}
 STAGE=${STAGE:?absolute path to the staging directory}
 VENDOR=${VENDOR:-vendor}
 
+export CC="ccache ${CC:-cc}"
+export CXX="ccache ${CXX:-c++}"
+ccache --zero-stats
+
 export PKG_CONFIG_PATH="$STAGE$PREFIX/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
 export PATH="$STAGE$PREFIX/bin:$PATH"
 # Executables must resolve the staged libraries' own dependencies (libgtk-4
@@ -66,7 +70,7 @@ build_module() {
     meson setup "$VENDOR/$dir/_build" "$VENDOR/$dir" \
         --prefix="$PREFIX" --libdir=lib --buildtype=release "$@"
     meson compile -C "$VENDOR/$dir/_build"
-    DESTDIR=$STAGE meson install -C "$VENDOR/$dir/_build"
+    DESTDIR=$STAGE meson install --no-rebuild -C "$VENDOR/$dir/_build"
     sed -i "s|^prefix=.*|prefix=$STAGE$PREFIX|" "$STAGE$PREFIX"/lib/pkgconfig/*.pc
 }
 
@@ -130,4 +134,5 @@ meson setup _build . \
     -Dsailfish=true \
     -Dwebxdc=false \
     -Drpc_server_path="$PREFIX/bin/deltachat-rpc-server"
-meson compile -C _build
+meson compile -C _build parla
+ccache --show-stats

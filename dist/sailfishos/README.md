@@ -79,16 +79,24 @@ You need the Sailfish Platform SDK, or Docker:
 
 ```sh
 dist/sailfishos/fetch-sources.sh aarch64
-docker run --rm --privileged -v "$PWD:/workspace" \
-    coderus/sailfishos-platform-sdk:5.1.0.11 bash -lc \
-    'cp -r /workspace ~/build && cd ~/build && \
-     mb2 -t SailfishOS-5.1.0.11-aarch64 build && \
-     cp -r RPMS /workspace/'
+dist/sailfishos/build-rpm.sh 5.1.0.11 aarch64
 ```
 
 `fetch-sources.sh` downloads the pinned, checksum-verified vendored
 sources into `rpm/` where mb2 expects them. The stack build itself lives
 in `dist/sailfishos/build-stack.sh`, driven by `rpm/harbour-parla.spec`.
+
+The Docker helper keeps a 1 GiB compiler cache per release and architecture
+in `.cache/sailfish-ccache/`. CI restores it across commits, with separate
+keys for each SDK image, release and architecture. The first build still
+compiles the vendored stack; subsequent builds reuse unchanged C/C++
+compilations. Compiler, source, header and flag changes invalidate the
+affected entries. Configuration, linking and RPM packaging still run on
+every build, and the log ends with cache hit/miss statistics.
+
+The RPM build compiles only the `parla` target and installs without
+rebuilding, so it does not compile the unused Parla test executables.
+The regular CI test jobs continue to build and run the test suite.
 
 A future goal is submitting this to [SailfishOS:Chum](
 https://github.com/sailfishos-chum/main); the spec already carries Chum

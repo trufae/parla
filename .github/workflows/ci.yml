@@ -157,11 +157,25 @@ jobs:
       - name: Fetch vendored sources
         run: dist/sailfishos/fetch-sources.sh ${{ matrix.arch }}
 
-      - name: Build RPM with the Sailfish Platform SDK
-        uses: coderus/github-sfos-build@sfos5
+      - name: Pull Sailfish SDK
+        id: sfos-sdk
+        run: |
+          image=coderus/sailfishos-platform-sdk:${{ matrix.release }}
+          docker pull "$image"
+          echo "image=$(docker image inspect --format '{{.Id}}' "$image")" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Sailfish compiler output
+        uses: actions/cache@v6
         with:
-          release: ${{ matrix.release }}
-          arch: ${{ matrix.arch }}
+          path: .cache/sailfish-ccache
+          key: sfos-ccache-v1-${{ matrix.arch }}-${{ matrix.release }}-${{ steps.sfos-sdk.outputs.image }}-${{ github.sha }}
+          restore-keys: |
+            sfos-ccache-v1-${{ matrix.arch }}-${{ matrix.release }}-${{ steps.sfos-sdk.outputs.image }}-
+
+      - name: Build RPM with the Sailfish Platform SDK
+        env:
+          SFOS_IMAGE: ${{ steps.sfos-sdk.outputs.image }}
+        run: dist/sailfishos/build-rpm.sh ${{ matrix.release }} ${{ matrix.arch }}
 
       - name: Upload RPM artifact
         uses: actions/upload-artifact@v7
