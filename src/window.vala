@@ -48,6 +48,7 @@ namespace Dc {
         /* Status */
         private Adw.StatusPage empty_status;
         private Gtk.Stack content_stack;
+        private bool showing_profile_setup = false;
 
         /* Floating connection-status banner (revealed when RPC is down) */
         private Gtk.Revealer connection_banner;
@@ -188,11 +189,30 @@ namespace Dc {
         private void show_empty_status (string icon_name, string title,
                                         string description,
                                         Gtk.Widget? child = null) {
+            if (showing_profile_setup) {
+                showing_profile_setup = false;
+                content_title_label.label = "Select a chat";
+                apply_sidebar_mode (true);
+            }
             empty_status.child = child;
             empty_status.icon_name = icon_name;
             empty_status.title = title;
             empty_status.description = description;
             content_stack.visible_child_name = "empty";
+        }
+
+        private void show_profile_setup () {
+            var list = build_add_profile_methods ();
+            var clamp = new Adw.Clamp ();
+            clamp.maximum_size = 460;
+            clamp.child = list;
+            show_empty_status ("parla-welcome", "Welcome to Parla",
+                "Create a profile or bring an existing one to this device.", clamp);
+            showing_profile_setup = true;
+            content_title_label.label = "Set Up Profile";
+            split_view.show_sidebar = false;
+            set_sidebar_toggle_tooltip (true);
+            list.get_row_at_index (0).grab_focus ();
         }
 
         /* An invite link received (via the system handler or an in-app click)
@@ -869,7 +889,7 @@ namespace Dc {
                the persisted mode so a chat-selected-while-narrow doesn't leave
                the sidebar stuck hidden. */
             split_view.notify["collapsed"].connect (() => {
-                apply_sidebar_mode (!split_view.collapsed);
+                apply_sidebar_mode (!split_view.collapsed && !showing_profile_setup);
             });
 
             /* The sidebar always starts visible: hiding it (Ctrl+S) is a
@@ -1004,7 +1024,6 @@ namespace Dc {
                                                     settings.default_account_addr,
                                                     out acct_desc, out acct_toast);
             if (acct_toast != null) show_toast (acct_toast);
-            if (acct_desc != null) empty_status.description = acct_desc;
             if (rpc.account_id > 0) {
                 try {
                     yield apply_auto_download_limit ();
@@ -1050,7 +1069,6 @@ namespace Dc {
                 yield load_self_identity ();
                 yield load_chats ();
                 yield load_profile_avatar ();
-                events.start.begin ();
                 events.reconcile_desktop_notifications.begin ();
 
                 /* A link that arrived before the profile was ready (e.g. the
@@ -1060,7 +1078,10 @@ namespace Dc {
                     pending_invite_uri = null;
                     show_use_invite_link_dialog (uri);
                 }
+            } else if (acct_desc != null) {
+                show_profile_setup ();
             }
+            events.start.begin ();
         }
 
         private void clear_self_identity () {
@@ -2483,7 +2504,7 @@ namespace Dc {
 
         private const string[] ADD_PROFILE_METHODS = {
             "contact-new-symbolic", "Create new profile", "Pick a chatmail relay and create a new account",
-            "phone-symbolic", "Add as secondary device", "Synchronize from another device on the same network",
+            "phone-symbolic", "Import from another device", "Link to an existing profile on the same network",
             "mail-message-new-symbolic", "Use classic email address", "Sign in with an existing email account",
             "mail-attachment-symbolic", "Use invitation code", "Join via a dcaccount: link or QR code",
         };
@@ -2505,13 +2526,19 @@ namespace Dc {
             Gtk.Box box;
             var dialog = make_modal ("Add Profile", 460, out box);
 
-            var intro = new Gtk.Label ("Choose how you want to add an account.");
+            var intro = new Gtk.Label ("Choose how you want to add a profile.");
             intro.halign = Gtk.Align.START;
             intro.margin_start = intro.margin_end = 12;
             intro.margin_top = 12;
             intro.add_css_class ("dim-label");
             box.append (intro);
 
+            box.append (build_add_profile_methods (dialog));
+            dialog.child = box;
+            present_modal (dialog);
+        }
+
+        private Gtk.ListBox build_add_profile_methods (Adw.Dialog? dialog = null) {
             var list = new Gtk.ListBox ();
             list.selection_mode = Gtk.SelectionMode.NONE;
             list.add_css_class ("boxed-list");
@@ -2526,13 +2553,10 @@ namespace Dc {
 
             list.row_activated.connect ((row) => {
                 string method = row.get_data<string> ("add-method");
-                dialog.close ();
+                if (dialog != null) dialog.close ();
                 on_add_account_method_selected (method);
             });
-
-            box.append (list);
-            dialog.child = box;
-            present_modal (dialog);
+            return list;
         }
 
         private Adw.ActionRow build_add_method_row (string icon_name,
@@ -2559,7 +2583,7 @@ namespace Dc {
         private void on_add_account_method_selected (string method) {
             if (method == "Use classic email address") {
                 show_classic_email_dialog ();
-            } else if (method == "Add as secondary device") {
+            } else if (method == "Import from another device") {
                 show_secondary_device_dialog ();
             } else if (method == "Create new profile") {
                 show_create_profile_dialog ();
@@ -3207,9 +3231,7 @@ namespace Dc {
                 profile_avatar.text = "";
                 profile_avatar.custom_image = null;
                 profile_unread_badge.visible = false;
-                show_empty_status ("avatar-default-symbolic",
-                    "No Profile Loaded",
-                    "Add or select a profile from the profile menu.");
+                show_profile_setup ();
                 current_chat_id = 0;
                 return;
             }
@@ -3273,7 +3295,7 @@ namespace Dc {
                 toggle_collapsed_sidebar ();
                 return;
             }
-            bool showing = settings.sidebar_mode == SidebarMode.HIDDEN;
+            bool showing = !split_view.show_sidebar;
             /* Whether focus is about to be orphaned by hiding the sidebar,
                measured before the sidebar goes away. */
             var focus = get_focus ();
@@ -3316,7 +3338,6 @@ namespace Dc {
                 sidebar_title.visible = false;
                 sidebar_title.title = "";
                 set_compact_header_chrome (true);
-                set_sidebar_toggle_tooltip (false);
             } else {
                 /* FULL and HIDDEN share the expanded layout; they differ only
                    in whether the sidebar starts shown and the toggle's verb. */
@@ -3336,8 +3357,8 @@ namespace Dc {
                 sidebar_title.visible = true;
                 sidebar_title.title = "Parla";
                 set_compact_header_chrome (false);
-                set_sidebar_toggle_tooltip (hidden);
             }
+            set_sidebar_toggle_tooltip (!split_view.show_sidebar);
             apply_compact_to_rows (mode == SidebarMode.COMPACT);
             update_archived_toggle ();
         }
