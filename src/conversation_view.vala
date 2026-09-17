@@ -457,21 +457,34 @@ namespace Dc {
             }));
             message_listview.add_controller (rc);
 
-            // Handle Return before GTK consumes it on the non-activatable list item.
-            var reply_keys = new Gtk.EventControllerKey ();
-            reply_keys.propagation_phase = Gtk.PropagationPhase.CAPTURE;
-            track_signal (reply_keys, reply_keys.key_pressed.connect ((keyval, keycode, state) => {
-                if (keyval != Gdk.Key.Return && keyval != Gdk.Key.KP_Enter) return false;
-                if ((state & Gtk.accelerator_get_default_mod_mask ()) != 0 ||
-                        selection_mode || is_contact_request) return false;
+            // Handle row shortcuts before GTK consumes them on the list item.
+            var message_keys = new Gtk.EventControllerKey ();
+            message_keys.propagation_phase = Gtk.PropagationPhase.CAPTURE;
+            track_signal (message_keys, message_keys.key_pressed.connect ((keyval, keycode, state) => {
+                bool select = keyval == Gdk.Key.space;
+                if (!select && keyval != Gdk.Key.Return && keyval != Gdk.Key.KP_Enter)
+                    return false;
+                if ((state & Gtk.accelerator_get_default_mod_mask ()) != 0) return false;
                 var focus = window.focus_widget;
                 if (focus == null || focus.get_parent () != message_listview) return false;
                 var row = focused_message_row ();
                 if (row == null) return false;
-                msg_actions.start_replying (row.message_id);
+                if (select) {
+                    if (!selection_mode) {
+                        begin_selection_mode (row.message_id);
+                    } else {
+                        var msg = find_message (message_store, row.message_id);
+                        if (msg == null) return false;
+                        msg.selected = !msg.selected;
+                        row.focus_selection ();
+                    }
+                } else {
+                    if (selection_mode || is_contact_request) return false;
+                    msg_actions.start_replying (row.message_id);
+                }
                 return true;
             }));
-            message_listview.add_controller (reply_keys);
+            message_listview.add_controller (message_keys);
 
             /* Menu / Shift+F10 open the message menu for the focused row,
                anchored to it. A focused text label keeps GTK's own copy
@@ -956,6 +969,8 @@ namespace Dc {
             cancel_btn.hexpand = true;
             track_signal (cancel_btn, cancel_btn.clicked.connect (() => {
                 end_selection_mode ();
+                if (is_contact_request) message_listview.grab_focus ();
+                else focus_entry ();
             }));
             bar.append (cancel_btn);
 
@@ -1042,6 +1057,12 @@ namespace Dc {
             });
             sync_bottom_bars ();
             update_selection_actions ();
+            double top;
+            var row = find_message_row (message_listview, initial_msg_id, out top);
+            if (row != null) {
+                focus_jump_until_us = get_monotonic_time () + 1000 * 1000;
+                row.focus_selection ();
+            }
         }
 
         private void end_selection_mode () {
