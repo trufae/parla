@@ -160,7 +160,7 @@ jobs:
       - name: Pull Sailfish SDK
         id: sfos-sdk
         run: |
-          image=coderus/sailfishos-platform-sdk:${{ matrix.release }}
+          image=coderus/sailfishos-platform-sdk-${{ matrix.arch }}:${{ matrix.release }}
           docker pull "$image"
           echo "image=$(docker image inspect --format '{{.Id}}' "$image")" >> "$GITHUB_OUTPUT"
 

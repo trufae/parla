@@ -7,7 +7,8 @@ arch=${2:-aarch64}
 cd "$(dirname "$0")/../.."
 cache_dir="$PWD/.cache/sailfish-ccache/$release-$arch"
 mkdir -p "$cache_dir" RPMS
-chmod a+w "$cache_dir" RPMS
+chmod -R a+rwX "$cache_dir"
+chmod a+w RPMS
 
 docker run --rm --privileged \
     -v "$PWD:/workspace" \
@@ -15,9 +16,8 @@ docker run --rm --privileged \
     -e CCACHE_DIR=/home/mersdk/.ccache \
     -e CCACHE_MAXSIZE=1G \
     -e CCACHE_COMPILERCHECK=content \
-    "${SFOS_IMAGE:-coderus/sailfishos-platform-sdk:$release}" \
+    "${SFOS_IMAGE:-coderus/sailfishos-platform-sdk-$arch:$release}" \
     bash -euc '
-        sudo chown -R "$(id -u):$(id -g)" "$CCACHE_DIR"
         mkdir -p build
         cp -r /workspace/* build/
         cd build

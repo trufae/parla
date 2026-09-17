@@ -86,8 +86,9 @@ dist/sailfishos/build-rpm.sh 5.1.0.11 aarch64
 sources into `rpm/` where mb2 expects them. The stack build itself lives
 in `dist/sailfishos/build-stack.sh`, driven by `rpm/harbour-parla.spec`.
 
-The Docker helper keeps a 1 GiB compiler cache per release and architecture
-in `.cache/sailfish-ccache/`. CI restores it across commits, with separate
+The Docker helper downloads only the requested architecture's SDK image and
+keeps a 1 GiB compiler cache per release and architecture in
+`.cache/sailfish-ccache/`. CI restores it across commits, with separate
 keys for each SDK image, release and architecture. The first build still
 compiles the vendored stack; subsequent builds reuse unchanged C/C++
 compilations. Compiler, source, header and flag changes invalidate the
