@@ -83,9 +83,10 @@ namespace Dc {
         public bool tracking_filter_enabled { get; set; default = false; }
         public string tracking_filter_url { get; set; default = ""; }
         /* Fetch Open Graph metadata for pasted links and attach the
-           preview image (sender-side, like Signal). Off by default:
-           fetching reveals the sender's address to the linked site. */
-        public bool link_previews { get; set; default = false; }
+           preview image (sender-side, like Signal). On by default; users
+           who do not want the linked site to see their address can turn
+           it off in Settings → Links. */
+        public bool link_previews { get; set; default = true; }
         public bool notifications_enabled { get; set; default = true; }
         public bool show_notification_contents { get; set; default = true; }
         public bool minimize_to_tray { get; set; default = false; }
@@ -201,7 +202,7 @@ namespace Dc {
                 kf_bool (kf, "tracking_filter_enabled", false);
             tracking_filter_url = kf_str (kf, "tracking_filter_url", "").strip ();
             apply_tracking_filter ();
-            link_previews = kf_bool (kf, "link_previews", false);
+            link_previews = kf_bool (kf, "link_previews", true);
             notifications_enabled = kf_bool (kf, "notifications_enabled", true);
             show_notification_contents =
                 kf_bool (kf, "show_notification_contents", true);

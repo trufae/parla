@@ -16,7 +16,7 @@ namespace Dc {
         /* Ask for Open Graph previews of pasted links (see LinkPreview);
            the owner fetches them and hands the images back through
            add_link_preview(). */
-        public bool link_previews { get; set; default = false; }
+        public bool link_previews { get; set; default = true; }
         /* `generation` identifies the composer state the request was
            made for; add_link_preview() drops results for a stale one. */
         public signal void link_previews_requested (string[] urls,
