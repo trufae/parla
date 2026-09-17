@@ -457,6 +457,22 @@ namespace Dc {
             }));
             message_listview.add_controller (rc);
 
+            // Handle Return before GTK consumes it on the non-activatable list item.
+            var reply_keys = new Gtk.EventControllerKey ();
+            reply_keys.propagation_phase = Gtk.PropagationPhase.CAPTURE;
+            track_signal (reply_keys, reply_keys.key_pressed.connect ((keyval, keycode, state) => {
+                if (keyval != Gdk.Key.Return && keyval != Gdk.Key.KP_Enter) return false;
+                if ((state & Gtk.accelerator_get_default_mod_mask ()) != 0 ||
+                        selection_mode || is_contact_request) return false;
+                var focus = window.focus_widget;
+                if (focus == null || focus.get_parent () != message_listview) return false;
+                var row = focused_message_row ();
+                if (row == null) return false;
+                msg_actions.start_replying (row.message_id);
+                return true;
+            }));
+            message_listview.add_controller (reply_keys);
+
             /* Menu / Shift+F10 open the message menu for the focused row,
                anchored to it. A focused text label keeps GTK's own copy
                menu, which handles the key before it reaches the list. */
