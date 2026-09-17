@@ -63,7 +63,7 @@ Url:
 
 %build
 rm -rf _build
-PREFIX=%{vendor_prefix} sh dist/sailfishos/build-stack.sh
+PREFIX=%{vendor_prefix} sh dist/sailfishos/build-app.sh
 
 %install
 DESTDIR=%{buildroot} meson install --no-rebuild -C _build

@@ -1,56 +1,50 @@
 # Parla on Sailfish OS
 
-Experimental native package of Parla for Sailfish OS 5.1 and newer,
-built as `harbour-parla` RPMs by the `build-sfos` CI job.
+Experimental native package for Sailfish OS 5.1.0.11 / aarch64, built as
+`harbour-parla` RPMs by the `build-sfos` CI job.
 
-## Why 5.1, and how this works
+## Shared libraries
 
-Sailfish OS has no GTK stack, and before 5.1 its compositor (lipstick)
-did not speak the Wayland `xdg-shell` protocol GTK4 windows require.
-Sailfish OS 5.1 "Pispala" added xdg-shell support, which makes a native
-GTK4 app possible for the first time. Since none of the GTK libraries are
-packaged by Jolla, this package builds and bundles a private stack under
-`/usr/share/harbour-parla`:
+GTK4, libadwaita and their missing dependencies are maintained and built in
+[sailfishos-gnome](https://github.com/trufae/sailfishos-gnome). Parla's CI
+only downloads the pinned runtime/development RPMs and compiles the app.
+The source recipes, library releases and GitHub Pages website all live in
+that separate repository.
 
-- vendored: graphene, libepoxy, GTK4, libadwaita, plus libxmlb and
-  appstream (libadwaita hard-requires appstream) and a build-time-only
-  static sassc/libsass for libadwaita's stylesheet
-- from Sailfish OS: glib2, cairo, pango, harfbuzz, gdk-pixbuf, fribidi,
-  json-glib, wayland, libxkbcommon, freetype, fontconfig, librsvg,
-  libyaml, libcurl, libxml2, vala
+The `sailfish-gnome` runtime installs its libraries in standard system
+paths so multiple GTK apps can share them. Sailfish's existing GLib,
+Cairo, Pango, HarfBuzz, Wayland, GdkPixbuf and other available dependencies
+are reused. Parla no longer contains a private copy of this GTK stack.
 
-The Delta Chat JSON-RPC engine (`deltachat-rpc-server`, a static-musl
-binary from [chatmail/core](https://github.com/chatmail/core) releases) is
-shipped inside the same RPM and pinned at build time via the
-`rpc_server_path` meson option, which also disables the in-app engine
-downloader. The `/usr/bin/harbour-parla` launcher forces the whole runtime
-environment: the private library path, the bundled engine path
-(`PARLA_RPC_SERVER`), and Sailfish-compatible
-`XDG_DATA_HOME`/`XDG_CONFIG_HOME`/`XDG_CACHE_HOME` under
-`~/.local/share/io.github.trufae/Parla` so both Parla and the engine write
-to one private location. The desktop entry disables Sailjail: the jail cannot
-launch the shell -> private GTK binary -> private RPC engine executable chain,
-which is why an affected build works from the terminal but not from its icon.
+The Delta Chat JSON-RPC engine is still bundled in Parla's RPM under
+`/usr/share/harbour-parla/bin`, alongside the app. It is the pinned
+static-musl binary from [chatmail/core](https://github.com/chatmail/core),
+not a runtime download. The launcher sets `PARLA_RPC_SERVER` and keeps
+existing account, configuration and cache paths unchanged under
+`~/.local/share/io.github.trufae/Parla` and the corresponding XDG roots.
+
+Sailfish OS 5.1 provides the compositor xdg-shell support GTK4 needs.
+The desktop entry currently disables Sailjail for the shell/app/RPC
+executable chain. Webxdc mini-apps are disabled because WebKitGTK is not
+part of the shared package set.
 
 ## Install
 
-Grab the `harbour-parla-*.rpm` for your architecture from the
-[releases page](https://github.com/trufae/parla/releases) and install it:
+Download the matching **runtime** RPM from
+[Sailfish GNOME releases](https://github.com/trufae/sailfishos-gnome/releases)
+and the app RPM from [Parla releases](https://github.com/trufae/parla/releases).
+Verify the runtime against that release's `SHA256SUMS`, then install both:
 
 ```sh
-devel-su pkcon install-local harbour-parla-*.aarch64.rpm
+sha256sum --ignore-missing -c SHA256SUMS
+devel-su pkcon install-local ./sailfish-gnome-0.1.0-1.sfos5.1.0.11.aarch64.rpm ./harbour-parla-*.aarch64.rpm
 ```
 
-(`pkcon install-local` resolves the few system dependencies, such as
-librsvg and libwebp, from the Jolla repositories; plain `rpm -U` does not.)
-
-All currently sold/flashable Sailfish OS devices (Xperia 10 II-V, Jolla
-C2) are aarch64. The spec also knows armv7hl (Xperia XA2) and i486 asset
-names, but CI builds aarch64 only for now.
-
-For an aarch64 RPM, `Source5` resolves to
-`deltachat-rpc-server-aarch64-linux`. It is a statically linked 64-bit ARM
-ELF (not the Android arm64 asset), so it has no target glibc dependency.
+`pkcon` resolves the remaining system dependencies from the Jolla repositories.
+The `-devel` RPM is only needed in the SDK target, not on the phone.
+Existing account data stays in the same locations when upgrading from the
+older package that bundled GTK. Downloading Parla updates no longer means
+redownloading the GTK libraries unless the shared runtime also changes.
 
 ## Known caveats (help wanted)
 
@@ -75,32 +69,27 @@ releases old. Feedback from real devices is welcome:
 
 ## Building locally
 
-You need the Sailfish Platform SDK, or Docker:
+Use a Linux host with Docker, curl and Python 3:
 
 ```sh
+python3 dist/sailfishos/fetch-packages.py 5.1.0.11 aarch64
 dist/sailfishos/fetch-sources.sh aarch64
 dist/sailfishos/build-rpm.sh 5.1.0.11 aarch64
 ```
 
-`fetch-sources.sh` downloads the pinned, checksum-verified vendored
-sources into `rpm/` where mb2 expects them. The stack build itself lives
-in `dist/sailfishos/build-stack.sh`, driven by `rpm/harbour-parla.spec`.
+`fetch-packages.py` reads `sailfish-gnome.lock`, verifies the exact bundle
+SHA-256 and stages the two expected RPMs in `RPMS/`. `mb2 --search-output-dir`
+installs them as build dependencies. A missing release, wrong checksum or
+unsupported target fails the build; CI never falls back to compiling GTK.
+The downloader caches verified bundles locally. CI also keeps a small
+compiler cache for Parla, separate from the old library compilation cache.
 
-The Docker helper downloads only the requested architecture's SDK image and
-keeps a 1 GiB compiler cache per release and architecture in
-`.cache/sailfish-ccache/`. CI restores it across commits, with separate
-keys for each SDK image, release and architecture. The first build still
-compiles the vendored stack; subsequent builds reuse unchanged C/C++
-compilations. Compiler, source, header and flag changes invalidate the
-affected entries. Configuration, linking and RPM packaging still run on
-every build, and the log ends with cache hit/miss statistics.
+`fetch-sources.sh` now downloads only the checksum-pinned chat engine.
+`build-app.sh` compiles the `parla` target and the spec installs it without
+building unused test executables. The regular CI jobs still run the full
+test suite.
 
-The RPM build compiles only the `parla` target and installs without
-rebuilding, so it does not compile the unused Parla test executables.
-The regular CI test jobs continue to build and run the test suite.
-
-A future goal is submitting this to [SailfishOS:Chum](
-https://github.com/sailfishos-chum/main); the spec already carries Chum
-metadata behind `%if 0%{?_chum}`. Note that Chum's OBS builds without
-network access, so the vendored sources would need to be committed or
-mirrored as proper OBS sources first.
+To upgrade dependencies, take `sailfish-gnome.lock` from a tested release in
+[sailfishos-gnome](https://github.com/trufae/sailfishos-gnome/releases), review
+its version and SDK target, and commit it here. Library recipes and website
+changes belong in that repository. Only aarch64 is currently published.

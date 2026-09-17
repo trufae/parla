@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "targets": {
+    "5.1.0.11/aarch64": {
+      "url": "https://github.com/trufae/sailfishos-gnome/releases/download/v0.1.0/sailfish-gnome-0.1.0-sfos5.1.0.11-aarch64.tar.gz",
+      "sha256": "73fcedc6de9837c1da71b301d238ecaee5c4d425f09ac70bf8ee9cfc71649aae",
+      "rpms": [
+        "sailfish-gnome-0.1.0-1.sfos5.1.0.11.aarch64.rpm",
+        "sailfish-gnome-devel-0.1.0-1.sfos5.1.0.11.aarch64.rpm"
+      ]
+    }
+  }
+}

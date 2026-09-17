@@ -37,6 +37,10 @@ jobs:
             libjson-glib-dev \
             libwebkitgtk-6.0-dev
 
+      - name: Check Sailfish package download verification
+        if: matrix.a11y == true
+        run: python3 tests/sailfish_packages_test.py
+
       - name: Setup
         run: meson setup builddir -Da11y=${{ matrix.a11y }}
 
@@ -140,39 +144,8 @@ jobs:
           path: dist/appimage/out/*.AppImage
           if-no-files-found: error
 
-  # Bootstrap the standalone package repository until its first release is
-  # published. This cache holds complete RPMs, so app-only changes do not
-  # compile GTK. After publication, use the committed release lock instead.
-  build-sfos-libraries:
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v7
-      - name: Restore shared library RPMs
-        id: packages
-        uses: actions/cache@v6
-        with:
-          path: dist/sailfish-gnome/out
-          key: sfos-gnome-rpms-v1-5.1.0.11-aarch64-${{ hashFiles('dist/sailfish-gnome/rpm/*.spec', 'dist/sailfish-gnome/scripts/**', 'dist/sailfish-gnome/sources.lock', 'dist/sailfish-gnome/vapi/**') }}
-      - name: Fetch and build shared libraries on a package cache miss
-        if: steps.packages.outputs.cache-hit != 'true'
-        run: |
-          cd dist/sailfish-gnome
-          scripts/fetch-sources.sh
-          docker pull coderus/sailfishos-platform-sdk-aarch64:5.1.0.11
-          export SFOS_IMAGE=$(docker image inspect --format '{{.Id}}' coderus/sailfishos-platform-sdk-aarch64:5.1.0.11)
-          scripts/build-rpm.sh
-          python3 scripts/make-release.py
-      - name: Verify package checksums
-        run: cd dist/sailfish-gnome/out && sha256sum -c SHA256SUMS
-      - uses: actions/upload-artifact@v7
-        with:
-          name: sailfish-gnome-5.1.0.11-aarch64
-          path: dist/sailfish-gnome/out/*
-          if-no-files-found: error
-
   # The application job installs the shared RPMs and compiles only Parla.
   build-sfos:
-    needs: build-sfos-libraries
     strategy:
       fail-fast: false
       matrix:
@@ -182,16 +155,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
-      - name: Download prebuilt Sailfish libraries
-        uses: actions/download-artifact@v8
-        with:
-          name: sailfish-gnome-${{ matrix.release }}-${{ matrix.arch }}
-          path: .cache/sailfish-gnome
-      - name: Verify and stage library RPMs for mb2
-        run: |
-          (cd .cache/sailfish-gnome && sha256sum -c SHA256SUMS)
-          mkdir -p RPMS
-          cp .cache/sailfish-gnome/*.rpm RPMS/
+      - name: Fetch pinned Sailfish GNOME packages
+        run: python3 dist/sailfishos/fetch-packages.py ${{ matrix.release }} ${{ matrix.arch }}
       - name: Fetch Delta Chat engine
         run: dist/sailfishos/fetch-sources.sh ${{ matrix.arch }}
       - name: Pull Sailfish SDK
@@ -203,10 +168,10 @@ jobs:
       - name: Cache Sailfish compiler output
         uses: actions/cache@v6
         with:
-          path: .cache/sailfish-ccache
-          key: sfos-ccache-v1-${{ matrix.arch }}-${{ matrix.release }}-${{ steps.sfos-sdk.outputs.image }}-${{ github.sha }}
+          path: .cache/sailfish-app-ccache
+          key: sfos-app-ccache-v1-${{ matrix.arch }}-${{ matrix.release }}-${{ steps.sfos-sdk.outputs.image }}-${{ github.sha }}
           restore-keys: |
-            sfos-ccache-v1-${{ matrix.arch }}-${{ matrix.release }}-${{ steps.sfos-sdk.outputs.image }}-
+            sfos-app-ccache-v1-${{ matrix.arch }}-${{ matrix.release }}-${{ steps.sfos-sdk.outputs.image }}-
       - name: Build Parla with the Sailfish Platform SDK
         env:
           SFOS_IMAGE: ${{ steps.sfos-sdk.outputs.image }}
@@ -427,7 +392,9 @@ jobs:
           path: artifacts
 
       - name: Generate release notes
-        run: python3 scripts/release-notes.py > release-notes.md
+        run: |
+          python3 scripts/release-notes.py > release-notes.md
+          cat dist/sailfishos/release-notes.md >> release-notes.md
 
       - name: Verify release artifacts
         run: |
