@@ -160,9 +160,7 @@ namespace Dc {
                         return chosen;
                     }
                 }
-                description =
-                    "No profiles configured.\n" +
-                    "Open the profile menu to add a profile.";
+                description = "No profiles configured.";
             } catch (Error e) {
                 toast_msg = "Account setup error: " + e.message;
             }
