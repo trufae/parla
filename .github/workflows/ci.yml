@@ -422,10 +422,13 @@ jobs:
           done
 
       - name: Publish release
+        id: publish
+        continue-on-error: true
         uses: softprops/action-gh-release@v3
-        with:
+        with: &release-options
           body_path: release-notes.md
           fail_on_unmatched_files: true
+          preserve_order: true
           files: |
             artifacts/**/*.deb
             artifacts/**/*.flatpak
@@ -433,3 +436,12 @@ jobs:
             artifacts/parla-sfos-*/*.rpm
             artifacts/parla-macos-signed/*.dmg
             artifacts/parla-windows-*/*.zip
+
+      - name: Wait before retrying release upload
+        if: steps.publish.outcome == 'failure'
+        run: sleep 15
+
+      - name: Retry publishing release
+        if: steps.publish.outcome == 'failure'
+        uses: softprops/action-gh-release@v3
+        with: *release-options
