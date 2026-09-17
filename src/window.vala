@@ -1081,6 +1081,7 @@ namespace Dc {
             } else if (acct_desc != null) {
                 show_profile_setup ();
             }
+            // Account setup needs progress events before any profile is configured.
             events.start.begin ();
         }
 
