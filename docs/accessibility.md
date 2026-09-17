@@ -130,8 +130,9 @@ A working backend only exposes what widgets declare, so:
   unnamed list item. Message rows get theirs from
   `MessageRow.accessible_summary` through `ListItem.accessible_label`.
 - Message rows are focusable list items: Up/Down walk the messages,
-  Tab moves into a row's selectable text, Menu / Shift+F10 open the
-  message menu. `ConversationView.on_focus_widget_changed` decides where
+  Enter replies and focuses the composer, Tab moves into a row's selectable
+  text, Menu / Shift+F10 open the message menu.
+  `ConversationView.on_focus_widget_changed` decides where
   Tab enters the list (GTK would pick the first, oldest row and scroll
   the conversation to the top).
 - The chat-list rows answer the same Menu / Shift+F10 to open the chat
@@ -161,3 +162,20 @@ A working backend only exposes what widgets declare, so:
   chats unread while a screen-reader user browses the list. The focused
   row has an accent outline, separate from the highlight for the chat
   already open.
+
+## Keyboard reply smoke test
+
+1. Open an accepted conversation, focus the message list, and use Up/Down
+   to focus a message. Return and keypad Enter should start a reply to that
+   message and focus the composer, announced as "Type a reply". Repeat while
+   filtering messages with conversation search to check the reply target.
+2. Cancel the reply with Escape. Tab into a message's link or playback
+   button and press Enter: it should activate that control, without starting
+   a reply. Enter in selectable message text must retain GTK's behavior.
+3. Modified Enter (Shift, Ctrl, Alt, or the platform primary modifier) must
+   not start a reply from a message row. Caps Lock and Num Lock must not
+   prevent plain Return or keypad Enter from replying.
+4. Open the message menu with Menu / Shift+F10 and choose Select. The
+   selection checkboxes should appear; Enter must not start a reply while
+   selecting messages. It must also do nothing on a contact request's row
+   until the request is accepted.

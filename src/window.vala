@@ -3732,6 +3732,7 @@ namespace Dc {
             "Search contacts",       "<Primary><Shift>f",
             "Quick switch chat",     "<Primary>k",
             "Focus message entry",   "<Primary>l",
+            "Reply to focused message", "Return",
             "Account menu",          "<Primary><Shift>a",
             "Focus next chat",       "<Primary>Page_Down",
             "Focus previous chat",   "<Primary>Page_Up",
