@@ -18,7 +18,8 @@
 Name:       harbour-parla
 Summary:    Delta Chat client
 Version:    0.9.0
-Release:    1
+# Upgrade existing 0.9.0-1 packages that bundled a private GTK runtime.
+Release:    2
 License:    GPLv3+
 URL:        https://github.com/trufae/parla
 Source0:    %{name}-%{version}.tar.bz2
