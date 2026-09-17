@@ -61,11 +61,11 @@ One click:
    executable, and starts the server — no terminal, no manual `chmod`, no Settings
    spelunking.
 
-The same install/update actions are available in **Settings → RPC server**:
+The same install/update actions are available in **Settings → Advanced → Chatmail Core**:
 
-- **Get** — download the latest engine into the managed directory.
-- **Check** — compare the running engine against the latest release.
-- **Check for engine updates on startup** — when enabled (default), Parla quietly
+- **Check for Updates**, then **Install** — download the latest engine into the managed directory.
+- **Check for Updates** — compare the running engine against the latest release.
+- **Check for Updates on Startup** — when enabled (default), Parla quietly
   checks for a newer release at launch *only* when it is running its own managed
   binary, and shows a non-blocking "Update available" notification with an action.
   It never swaps the binary silently. Disable this to suppress all startup update

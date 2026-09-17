@@ -20,8 +20,8 @@ backend, paths, availability, and state.
 It is split into three parts:
 
 - `lib/` — a GTK-free core library (`libsafestore-core`) with the vault,
-  path-policy, mount-detection, and keyring logic. This is the piece Parla
-  links against.
+  path-policy, mount-detection, and keyring logic. This is the intended
+  integration point for Parla; it is currently built and run separately.
 - `cli/` — the `safestore` command-line tool for scripted and automated use.
 - `gui/` — the `safestore-gui` GTK4/libadwaita application.
 

@@ -1975,8 +1975,8 @@ namespace Dc {
                     + "support, so it cannot start “%s”. You can still "
                     + "download the .xdc file.").printf (app_name);
             } else if (!Webxdc.enabled ()) {
-                title = "Webxdc Apps Are Disabled";
-                body = ("Webxdc apps are turned off in Settings, so Parla "
+                title = "In-Chat Apps Are Disabled";
+                body = ("In-chat apps are turned off in Settings, so Parla "
                     + "cannot start “%s”. You can still download the .xdc "
                     + "file.").printf (app_name);
             } else {
@@ -2022,7 +2022,7 @@ namespace Dc {
                 return false;
             }
             if (!Webxdc.enabled ()) {
-                show_toast ("Webxdc apps are disabled in Settings");
+                show_toast ("In-chat apps are disabled in Settings");
                 return false;
             }
             if (acct_id != rpc.account_id
@@ -2313,7 +2313,7 @@ namespace Dc {
                 if (rows.length == 0) {
                     var empty = new Adw.ActionRow ();
                     empty.title = "No accounts";
-                    empty.subtitle = "Add an account to get started";
+                    empty.subtitle = "Add a profile to get started";
                     account_menu_list.append (empty);
                 }
                 account_menu_list.append (build_add_account_row ());
