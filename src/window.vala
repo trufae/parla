@@ -1634,7 +1634,7 @@ namespace Dc {
                     row.child = chat_row;
 #if A11Y
                     row.update_property (Gtk.AccessibleProperty.LABEL,
-                        ChatRow.accessible_summary (entry), -1);
+                        chat_row.accessible_summary (), -1);
 #endif
                     chat_listbox.append (row);
 
@@ -3359,7 +3359,13 @@ namespace Dc {
             Gtk.ListBoxRow? row;
             while ((row = chat_listbox.get_row_at_index (idx)) != null) {
                 var chat_row = row.child as ChatRow;
-                if (chat_row != null) chat_row.set_compact (compact);
+                if (chat_row != null) {
+                    chat_row.set_compact (compact);
+#if A11Y
+                    row.update_property (Gtk.AccessibleProperty.LABEL,
+                        chat_row.accessible_summary (), -1);
+#endif
+                }
                 idx++;
             }
         }
@@ -3733,6 +3739,8 @@ namespace Dc {
             "Quick switch chat",     "<Primary>k",
             "Focus message entry",   "<Primary>l",
             "Reply to focused message", "Return",
+            "Select focused message", "space",
+            "Menu for focused message", "<Shift>F10",
             "Account menu",          "<Primary><Shift>a",
             "Focus next chat",       "<Primary>Page_Down",
             "Focus previous chat",   "<Primary>Page_Up",
@@ -3740,7 +3748,7 @@ namespace Dc {
             "Toggle sidebar",        "<Primary>s",
             "Compact sidebar",       "<Primary><Shift>s",
             "Focus message entry",   "Escape",
-            "Cancel reply/edit/image", "Escape",
+            "Cancel reply/edit/image/selection", "Escape",
             "Close window",          "<Primary>w",
             "Quit application",      "<Primary>q",
         };

@@ -62,7 +62,8 @@ namespace Dc {
                 vbox.append (edit_btn);
             }
 
-            var select_btn = new PopoverButton (popover, "Select...");
+            var select_btn = new PopoverButton (popover, "Select Messages",
+                false, false, "Space");
             select_btn.selected.connect (() => select_requested (msg_id));
             vbox.append (select_btn);
 

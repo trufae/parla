@@ -263,6 +263,7 @@ namespace Dc {
      * Incoming messages are left-aligned, outgoing messages right-aligned.
      */
     public class MessageRow : Gtk.Box {
+        private Gtk.CheckButton? selection_check;
 
         public static MessageStyle style = MessageStyle.BUBBLES;
         public static bool animate_stickers = true;
@@ -747,6 +748,7 @@ namespace Dc {
 
         private void append_selection_checkbox (Message msg) {
             var check = new Gtk.CheckButton ();
+            selection_check = check;
             check.add_css_class ("message-select-check");
             check.valign = Gtk.Align.CENTER;
             check.margin_end = 6;
@@ -764,6 +766,10 @@ namespace Dc {
             Signal.connect_object (check, "toggled",
                 (Callback) on_selection_toggled, this, (ConnectFlags) 0);
             this.append (check);
+        }
+
+        public void focus_selection () {
+            if (selection_check != null) selection_check.grab_focus ();
         }
 
         private static void on_selection_toggled (Gtk.CheckButton check,

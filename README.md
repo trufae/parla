@@ -101,6 +101,7 @@ Want to build it yourself? See [Build](#build) below.
 | Open chat info | `Ctrl+I` | `Command+I` |
 | Open the chat focused in the list | `Enter` | `Enter` |
 | Reply to the focused message | `Enter` | `Enter` |
+| Select the focused message | `Space` | `Space` |
 | Menu for the focused message | `Shift+F10` or `Menu` | `Shift+F10` |
 | Focus compose entry | `Esc` | `Esc` |
 | Refresh | `Ctrl+R` | `Command+R` |
@@ -110,6 +111,12 @@ Want to build it yourself? See [Build](#build) below.
 | Close window | `Ctrl+W` | `Command+W` |
 | Quit | `Ctrl+Q` | `Command+Q` |
 | Close dialog / viewer / search | `Esc` | `Esc` |
+
+To select several messages, focus a message and press `Space`, or open its
+menu and choose **Select Messages**. This shows the message checkboxes and
+focuses the selected message's checkbox. Use the checkboxes to change the
+selection, then **Forward** or **Delete…** in the action bar. `Esc` or
+**Cancel** leaves selection mode.
 
 ## Build
 
@@ -125,6 +132,10 @@ pip install deltachat-rpc-server
 # Build & run
 make run
 ```
+
+On GNOME, install the desktop entry as well so the app switcher can resolve
+Parla's name and icon: `sudo make install`. On Wayland, running an uninstalled
+binary or AppImage can leave the switcher showing the application ID instead.
 
 <details>
 <summary>Other distros</summary>
