@@ -36,6 +36,7 @@ fetch() {
         echo "have $file"
         return 0
     fi
+    echo "fetch $file from $url"
     curl -sSfL --retry 4 --retry-delay 2 -o "$file" "$url"
     echo "$sha256  $file" | sha256sum -c -
 }
@@ -55,7 +56,7 @@ fetch "https://download.gnome.org/sources/libadwaita/${ADW_VERSION%.*}/libadwait
 fetch "http://archive.ubuntu.com/ubuntu/pool/main/libx/libxmlb/libxmlb_$XMLB_VERSION.orig.tar.gz" \
     "libxmlb_$XMLB_VERSION.orig.tar.gz" \
     103684ed37a45d0aed8f95e97294ed26945b5aeebf44734f3994081eecebb11c
-fetch "https://www.freedesktop.org/software/appstream/releases/AppStream-$APPSTREAM_VERSION.tar.xz" \
+fetch "https://old-releases.ubuntu.com/ubuntu/pool/main/a/appstream/appstream_$APPSTREAM_VERSION.orig.tar.xz" \
     "AppStream-$APPSTREAM_VERSION.tar.xz" \
     5ab6f6cf644e7875a9508593962e56bb430f4e59ae0bf03be6be7029deb6baa4
 fetch "http://archive.ubuntu.com/ubuntu/pool/universe/libs/libsass/libsass_$LIBSASS_VERSION.orig.tar.xz" \
