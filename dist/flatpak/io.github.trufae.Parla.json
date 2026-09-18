@@ -1,7 +1,7 @@
 {
     "id": "io.github.trufae.Parla",
     "runtime": "org.gnome.Platform",
-    "runtime-version": "50",
+    "runtime-version": "51",
     "sdk": "org.gnome.Sdk",
     "command": "parla",
     "finish-args": [
@@ -22,8 +22,8 @@
             "sources": [
                 {
                     "type": "file",
-                    "url": "https://github.com/chatmail/core/releases/download/v2.53.0/deltachat-rpc-server-x86_64-linux",
-                    "sha256": "dcc37af7b7e95aae714c2366ff9f6d5c64170d0a7bb72cd7e3926a1a46e7e750",
+                    "url": "https://github.com/chatmail/core/releases/download/v2.60.0/deltachat-rpc-server-x86_64-linux",
+                    "sha256": "360b1ece949dcb6948e25b8a81e6399cdbbcf69b28728fa4ae0c7f14291c8764",
                     "dest-filename": "deltachat-rpc-server",
                     "only-arches": [
                         "x86_64"
@@ -38,8 +38,8 @@
                 },
                 {
                     "type": "file",
-                    "url": "https://github.com/chatmail/core/releases/download/v2.53.0/deltachat-rpc-server-aarch64-linux",
-                    "sha256": "2df89ca213948e4557a11eff3ffff05efd46c0314374fc791309bd1b7fe6b769",
+                    "url": "https://github.com/chatmail/core/releases/download/v2.60.0/deltachat-rpc-server-aarch64-linux",
+                    "sha256": "ccae50468d5faf15bde7df1b88bd396d5266ee802388f278e64ed4993738b626",
                     "dest-filename": "deltachat-rpc-server",
                     "only-arches": [
                         "aarch64"
