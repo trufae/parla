@@ -396,12 +396,13 @@ namespace Dc {
             }
         }
 
-        public void handle_double_click (int msg_id, bool is_outgoing,
-                                         double x, double y,
-                                         Gtk.Widget parent) {
+        public void activate_message (int msg_id, bool is_outgoing,
+                                      double x, double y,
+                                      Gtk.Widget parent) {
             switch (settings.double_click_action) {
             case 0: /* Reply */
                 start_replying (msg_id);
+                compose_bar.grab_entry_focus ();
                 break;
             case 1: /* React with heart */
                 send_reaction.begin (msg_id, "\xe2\x9d\xa4\xef\xb8\x8f");
@@ -421,7 +422,6 @@ namespace Dc {
                 });
                 return;
             }
-            compose_bar.grab_entry_focus ();
         }
 
         public void show_details (int msg_id) {
