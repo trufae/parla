@@ -102,6 +102,8 @@ Want to build it yourself? See [Build](#build) below.
 | Open the chat focused in the list | `Enter` | `Enter` |
 | Reply to the focused message | `Enter` | `Enter` |
 | Menu for the focused message | `Shift+F10` or `Menu` | `Shift+F10` |
+| Select or deselect the focused message | `Space` | `Space` |
+| Focus selection actions while selecting messages | `Ctrl+Tab` | `Ctrl+Tab` |
 | Focus compose entry | `Esc` | `Esc` |
 | Refresh | `Ctrl+R` | `Command+R` |
 | Toggle sidebar | `Ctrl+S` | `Command+S` |
@@ -110,6 +112,23 @@ Want to build it yourself? See [Build](#build) below.
 | Close window | `Ctrl+W` | `Command+W` |
 | Quit | `Ctrl+Q` | `Command+Q` |
 | Close dialog / viewer / search | `Esc` | `Esc` |
+
+To select multiple messages using the keyboard:
+
+1. Open a conversation, focus its message list, and use `Up` / `Down` to
+   reach the first message you want to select.
+2. Press `Space`. Selection mode opens and that message's checkbox is
+   focused and checked. Alternatively, press `Shift+F10` (or `Menu`),
+   choose **Select Messages** with the arrow keys, and press `Enter`.
+3. Use `Up` / `Down` to move between message checkboxes. Press `Space` to
+   select or deselect each message; moving alone does not change selection.
+   Screen readers announce the message and its checked state.
+4. Press `Ctrl+Tab` to reach **Delete…**, then `Tab` for **Forward** or
+   **Cancel**, and `Enter` to activate the chosen action. With no messages
+   selected, only **Cancel** is enabled. Delete still asks for confirmation.
+5. Press `Esc` or activate **Cancel** to clear selection and return to the
+   composer (or the message list for an unaccepted contact request). If a
+   menu, dialog, or conversation search is open, `Esc` closes it first.
 
 ## Build
 
