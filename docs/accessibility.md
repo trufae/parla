@@ -113,6 +113,28 @@ because Sailfish OS has no accessibility bus, independently of the
 `a11y` option. CI builds the Linux tree both with and without `a11y`
 so both halves of every `#if A11Y` keep compiling.
 
+## Keyboard selection smoke test
+
+The [keyboard selection steps](../README.md#keyboard-shortcuts) explain how
+to enter selection with Space or the message menu, navigate with Up/Down,
+toggle checkboxes with Space, and reach the selection actions with Ctrl+Tab.
+
+For a selection regression check:
+
+1. Follow those steps with several messages. Confirm the initially selected
+   checkbox receives focus, Up/Down announces each message and its checked
+   state, and Space toggles only the focused message. At either end, Up/Down
+   must stay inside the list without changing selection.
+2. Repeat after filtering the conversation, and with enough messages to
+   require scrolling. Navigation must follow the displayed message order.
+3. Deselect every message: Delete and Forward must become insensitive, and
+   Ctrl+Tab must still reach Cancel. Select messages again and cancel with
+   both Escape and the Cancel button; focus must not remain on a hidden
+   checkbox or action bar. Repeat with an unaccepted contact request.
+4. Check that Space on selectable text, playback buttons, markdown task
+   checkboxes, and popover buttons retains its own behavior. Modified Space
+   must not start selection. Enter must not reply while selection is active.
+
 ## App-side rules
 
 A working backend only exposes what widgets declare, so:
