@@ -130,7 +130,8 @@ A working backend only exposes what widgets declare, so:
   unnamed list item. Message rows get theirs from
   `MessageRow.accessible_summary` through `ListItem.accessible_label`.
 - Message rows are focusable list items: Up/Down walk the messages,
-  Enter replies and focuses the composer, Tab moves into a row's selectable
+  Enter runs the double-click action configured in Settings (Reply by default),
+  Tab moves into a row's selectable
   text, Menu / Shift+F10 open the message menu.
   `ConversationView.on_focus_widget_changed` decides where
   Tab enters the list (GTK would pick the first, oldest row and scroll
@@ -163,10 +164,11 @@ A working backend only exposes what widgets declare, so:
   row has an accent outline, separate from the highlight for the chat
   already open.
 
-## Keyboard reply smoke test
+## Keyboard message action smoke test
 
-1. Open an accepted conversation, focus the message list, and use Up/Down
-   to focus a message. Return and keypad Enter should start a reply to that
+1. Set the double-click action to Reply. Open an accepted conversation,
+   focus the message list, and use Up/Down to focus a message. Return and
+   keypad Enter should start a reply to that
    message and focus the composer, announced as "Type a reply". Repeat while
    filtering messages with conversation search to check the reply target.
 2. Cancel the reply with Escape. Tab into a message's link or playback
@@ -179,3 +181,8 @@ A working backend only exposes what widgets declare, so:
    selection checkboxes should appear; Enter must not start a reply while
    selecting messages. It must also do nothing on a contact request's row
    until the request is accepted.
+5. Repeat Return and keypad Enter with every double-click setting: the two
+   reactions and Show Contact Details must behave like double-clicking the
+   same message. Show Message Menu must open the menu at the focused row,
+   including after scrolling or filtering. Do Nothing must leave focus and
+   the composer unchanged. Reactions must not move focus into the composer.

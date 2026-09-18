@@ -853,7 +853,7 @@ namespace Dc {
                 (uint) app_window.settings.double_click_action);
             row_combo (behavior_group,
                 "Double-click action",
-                "Action when a message is double-clicked",
+                "Action when a message is double-clicked or Enter is pressed on its row",
                 dblclick_labels, dblclick_selected, (sel) => {
                 app_window.settings.save_double_click_action (
                     (int) swap_dblclick_45 (sel));

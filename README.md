@@ -79,7 +79,7 @@ Want to build it yourself? See [Build](#build) below.
 
 ### Settings
 
-- Double-click action on a message: Reply / React ❤️ / React 👍 / Open profile / None.
+- Double-click or Enter on a focused message: Reply / React ❤️ / React 👍 / Show Contact Details / Show Message Menu / Do Nothing, configured by the double-click action in Settings.
 - Choose whether Markdown is rendered, stripped, or shown as-is.
 - Toggle Shift+Enter vs Enter to send.
 - Toggle desktop notifications for incoming messages when the window is unfocused.
@@ -100,7 +100,7 @@ Want to build it yourself? See [Build](#build) below.
 | Search in conversation | `Ctrl+F` | `Command+F` |
 | Open chat info | `Ctrl+I` | `Command+I` |
 | Open the chat focused in the list | `Enter` | `Enter` |
-| Reply to the focused message | `Enter` | `Enter` |
+| Run the configured message action (Reply by default) | `Enter` | `Enter` |
 | Menu for the focused message | `Shift+F10` or `Menu` | `Shift+F10` |
 | Focus compose entry | `Esc` | `Esc` |
 | Refresh | `Ctrl+R` | `Command+R` |
