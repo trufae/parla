@@ -494,6 +494,46 @@ namespace Dc {
             }));
             message_listview.add_controller (menu_keys);
 
+            var selection_keys = new Gtk.EventControllerKey ();
+            selection_keys.propagation_phase = Gtk.PropagationPhase.CAPTURE;
+            track_signal (selection_keys, selection_keys.key_pressed.connect ((keyval, keycode, state) => {
+                var focus = window.focus_widget;
+                if (focus == null) return false;
+                bool row_focus = focus.get_parent () == message_listview;
+                bool check_focus = selection_mode && focus.has_css_class ("message-select-check");
+                if (!row_focus && !check_focus) return false;
+                var mods = state & Gtk.accelerator_get_default_mod_mask ();
+                if (selection_mode && keyval == Gdk.Key.Tab &&
+                        mods == Gdk.ModifierType.CONTROL_MASK) {
+                    return selection_bar.child_focus (Gtk.DirectionType.TAB_FORWARD);
+                }
+                if (mods != 0) return false;
+                var row = focused_message_row ();
+                if (row == null) return false;
+                if (check_focus && (keyval == Gdk.Key.Up || keyval == Gdk.Key.Down)) {
+                    int pos = find_message_index (filtered_message_store, row.message_id);
+                    if (pos < 0) return false;
+                    pos += keyval == Gdk.Key.Up ? -1 : 1;
+                    if (pos >= 0 && pos < filtered_message_store.get_n_items ()) {
+                        focus_jump_until_us = get_monotonic_time () + 1000 * 1000;
+                        message_listview.scroll_to (pos, Gtk.ListScrollFlags.FOCUS, null);
+                    }
+                    return true;
+                }
+                // Checkboxes and embedded controls keep their native Space handling.
+                if (keyval != Gdk.Key.space || !row_focus) return false;
+                if (selection_mode) {
+                    var msg = find_message (message_store, row.message_id);
+                    if (msg == null) return false;
+                    msg.selected = !msg.selected;
+                    row.focus_selection ();
+                } else {
+                    begin_selection_mode (row.message_id);
+                }
+                return true;
+            }));
+            message_listview.add_controller (selection_keys);
+
             /* Pointer presses on the list are remembered so a click that
                focuses a message's text is not mistaken for keyboard entry. */
             var press_stamp = new Gtk.GestureClick ();
@@ -956,6 +996,7 @@ namespace Dc {
             cancel_btn.hexpand = true;
             track_signal (cancel_btn, cancel_btn.clicked.connect (() => {
                 end_selection_mode ();
+                focus_entry ();
             }));
             bar.append (cancel_btn);
 
@@ -1042,6 +1083,12 @@ namespace Dc {
             });
             sync_bottom_bars ();
             update_selection_actions ();
+            double top;
+            var row = find_message_row (message_listview, initial_msg_id, out top);
+            if (row != null) {
+                focus_jump_until_us = get_monotonic_time () + 1000 * 1000;
+                row.focus_selection ();
+            }
         }
 
         private void end_selection_mode () {
@@ -1198,7 +1245,8 @@ namespace Dc {
 
         public void focus_entry () {
             if (selection_mode) return;
-            compose_bar.grab_entry_focus ();
+            if (is_contact_request) message_listview.grab_focus ();
+            else compose_bar.grab_entry_focus ();
         }
 
         public bool has_active_compose_mode () {
@@ -2473,6 +2521,10 @@ namespace Dc {
                 }
             }
             last_focus_item.set (item);
+            if (selection_mode && focus == item) {
+                var row = find_message_row_in (item);
+                if (row != null) row.focus_selection ();
+            }
         }
 
         /* The list item (direct child of the list view) on the ancestry of
