@@ -297,7 +297,7 @@ namespace Dc {
                     .add_int (acct_id).add_int (msg_id)
                     .add_string (icon_name).build ());
                 entry.icon = Gdk.Texture.from_bytes (
-                    new Bytes (Base64.decode (blob.get_string ())));
+                    new Bytes (decode_rpc_blob (blob.get_string ())));
             } catch (Error e) {
                 debug ("webxdc icon %d/%d: %s", acct_id, msg_id, e.message);
             }

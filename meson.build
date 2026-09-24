@@ -105,6 +105,7 @@ sources = files(
   'src/window.vala',
   'src/rpc_transport.vala',
   'src/rpc_params.vala',
+  'src/rpc_blob.vala',
   'src/attachment_types.vala',
   'src/rpc_parsers.vala',
   'src/rpc_client.vala',
@@ -421,6 +422,15 @@ webxdc_security_test = executable(
 )
 
 test('webxdc-security', webxdc_security_test)
+
+rpc_blob_test = executable(
+  'rpc-blob-test',
+  files('tests/rpc_blob_test.vala', 'src/rpc_blob.vala'),
+  dependencies: [dependency('gtk4')],
+  install: false,
+)
+
+test('rpc-blob', rpc_blob_test)
 
 # Every symbolic icon used by the UI must be bundled in the GResource or
 # built into GTK4/libadwaita, so it renders without a system icon theme.
