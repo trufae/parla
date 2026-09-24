@@ -14,6 +14,9 @@ namespace Dc {
         private Gtk.Widget? compact_unread_marker = null;
         private Gtk.Image? compact_pin_icon = null;
         private bool compact = false;
+#if A11Y
+        private ChatEntry entry;
+#endif
         private FileDropTarget? file_drop_target;
 
         public signal bool accept_file_drop ();
@@ -23,6 +26,9 @@ namespace Dc {
         public ChatRow (ChatEntry entry) {
             Object (orientation: Gtk.Orientation.HORIZONTAL, spacing: 10);
             this.chat_id = entry.id;
+#if A11Y
+            this.entry = entry;
+#endif
             bool is_request = entry.is_contact_request;
             bool has_unread = entry.unread_count > 0 && !is_request;
             bool is_muted = entry.is_muted;
@@ -144,6 +150,10 @@ namespace Dc {
         }
 
         public void set_compact (bool compact) {
+#if A11Y
+            get_parent ().update_property (Gtk.AccessibleProperty.LABEL,
+                accessible_summary (compact), -1);
+#endif
             if (this.compact == compact) return;
             this.compact = compact;
             mid_box.visible = !compact;
@@ -188,11 +198,8 @@ namespace Dc {
         }
 
 #if A11Y
-        /* Accessible name for the list row holding a ChatRow. A list item
-           is named only by an explicit label (AccessKit exposes nothing
-           else, and the compact row hides all its labels), so without it
-           the sidebar reads as empty items (#57). */
-        public static string accessible_summary (ChatEntry entry) {
+        // List items need an explicit name, including in compact mode (#57).
+        private string accessible_summary (bool compact) {
             var sb = new StringBuilder (entry.name);
             if (entry.is_contact_request) sb.append (", contact request");
             else if (entry.unread_count > 0)
@@ -200,6 +207,7 @@ namespace Dc {
             if (entry.has_mention) sb.append (", mentioned you");
             if (entry.is_pinned) sb.append (", pinned");
             if (entry.is_muted) sb.append (", muted");
+            if (compact) return sb.str;
             string time = format_time (entry.timestamp);
             if (time.length > 0) sb.append (", ").append (time);
             string preview = format_preview (entry);

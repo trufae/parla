@@ -1649,15 +1649,11 @@ namespace Dc {
 
                     var row = new Gtk.ListBoxRow ();
                     var chat_row = new ChatRow (entry);
+                    row.child = chat_row;
                     chat_row.set_compact (settings.sidebar_mode == SidebarMode.COMPACT);
                     chat_row.accept_file_drop.connect (() => can_attach_file_to_chat (chat_row.chat_id));
                     chat_row.file_dropped.connect ((path, name) => attach_file_to_chat (chat_row.chat_id, path, name));
                     chat_row.file_drop_failed.connect ((message) => show_toast ("Attach failed: " + message));
-                    row.child = chat_row;
-#if A11Y
-                    row.update_property (Gtk.AccessibleProperty.LABEL,
-                        ChatRow.accessible_summary (entry), -1);
-#endif
                     chat_listbox.append (row);
 
                     if (entry.id == focused_chat_id) refocus_row = row;
@@ -3755,6 +3751,7 @@ namespace Dc {
             "Quick switch chat",     "<Primary>k",
             "Focus message entry",   "<Primary>l",
             "Message action (from Settings)", "Return",
+            "Menu for focused message", "<Shift>F10",
             "Account menu",          "<Primary><Shift>a",
             "Focus next chat",       "<Primary>Page_Down",
             "Focus previous chat",   "<Primary>Page_Up",
@@ -3764,8 +3761,7 @@ namespace Dc {
             "Focus message entry",   "Escape",
             "Select or deselect focused message", "space",
             "Focus message selection actions", "<Control>Tab",
-            "Cancel message selection", "Escape",
-            "Cancel reply/edit/image", "Escape",
+            "Cancel reply/edit/image/selection", "Escape",
             "Close window",          "<Primary>w",
             "Quit application",      "<Primary>q",
         };
