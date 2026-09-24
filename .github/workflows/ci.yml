@@ -35,7 +35,8 @@ jobs:
             libgtk-4-dev \
             libadwaita-1-dev \
             libjson-glib-dev \
-            libwebkitgtk-6.0-dev
+            libwebkitgtk-6.0-dev \
+            xvfb
 
       - name: Check Sailfish package download verification
         if: matrix.a11y == true
@@ -50,6 +51,10 @@ jobs:
       - name: Test
         if: matrix.a11y == true
         run: meson test -C builddir --print-errorlogs
+
+      - name: Check account setup events without a profile
+        if: matrix.a11y == true
+        run: dbus-run-session -- xvfb-run -a python3 tests/account_setup_events_test.py builddir/parla
 
   build-deb:
     runs-on: ubuntu-24.04
