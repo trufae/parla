@@ -457,26 +457,6 @@ namespace Dc {
             }));
             message_listview.add_controller (rc);
 
-            // Handle Return before GTK consumes it on the non-activatable list item.
-            var activation_keys = new Gtk.EventControllerKey ();
-            activation_keys.propagation_phase = Gtk.PropagationPhase.CAPTURE;
-            track_signal (activation_keys, activation_keys.key_pressed.connect ((keyval, keycode, state) => {
-                if (keyval != Gdk.Key.Return && keyval != Gdk.Key.KP_Enter) return false;
-                if ((state & Gtk.accelerator_get_default_mod_mask ()) != 0 ||
-                        selection_mode || is_contact_request) return false;
-                var focus = window.focus_widget;
-                if (focus == null || focus.get_parent () != message_listview) return false;
-                var row = focused_message_row ();
-                if (row == null) return false;
-                Graphene.Rect bounds;
-                if (!row.compute_bounds (message_listview, out bounds)) return false;
-                msg_actions.activate_message (row.message_id, row.is_outgoing,
-                    bounds.origin.x + bounds.size.width / 2,
-                    bounds.origin.y + bounds.size.height / 2, message_listview);
-                return true;
-            }));
-            message_listview.add_controller (activation_keys);
-
             /* Menu / Shift+F10 open the message menu for the focused row,
                anchored to it. A focused text label keeps GTK's own copy
                menu, which handles the key before it reaches the list. */
@@ -498,9 +478,10 @@ namespace Dc {
             }));
             message_listview.add_controller (menu_keys);
 
-            var selection_keys = new Gtk.EventControllerKey ();
-            selection_keys.propagation_phase = Gtk.PropagationPhase.CAPTURE;
-            track_signal (selection_keys, selection_keys.key_pressed.connect ((keyval, keycode, state) => {
+            // Handle row shortcuts before GTK consumes them on the list item.
+            var message_keys = new Gtk.EventControllerKey ();
+            message_keys.propagation_phase = Gtk.PropagationPhase.CAPTURE;
+            track_signal (message_keys, message_keys.key_pressed.connect ((keyval, keycode, state) => {
                 var focus = window.focus_widget;
                 if (focus == null) return false;
                 bool row_focus = focus.get_parent () == message_listview;
@@ -524,19 +505,29 @@ namespace Dc {
                     }
                     return true;
                 }
-                // Checkboxes and embedded controls keep their native Space handling.
-                if (keyval != Gdk.Key.space || !row_focus) return false;
-                if (selection_mode) {
-                    var msg = find_message (message_store, row.message_id);
-                    if (msg == null) return false;
-                    msg.selected = !msg.selected;
-                    row.focus_selection ();
+                // Embedded controls keep their native Space and Enter handling.
+                if (!row_focus) return false;
+                if (keyval == Gdk.Key.space) {
+                    if (selection_mode) {
+                        var msg = find_message (message_store, row.message_id);
+                        if (msg == null) return false;
+                        msg.selected = !msg.selected;
+                        row.focus_selection ();
+                    } else {
+                        begin_selection_mode (row.message_id);
+                    }
                 } else {
-                    begin_selection_mode (row.message_id);
+                    if ((keyval != Gdk.Key.Return && keyval != Gdk.Key.KP_Enter) ||
+                            selection_mode || is_contact_request) return false;
+                    Graphene.Rect bounds;
+                    if (!row.compute_bounds (message_listview, out bounds)) return false;
+                    msg_actions.activate_message (row.message_id, row.is_outgoing,
+                        bounds.origin.x + bounds.size.width / 2,
+                        bounds.origin.y + bounds.size.height / 2, message_listview);
                 }
                 return true;
             }));
-            message_listview.add_controller (selection_keys);
+            message_listview.add_controller (message_keys);
 
             /* Pointer presses on the list are remembered so a click that
                focuses a message's text is not mistaken for keyboard entry. */

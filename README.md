@@ -145,6 +145,9 @@ pip install deltachat-rpc-server
 make run
 ```
 
+On GNOME, install the desktop entry with `sudo make install` so the app
+switcher can resolve Parla's name and icon, especially on Wayland.
+
 <details>
 <summary>Other distros</summary>
 
