@@ -230,12 +230,7 @@ namespace Dc {
                 && obj.get_member ("mimetype").get_node_type () == Json.NodeType.VALUE)
                 mimetype = obj.get_string_member ("mimetype");
             string blob = obj.has_member ("blob") ? obj.get_string_member ("blob") : "";
-            /* Core encodes with STANDARD_NO_PAD; g_base64_decode silently
-               drops an unpadded final group, so restore the padding. */
-            int rem = blob.length % 4;
-            if (rem == 2) blob += "==";
-            else if (rem == 3) blob += "=";
-            return GLib.Base64.decode (blob);
+            return decode_rpc_blob (blob);
         }
 
         public async Json.Object? check_qr (int acct_id, string qr_text) throws Error {
