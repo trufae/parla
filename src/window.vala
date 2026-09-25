@@ -1890,6 +1890,8 @@ namespace Dc {
         }
 
         private async void notice_chat (int chat_id) {
+            if (!is_chat_visible (chat_id)) return;
+            int account_id = rpc.account_id;
             clear_chat_mention (chat_id);
             try {
                 yield rpc.marknoticed_chat (chat_id);
@@ -1897,7 +1899,7 @@ namespace Dc {
                 /* non-critical */
             }
             if (events != null) {
-                events.clear_notifications_for_chat (rpc.account_id, chat_id);
+                events.clear_notifications_for_chat (account_id, chat_id);
             }
         }
 

@@ -120,7 +120,9 @@ namespace Dc {
         private bool loading_messages = false;
         private bool reload_requested = false;
         private uint activation_generation = 0;
-        private int[] pending_seen_ids = {};
+        private uint seen_timer = 0;
+        private HashTable<int, bool> seen_in_flight = new HashTable<int, bool> (
+            direct_hash, direct_equal);
         private Json.Array? all_msg_ids = null;
         private uint loaded_start_index = 0;
         private bool loading_more = false;
@@ -302,6 +304,7 @@ namespace Dc {
             track_signal (adjustment,
                 adjustment.notify["page-size"].connect (on_scroll_bounds_changed));
             track_signal (adjustment, adjustment.notify["value"].connect (() => {
+                flush_pending_seen ();
                 if (loading_chat) return;
                 if (GLib.get_monotonic_time () < scroll_freeze_until_us) return;
                 /* While a row is anchored the engine owns the viewport:
@@ -424,6 +427,7 @@ namespace Dc {
                 li.accessible_label = (unread_start ? "Unread messages. " : "")
                     + MessageRow.accessible_summary (msg);
 #endif
+                flush_pending_seen ();
             }));
             /* bind builds a fresh row tree; drop it as soon as the list item
                is recycled so widgets, textures, and messages can finalize. */
@@ -929,6 +933,7 @@ namespace Dc {
         }
 
         private void on_scroll_bounds_changed () {
+            flush_pending_seen ();
             if (loading_chat) return;
             maybe_autoscroll ();
             scroll_down_btn.visible = !is_near_bottom ();
@@ -1287,14 +1292,11 @@ namespace Dc {
         public async bool handle_incoming_msg (int msg_id) {
             try {
                 if (find_message (message_store, msg_id) != null) {
-                    if (window.is_chat_visible (this.chat_id)) {
-                        yield rpc.mark_seen_msgs (new int[] { msg_id });
-                    } else if (window.current_chat_id == this.chat_id) {
-                        queue_pending_seen (msg_id);
-                    }
+                    flush_pending_seen ();
                     return true;
                 }
                 var msg = yield rpc.fetch_message (msg_id);
+                if (closed) return false;
                 if (msg == null) {
                     mark_messages_stale ();
                     return false;
@@ -1303,14 +1305,7 @@ namespace Dc {
                 if (is_current) msg.highlighted = true;
                 msg.selection_visible = selection_mode;
                 insert_message_sorted (msg);
-                if (window.is_chat_visible (this.chat_id)
-                    && should_mark_message_seen (msg)) {
-                    yield rpc.mark_seen_msgs (new int[] { msg_id });
-                } else if (is_current && should_mark_message_seen (msg)) {
-                    /* On screen but the window is unfocused: defer the seen
-                       mark until the user actually looks at the chat. */
-                    queue_pending_seen (msg_id);
-                }
+                flush_pending_seen ();
                 return true;
             } catch (Error e) {
                 warning ("handle_incoming_msg: %s", e.message);
@@ -1319,41 +1314,55 @@ namespace Dc {
             }
         }
 
-        /* Send the deferred seen-marks for messages that arrived while the
-           window was unfocused. Called when the user is looking at this chat
-           again (window refocused or chat re-entered). */
-        public void flush_pending_seen () {
-            if (loading_messages || unread_snapshot_pending
-                    || goal == ViewportGoal.ANCHOR
-                    || !window.is_chat_visible (chat_id)) return;
-
-            int[] ids = loaded_incoming_message_ids ();
-            foreach (int msg_id in pending_seen_ids) {
-                if (!int_array_contains (ids, msg_id)) ids += msg_id;
-            }
-            pending_seen_ids = {};
-            send_seen_ids (ids);
+        private bool can_mark_visible_seen () {
+            return !closed && !unread_snapshot_pending && !loading_messages
+                && goal != ViewportGoal.ANCHOR && pending_scroll_message_id == 0
+                && window.is_chat_visible (chat_id);
         }
 
-        private int[] loaded_incoming_message_ids () {
-            int[] ids = {};
-            uint n = message_store.get_n_items ();
-            for (uint i = 0; i < n; i++) {
-                var msg = (Message) message_store.get_item (i);
-                if (!should_mark_message_seen (msg)) continue;
-                if (!int_array_contains (ids, msg.id)) ids += msg.id;
+        /* Wait for layout/scrolling to settle, then inspect actual row bounds.
+           ListView also realizes rows outside the viewport: loading or binding
+           a message alone must never send a read receipt. */
+        public void flush_pending_seen () {
+            if (!can_mark_visible_seen () || seen_timer != 0) return;
+            seen_timer = Timeout.add (250, () => {
+                seen_timer = 0;
+                if (can_mark_visible_seen ()) {
+                    var ids = new GLib.Array<int> ();
+                    collect_visible_seen_ids (message_listview, ids);
+                    send_seen_ids (ids.data);
+                }
+                return Source.REMOVE;
+            });
+        }
+
+        private void collect_visible_seen_ids (Gtk.Widget widget, GLib.Array<int> ids) {
+            var row = widget as MessageRow;
+            if (row != null) {
+                Graphene.Point point = Graphene.Point ();
+                if (!row.get_mapped () || row.get_height () <= 0
+                        || !row.compute_point (message_scroll,
+                            Graphene.Point () { x = 0, y = 0 }, out point)
+                        || point.y + row.get_height () <= 0
+                        || point.y >= message_scroll.get_height ()) return;
+                foreach (int id in row.presented_message_ids) {
+                    var msg = find_message (message_store, id);
+                    if (msg != null && should_mark_message_seen (msg)
+                            && !seen_in_flight.contains (id)
+                            && !int_array_contains (ids.data, id)) ids.append_val (id);
+                }
+                return;
             }
-            return ids;
+            for (Gtk.Widget? child = widget.get_first_child ();
+                    child != null; child = child.get_next_sibling ()) {
+                collect_visible_seen_ids (child, ids);
+            }
         }
 
         private static bool should_mark_message_seen (Message msg) {
-            return msg.id > 0 && !msg.is_outgoing && !msg.is_info;
-        }
-
-        private void queue_pending_seen (int msg_id) {
-            if (msg_id <= 0 || int_array_contains (pending_seen_ids, msg_id))
-                return;
-            pending_seen_ids += msg_id;
+            return msg.id > 0 && !msg.is_outgoing
+                && (msg.state == MessageState.IN_FRESH
+                    || msg.state == MessageState.IN_NOTICED);
         }
 
         private static bool int_array_contains (int[] ids, int needle) {
@@ -1365,11 +1374,22 @@ namespace Dc {
 
         private void send_seen_ids (int[] ids) {
             if (ids.length == 0) return;
-            rpc.mark_seen_msgs.begin (ids, (o, res) => {
+            /* The viewport collector owns its array only until this returns;
+               keep a copy for the asynchronous completion callback. */
+            int[] sent_ids = ids.copy ();
+            foreach (int id in sent_ids) seen_in_flight.insert (id, true);
+            rpc.mark_seen_msgs.begin (sent_ids, (o, res) => {
                 try {
                     rpc.mark_seen_msgs.end (res);
+                    foreach (int id in sent_ids) {
+                        var msg = find_message (message_store, id);
+                        if (msg != null && should_mark_message_seen (msg))
+                            msg.state = MessageState.IN_SEEN;
+                    }
                 } catch (Error e) {
                     /* non-critical */
+                } finally {
+                    foreach (int id in sent_ids) seen_in_flight.remove (id);
                 }
             });
         }
@@ -2884,6 +2904,10 @@ namespace Dc {
             if (closed) return;
             closed = true;
             activation_generation++;
+            if (seen_timer != 0) {
+                Source.remove (seen_timer);
+                seen_timer = 0;
+            }
 
             flush_pending_draft_save ();
             goal_generation++;
@@ -2924,7 +2948,6 @@ namespace Dc {
             filtered_message_store.set_model (null);
             message_store.remove_all ();
             all_msg_ids = null;
-            pending_seen_ids = {};
             mention_roster = null;
             reaction_roster = null;
             msg_actions.set_reaction_roster (null);

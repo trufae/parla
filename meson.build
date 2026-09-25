@@ -472,7 +472,7 @@ test('rpc-transport', rpc_transport_test, timeout: 30)
 # Exercise the actual RPC parsers and client models without starting GTK.
 core_compat_test = executable(
   'core-compat-test',
-  files('tests/core_compat_test.vala'),
+  files('tests/core_compat_test.vala', 'tests/unread_ui_test.vala'),
   sources, config_file, appdata_vala, resources,
   dependencies: deps,
   include_directories: src_inc,

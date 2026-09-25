@@ -302,6 +302,7 @@ namespace Dc {
         }
 
         public int message_id { get; private set; }
+        public int[] presented_message_ids = {};
         public bool is_outgoing { get; private set; }
         public AudioPlayer? audio_player { get; private set; default = null; }
 
@@ -396,6 +397,12 @@ namespace Dc {
             Object (orientation: Gtk.Orientation.HORIZONTAL, spacing: 0);
             this.message_id = msg.id;
             this.is_outgoing = msg.is_outgoing;
+            int[] presented_ids = { msg.id };
+            if (trailing_images != null) {
+                for (uint i = 0; i < trailing_images.length; i++)
+                    presented_ids += trailing_images[i].id;
+            }
+            presented_message_ids = presented_ids;
             this.mention_roster = mention_roster;
             this.reaction_roster = reaction_roster;
             this.account_id = account_id;
