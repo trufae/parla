@@ -154,6 +154,7 @@ namespace Dc {
             case "MsgFailed":
             case "MsgDeleted":
             case "ReactionsChanged":
+            case "PinnedMessagesChanged":
                 int msg_chat = (int) event.get_int_member ("chatId");
                 chat_messages_changed (rpc.account_id, msg_chat);
                 if (msg_chat == active_chat_id) {

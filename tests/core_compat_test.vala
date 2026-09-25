@@ -2,7 +2,13 @@ using Dc;
 
 private string test_executable;
 
+private async void nap (uint milliseconds) {
+    Timeout.add (milliseconds, nap.callback);
+    yield;
+}
+
 private int run_fake_server () {
+    int event_number = 0;
     string? line;
     while ((line = stdin.read_line ()) != null) {
         var request = object_from_json (line);
@@ -20,6 +26,11 @@ private int run_fake_server () {
             result = args.get_int_element (0) == 1
                 ? "[{\"addr\":\"one@relay.example\"},{\"addr\":\"two@relay.example\"}]"
                 : "[]";
+            break;
+        case "get_next_event":
+            if (event_number >= 2) continue;
+            result = "{\"contextId\":%d,\"event\":{\"kind\":\"PinnedMessagesChanged\",\"chatId\":10}}"
+                .printf (event_number++ == 0 ? 2 : 1);
             break;
         default:
             stderr.printf ("Unexpected RPC method: %s\n", method);
@@ -99,6 +110,34 @@ private void test_account_addresses () {
     loop.run ();
 }
 
+private async void check_pin_events () {
+    var rpc = new RpcClient ();
+    try { yield rpc.start ({ test_executable, "--fake-core" }); }
+    catch (Error e) { error ("Start core: %s", e.message); }
+    rpc.account_id = 1;
+    var events = new EventHandler (rpc);
+    events.active_chat_id = 10;
+    int changes = 0;
+    int reloads = 0;
+    events.chat_messages_changed.connect ((acct, chat) => {
+        assert (acct == 1 && chat == 10);
+        changes++;
+    });
+    events.messages_reload_fired.connect (() => { reloads++; });
+    events.start.begin ();
+    for (int i = 0; i < 100 && reloads == 0; i++) yield nap (10);
+    assert (changes == 1);
+    assert (reloads == 1);
+    rpc.stop ();
+    while (events.is_listening) yield nap (10);
+}
+
+private void test_pin_events () {
+    var loop = new MainLoop ();
+    check_pin_events.begin (() => { loop.quit (); });
+    loop.run ();
+}
+
 public int main (string[] args) {
     if (args.length > 1 && args[1] == "--fake-core") return run_fake_server ();
     test_executable = File.new_for_path (args[0]).get_path ();
@@ -106,5 +145,6 @@ public int main (string[] args) {
     Test.add_func ("/core-compat/presence", test_presence);
     Test.add_func ("/core-compat/message-identity", test_message_identity);
     Test.add_func ("/core-compat/account-addresses", test_account_addresses);
+    Test.add_func ("/core-compat/pin-events", test_pin_events);
     return Test.run ();
 }
