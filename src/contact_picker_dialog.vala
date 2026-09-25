@@ -160,7 +160,7 @@ namespace Dc {
                         if (id <= 0 || !(yield rpc.is_configured (id))) continue;
 
                         string? name = yield rpc.get_config ("displayname", id);
-                        string? addr = yield rpc.get_config ("addr", id);
+                        string? addr = yield rpc.get_account_address (id);
                         string label = (name != null && name.length > 0)
                             ? name : (addr ?? "Account #%d".printf (id));
                         if (name != null && name.length > 0

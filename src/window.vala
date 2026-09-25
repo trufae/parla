@@ -1100,36 +1100,15 @@ namespace Dc {
         }
 
         private async void refresh_self_mention_keys () {
-            var keys = new GenericArray<string> ();
-            if (MessageRow.self_display_name != null
-                && MessageRow.self_display_name.strip ().length > 0) {
-                keys.add (MessageRow.self_display_name.strip ().down ());
-            }
-            if (rpc.self_email != null && rpc.self_email.length > 0) {
-                keys.add (rpc.self_email.down ());
-            }
-            try {
-                var transports = yield rpc.list_transports (rpc.account_id);
-                if (transports != null
-                    && transports.get_node_type () == Json.NodeType.ARRAY) {
-                    var arr = transports.get_array ();
-                    for (uint i = 0; i < arr.get_length (); i++) {
-                        var obj = arr.get_object_element (i);
-                        string? addr = obj != null ? json_str (obj, "addr") : null;
-                        if (addr != null && addr.length > 0) keys.add (addr.down ());
-                    }
-                }
-            } catch (Error e) { /* transports optional */ }
-
-            string[] result = {};
-            for (int i = 0; i < keys.length; i++) result += keys[i];
-            self_mention_keys_cache = result;
+            int acct_id = rpc.account_id;
+            string[] keys = yield background_self_keys (acct_id);
+            if (rpc.account_id == acct_id) self_mention_keys_cache = keys;
         }
 
         /* Detect whether an incoming message mentions the local user and, if so,
            flag the chat in the sidebar and fire a notification that ignores mute
-           (mentions should always reach the user). Best-effort for background
-           accounts (name/address only, no transports). */
+           (mentions should always reach the user). Includes every transport
+           address for background accounts as well. */
         private async void check_mention (int acct_id, int chat_id, int msg_id) {
             string[] keys = acct_id == rpc.account_id
                 ? self_mention_keys_cache
@@ -1173,8 +1152,8 @@ namespace Dc {
                     keys += dn.strip ().down ();
             } catch (Error e) { }
             try {
-                string? addr = yield rpc.get_config ("addr", acct_id);
-                if (addr != null && addr.length > 0) keys += addr.down ();
+                foreach (string addr in yield rpc.get_account_addresses (acct_id))
+                    keys += addr.down ();
             } catch (Error e) { }
             return keys;
         }
@@ -1226,23 +1205,20 @@ namespace Dc {
         }
 
         private async void load_self_identity () {
-            try {
-                rpc.self_email = yield rpc.get_config ("addr", rpc.account_id);
-            } catch (Error e) {
-                rpc.self_email = null;
-            }
-            try {
-                MessageRow.self_display_name =
-                    yield rpc.get_config ("displayname", rpc.account_id);
-            } catch (Error e) {
-                MessageRow.self_display_name = null;
-            }
-            try {
-                MessageRow.self_avatar_path =
-                    yield rpc.get_config ("selfavatar", rpc.account_id);
-            } catch (Error e) {
-                MessageRow.self_avatar_path = null;
-            }
+            int acct_id = rpc.account_id;
+            string? address = null;
+            string? name = null;
+            string? avatar = null;
+            try { address = yield rpc.get_account_address (acct_id); }
+            catch (Error e) { }
+            try { name = yield rpc.get_config ("displayname", acct_id); }
+            catch (Error e) { }
+            try { avatar = yield rpc.get_config ("selfavatar", acct_id); }
+            catch (Error e) { }
+            if (rpc.account_id != acct_id) return;
+            rpc.self_email = address;
+            MessageRow.self_display_name = name;
+            MessageRow.self_avatar_path = avatar;
             yield refresh_self_mention_keys ();
         }
 
@@ -2237,7 +2213,7 @@ namespace Dc {
             try {
                 string? name = yield rpc.get_config ("displayname", acct_id);
                 if (name == null || name.length == 0)
-                    name = yield rpc.get_config ("addr", acct_id);
+                    name = yield rpc.get_account_address (acct_id);
                 if (name != null && name.length > 0)
                     return "[%s] %s".printf (name, title);
             } catch (Error e) { /* fall back to the plain title */ }
@@ -2405,7 +2381,7 @@ namespace Dc {
             int unread = 0;
             if (configured) {
                 try {
-                    email = yield rpc.get_config ("addr", id);
+                    email = yield rpc.get_account_address (id);
                     display_name = yield rpc.get_config ("displayname", id);
                     avatar = yield rpc.get_config ("selfavatar", id);
                     unread = yield rpc.get_fresh_msg_count (id);

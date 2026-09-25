@@ -289,6 +289,26 @@ namespace Dc {
                 Params.begin ().add_int (acct_id).build ());
         }
 
+        public async string[] get_account_addresses (int acct_id) throws Error {
+            var result = yield list_transports (acct_id);
+            string[] addresses = {};
+            if (result == null || result.get_node_type () != Json.NodeType.ARRAY)
+                return addresses;
+            var transports = result.get_array ();
+            for (uint i = 0; i < transports.get_length (); i++) {
+                string? addr = json_str (transports.get_object_element (i), "addr");
+                if (addr != null && addr.length > 0) addresses += addr;
+            }
+            return addresses;
+        }
+
+        /* A representative address for labels, never an account identity.
+           Core no longer supplies Account.addr or a default addr config. */
+        public async string? get_account_address (int acct_id) throws Error {
+            var addresses = yield get_account_addresses (acct_id);
+            return addresses.length > 0 ? addresses[0] : null;
+        }
+
         public async void delete_transport (int acct_id, string addr) throws Error {
             yield call ("delete_transport",
                 Params.begin ()

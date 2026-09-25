@@ -161,7 +161,9 @@ namespace Dc {
                                                  GenericArray<AppEntry> found) {
             int acct_id = (int) json_int (acct, "id");
             if (acct_id <= 0) return;
-            string? self_addr = json_str (acct, "addr");
+            string? self_addr = null;
+            try { self_addr = yield rpc.get_account_address (acct_id); }
+            catch (Error e) { /* Fall back to the profile name or ID. */ }
             string account_label = json_str (acct, "displayName")
                 ?? self_addr ?? "Profile %d".printf (acct_id);
 

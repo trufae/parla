@@ -1,5 +1,37 @@
 using Dc;
 
+private string test_executable;
+
+private int run_fake_server () {
+    string? line;
+    while ((line = stdin.read_line ()) != null) {
+        var request = object_from_json (line);
+        string method = request.get_string_member ("method");
+        var args = request.get_array_member ("params");
+        string result;
+        switch (method) {
+        case "get_system_info": result = "{}"; break;
+        case "get_all_accounts":
+            result = "[{\"id\":2},{\"id\":1}]";
+            break;
+        case "is_configured": result = "true"; break;
+        case "select_account": result = "null"; break;
+        case "list_transports":
+            result = args.get_int_element (0) == 1
+                ? "[{\"addr\":\"one@relay.example\"},{\"addr\":\"two@relay.example\"}]"
+                : "[]";
+            break;
+        default:
+            stderr.printf ("Unexpected RPC method: %s\n", method);
+            return 1;
+        }
+        stdout.printf ("{\"jsonrpc\":\"2.0\",\"id\":%lld,\"result\":%s}\n",
+            request.get_int_member ("id"), result);
+        stdout.flush ();
+    }
+    return 0;
+}
+
 private Json.Object object_from_json (string text) {
     var parser = new Json.Parser ();
     try { parser.load_from_data (text); }
@@ -41,9 +73,38 @@ private void test_message_identity () {
     assert (!RpcParsers.parse_message (new Json.Object ()).is_outgoing);
 }
 
+private async void check_account_addresses () {
+    var rpc = new RpcClient ();
+    try {
+        yield rpc.start ({ test_executable, "--fake-core" });
+        var addresses = yield rpc.get_account_addresses (1);
+        assert (addresses.length == 2);
+        assert (addresses[1] == "two@relay.example");
+        assert ((yield rpc.get_account_address (1)) == "one@relay.example");
+        assert ((yield rpc.get_account_address (2)) == null);
+        string? description;
+        string? toast;
+        int selected = yield AccountFinder.ensure_configured (rpc,
+            " TWO@RELAY.EXAMPLE ", out description, out toast);
+        assert (selected == 1);
+        assert (rpc.account_id == 1);
+        assert (toast == null);
+    } catch (Error e) { error ("Account addresses: %s", e.message); }
+    rpc.stop ();
+}
+
+private void test_account_addresses () {
+    var loop = new MainLoop ();
+    check_account_addresses.begin (() => { loop.quit (); });
+    loop.run ();
+}
+
 public int main (string[] args) {
+    if (args.length > 1 && args[1] == "--fake-core") return run_fake_server ();
+    test_executable = File.new_for_path (args[0]).get_path ();
     Test.init (ref args);
     Test.add_func ("/core-compat/presence", test_presence);
     Test.add_func ("/core-compat/message-identity", test_message_identity);
+    Test.add_func ("/core-compat/account-addresses", test_account_addresses);
     return Test.run ();
 }

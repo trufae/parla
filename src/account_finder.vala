@@ -147,9 +147,11 @@ namespace Dc {
                         if (!(yield rpc.is_configured (id))) continue;
                         if (first_id == 0) first_id = id;
                         if (want.length > 0 && preferred_id == 0) {
-                            string? addr = yield rpc.get_config ("addr", id);
-                            if (addr != null && addr.down ().strip () == want) {
-                                preferred_id = id;
+                            foreach (string addr in yield rpc.get_account_addresses (id)) {
+                                if (addr.down ().strip () == want) {
+                                    preferred_id = id;
+                                    break;
+                                }
                             }
                         }
                     }

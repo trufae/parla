@@ -72,7 +72,7 @@ namespace Dc {
         private Gtk.Label email_label;
         private Gtk.Label default_caption_label;
         private Gtk.Button default_make_button;
-        private string? account_addr = null;
+        private string[] account_addresses = {};
         private Gtk.Label connectivity_status_label;
         private Gtk.Label storage_summary_label;
         private Gtk.ProgressBar storage_progress;
@@ -350,16 +350,18 @@ namespace Dc {
            action, so it persists without waiting for the Save button (which
            commits the editable profile fields). */
         private void make_account_default () {
-            if (account_addr == null || account_addr.length == 0) return;
-            settings.save_default_account_addr (account_addr);
+            if (account_addresses.length == 0) return;
+            settings.save_default_account_addr (account_addresses[0]);
             update_default_account_row ();
         }
 
         private void update_default_account_row () {
-            bool loaded = account_addr != null && account_addr.length > 0;
-            bool is_default = loaded
-                && settings.default_account_addr.down ().strip ()
-                    == account_addr.down ().strip ();
+            bool loaded = account_addresses.length > 0;
+            bool is_default = false;
+            foreach (string addr in account_addresses) {
+                if (settings.default_account_addr.down ().strip () == addr.down ().strip ())
+                    is_default = true;
+            }
             default_caption_label.label = is_default
                 ? "This profile opens when Parla starts"
                 : "Open this profile automatically when Parla starts";
@@ -415,7 +417,7 @@ namespace Dc {
             try {
                 string? name = yield rpc.get_config ("displayname", account_id);
                 string? status = yield rpc.get_config ("selfstatus", account_id);
-                string? email = yield rpc.get_config ("addr", account_id);
+                yield load_addresses ();
                 string? avatar = yield rpc.get_config ("selfavatar", account_id);
 
                 if (name != null) {
@@ -423,11 +425,6 @@ namespace Dc {
                     avatar_widget.text = name;
                 }
                 if (status != null) status_entry.text = status;
-                if (email != null) {
-                    email_label.label = email;
-                    account_addr = email;
-                    update_default_account_row ();
-                }
                 if (avatar != null && avatar.length > 0 &&
                     FileUtils.test (avatar, FileTest.EXISTS)) {
                     avatar_path = avatar;
@@ -435,6 +432,16 @@ namespace Dc {
                 avatar_widget.custom_image = load_avatar (avatar);
             } catch (Error e) {
                 /* ignore */
+            }
+        }
+
+        private async void load_addresses () {
+            try {
+                account_addresses = yield rpc.get_account_addresses (account_id);
+                email_label.label = string.joinv ("\n", account_addresses);
+                update_default_account_row ();
+            } catch (Error e) {
+                warning ("load profile addresses: %s", e.message);
             }
         }
 
