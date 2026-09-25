@@ -14,8 +14,7 @@ namespace Dc {
             return c;
         }
 
-        public static Message parse_message (Json.Object obj,
-                                             string? self_email = null) {
+        public static Message parse_message (Json.Object obj) {
             var msg = new Message ();
             msg.id = (int) json_int (obj, "id");
             msg.chat_id = (int) json_int (obj, "chatId");
@@ -52,12 +51,8 @@ namespace Dc {
                 msg.sender_contact_id = (int) obj.get_int_member ("fromId");
             }
 
-            if (self_email != null && msg.sender_address != null) {
-                msg.is_outgoing = msg.sender_address.down () == self_email.down ();
-            }
-            if (obj.has_member ("fromId") && obj.get_int_member ("fromId") == 1) {
-                msg.is_outgoing = true;
-            }
+            // Contact IDs identify SELF across all relays and linked devices.
+            msg.is_outgoing = msg.sender_contact_id == 1;
 
             parse_reactions (obj, msg);
             parse_quote (obj, msg);

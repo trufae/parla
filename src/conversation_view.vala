@@ -1912,7 +1912,7 @@ namespace Dc {
                     string k = mid.to_string ();
                     if (map.has_member (k)) {
                         var msg = RpcParsers.parse_message (
-                            map.get_object_member (k), rpc.self_email);
+                            map.get_object_member (k));
                         if (msg.state != MessageState.OUT_DRAFT) {
                             result.add (msg);
                         }

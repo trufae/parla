@@ -392,14 +392,13 @@ namespace Dc {
         }
 
         public async Message? fetch_message (int msg_id) throws Error {
-            return yield fetch_message_for (account_id, msg_id, self_email);
+            return yield fetch_message_for (account_id, msg_id);
         }
 
-        public async Message? fetch_message_for (int acct_id, int msg_id,
-                                                  string? self_addr = null) throws Error {
+        public async Message? fetch_message_for (int acct_id, int msg_id) throws Error {
             var obj = yield get_message_for (acct_id, msg_id);
             if (obj == null) return null;
-            return RpcParsers.parse_message (obj, self_addr);
+            return RpcParsers.parse_message (obj);
         }
 
         public async Json.Object? get_messages_for (int acct_id,
@@ -426,7 +425,7 @@ namespace Dc {
                     node.get_node_type () != Json.NodeType.OBJECT) continue;
                 var obj = node.get_object ();
                 if (json_str (obj, "kind") != "message") continue;
-                msgs += RpcParsers.parse_message (obj, self_email);
+                msgs += RpcParsers.parse_message (obj);
             }
             return msgs;
         }
@@ -474,7 +473,7 @@ namespace Dc {
             if (result == null || result.is_null () ||
                 result.get_node_type () != Json.NodeType.OBJECT)
                 return null;
-            return RpcParsers.parse_message (result.get_object (), self_email);
+            return RpcParsers.parse_message (result.get_object ());
         }
 
         public async void set_draft (int chat_id, string? text,

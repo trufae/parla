@@ -28,8 +28,22 @@ private void test_presence () {
     assert (!RpcParsers.parse_contact (42, absent).was_seen_recently);
 }
 
+private void test_message_identity () {
+    // An account need not expose any address to identify its own messages.
+    var self = object_from_json ("{\"fromId\":1}");
+    assert (RpcParsers.parse_message (self).is_outgoing);
+    var sender = object_from_json (
+        "{\"sender\":{\"id\":1,\"address\":\"another@relay.example\"}}");
+    assert (RpcParsers.parse_message (sender).is_outgoing);
+    var other = object_from_json (
+        "{\"fromId\":42,\"sender\":{\"id\":42,\"address\":\"self@relay.example\"}}");
+    assert (!RpcParsers.parse_message (other).is_outgoing);
+    assert (!RpcParsers.parse_message (new Json.Object ()).is_outgoing);
+}
+
 public int main (string[] args) {
     Test.init (ref args);
     Test.add_func ("/core-compat/presence", test_presence);
+    Test.add_func ("/core-compat/message-identity", test_message_identity);
     return Test.run ();
 }

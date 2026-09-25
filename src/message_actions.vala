@@ -332,7 +332,7 @@ namespace Dc {
                                                             int dest_acct,
                                                             int chat_id) throws Error {
             foreach (int msg_id in msg_ids) {
-                var m = yield rpc.fetch_message_for (src_acct, msg_id, null);
+                var m = yield rpc.fetch_message_for (src_acct, msg_id);
                 if (m == null) continue;
 
                 string? text = m.has_text ? m.text : null;

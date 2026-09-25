@@ -1138,7 +1138,7 @@ namespace Dc {
 
             Message? msg = null;
             try {
-                msg = yield rpc.fetch_message_for (acct_id, msg_id, null);
+                msg = yield rpc.fetch_message_for (acct_id, msg_id);
             } catch (Error e) {
                 return;
             }
@@ -1709,7 +1709,7 @@ namespace Dc {
                     if (!map.has_member (key)) continue;
 
                     var msg = RpcParsers.parse_message (
-                        map.get_object_member (key), rpc.self_email);
+                        map.get_object_member (key));
                     if (!plain_text_preview_message (msg)) continue;
                     entry.last_message = msg.text;
                 }

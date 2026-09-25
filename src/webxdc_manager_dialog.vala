@@ -189,7 +189,7 @@ namespace Dc {
                     node.get_node_type () != Json.NodeType.OBJECT) continue;
                 var obj = node.get_object ();
                 if (json_str (obj, "kind") != "message") continue;
-                var msg = RpcParsers.parse_message (obj, self_addr);
+                var msg = RpcParsers.parse_message (obj);
                 if (!msg.is_webxdc ()) continue;
 
                 Json.Object? info = null;
