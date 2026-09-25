@@ -96,7 +96,6 @@ endif
 
 src_inc = include_directories('src')
 sources = files(
-  'src/main.vala',
   'src/platform.vala',
   'src/subprocess.vala',
   'src/platform.c',
@@ -269,7 +268,7 @@ if host_machine.system() == 'windows'
 endif
 
 executable('parla',
-  sources, config_file, appdata_vala, resources,
+  files('src/main.vala'), sources, config_file, appdata_vala, resources,
   dependencies: deps,
   include_directories: src_inc,
   install: true,
@@ -469,3 +468,14 @@ rpc_transport_test = executable(
 )
 
 test('rpc-transport', rpc_transport_test, timeout: 30)
+
+# Exercise the actual RPC parsers and client models without starting GTK.
+core_compat_test = executable(
+  'core-compat-test',
+  files('tests/core_compat_test.vala'),
+  sources, config_file, appdata_vala, resources,
+  dependencies: deps,
+  include_directories: src_inc,
+  install: false,
+)
+test('core-compat', core_compat_test)

@@ -11,7 +11,7 @@ namespace Dc {
             c.is_verified = json_bool (obj, "isVerified");
             c.is_blocked = json_bool (obj, "isBlocked");
             c.status = json_str (obj, "status");
-            c.was_seen_recently = json_bool (obj, "wasSeenRecently");
+            c.was_seen_recently = was_seen_recently (obj);
             return c;
         }
 
@@ -46,7 +46,7 @@ namespace Dc {
                     ?? json_str (sender, "avatarPath");
                 msg.sender_contact_id = (int) json_int (sender, "id");
                 msg.sender_was_seen_recently =
-                    json_bool (sender, "wasSeenRecently");
+                    was_seen_recently (sender);
             }
 
             if (obj.has_member ("fromId")) {
@@ -93,14 +93,23 @@ namespace Dc {
                 entry.is_contact_request);
             entry.is_pinned = json_bool (obj, "isPinned");
             entry.is_archived = json_bool (obj, "isArchived");
-            entry.was_seen_recently = json_bool (obj, "wasSeenRecently");
-            if (!entry.was_seen_recently && obj.has_member ("contact") &&
+            entry.was_seen_recently = was_seen_recently (obj);
+            if (!obj.has_member ("freshness") &&
+                !entry.was_seen_recently && obj.has_member ("contact") &&
                 !obj.get_member ("contact").is_null ()) {
                 var contact = obj.get_object_member ("contact");
                 entry.was_seen_recently =
-                    json_bool (contact, "wasSeenRecently");
+                    was_seen_recently (contact);
             }
             return entry;
+        }
+
+        /* Core 2.61 replaced the presence boolean on contacts and chats.
+           Normal and Old must both leave the recent-presence ring hidden. */
+        private static bool was_seen_recently (Json.Object obj) {
+            if (obj.has_member ("freshness"))
+                return json_str (obj, "freshness") == "RecentlySeen";
+            return json_bool (obj, "wasSeenRecently");
         }
 
         public static ChatKind parse_chat_kind (Json.Object obj) {
