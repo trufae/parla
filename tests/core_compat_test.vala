@@ -86,6 +86,12 @@ private void test_message_identity () {
 }
 
 private void test_channel_reactions () {
+    foreach (string type in new string[] { "InBroadcast", "OutBroadcast" }) {
+        assert (ChatActions.is_channel (type));
+        assert (string.joinv (",", ChatActions.reaction_choices (type)) == "👍,👎,❤️,😂,🙁");
+    }
+    assert (!ChatActions.is_channel ("Group"));
+    assert (!ChatActions.is_channel ("Single"));
     var obj = object_from_json ("""
         {"reactions": {
             "reactions": [

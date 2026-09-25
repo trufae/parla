@@ -1,6 +1,16 @@
 namespace Dc {
 
     public class ChatActions : Object {
+        public static bool is_channel (string type) {
+            return type == "InBroadcast" || type == "OutBroadcast" || type == "Broadcast";
+        }
+
+        public static string[] reaction_choices (string type) {
+            // Core permits only these five reactions in channels.
+            if (is_channel (type)) return { "👍", "👎", "❤️", "😂", "🙁" };
+            return { "👍", "👎", "❤️", "🔥", "😂", "😮", "😢" };
+        }
+
         public static bool can_leave (string type, bool encrypted,
                                       bool member, bool request) {
             return member && (type == "InBroadcast"

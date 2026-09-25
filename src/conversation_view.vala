@@ -1044,6 +1044,7 @@ namespace Dc {
            the window when a chat is opened, and by accept_request once the
            request has been accepted. */
         public void set_contact_request (bool is_request, string type = "") {
+            if (type.length > 0) msg_actions.chat_type = type;
             is_contact_request = is_request;
             request_block_btn.label = ChatActions.request_action (type);
             request_notice.label = type == "Group"
@@ -1826,6 +1827,8 @@ namespace Dc {
 
                 var chat = yield rpc.get_full_chat_by_id_for (
                     rpc.account_id, chat_id);
+                if (chat != null)
+                    msg_actions.chat_type = json_str (chat, "chatType") ?? "";
                 if (chat != null && chat.has_member ("contactIds")) {
                     var ids = chat.get_array_member ("contactIds");
                     for (uint i = 0; i < ids.get_length (); i++) {

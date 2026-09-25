@@ -9,6 +9,7 @@ namespace Dc {
         private unowned ComposeBar compose_bar;
         private unowned SettingsManager settings;
         private MentionRoster? reaction_roster = null;
+        public string chat_type { get; set; default = ""; }
 
         public signal void select_requested (int msg_id);
 
@@ -126,16 +127,8 @@ namespace Dc {
         private void append_emoji_rows (Gtk.Box vbox, Gtk.Popover popover,
                                         int msg_id, Gtk.Widget parent,
                                         double x, double y) {
-            string[] emojis = {
-                "\xf0\x9f\x91\x8d", // thumbsup
-                "\xf0\x9f\x91\x8e", // thumbsdown
-                "\xe2\x9d\xa4\xef\xb8\x8f", // heart
-                "\xf0\x9f\x94\xa5", // fire
-                "\xf0\x9f\x98\x82", // laugh
-                "\xf0\x9f\x98\xae", // surprised
-                "\xf0\x9f\x98\xa2", // sad
-            };
-            if (gtk_emoji_chooser_available ()) {
+            string[] emojis = ChatActions.reaction_choices (chat_type);
+            if (!ChatActions.is_channel (chat_type) && gtk_emoji_chooser_available ()) {
                 emojis += "…";
             }
             var msg = find_message (message_store, msg_id);
