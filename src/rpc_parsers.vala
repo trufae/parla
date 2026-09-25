@@ -8,7 +8,6 @@ namespace Dc {
             c.display_name = json_str (obj, "displayName") ?? "";
             c.address = json_str (obj, "address") ?? "";
             c.profile_image = json_str (obj, "profileImage");
-            c.is_verified = json_bool (obj, "isVerified");
             c.is_blocked = json_bool (obj, "isBlocked");
             c.status = json_str (obj, "status");
             c.was_seen_recently = was_seen_recently (obj);

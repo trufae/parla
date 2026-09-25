@@ -454,8 +454,6 @@ namespace Dc {
                                              bool show_presence = true) {
         string title = c.display_name.length > 0 ? c.display_name : c.address;
         string subtitle = c.display_name.length > 0 ? c.address : "";
-        if (c.is_verified && subtitle.length > 0) subtitle += " (verified)";
-        else if (c.is_verified) subtitle = "(verified)";
         if (c.is_blocked && subtitle.length > 0) subtitle += " (blocked)";
         else if (c.is_blocked) subtitle = "(blocked)";
 
@@ -820,7 +818,6 @@ namespace Dc {
         public string display_name { get; set; default = ""; }
         public string address { get; set; default = ""; }
         public string? profile_image { get; set; default = null; }
-        public bool is_verified { get; set; default = false; }
         public bool is_blocked { get; set; default = false; }
         public string? status { get; set; default = null; }
         public bool was_seen_recently { get; set; default = false; }
