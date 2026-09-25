@@ -114,6 +114,12 @@ namespace Dc {
         /* Bumped on every anchor handoff; stale anchor loops see a
            mismatch and stop. */
         private uint goal_generation = 0;
+        public int first_unread_message_id { get; private set; default = 0; }
+        private bool unread_snapshot_pending = false;
+        private bool unread_scroll_cancelled = false;
+        private bool loading_messages = false;
+        private bool reload_requested = false;
+        private uint activation_generation = 0;
         private int[] pending_seen_ids = {};
         private Json.Array? all_msg_ids = null;
         private uint loaded_start_index = 0;
@@ -348,6 +354,7 @@ namespace Dc {
             track_signal (factory, factory.bind.connect ((obj) => {
                 var li = (Gtk.ListItem) obj;
                 var msg = (Message) li.item;
+                bool unread_start = msg.id == first_unread_message_id && !search_filter_active ();
                 Message? prev = null;
                 uint pos = li.position;
                 if (pos > 0) {
@@ -356,7 +363,7 @@ namespace Dc {
 
                 bool is_img_continuation;
                 var trailing = collect_trailing_irc_images (
-                    msg, prev, pos, out is_img_continuation);
+                    msg, unread_start ? null : prev, pos, out is_img_continuation);
 
                 /* Wrap the row in a vertical box so we can prepend a date
                    separator when the day changes. */
@@ -367,11 +374,12 @@ namespace Dc {
                 if (prev == null || !MessageRow.same_day (msg.timestamp, prev.timestamp)) {
                     container.append (MessageRow.build_date_separator (msg.timestamp));
                 }
+                if (unread_start) container.append (MessageRow.build_unread_separator ());
 
                 /* While search narrows the list, adjacent rows are not
                    adjacent messages — disable sender-grouping then. */
                 var row = new MessageRow (
-                    msg, search_filter_active () ? null : prev,
+                    msg, search_filter_active () || unread_start ? null : prev,
                     trailing, is_img_continuation,
                     settings.bubble_avatar_display,
                     bubble_avatars_apply_to_this_chat (),
@@ -413,7 +421,8 @@ namespace Dc {
                 li.activatable = false;
                 li.focusable = true;
 #if A11Y
-                li.accessible_label = MessageRow.accessible_summary (msg);
+                li.accessible_label = (unread_start ? "Unread messages. " : "")
+                    + MessageRow.accessible_summary (msg);
 #endif
             }));
             /* bind builds a fresh row tree; drop it as soon as the list item
@@ -931,6 +940,7 @@ namespace Dc {
             history; load_until_pending_message notices the cleared ID and
             stops fetching. */
         private void on_user_scroll_input () {
+            unread_scroll_cancelled = true;
             pending_scroll_message_id = 0;
             pending_voice_direction = 0;
             if (goal == ViewportGoal.ANCHOR) {
@@ -953,6 +963,7 @@ namespace Dc {
                     i < n && trailing.length < 5; i++) {
                 var next = (Message) filtered_message_store.get_item (i);
                 if (next == null || !next.is_image_only ||
+                    next.id == first_unread_message_id ||
                     !MessageRow.same_sender (msg, next)) break;
                 trailing.add (next);
             }
@@ -1208,12 +1219,10 @@ namespace Dc {
          * ================================================================ */
 
         public void on_activated (bool focus_compose = true) {
-            if (!messages_loaded) {
-                messages_loaded = true;
-                load_messages.begin ();
-            } else if (messages_stale) {
-                reload_messages.begin ();
-            }
+            activation_generation++;
+            unread_snapshot_pending = true;
+            unread_scroll_cancelled = false;
+            load_messages.begin (messages_loaded);
             if (!draft_loaded) {
                 draft_loaded = true;
                 load_draft.begin ();
@@ -1314,7 +1323,9 @@ namespace Dc {
            window was unfocused. Called when the user is looking at this chat
            again (window refocused or chat re-entered). */
         public void flush_pending_seen () {
-            if (!window.is_chat_visible (chat_id)) return;
+            if (loading_messages || unread_snapshot_pending
+                    || goal == ViewportGoal.ANCHOR
+                    || !window.is_chat_visible (chat_id)) return;
 
             int[] ids = loaded_incoming_message_ids ();
             foreach (int msg_id in pending_seen_ids) {
@@ -1721,10 +1732,13 @@ namespace Dc {
                         stable_frames = 0;
                     }
                 } else {
-                    double correction = current_top - want;
-                    if (Math.fabs (correction) > 0.5) {
-                        restore_scroll_value (
-                            message_scroll.vadjustment.value + correction);
+                    double value = message_scroll.vadjustment.value;
+                    /* The last unread message cannot always reach the top:
+                       stop at the scroll bounds instead of fighting them. */
+                    double target = double.max (0, double.min (
+                        max_scroll_value (), value + current_top - want));
+                    if (Math.fabs (target - value) > 0.5) {
+                        restore_scroll_value (target);
                         stable_frames = 0;
                     } else {
                         stable_frames++;
@@ -1742,6 +1756,7 @@ namespace Dc {
                 goal = is_near_bottom ()
                     ? ViewportGoal.BOTTOM : ViewportGoal.FREE;
                 scroll_down_btn.visible = goal != ViewportGoal.BOTTOM;
+                flush_pending_seen ();
                 return end_tick_callback (tick_id);
             });
             track_tick_callback (tick_id);
@@ -1752,11 +1767,34 @@ namespace Dc {
          * ================================================================ */
 
         private async void load_messages (bool preserve_scroll = false) {
-            if (rpc.account_id <= 0) return;
+            if (closed || rpc.account_id <= 0) return;
+            if (loading_messages) {
+                reload_requested = true;
+                return;
+            }
+            loading_messages = true;
+            reload_requested = false;
+            uint activation = activation_generation;
+            bool snapshot_unread = unread_snapshot_pending;
+            unread_snapshot_pending = false;
 
             try {
+                if (snapshot_unread) {
+                    first_unread_message_id = yield rpc.get_first_unread_message_of_chat (chat_id);
+                    if (closed || activation != activation_generation) return;
+                } else {
+                    /* Core events can request a refresh during the initial
+                       unread jump. Let that layout settle before replacing
+                       the model and capturing its scroll position. */
+                    while (goal == ViewportGoal.ANCHOR && get_mapped ()) {
+                        Timeout.add (16, load_messages.callback);
+                        yield;
+                        if (closed || activation != activation_generation) return;
+                    }
+                }
                 yield load_chat_kind_if_needed ();
                 yield ensure_mention_roster ();
+                if (closed || activation != activation_generation) return;
 
                 bool was_near_bottom = goal == ViewportGoal.BOTTOM;
                 double previous_scroll_value = 0;
@@ -1767,15 +1805,25 @@ namespace Dc {
 
                 all_msg_ids = yield rpc.get_message_ids_for (
                     rpc.account_id, chat_id);
-                if (all_msg_ids == null) return;
+                if (closed || activation != activation_generation || all_msg_ids == null) return;
 
-                loaded_start_index = all_msg_ids.get_length () > 30
-                    ? all_msg_ids.get_length () - 30 : 0;
+                loaded_start_index = MessageHistory.initial_batch_start (
+                    all_msg_ids, first_unread_message_id);
+                /* Keep any history already loaded above the unread boundary
+                   when a core event refreshes the conversation. */
+                if (preserve_scroll && message_store.get_n_items () > 0) {
+                    var first = (Message) message_store.get_item (0);
+                    int previous_start = MessageHistory.find_id (all_msg_ids, first.id);
+                    if (previous_start >= 0)
+                        loaded_start_index = uint.min (loaded_start_index, (uint) previous_start);
+                }
 
                 var messages = yield fetch_messages_batch (
                     loaded_start_index, all_msg_ids.get_length ());
+                if (closed || activation != activation_generation) return;
 
                 yield pinned.load_for_chat (chat_id);
+                if (closed || activation != activation_generation) return;
                 webxdc_bar.load_for_chat.begin (chat_id);
 
                 loading_chat = true;
@@ -1789,15 +1837,25 @@ namespace Dc {
                 messages_loaded = true;
                 messages_stale = false;
                 loading_chat = false;
-                flush_pending_seen ();
                 if (messages.length > 0) {
-                    if (!preserve_scroll || was_near_bottom) {
+                    int unread_pos = find_message_index (
+                        filtered_message_store, first_unread_message_id);
+                    if (pending_scroll_message_id != 0) {
+                        goal = ViewportGoal.FREE;
+                    } else if (snapshot_unread && !unread_scroll_cancelled && unread_pos >= 0) {
+                        message_listview.scroll_to ((uint) unread_pos, Gtk.ListScrollFlags.NONE, null);
+                        /* Leave room above the message for its separator. */
+                        anchor_message (first_unread_message_id, (uint) unread_pos, 48, 3);
+                    } else if (!preserve_scroll || was_near_bottom) {
                         scroll_to_bottom ();
                     } else {
+                        uint scroll_generation = goal_generation;
                         Idle.add (() => {
+                            if (closed || scroll_generation != goal_generation) return Source.REMOVE;
                             restore_scroll_value (previous_scroll_value);
                             goal = ViewportGoal.FREE;
                             scroll_down_btn.visible = !is_near_bottom ();
+                            flush_pending_seen ();
                             return Source.REMOVE;
                         });
                     }
@@ -1808,7 +1866,15 @@ namespace Dc {
             } catch (Error e) {
                 messages_loaded = false;
                 messages_stale = true;
-                window.show_toast ("Failed to load messages: " + e.message);
+                if (!closed) window.show_toast ("Failed to load messages: " + e.message);
+            } finally {
+                loading_messages = false;
+                if (!closed) {
+                    if (reload_requested || unread_snapshot_pending)
+                        load_messages.begin (messages_loaded);
+                    else
+                        flush_pending_seen ();
+                }
             }
         }
 
@@ -2817,6 +2883,7 @@ namespace Dc {
         public void close () {
             if (closed) return;
             closed = true;
+            activation_generation++;
 
             flush_pending_draft_save ();
             goal_generation++;

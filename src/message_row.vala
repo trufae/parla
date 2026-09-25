@@ -2210,6 +2210,27 @@ namespace Dc {
         }
 #endif
 
+        /** Separate the unread messages captured when this chat was opened. */
+        internal static Gtk.Widget build_unread_separator () {
+            var box = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 8);
+            box.add_css_class ("unread-separator");
+            box.margin_top = box.margin_bottom = 8;
+            var before = new Gtk.Separator (Gtk.Orientation.HORIZONTAL);
+            before.hexpand = true;
+            before.valign = Gtk.Align.CENTER;
+            var after = new Gtk.Separator (Gtk.Orientation.HORIZONTAL);
+            after.hexpand = true;
+            after.valign = Gtk.Align.CENTER;
+            var label = new Gtk.Label ("Unread messages");
+            label.add_css_class ("accent");
+            label.add_css_class ("heading");
+            label.add_css_class ("caption");
+            box.append (before);
+            box.append (label);
+            box.append (after);
+            return box;
+        }
+
         /** Build a centered date-separator label, styled like info rows. */
         internal static Gtk.Widget build_date_separator (int64 ts) {
             var label = new Gtk.Label (format_date_label (ts));

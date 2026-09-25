@@ -29,9 +29,23 @@ private void test_nearby_target_avoids_overfetch () {
     assert (MessageHistory.earlier_batch_start (30, 30) == 30);
 }
 
+private void test_initial_unread_batch () {
+    var ids = new Json.Array ();
+    // Core order, which can differ from numeric ID order, is authoritative.
+    for (int i = 100; i > 0; i--) ids.add_int_element (i);
+    assert (MessageHistory.initial_batch_start (ids, 0) == 70);
+    assert (MessageHistory.initial_batch_start (ids, 999) == 70);
+    assert (MessageHistory.initial_batch_start (ids, 95) == 4);
+    assert (MessageHistory.initial_batch_start (ids, 100) == 0);
+    assert (MessageHistory.initial_batch_start (ids, 1) == 70);
+    assert (MessageHistory.initial_batch_start (message_ids (), 20) == 0);
+    assert (MessageHistory.initial_batch_start (new Json.Array (), 0) == 0);
+}
+
 public int main (string[] args) {
     Test.init (ref args);
     Test.add_func ("/message-history/find-id", test_find_id);
+    Test.add_func ("/message-history/initial-unread-batch", test_initial_unread_batch);
     Test.add_func ("/message-history/earlier-batches-stop-at-target",
                    test_earlier_batches_stop_at_target);
     Test.add_func ("/message-history/nearby-target-avoids-overfetch",
