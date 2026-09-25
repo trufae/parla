@@ -320,6 +320,9 @@ namespace Dc.Webxdc {
                 if (name.length > 0) app_name = name;
                 document_name =
                     obj.get_string_member_with_default ("document", "");
+                // Core supplies a stable identity for this Webxdc instance,
+                // independent of which relay address the profile uses today.
+                self_addr = obj.get_string_member_with_default ("selfAddr", "unknown");
             } catch (Error e) {
                 warning ("webxdc info: %s", e.message);
             }
@@ -338,8 +341,7 @@ namespace Dc.Webxdc {
             try {
                 var dn = yield rpc.get_config ("displayname", account_id);
                 if (dn != null && dn.length > 0) self_name = dn;
-                else if (rpc.self_email != null) self_name = rpc.self_email;
-                if (rpc.self_email != null) self_addr = rpc.self_email;
+                else self_name = (yield rpc.get_account_address (account_id)) ?? "You";
             } catch (Error e) {
                 warning ("webxdc config: %s", e.message);
             }
