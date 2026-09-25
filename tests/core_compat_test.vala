@@ -7,13 +7,22 @@ private async void nap (uint milliseconds) {
     yield;
 }
 
-private int run_fake_server () {
+private int run_fake_server (string mode) {
     int event_number = 0;
+    var requests = new Json.Array ();
     string? line;
     while ((line = stdin.read_line ()) != null) {
         var request = object_from_json (line);
         string method = request.get_string_member ("method");
         var args = request.get_array_member ("params");
+        if (method != "test_calls") requests.add_object_element (request);
+        if (method == "init_transports" && mode != "latest") {
+            stdout.printf ("{\"jsonrpc\":\"2.0\",\"id\":%lld,\"error\":{\"code\":%d,\"message\":\"%s\"}}\n",
+                request.get_int_member ("id"), mode == "legacy" ? -32601 : -32000,
+                mode == "legacy" ? "Method not found" : "Relay unavailable");
+            stdout.flush ();
+            continue;
+        }
         string result;
         switch (method) {
         case "get_system_info": result = "{}"; break;
@@ -22,6 +31,24 @@ private int run_fake_server () {
             break;
         case "is_configured": result = "true"; break;
         case "select_account": result = "null"; break;
+        case "init_transports": result = "null"; break;
+        case "add_transport_from_qr":
+            assert (mode == "legacy");
+            result = "null";
+            break;
+        case "check_qr":
+            string qr = args.get_string_element (1);
+            result = qr.has_prefix ("DCACCOUNT:") ? "{\"kind\":\"account\"}"
+                : qr.has_prefix ("DCLOGIN:") ? "{\"kind\":\"login\"}"
+                : "{\"kind\":\"askVerifyContact\"}";
+            break;
+        case "test_calls":
+            var node = new Json.Node (Json.NodeType.ARRAY);
+            node.set_array (requests);
+            var generator = new Json.Generator ();
+            generator.set_root (node);
+            result = generator.to_data (null);
+            break;
         case "list_transports":
             result = args.get_int_element (0) == 1
                 ? "[{\"addr\":\"one@relay.example\"},{\"addr\":\"two@relay.example\"}]"
@@ -190,8 +217,63 @@ private void test_pin_events () {
     loop.run ();
 }
 
+private async void check_onboarding (string mode, string? qr,
+                                     string? expected_relay = null) {
+    var rpc = new RpcClient ();
+    try {
+        yield rpc.start ({ test_executable, "--fake-core", mode });
+        bool failed = false;
+        try { yield initialize_profile_transports (rpc, 7, qr); }
+        catch (Error e) {
+            assert (mode == "failure");
+            failed = true;
+        }
+        assert (failed == (mode == "failure"));
+        var result = yield rpc.call ("test_calls", Params.begin ().build ());
+        var calls = result.get_array ();
+        var init = calls.get_object_element (1);
+        assert (init.get_string_member ("method") == "init_transports");
+        var args = init.get_array_member ("params");
+        assert (args.get_int_element (0) == 7);
+        if (qr == null) assert (args.get_element (1).is_null ());
+        else assert (args.get_string_element (1) == qr);
+        if (expected_relay == null) {
+            assert (calls.get_length () == 2);
+        } else {
+            assert (calls.get_length () == (qr == null ? 3 : 4));
+            var add = calls.get_object_element (calls.get_length () - 1);
+            assert (add.get_string_member ("method") == "add_transport_from_qr");
+            assert (add.get_array_member ("params").get_int_element (0) == 7);
+            assert (add.get_array_member ("params").get_string_element (1) == expected_relay);
+        }
+    } catch (Error e) { error ("Onboarding: %s", e.message); }
+    rpc.stop ();
+}
+
+private async void check_onboarding_cases () {
+    string explicit_relay = "DCACCOUNT:https://custom.example/new";
+    string login = "DCLOGIN:custom.example";
+    string invite = "OPENPGP4FPR:inviter";
+    string fallback = build_chatmail_qr (CHATMAIL_RELAYS[0].domain);
+    yield check_onboarding ("latest", null);
+    yield check_onboarding ("latest", explicit_relay);
+    yield check_onboarding ("latest", invite);
+    yield check_onboarding ("legacy", null, fallback);
+    yield check_onboarding ("legacy", explicit_relay, explicit_relay);
+    yield check_onboarding ("legacy", login, login);
+    yield check_onboarding ("legacy", invite, fallback);
+    yield check_onboarding ("failure", null);
+}
+
+private void test_onboarding () {
+    var loop = new MainLoop ();
+    check_onboarding_cases.begin (() => { loop.quit (); });
+    loop.run ();
+}
+
 public int main (string[] args) {
-    if (args.length > 1 && args[1] == "--fake-core") return run_fake_server ();
+    if (args.length > 1 && args[1] == "--fake-core")
+        return run_fake_server (args.length > 2 ? args[2] : "latest");
     test_executable = File.new_for_path (args[0]).get_path ();
     Test.init (ref args);
     Test.add_func ("/core-compat/presence", test_presence);
@@ -199,5 +281,6 @@ public int main (string[] args) {
     Test.add_func ("/core-compat/channel-reactions", test_channel_reactions);
     Test.add_func ("/core-compat/account-addresses", test_account_addresses);
     Test.add_func ("/core-compat/pin-events", test_pin_events);
+    Test.add_func ("/core-compat/onboarding", test_onboarding);
     return Test.run ();
 }

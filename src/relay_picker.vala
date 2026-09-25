@@ -66,12 +66,16 @@ namespace Dc {
 
         /* Pass an RpcClient to include the built-in "Discover from Contacts"
            button; omit it for a plain relay list. */
-        public RelayPicker (RpcClient? rpc = null) {
+        public RelayPicker (RpcClient? rpc = null, bool allow_automatic = false) {
             Object (orientation: Gtk.Orientation.VERTICAL, spacing: 8);
             this.rpc = rpc;
 
             domains = new GenericArray<string> ();
             model = new Gtk.StringList (null);
+            if (allow_automatic) {
+                model.append ("Automatic (recommended)");
+                domains.add ("");
+            }
             for (int i = 0; i < CHATMAIL_RELAYS.length; i++) {
                 model.append ("%s (%s)".printf (
                     CHATMAIL_RELAYS[i].domain,
@@ -139,8 +143,9 @@ namespace Dc {
             return domains[idx];
         }
 
-        public string get_chatmail_qr () {
-            return build_chatmail_qr (get_selected_domain ());
+        public string? get_chatmail_qr () {
+            string domain = get_selected_domain ();
+            return domain.length > 0 ? build_chatmail_qr (domain) : null;
         }
 
         /**
@@ -406,9 +411,10 @@ namespace Dc {
 
         private async void do_add_relay () {
             if (busy) return;
+            string? qr = picker.get_chatmail_qr ();
+            if (qr == null) return;
             busy = true;
             add_btn.sensitive = false;
-            string qr = picker.get_chatmail_qr ();
             try {
                 yield rpc.add_transport_from_qr (account_id, qr);
             } catch (Error e) {

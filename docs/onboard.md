@@ -16,11 +16,16 @@ See also [`rpc-server.md`](rpc-server.md) for the deeper build/packaging guidanc
 Once the engine is ready, Parla shows the profile choices directly on its welcome
 screen when no configured profile exists:
 
-- **Create new profile** — choose a display name and a chatmail relay.
+- **Create new profile** — choose a display name. Automatic relay selection
+  picks a fast relay and adds others in the background; an explicit server
+  choice creates a single relay instead. Engines older than 2.61 fall back to
+  the default single relay when Automatic is selected.
 - **Import from another device** — link this device to an existing profile using
   the setup code from another device on the same network.
 - **Use classic email address** — sign in with an existing email account.
-- **Use invitation code** — create a profile from a `dcaccount:` link or QR code.
+- **Use invitation code** — create a profile from an account link or a contact,
+  group or channel invitation. On core 2.61 and later, invitations contribute
+  the inviter's relays to automatic relay selection before joining the chat.
 
 Cancelling setup leaves these choices available. Removing the last configured
 profile returns to the same screen. Once a profile is ready, Parla shows its chat

@@ -176,6 +176,11 @@ namespace Dc {
                     .build ());
         }
 
+        public async void init_transports (int acct_id, string? qr_text = null) throws Error {
+            yield call ("init_transports",
+                Params.begin ().add_int (acct_id).add_string (qr_text).build ());
+        }
+
         public async void get_backup (int acct_id, string qr_text) throws Error {
             yield call ("get_backup",
                 Params.begin ()

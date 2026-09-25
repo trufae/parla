@@ -1,5 +1,32 @@
 namespace Dc {
 
+    /* New cores choose a fast initial relay and manage additional ones.
+       Keep single-relay setup for engines predating init_transports (2.61). */
+    public static async void initialize_profile_transports (
+            RpcClient rpc, int account_id, string? qr) throws Error {
+        try {
+            yield rpc.init_transports (account_id, qr);
+            return;
+        } catch (Error e) {
+            string message = e.message.down ();
+            if (!("method not found" in message || "procedure not found" in message
+                  || "unknown method" in message)) throw e;
+        }
+        if (qr != null) {
+            var code = yield rpc.check_qr (account_id, qr);
+            string? kind = code != null ? json_str (code, "kind") : null;
+            if (kind == "account" || kind == "login") {
+                yield rpc.add_transport_from_qr (account_id, qr);
+                return;
+            }
+            if (kind != "askVerifyContact" && kind != "askVerifyGroup"
+                && kind != "askJoinBroadcast")
+                throw new IOError.INVALID_ARGUMENT ("This code cannot create a profile");
+        }
+        yield rpc.add_transport_from_qr (account_id,
+            build_chatmail_qr (CHATMAIL_RELAYS[0].domain));
+    }
+
     private static Gtk.Box account_setup_content () {
         var content = new Gtk.Box (Gtk.Orientation.VERTICAL, 12);
         content.margin_start = content.margin_end = 18;
@@ -224,8 +251,8 @@ namespace Dc {
         private Gtk.Widget build_input_page () {
             var content = account_setup_content ();
             content.append (account_setup_intro (
-                "Pick a chatmail relay or enter a custom server. The server will assign you an email " +
-                "address and password automatically — encryption keys are " +
+                "Let Parla choose fast chatmail relays, or select a server. " +
+                "Your profile is created automatically, with encryption keys " +
                 "generated on this device."));
 
             content.append (account_setup_heading ("Display Name"));
@@ -235,7 +262,7 @@ namespace Dc {
 
             content.append (account_setup_heading ("Server"));
 
-            relay_picker = new RelayPicker (rpc);
+            relay_picker = new RelayPicker (rpc, true);
             content.append (relay_picker);
 
             var hint = new Gtk.Label (null);
@@ -266,11 +293,12 @@ namespace Dc {
 
             string display_name = name_entry.text.strip ();
             string domain = relay_picker.get_selected_domain ();
-            string qr_link = relay_picker.get_chatmail_qr ();
+            string? qr_link = relay_picker.get_chatmail_qr ();
 
             create_running = true;
             stack.visible_child_name = "progress";
-            progress_page.set_status ("Creating profile on %s…".printf (domain));
+            progress_page.set_status (qr_link == null ? "Finding a fast relay…"
+                : "Creating profile on %s…".printf (domain));
 
             progress_handler_id = events.configure_progress.connect (
                 on_configure_progress);
@@ -307,7 +335,7 @@ namespace Dc {
             }
 
             try {
-                yield rpc.add_transport_from_qr (new_account_id, qr_link);
+                yield initialize_profile_transports (rpc, new_account_id, qr_link);
             } catch (Error e) {
                 cleanup_signal ();
                 create_running = false;
@@ -455,7 +483,7 @@ namespace Dc {
             if (kind == "account" || kind == "login") {
                 progress_page.set_status ("Creating profile…");
                 try {
-                    yield rpc.add_transport_from_qr (new_account_id, invite_link);
+                    yield initialize_profile_transports (rpc, new_account_id, invite_link);
                 } catch (Error e) {
                     yield fail_new_account ("Profile creation failed: " + e.message);
                     return;
@@ -465,9 +493,7 @@ namespace Dc {
                        kind == "askJoinBroadcast") {
                 progress_page.set_status ("Creating profile…");
                 try {
-                    yield rpc.add_transport_from_qr (
-                        new_account_id,
-                        build_chatmail_qr (CHATMAIL_RELAYS[0].domain));
+                    yield initialize_profile_transports (rpc, new_account_id, invite_link);
                     progress_page.set_status ("Accepting invitation…");
                     chat_id = yield rpc.secure_join (new_account_id, invite_link);
                 } catch (Error e) {
