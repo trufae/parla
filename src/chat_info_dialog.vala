@@ -293,7 +293,11 @@ namespace Dc {
                 int account_id = rpc.account_id;
                 add_action_row (ephem_list, "Open Chat", "Open this conversation",
                     "mail-message-new-symbolic", () => {
-                    this.close ();
+                    var dialogs = app_window.get_dialogs ();
+                    for (uint i = dialogs.get_n_items (); i > 0; i--) {
+                        var details = dialogs.get_item (i - 1) as ChatInfoDialog;
+                        if (details != null) details.close ();
+                    }
                     app_window.open_chat_from_notification.begin (account_id, chat_id);
                 });
                 add_action_row (ephem_list,
@@ -423,7 +427,33 @@ namespace Dc {
         }
 
         private Adw.ActionRow build_contact_row (Contact contact) {
-            var row = contact_row (contact, false, false);
+            var row = contact_row (contact, is_group && contact.id > 0, false);
+
+            if (is_group) {
+                row.tooltip_text = "View contact details";
+                row.activated.connect (() => show_contact_details.begin (contact));
+
+                var right_click = new Gtk.GestureClick ();
+                right_click.button = 3;
+                right_click.propagation_phase = Gtk.PropagationPhase.CAPTURE;
+                right_click.pressed.connect ((n, x, y) => {
+                    right_click.set_state (Gtk.EventSequenceState.CLAIMED);
+                    row.grab_focus ();
+                    show_contact_menu (contact, row, x, y);
+                });
+                row.add_controller (right_click);
+
+                var menu_keys = new Gtk.EventControllerKey ();
+                menu_keys.key_pressed.connect ((keyval, keycode, state) => {
+                    bool shift_f10 = keyval == Gdk.Key.F10 &&
+                        (state & Gdk.ModifierType.SHIFT_MASK) != 0;
+                    if (keyval != Gdk.Key.Menu && !shift_f10) return false;
+                    show_contact_menu (contact, row,
+                        row.get_width () / 2, row.get_height () / 2);
+                    return true;
+                });
+                row.add_controller (menu_keys);
+            }
 
             if (contact.address.length > 0) {
                 string addr = contact.address;
@@ -443,6 +473,47 @@ namespace Dc {
             }
 
             return row;
+        }
+
+        private void show_contact_menu (Contact contact, Adw.ActionRow row,
+                                        double x, double y) {
+            Gtk.Box box;
+            var popover = popover_menu (row, x, y, out box);
+
+            var details_btn = new PopoverButton (popover, "View Contact Details");
+            details_btn.sensitive = contact.id > 0;
+            details_btn.selected.connect (() => show_contact_details.begin (contact));
+            box.append (details_btn);
+
+            if (contact.address.length > 0) {
+                var copy_btn = new PopoverButton (popover, "Copy Email Address");
+                copy_btn.selected.connect (() =>
+                    this.get_clipboard ().set_text (contact.address));
+                box.append (copy_btn);
+            }
+
+            if (can_edit_members && contact.id > 1) {
+                box.append (new Gtk.Separator (Gtk.Orientation.HORIZONTAL));
+                var remove_btn = new PopoverButton (popover,
+                    is_channel ? "Remove from Channel…" : "Remove from Group…", true);
+                remove_btn.selected.connect (() => confirm_remove_member.begin (contact, row));
+                box.append (remove_btn);
+            }
+
+            popover.popup ();
+        }
+
+        private async void show_contact_details (Contact contact) {
+            if (contact.id <= 0) return;
+            int account_id = rpc.account_id;
+            try {
+                int contact_chat_id = yield rpc.get_or_create_chat_by_contact_for (
+                    account_id, contact.id);
+                if (rpc.account_id != account_id || contact_chat_id <= 0) return;
+                app_window.show_chat_info (contact_chat_id);
+            } catch (Error e) {
+                show_error (this, "Could not open contact details: " + e.message);
+            }
         }
 
         private Adw.ActionRow build_contact_block_row (Contact contact) {
