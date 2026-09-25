@@ -9,6 +9,8 @@ private async void nap (uint milliseconds) {
 
 private int run_fake_server (string mode) {
     int event_number = 0;
+    int64 pending_seen = 0;
+    int first_unread = 0;
     var requests = new Json.Array ();
     string? line;
     while ((line = stdin.read_line ()) != null) {
@@ -31,6 +33,30 @@ private int run_fake_server (string mode) {
             break;
         case "is_configured": result = "true"; break;
         case "select_account": result = "null"; break;
+        case "markseen_msgs":
+            if (mode == "read-race") {
+                pending_seen = request.get_int_member ("id");
+                continue;
+            }
+            first_unread = 0;
+            result = "null";
+            break;
+        case "release_read":
+            assert (pending_seen != 0);
+            stdout.printf ("{\"jsonrpc\":\"2.0\",\"id\":%lld,\"result\":null}\n", pending_seen);
+            pending_seen = 0;
+            first_unread = 0;
+            result = "null";
+            break;
+        case "markfresh_chat":
+            assert (pending_seen == 0);
+            first_unread = 42;
+            result = "null";
+            break;
+        case "marknoticed_chat": result = "null"; break;
+        case "get_first_unread_message_of_chat":
+            result = first_unread > 0 ? first_unread.to_string () : "null";
+            break;
         case "init_transports": result = "null"; break;
         case "add_transport_from_qr":
             assert (mode == "legacy");
@@ -271,6 +297,47 @@ private void test_onboarding () {
     loop.run ();
 }
 
+private async void check_unread_calls () {
+    var rpc = new RpcClient ();
+    try {
+        yield rpc.start ({ test_executable, "--fake-core", "read-race" });
+        rpc.account_id = 1;
+        assert ((yield rpc.get_first_unread_message_of_chat (10)) == 0);
+        bool seen_done = false;
+        bool unread_done = false;
+        rpc.mark_seen_msgs.begin ({ 42 }, (o, res) => {
+            try { rpc.mark_seen_msgs.end (res); }
+            catch (Error e) { error ("Seen: %s", e.message); }
+            seen_done = true;
+        });
+        rpc.markfresh_chat.begin (10, (o, res) => {
+            try { rpc.markfresh_chat.end (res); }
+            catch (Error e) { error ("Unread: %s", e.message); }
+            assert (seen_done);
+            unread_done = true;
+        });
+        // A queued operation must keep the account that initiated it.
+        rpc.account_id = 2;
+        yield rpc.call ("release_read", Params.begin ().build ());
+        assert ((yield rpc.get_first_unread_message_of_chat (10)) == 42);
+        assert (unread_done);
+        var result = yield rpc.call ("test_calls", Params.begin ().build ());
+        var calls = result.get_array ();
+        assert (calls.get_object_element (3).get_string_member ("method") == "release_read");
+        var unread = calls.get_object_element (4);
+        assert (unread.get_string_member ("method") == "markfresh_chat");
+        assert (unread.get_array_member ("params").get_int_element (0) == 1);
+        assert (calls.get_object_element (5).get_array_member ("params").get_int_element (0) == 2);
+    } catch (Error e) { error ("Read state: %s", e.message); }
+    rpc.stop ();
+}
+
+private void test_unread_calls () {
+    var loop = new MainLoop ();
+    check_unread_calls.begin (() => { loop.quit (); });
+    loop.run ();
+}
+
 public int main (string[] args) {
     if (args.length > 1 && args[1] == "--fake-core")
         return run_fake_server (args.length > 2 ? args[2] : "latest");
@@ -282,5 +349,6 @@ public int main (string[] args) {
     Test.add_func ("/core-compat/account-addresses", test_account_addresses);
     Test.add_func ("/core-compat/pin-events", test_pin_events);
     Test.add_func ("/core-compat/onboarding", test_onboarding);
+    Test.add_func ("/core-compat/unread-calls", test_unread_calls);
     return Test.run ();
 }

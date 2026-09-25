@@ -1445,6 +1445,14 @@ namespace Dc {
                 "Select a chat to start messaging.");
         }
 
+        public async void mark_chat_unread (int chat_id) throws Error {
+            if (chat_id == current_chat_id) {
+                clear_chat_view ();
+                split_view.show_sidebar = true;
+            }
+            yield rpc.markfresh_chat (chat_id);
+        }
+
         public ConversationView? current_view () {
             if (current_chat_id <= 0) return null;
             return views.lookup (current_chat_id);

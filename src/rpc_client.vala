@@ -50,6 +50,8 @@ namespace Dc {
     public class RpcClient : Object {
 
         private RpcTransport transport;
+        private bool read_state_busy = false;
+        private GenericArray<Source> read_state_waiters = new GenericArray<Source> ();
 
         public signal void disconnected (string reason);
 
@@ -560,21 +562,52 @@ namespace Dc {
         }
 
         public async void marknoticed_chat (int chat_id) throws Error {
-            yield call ("marknoticed_chat",
+            yield call_read_state ("marknoticed_chat",
                 Params.begin ().add_int (account_id).add_int (chat_id).build ());
         }
 
         public async void markfresh_chat (int chat_id) throws Error {
-            yield call ("markfresh_chat",
+            yield call_read_state ("markfresh_chat",
                 Params.begin ().add_int (account_id).add_int (chat_id).build ());
         }
 
+        public async int get_first_unread_message_of_chat (int chat_id) throws Error {
+            var result = yield call_read_state ("get_first_unread_message_of_chat",
+                Params.begin ().add_int (account_id).add_int (chat_id).build ());
+            return result != null && !result.is_null () ? (int) result.get_int () : 0;
+        }
+
         public async void mark_seen_msgs (int[] msg_ids) throws Error {
-            yield call ("markseen_msgs",
+            yield call_read_state ("markseen_msgs",
                 Params.begin ()
                     .add_int (account_id)
                     .add_int_array (msg_ids)
                     .build ());
+        }
+
+        /* Core executes requests concurrently. Finish earlier seen/noticed
+           calls before marking unread, and snapshot unread before new seen
+           calls. Parameters already contain the account that initiated them. */
+        private async Json.Node? call_read_state (string method, Json.Node params) throws Error {
+            if (read_state_busy) {
+                var resume = new IdleSource ();
+                resume.set_callback (call_read_state.callback);
+                read_state_waiters.add (resume);
+                yield;
+            } else {
+                read_state_busy = true;
+            }
+            try {
+                return yield call (method, params);
+            } finally {
+                if (read_state_waiters.length > 0) {
+                    var next = read_state_waiters[0];
+                    read_state_waiters.remove_index (0);
+                    next.attach (MainContext.get_thread_default ());
+                } else {
+                    read_state_busy = false;
+                }
+            }
         }
 
         /**

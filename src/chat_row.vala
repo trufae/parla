@@ -306,8 +306,7 @@ namespace Dc {
                     });
             }
             append_menu_button (box, popover,
-                has_unread ? "Mark as Read" : "Mark as Unread",
-                false, has_unread || chat_id != window.current_chat_id)
+                has_unread ? "Mark as Read" : "Mark as Unread")
                 .selected.connect (() => {
                     set_unread_state.begin (chat_id, !has_unread);
                 });
@@ -394,7 +393,7 @@ namespace Dc {
         private async void set_unread_state (int chat_id, bool unread) {
             try {
                 if (unread) {
-                    yield rpc.markfresh_chat (chat_id);
+                    yield window.mark_chat_unread (chat_id);
                 } else {
                     yield rpc.marknoticed_chat (chat_id);
                 }
