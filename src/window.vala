@@ -2082,6 +2082,10 @@ namespace Dc {
             if (events != null) events.schedule_chats_reload ();
         }
 
+        public void show_chat_info (int chat_id) {
+            if (chat_id > 0 && chat_menu != null) chat_menu.show_info (chat_id);
+        }
+
         /* Queue a notification for a new message or reaction: batch rapid
            arrivals into one banner per chat and check the chat's mute state
            when the batch is flushed. Behavioral contract: docs/notifications.md */
@@ -3524,9 +3528,7 @@ namespace Dc {
                 refresh_current_chat ();
                 return true;
             case Gdk.Key.i:
-                if (current_chat_id > 0 && chat_menu != null) {
-                    chat_menu.show_info (current_chat_id);
-                }
+                show_chat_info (current_chat_id);
                 return true;
             case Gdk.Key.m:
                 show_gallery_dialog ();

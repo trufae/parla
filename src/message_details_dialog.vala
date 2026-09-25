@@ -83,11 +83,11 @@ namespace Dc {
             button.add_css_class ("flat");
             button.add_css_class ("message-details-sender");
             button.halign = Gtk.Align.FILL;
-            button.tooltip_text = "Open chat with sender";
-            button.sensitive = sender_chat_available ();
+            button.tooltip_text = "Show contact details";
+            button.sensitive = sender_details_available ();
             button.clicked.connect (() => {
                 this.close ();
-                actions.open_sender_chat.begin (msg.id);
+                actions.open_sender_profile.begin (msg.id);
             });
 
             var row = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 12);
@@ -453,10 +453,9 @@ namespace Dc {
             avatar_path = msg.sender_avatar_path;
         }
 
-        private bool sender_chat_available () {
-            return msg.sender_contact_id > 0
-                || has_value (msg.sender_address)
-                || (msg.is_outgoing && has_value (rpc.self_email));
+        private bool sender_details_available () {
+            return msg.is_outgoing || msg.sender_contact_id > 0
+                || has_value (msg.sender_address);
         }
 
         private void update_edit_button () {

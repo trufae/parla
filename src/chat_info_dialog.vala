@@ -290,6 +290,12 @@ namespace Dc {
                 });
 
                 var ephem_list = boxed_list ();
+                int account_id = rpc.account_id;
+                add_action_row (ephem_list, "Open Chat", "Open this conversation",
+                    "mail-message-new-symbolic", () => {
+                    this.close ();
+                    app_window.open_chat_from_notification.begin (account_id, chat_id);
+                });
                 add_action_row (ephem_list,
                     "View Media",
                     "Browse apps and media shared in this chat",

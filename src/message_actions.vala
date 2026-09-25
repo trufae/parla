@@ -426,44 +426,27 @@ namespace Dc {
             dialog.present (window);
         }
 
-        public async void open_sender_chat (int msg_id) {
+        public async void open_sender_profile (int msg_id) {
             var m = find_message (message_store, msg_id);
             if (m == null) return;
 
+            int account_id = rpc.account_id;
             try {
-                int contact_id = m.sender_contact_id;
+                int contact_id = m.is_outgoing ? 1 : m.sender_contact_id;
                 string? address = m.sender_address;
-                if (m.is_outgoing && (address == null || address.length == 0)) {
-                    address = rpc.self_email;
-                }
                 if (contact_id <= 0 && address != null && address.length > 0) {
-                    contact_id = yield rpc.get_or_create_contact (address);
+                    contact_id = yield rpc.get_or_create_contact_for (account_id, address);
                 }
                 if (contact_id <= 0) return;
 
-                int chat_id = yield rpc.get_or_create_chat_by_contact (contact_id);
+                int chat_id = yield rpc.get_or_create_chat_by_contact_for (
+                    account_id, contact_id);
+                if (rpc.account_id != account_id) return;
                 if (chat_id > 0) {
-                    window.request_reload_chats ();
-                    window.select_chat_by_id (chat_id);
+                    window.show_chat_info (chat_id);
                 }
             } catch (Error e) {
-                window.show_toast ("Could not open chat: " + e.message);
-            }
-        }
-
-        public async void open_sender_profile (int msg_id) {
-            var m = find_message (message_store, msg_id);
-            if (m == null || m.sender_address == null || m.is_outgoing) return;
-            try {
-                int contact_id = yield rpc.lookup_contact (m.sender_address);
-                if (contact_id <= 0) return;
-                int chat_id = yield rpc.get_or_create_chat_by_contact (contact_id);
-                if (chat_id > 0) {
-                    window.request_reload_chats ();
-                    window.select_chat_by_id (chat_id);
-                }
-            } catch (Error e) {
-                window.show_toast ("Could not open profile: " + e.message);
+                window.show_toast ("Could not open contact details: " + e.message);
             }
         }
     }
