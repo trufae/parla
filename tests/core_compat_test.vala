@@ -85,6 +85,46 @@ private void test_message_identity () {
     assert (!RpcParsers.parse_message (new Json.Object ()).is_outgoing);
 }
 
+private void test_channel_reactions () {
+    var obj = object_from_json ("""
+        {"reactions": {
+            "reactions": [
+                {"emoji":"👍","count":12,"isFromSelf":true},
+                {"emoji":"❤️","count":8,"isFromSelf":false}],
+            "reactionsByContact":{"1":["👍"]}
+        }}
+        """);
+    var msg = RpcParsers.parse_message (obj);
+    assert (msg.reactions == "👍:12,❤️:8");
+    assert (msg.my_reactions == "👍");
+    assert (msg.reaction_details.length == 2);
+    assert (msg.reaction_details[0].count == 12);
+    assert (msg.reaction_details[0].users.length == 1);
+    assert (msg.reaction_details[1].users.length == 0);
+
+    // Even a missing contact map must not hide aggregate counts or our vote.
+    obj.get_object_member ("reactions").remove_member ("reactionsByContact");
+    msg = RpcParsers.parse_message (obj);
+    assert (msg.reactions == "👍:12,❤️:8");
+    assert (msg.my_reactions == "👍");
+    assert (msg.reaction_details[0].users.length == 0);
+
+    // An empty aggregate list is authoritative over a stale identity map.
+    obj = object_from_json ("""
+        {"reactions":{"reactions":[],"reactionsByContact":{"1":["👍"]}}}
+        """);
+    assert (RpcParsers.parse_message (obj).reactions == null);
+
+    // Older responses without aggregates still expose all identities.
+    obj = object_from_json ("""
+        {"reactions":{"reactionsByContact":{"1":["👍"],"42":["👍"]}}}
+        """);
+    msg = RpcParsers.parse_message (obj);
+    assert (msg.reactions == "👍:2");
+    assert (msg.my_reactions == "👍");
+    assert (msg.reaction_details[0].users.length == 2);
+}
+
 private async void check_account_addresses () {
     var rpc = new RpcClient ();
     try {
@@ -150,6 +190,7 @@ public int main (string[] args) {
     Test.init (ref args);
     Test.add_func ("/core-compat/presence", test_presence);
     Test.add_func ("/core-compat/message-identity", test_message_identity);
+    Test.add_func ("/core-compat/channel-reactions", test_channel_reactions);
     Test.add_func ("/core-compat/account-addresses", test_account_addresses);
     Test.add_func ("/core-compat/pin-events", test_pin_events);
     return Test.run ();

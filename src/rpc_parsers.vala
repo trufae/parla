@@ -126,60 +126,61 @@ namespace Dc {
             var reactions_obj = json_obj (obj, "reactions");
             if (reactions_obj == null) return;
 
-            var by_contact = json_obj (reactions_obj, "reactionsByContact");
-            if (by_contact == null) return;
-            var reaction_details = new GenericArray<MessageReaction> ();
-            string[] r_emojis = {};
-            int[] r_counts = {};
+            var details = new GenericArray<MessageReaction> ();
             string[] my_emojis = {};
+            Json.Array? totals = null;
+            if (reactions_obj.has_member ("reactions")) {
+                var node = reactions_obj.get_member ("reactions");
+                if (node.get_node_type () == Json.NodeType.ARRAY)
+                    totals = node.get_array ();
+            }
+            // Counts are authoritative even when channel identities are hidden.
+            if (totals != null) {
+                for (uint i = 0; i < totals.get_length (); i++) {
+                    var entry = totals.get_object_element (i);
+                    string? emoji = json_str (entry, "emoji");
+                    int count = (int) json_int (entry, "count");
+                    if (emoji == null || emoji.length == 0 || count <= 0) continue;
+                    var reaction = new MessageReaction (emoji);
+                    reaction.count = count;
+                    details.add (reaction);
+                    if (json_bool (entry, "isFromSelf")) my_emojis += emoji;
+                }
+            }
 
-            var members = by_contact.get_members ();
-            foreach (unowned string cid in members) {
-                var node = by_contact.get_member (cid);
-                if (node.get_node_type () != Json.NodeType.ARRAY) continue;
-                var arr = node.get_array ();
-                bool is_self = (cid == "1");
-                int contact_id = int.parse (cid);
-                for (uint j = 0; j < arr.get_length (); j++) {
-                    string emoji = arr.get_string_element (j);
-                    if (is_self) my_emojis += emoji;
-                    var reaction = find_reaction (reaction_details, emoji);
-                    if (reaction == null) {
-                        reaction = new MessageReaction (emoji);
-                        reaction_details.add (reaction);
-                    }
-                    reaction.add_user (contact_id);
-
-                    int found = -1;
-                    for (int k = 0; k < r_emojis.length; k++) {
-                        if (r_emojis[k] == emoji) {
-                            found = k;
-                            break;
+            var by_contact = json_obj (reactions_obj, "reactionsByContact");
+            if (by_contact != null) {
+                foreach (unowned string cid in by_contact.get_members ()) {
+                    var node = by_contact.get_member (cid);
+                    if (node.get_node_type () != Json.NodeType.ARRAY) continue;
+                    var emojis = node.get_array ();
+                    for (uint j = 0; j < emojis.get_length (); j++) {
+                        string emoji = emojis.get_string_element (j);
+                        var reaction = find_reaction (details, emoji);
+                        if (totals == null) {
+                            if (reaction == null) {
+                                reaction = new MessageReaction (emoji);
+                                details.add (reaction);
+                            }
+                            reaction.add_user (int.parse (cid));
+                            if (cid == "1") my_emojis += emoji;
+                        } else if (reaction != null) {
+                            reaction.users.add (new MessageReactionUser (int.parse (cid)));
                         }
-                    }
-                    if (found >= 0) {
-                        r_counts[found] = r_counts[found] + 1;
-                    } else {
-                        r_emojis += emoji;
-                        r_counts += 1;
                     }
                 }
             }
 
-            if (my_emojis.length > 0) {
+            if (details.length == 0) return;
+            msg.reaction_details = details;
+            if (my_emojis.length > 0)
                 msg.my_reactions = string.joinv (",", my_emojis);
+            var summary = new StringBuilder ();
+            for (int i = 0; i < details.length; i++) {
+                if (summary.len > 0) summary.append (",");
+                summary.append_printf ("%s:%d", details[i].emoji, details[i].count);
             }
-
-            if (r_emojis.length == 0) return;
-
-            msg.reaction_details = reaction_details;
-
-            var sb = new StringBuilder ();
-            for (int k = 0; k < r_emojis.length; k++) {
-                if (sb.len > 0) sb.append (",");
-                sb.append_printf ("%s:%d", r_emojis[k], r_counts[k]);
-            }
-            msg.reactions = sb.str;
+            msg.reactions = summary.str;
         }
 
         private static MessageReaction? find_reaction (

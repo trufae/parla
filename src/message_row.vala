@@ -2077,17 +2077,16 @@ namespace Dc {
             var pill = new Gtk.Box (Gtk.Orientation.VERTICAL, 4);
             pill.add_css_class ("reaction-users-pill");
 
-            if (reaction.users.length == 0) {
+            if (reaction.count > reaction.users.length) {
                 var label = new Gtk.Label (reaction.count == 1
-                    ? "Unknown user"
+                    ? "1 reaction"
                     : "%d reactions".printf (reaction.count));
                 label.add_css_class ("reaction-user-name");
                 pill.append (label);
-            } else {
-                for (int i = 0; i < reaction.users.length; i++) {
-                    pill.append (build_reaction_user_row (
-                        msg, reaction.users[i].contact_id));
-                }
+            }
+            for (int i = 0; i < reaction.users.length; i++) {
+                pill.append (build_reaction_user_row (
+                    msg, reaction.users[i].contact_id));
             }
 
             popover.child = pill;

@@ -173,9 +173,8 @@ namespace Dc {
             } else {
                 for (int i = 0; i < reactions.length; i++) {
                     var reaction = reactions[i];
-                    if (reaction.users.length == 0) {
+                    if (reaction.count > reaction.users.length) {
                         list.append (reaction_count_row (reaction));
-                        continue;
                     }
 
                     int[] users = sorted_reaction_user_ids (reaction);
@@ -330,7 +329,7 @@ namespace Dc {
             var row = new Adw.ActionRow ();
             row.use_markup = false;
             row.title = reaction.count == 1
-                ? "Unknown user"
+                ? "1 reaction"
                 : "%d reactions".printf (reaction.count);
 
             var emoji = new Gtk.Label (reaction.emoji);
