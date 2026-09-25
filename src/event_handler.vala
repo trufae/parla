@@ -26,6 +26,7 @@ namespace Dc {
         public signal void chat_messages_changed (int acct_id, int chat_id);
         public signal void account_unread_changed (int acct_id);
         public signal void contacts_changed (int acct_id);
+        public signal void transports_changed (int acct_id);
         public signal void imex_progress (int context_id, int progress);
         public signal void configure_progress (int context_id, int progress,
                                                 string? comment);
@@ -53,6 +54,11 @@ namespace Dc {
                     if (event == null) continue;
 
                     string kind = event.get_string_member ("kind");
+
+                    if (kind == "TransportsModified") {
+                        transports_changed (ctx);
+                        continue;
+                    }
 
                     /* ImexProgress / ConfigureProgress can come from a
                        non-current account during account creation. */

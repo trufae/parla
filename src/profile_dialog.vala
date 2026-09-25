@@ -73,6 +73,7 @@ namespace Dc {
         private Gtk.Label default_caption_label;
         private Gtk.Button default_make_button;
         private string[] account_addresses = {};
+        private uint addresses_generation = 0;
         private Gtk.Label connectivity_status_label;
         private Gtk.Label storage_summary_label;
         private Gtk.ProgressBar storage_progress;
@@ -145,6 +146,16 @@ namespace Dc {
 
             this.child = box;
 
+            ulong transports_handler = events.transports_changed.connect ((id) => {
+                if (id == account_id) load_addresses.begin ();
+            });
+            this.closed.connect (() => {
+                addresses_generation++;
+                if (transports_handler != 0) {
+                    events.disconnect (transports_handler);
+                    transports_handler = 0;
+                }
+            });
             load_profile.begin ();
             load_read_receipt_settings.begin ();
             load_connectivity_summary.begin ();
@@ -436,11 +447,15 @@ namespace Dc {
         }
 
         private async void load_addresses () {
+            uint generation = ++addresses_generation;
             try {
-                account_addresses = yield rpc.get_account_addresses (account_id);
+                var addresses = yield rpc.get_account_addresses (account_id);
+                if (generation != addresses_generation) return;
+                account_addresses = addresses;
                 email_label.label = string.joinv ("\n", account_addresses);
                 update_default_account_row ();
             } catch (Error e) {
+                if (generation != addresses_generation) return;
                 warning ("load profile addresses: %s", e.message);
             }
         }

@@ -227,6 +227,7 @@ namespace Dc {
         private RelayPicker picker;
         private Gtk.Button add_btn;
         private bool busy = false;
+        private uint refresh_generation = 0;
 
         public RelaysDialog (RpcClient rpc, EventHandler events, int acct_id) {
             this.rpc = rpc;
@@ -294,21 +295,34 @@ namespace Dc {
             this.child = box;
 
             install_escape_close (this);
+            ulong transports_handler = events.transports_changed.connect ((id) => {
+                if (id == account_id) refresh_list.begin ();
+            });
+            this.closed.connect (() => {
+                refresh_generation++;
+                if (transports_handler != 0) {
+                    events.disconnect (transports_handler);
+                    transports_handler = 0;
+                }
+            });
             refresh_list.begin ();
         }
 
         private async void refresh_list () {
-            clear_listbox (list_box);
+            uint generation = ++refresh_generation;
 
             Json.Node? result = null;
             try {
                 result = yield rpc.list_transports (account_id);
             } catch (Error e) {
+                if (generation != refresh_generation) return;
                 show_error (this, "Failed to load transports: " + e.message);
                 list_stack.visible_child_name = "empty";
                 return;
             }
 
+            if (generation != refresh_generation) return;
+            clear_listbox (list_box);
             if (result == null || result.get_node_type () != Json.NodeType.ARRAY) {
                 list_stack.visible_child_name = "empty";
                 return;

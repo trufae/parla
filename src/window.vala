@@ -1063,6 +1063,14 @@ namespace Dc {
                 invalidate_all_mention_rosters ();
                 refresh_self_mention_keys.begin ();
             });
+            events.transports_changed.connect ((acct_id) => {
+                if (acct_id == rpc.account_id) {
+                    load_self_identity.begin ();
+                    invalidate_all_mention_rosters ();
+                }
+                account_menu_state = null;
+                if (account_popover.get_visible ()) load_account_menu.begin ();
+            });
 
             chat_menu = new ChatContextMenu (this, rpc, chat_store);
             if (rpc.account_id > 0) {

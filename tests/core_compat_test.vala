@@ -28,9 +28,10 @@ private int run_fake_server () {
                 : "[]";
             break;
         case "get_next_event":
-            if (event_number >= 2) continue;
-            result = "{\"contextId\":%d,\"event\":{\"kind\":\"PinnedMessagesChanged\",\"chatId\":10}}"
-                .printf (event_number++ == 0 ? 2 : 1);
+            if (event_number >= 4) continue;
+            string kind = event_number < 2 ? "TransportsModified" : "PinnedMessagesChanged";
+            result = "{\"contextId\":%d,\"event\":{\"kind\":\"%s\",\"chatId\":10}}"
+                .printf (event_number++ % 2 == 0 ? 2 : 1, kind);
             break;
         default:
             stderr.printf ("Unexpected RPC method: %s\n", method);
@@ -119,6 +120,8 @@ private async void check_pin_events () {
     events.active_chat_id = 10;
     int changes = 0;
     int reloads = 0;
+    int[] transport_accounts = {};
+    events.transports_changed.connect ((acct) => { transport_accounts += acct; });
     events.chat_messages_changed.connect ((acct, chat) => {
         assert (acct == 1 && chat == 10);
         changes++;
@@ -128,6 +131,9 @@ private async void check_pin_events () {
     for (int i = 0; i < 100 && reloads == 0; i++) yield nap (10);
     assert (changes == 1);
     assert (reloads == 1);
+    assert (transport_accounts.length == 2);
+    assert (transport_accounts[0] == 2);
+    assert (transport_accounts[1] == 1);
     rpc.stop ();
     while (events.is_listening) yield nap (10);
 }
