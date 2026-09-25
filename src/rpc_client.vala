@@ -280,7 +280,6 @@ namespace Dc {
                         .set_string_member ("smtpSecurity", p.smtp_security)
                         .set_string_member ("certificateChecks",
                                             p.certificate_checks)
-                        .set_null_member ("oauth2")
                     .end_object ()
                     .build ());
         }
