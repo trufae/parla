@@ -32,6 +32,7 @@ namespace Dc {
             msg.file_bytes = (int) json_int (obj, "fileBytes");
             msg.view_type = json_str (obj, "viewType");
             msg.state = (int) json_int (obj, "state");
+            msg.error = json_str (obj, "error");
             msg.has_html = json_bool (obj, "hasHtml");
             msg.download_state = json_str (obj, "downloadState") ?? "Done";
 

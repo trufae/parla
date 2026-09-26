@@ -659,6 +659,7 @@ namespace Dc {
 
         /* Delivery state — one of MessageState. */
         public int state { get; set; default = 0; }
+        public string? error { get; set; default = null; }
 
         /* Convenience derived flags for the UI. */
         public bool is_pending {
@@ -678,6 +679,9 @@ namespace Dc {
         }
         public bool is_failed {
             get { return state == MessageState.OUT_FAILED; }
+        }
+        public bool can_retry {
+            get { return id > 0 && is_outgoing && is_failed && !is_info; }
         }
         public bool has_text {
             get { return text != null && text.strip ().length > 0; }

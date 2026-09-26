@@ -52,6 +52,8 @@ namespace Dc {
         private RpcTransport transport;
         private bool read_state_busy = false;
         private GenericArray<Source> read_state_waiters = new GenericArray<Source> ();
+        private HashTable<string, bool> pending_retries =
+            new HashTable<string, bool> (str_hash, str_equal);
 
         public signal void disconnected (string reason);
 
@@ -806,6 +808,29 @@ namespace Dc {
                     .add_int_array (msg_ids)
                     .add_int (chat_id)
                     .build ());
+        }
+
+        public bool is_retrying_message_for (int acct_id, int msg_id) {
+            return pending_retries.contains ("%d:%d".printf (acct_id, msg_id));
+        }
+
+        /* Resend accepts delivered and pending messages too. A Retry action
+           must recheck core's current state, not trust a cached row/dialog.
+           Lock across the check and resend, scoped to the originating profile. */
+        public async bool retry_failed_message_for (int acct_id, int msg_id) throws Error {
+            if (acct_id <= 0 || msg_id <= 0
+                    || is_retrying_message_for (acct_id, msg_id)) return false;
+            string key = "%d:%d".printf (acct_id, msg_id);
+            pending_retries.insert (key, true);
+            try {
+                var msg = yield fetch_message_for (acct_id, msg_id);
+                if (msg == null || !msg.can_retry) return false;
+                yield call ("resend_messages", Params.begin ()
+                    .add_int (acct_id).add_int_array ({ msg_id }).build ());
+                return true;
+            } finally {
+                pending_retries.remove (key);
+            }
         }
 
         public async void delete_messages_for_all (int[] msg_ids) throws Error {

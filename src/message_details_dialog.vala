@@ -12,6 +12,11 @@ namespace Dc {
         private Gtk.Button? save_edit_btn = null;
         private Gtk.Label? edit_status_lbl = null;
         private string edit_original_text = "";
+        private Adw.ActionRow delivery_row;
+        private Adw.ActionRow error_row;
+        private Gtk.Button retry_btn;
+        private bool retry_running = false;
+        private bool dialog_closed = false;
 
         public MessageDetailsDialog (Window window, RpcClient rpc,
                                      MessageActions actions, Message msg,
@@ -69,8 +74,11 @@ namespace Dc {
             scroll.child = content;
             box.append (scroll);
 
-            this.child = box;
+            var toasts = new Adw.ToastOverlay ();
+            toasts.child = box;
+            this.child = toasts;
             install_escape_close (this);
+            closed.connect (() => { dialog_closed = true; });
         }
 
         private Gtk.Widget build_sender_button () {
@@ -197,7 +205,11 @@ namespace Dc {
             list.append (info_row ("Chat ID", msg.chat_id.to_string ()));
             list.append (info_row ("Sent", format_full_timestamp (msg.timestamp)));
             list.append (info_row ("Direction", msg.is_outgoing ? "Outgoing" : "Incoming"));
-            list.append (info_row ("Delivery", delivery_state ()));
+            delivery_row = info_row ("Delivery", delivery_state ());
+            list.append (delivery_row);
+            error_row = info_row ("Error", msg.error ?? "", 0);
+            error_row.visible = has_value (msg.error);
+            list.append (error_row);
             list.append (info_row ("Type", message_type ()));
             list.append (info_row ("Flags", flags_text ()));
             list.append (info_row ("Sender contact ID",
@@ -217,7 +229,29 @@ namespace Dc {
             }
 
             box.append (list);
+            retry_btn = new Gtk.Button.with_label ("Retry");
+            retry_btn.halign = Gtk.Align.START;
+            retry_btn.visible = msg.can_retry;
+            retry_btn.clicked.connect (() => { retry_message.begin (); });
+            box.append (retry_btn);
             return box;
+        }
+
+        private async void retry_message () {
+            if (retry_running || !msg.can_retry) return;
+            retry_running = true;
+            retry_btn.sensitive = false;
+            retry_btn.label = "Retrying…";
+            var updated = yield actions.retry_message (msg.id);
+            retry_running = false;
+            if (dialog_closed) return;
+            if (updated != null) msg = updated;
+            delivery_row.subtitle = delivery_state ();
+            error_row.subtitle = msg.error ?? "";
+            error_row.visible = has_value (msg.error);
+            retry_btn.label = "Retry";
+            retry_btn.visible = msg.can_retry;
+            retry_btn.sensitive = msg.can_retry;
         }
 
         private Gtk.Widget build_attachment_section () {

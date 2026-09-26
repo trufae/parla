@@ -9,6 +9,9 @@ namespace Dc {
         private unowned ComposeBar compose_bar;
         private unowned SettingsManager settings;
         private MentionRoster? reaction_roster = null;
+        private int account_id;
+        private HashTable<int, bool> retrying = new HashTable<int, bool> (
+            direct_hash, direct_equal);
         public string chat_type { get; set; default = ""; }
 
         public signal void select_requested (int msg_id);
@@ -20,6 +23,7 @@ namespace Dc {
                                SettingsManager settings) {
             this.window = window;
             this.rpc = rpc;
+            this.account_id = rpc.account_id;
             this.message_store = message_store;
             this.pinned = pinned;
             this.compose_bar = compose_bar;
@@ -61,6 +65,14 @@ namespace Dc {
                 var edit_btn = new PopoverButton (popover, "Edit");
                 edit_btn.selected.connect (() => start_editing (msg_id));
                 vbox.append (edit_btn);
+            }
+
+            if (msg != null && msg.can_retry) {
+                var retry_btn = new PopoverButton (popover, "Retry");
+                retry_btn.sensitive = !retrying.contains (msg_id)
+                    && !rpc.is_retrying_message_for (account_id, msg_id);
+                retry_btn.selected.connect (() => { retry_message.begin (msg_id); });
+                vbox.append (retry_btn);
             }
 
             var select_btn = new PopoverButton (popover, "Select Messages",
@@ -369,6 +381,54 @@ namespace Dc {
             } catch (Error e) {
                 window.show_toast ("Edit failed: " + e.message);
             }
+        }
+
+        public async Message? retry_message (int msg_id) {
+            if (!retry_context_active (rpc, window) || retrying.contains (msg_id)
+                    || rpc.is_retrying_message_for (account_id, msg_id)) return null;
+            // Keep dependencies alive if the originating view closes mid-RPC.
+            var client = rpc;
+            var owner = window;
+            var store = message_store;
+            retrying.insert (msg_id, true);
+            try {
+                string? failure = null;
+                try {
+                    yield client.retry_failed_message_for (account_id, msg_id);
+                } catch (Error e) {
+                    failure = e.message;
+                }
+
+                if (!retry_context_active (client, owner)) return null;
+                // Core can change state even when resending reports an error.
+                Message? updated = null;
+                try {
+                    updated = yield client.fetch_message_for (account_id, msg_id);
+                } catch (Error e) {
+                    if (failure == null) failure = "Could not refresh message: " + e.message;
+                }
+                if (!retry_context_active (client, owner)) return null;
+                if (updated != null) {
+                    var view = owner.current_view ();
+                    if (view != null && view.chat_id == updated.chat_id) {
+                        view.replace_message (msg_id, updated);
+                    } else {
+                        int idx = find_message_index (store, msg_id);
+                        if (idx >= 0) store.splice (idx, 1, new Object[] { updated });
+                    }
+                }
+                owner.request_reload_chats ();
+                if (failure != null)
+                    owner.show_toast (Markup.escape_text ("Could not retry message: " + failure));
+                return updated;
+            } finally {
+                retrying.remove (msg_id);
+            }
+        }
+
+        private bool retry_context_active (RpcClient client, Window owner) {
+            var app = owner.application as Dc.Application;
+            return app != null && app.rpc == client && client.account_id == account_id;
         }
 
         public async void update_row (int msg_id) {

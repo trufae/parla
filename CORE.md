@@ -25,7 +25,7 @@ recommendations, not release commitments.
 | --- | --- | --- | --- |
 | [CORE-001](#core-001-full-history-conversation-search) | P1 | TODO | Full-history conversation search |
 | [CORE-002](#core-002-search-messages-across-chats) | P2 | TODO | Search messages across chats |
-| [CORE-003](#core-003-retry-failed-messages) | P1 | TODO | Retry failed messages |
+| [CORE-003](#core-003-retry-failed-messages) | P1 | Done | Retry failed messages |
 | [CORE-004](#core-004-detailed-read-receipts) | P2 | TODO | Detailed read receipts |
 | [CORE-005](#core-005-channel-view-counts) | P2 | TODO | Channel view counts |
 | [CORE-006](#core-006-native-saved-messages) | P2 | TODO | Native Saved Messages |
@@ -44,7 +44,7 @@ recommendations, not release commitments.
 | [CORE-019](#core-019-webxdc-activity-links) | P2 | TODO | Webxdc activity links |
 | [CORE-020](#core-020-persistent-profile-order) | P3 | TODO | Persistent profile order |
 
-Suggested first sequence: CORE-001, CORE-003, CORE-014, CORE-016, then
+Suggested first sequence: CORE-001, CORE-014, CORE-016, then
 CORE-004/CORE-005. CORE-002 can reuse the search infrastructure from CORE-001.
 
 ## CORE-001: Full-history conversation search
@@ -86,21 +86,36 @@ populate another profile's search. Keyboard navigation reaches every result.
 
 ## CORE-003: Retry failed messages
 
-**Gap:** Failed outgoing messages display a failure indicator, but have no
-native retry action. Core's error text is also absent from the message model.
+**Status:** Done (2026-09-26).
 
-**Implement:** Add Retry to eligible failed outgoing messages using
-`resend_messages`. Expose useful core error information in Message Details
-through the message's `error` field or `get_message_info_object`. Let core
-validate eligibility; exclude incoming messages, drafts, and pending sends.
+**Implemented:** Retry is available in the context menu and Message Details
+for failed outgoing messages, including attachments. It calls native
+`resend_messages` with the original message ID and lets core reuse its stored
+content and attachment. The message model parses core's `error` field, and
+Message Details shows it as plain text. Retry errors also appear in a toast
+inside the dialog when it is open.
 
-**Done when:** Retrying reuses the original message, updates its sending state,
-and works for attachments as well as text. Repeated activation cannot queue
-duplicate retries. Offline and permanent failures remain understandable.
+Eligibility is rechecked against core before retrying; incoming messages,
+info messages, drafts, pending sends, and delivered/read messages are excluded.
+Concurrent activations are guarded, requests retain the originating account,
+and stale callbacks cannot update another profile. The row and open details
+refresh after the attempt, including when core reports an error; Retry
+disappears when the message is no longer failed.
+
+**Validation:** [RPC regression tests](tests/message_retry_test.vala) cover
+eligibility, text/attachments, stale state, concurrent activation, account
+switches, and error recovery. The optional
+[GTK integration test](tests/message_retry_ui_test.py) checks the dialog,
+literal error text, visible failure toasts, and state refresh. The isolated
+[native core test](tests/core_retry_test.py), verified with core 2.62.0, checks
+failed retries without a configured transport, preserving original IDs,
+stored attachments, and failure reasons. Successful queueing is covered by
+the offline RPC fixture; live relay delivery is not exercised.
 
 **Entry points:** [message_actions.vala](src/message_actions.vala),
 [message_details_dialog.vala](src/message_details_dialog.vala),
-[rpc_parsers.vala](src/rpc_parsers.vala), [models.vala](src/models.vala).
+[rpc_client.vala](src/rpc_client.vala), [rpc_parsers.vala](src/rpc_parsers.vala),
+[models.vala](src/models.vala).
 
 ## CORE-004: Detailed read receipts
 

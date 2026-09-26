@@ -3849,8 +3849,9 @@ namespace Dc {
                into the dialog's own overlay when it has one (dialogs
                wanting local toasts make an Adw.ToastOverlay their child,
                like GalleryDialog). */
-            var modal_toasts = active_modal != null
-                ? active_modal.child as Adw.ToastOverlay : null;
+            var dialog = get_visible_dialog ();
+            var modal_toasts = dialog != null
+                ? dialog.child as Adw.ToastOverlay : null;
             (modal_toasts ?? toast_overlay).add_toast (toast);
         }
 
