@@ -2,6 +2,7 @@
 Name=Parla
 GenericName=Messaging
 Comment=A Delta Chat client for GNOME
+Comment[nl]=Een Delta Chat-client voor GNOME
 Exec=parla %u
 Icon=io.github.trufae.Parla
 Terminal=false
