@@ -246,6 +246,7 @@ namespace Dc {
             input_row.append (attach_button);
 
             emoji_button = new Gtk.MenuButton ();
+            emoji_button.focus_on_click = false;
             emoji_button.icon_name = "face-smile-symbolic";
             emoji_button.add_css_class ("flat");
             emoji_button.tooltip_text = _("Insert emoji");
@@ -352,6 +353,7 @@ namespace Dc {
             send_button.clicked.connect (on_send);
 
             sticker_button = new Gtk.MenuButton ();
+            sticker_button.focus_on_click = false;
             sticker_button.icon_name = "sticker-symbolic";
             sticker_button.add_css_class ("flat");
             sticker_button.add_css_class ("circular");
@@ -497,6 +499,10 @@ namespace Dc {
                                         bool circular = false,
                                         string style = "flat") {
             var button = new Gtk.Button.from_icon_name (icon_name);
+            /* Keep the entry focused until the action runs: dismissing the
+               OSK on press can move the button before release and lose the
+               click. Tab navigation and keyboard activation still work. */
+            button.focus_on_click = false;
             button.add_css_class (style);
             if (circular) button.add_css_class ("circular");
             button.tooltip_text = tooltip;
@@ -760,7 +766,7 @@ namespace Dc {
             cancel_reply ();
             suppress_draft_signal = false;
             notify_draft_changed ();
-            text_view.grab_focus ();
+            grab_entry_focus ();
         }
 
         private void start_audio_recording () {

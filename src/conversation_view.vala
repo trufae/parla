@@ -715,6 +715,7 @@ namespace Dc {
             append (webxdc_bar.revealer);
 
             scroll_down_btn = new Gtk.Button ();
+            scroll_down_btn.focus_on_click = false;
             scroll_down_btn.icon_name = "go-down-symbolic";
             scroll_down_btn.add_css_class ("circular");
             scroll_down_btn.add_css_class ("osd");
