@@ -339,6 +339,8 @@ private void test_unread_calls () {
 }
 
 public int main (string[] args) {
+    if (args.length > 1 && args[1] == "--audio-player-ui")
+        return run_audio_player_ui_test ();
     if (args.length > 1 && args[1] == "--long-press-ui")
         return run_long_press_ui_test ();
     if (args.length > 1 && args[1] == "--chat-lifetime-ui")

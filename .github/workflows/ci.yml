@@ -57,6 +57,22 @@ jobs:
         if: matrix.a11y == true
         run: meson test -C builddir --print-errorlogs
 
+      - name: Check audio player layout and controls
+        if: matrix.a11y == true
+        run: |
+          sudo apt-get install -y libgstreamer-plugins-bad1.0-0 gstreamer1.0-plugins-good
+          mkdir -p audio-player-screenshots
+          PARLA_TEST_SCREENSHOTS="$PWD/audio-player-screenshots" GSK_RENDERER=cairo GDK_BACKEND=x11 \
+            xvfb-run -a dbus-run-session -- python3 tests/audio_player_ui_test.py builddir/core-compat-test
+
+      - name: Upload audio player screenshots
+        if: always() && matrix.a11y == true
+        uses: actions/upload-artifact@v7
+        with:
+          name: audio-player-screenshots
+          path: audio-player-screenshots/
+          if-no-files-found: ignore
+
       - name: Check long-press pointer gestures
         if: matrix.a11y == true
         run: GTK_A11Y=none GDK_BACKEND=x11 xvfb-run -a builddir/core-compat-test --long-press-ui
