@@ -13,15 +13,14 @@ namespace Dc {
         private AudioPlayback playback;
         private Gtk.Revealer revealer;
         private Gtk.Box content;
-        private Adw.Avatar avatar;
         private Gtk.Button previous_button;
         private Gtk.Button play_button;
         private Gtk.Button next_button;
         private Gtk.Button close_button;
         private Gtk.Label sender_label;
-        private Gtk.Label sent_label;
         private Gtk.Label time_label;
         private Gtk.Scale progress;
+        private Gtk.MenuButton options_button;
         private Gtk.DropDown speed_dropdown;
         private bool syncing_speed = false;
         private ulong current_handler = 0;
@@ -44,48 +43,47 @@ namespace Dc {
             revealer.transition_type = Gtk.RevealerTransitionType.SLIDE_DOWN;
             revealer.reveal_child = false;
 
-            content = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 8);
+            content = new Gtk.Box (Gtk.Orientation.VERTICAL, 2);
             content.margin_start = 10;
             content.margin_end = 10;
             content.margin_top = 6;
             content.margin_bottom = 6;
 
-            avatar = new Adw.Avatar (40, _("Voice message"), true);
-            avatar.valign = Gtk.Align.CENTER;
-            content.append (avatar);
-
-            previous_button = media_button (
-                "media-skip-backward-symbolic", _("Previous voice message"));
-            previous_button.clicked.connect (() => { previous_requested (); });
-            content.append (previous_button);
-
+            var controls = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 6);
             play_button = media_button (
                 "media-playback-start-symbolic", _("Play"));
+            play_button.remove_css_class ("flat");
             play_button.add_css_class ("suggested-action");
             play_button.clicked.connect (() => { playback.toggle (); });
-            content.append (play_button);
+            controls.append (play_button);
 
-            next_button = media_button (
-                "media-skip-forward-symbolic", _("Next voice message"));
-            next_button.clicked.connect (() => { next_requested (); });
-            content.append (next_button);
-
-            var details = new Gtk.Box (Gtk.Orientation.VERTICAL, 1);
-            details.hexpand = true;
-            details.valign = Gtk.Align.CENTER;
-
-            var metadata = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 6);
             sender_label = new Gtk.Label ("");
             sender_label.add_css_class ("conversation-media-sender");
             sender_label.xalign = 0;
+            sender_label.hexpand = true;
             sender_label.ellipsize = Pango.EllipsizeMode.END;
-            metadata.append (sender_label);
+            controls.append (sender_label);
 
-            sent_label = new Gtk.Label ("");
-            sent_label.add_css_class ("conversation-media-sent");
-            sent_label.xalign = 0;
-            sent_label.ellipsize = Pango.EllipsizeMode.END;
-            metadata.append (sent_label);
+            // Secondary controls must not set the conversation's minimum width.
+            options_button = new Gtk.MenuButton ();
+            options_button.icon_name = "view-more-symbolic";
+            options_button.tooltip_text = _("Playback options");
+            options_button.add_css_class ("flat");
+            options_button.add_css_class ("circular");
+            options_button.valign = Gtk.Align.CENTER;
+            var options = new Gtk.Box (Gtk.Orientation.VERTICAL, 6);
+            var navigation = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 6);
+            navigation.halign = Gtk.Align.CENTER;
+            previous_button = media_button (
+                "media-skip-backward-symbolic", _("Previous voice message"));
+            previous_button.clicked.connect (() => { previous_requested (); });
+            navigation.append (previous_button);
+            next_button = media_button (
+                "media-skip-forward-symbolic", _("Next voice message"));
+            next_button.clicked.connect (() => { next_requested (); });
+            navigation.append (next_button);
+            options.append (navigation);
+            options.append (new Gtk.Label (_("Playback speed")));
 
             speed_dropdown = new Gtk.DropDown.from_strings ({
                 "0.5×", "0.75×", "1×", "1.25×", "1.5×", "2×",
@@ -119,8 +117,19 @@ namespace Dc {
                 Signal.connect_object (speed_popup, "notify::visible",
                     (Callback) on_speed_popup_visible, this, (ConnectFlags) 0);
             }
-            metadata.append (speed_dropdown);
-            details.append (metadata);
+            options.append (speed_dropdown);
+            var popup = new Gtk.Popover ();
+            popup.child = options;
+            options_button.popover = popup;
+            controls.append (options_button);
+
+            close_button = media_button (
+                "window-close-symbolic", _("Close player"));
+            close_button.clicked.connect (() => { playback.stop (); });
+            controls.append (close_button);
+            content.append (controls);
+
+            var timeline = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 8);
 
             progress = new Gtk.Scale.with_range (
                 Gtk.Orientation.HORIZONTAL, 0.0, 1.0, 0.001);
@@ -132,20 +141,15 @@ namespace Dc {
                 playback.seek_fraction (value);
                 return false;
             });
-            details.append (progress);
-            content.append (details);
+            timeline.append (progress);
 
             time_label = new Gtk.Label ("0:00");
             time_label.add_css_class ("conversation-media-time");
-            time_label.width_chars = 11;
+            time_label.ellipsize = Pango.EllipsizeMode.END;
             time_label.xalign = 1;
             time_label.valign = Gtk.Align.CENTER;
-            content.append (time_label);
-
-            close_button = media_button (
-                "window-close-symbolic", _("Close player"));
-            close_button.clicked.connect (() => { playback.stop (); });
-            content.append (close_button);
+            timeline.append (time_label);
+            content.append (timeline);
 
             revealer.child = content;
             /* A revealer only scales the axis it animates, so a collapsed
@@ -263,17 +267,15 @@ namespace Dc {
             var item = playback.current_item;
             if (item == null) {
                 message_id = 0;
+                options_button.popdown ();
                 revealer.reveal_child = false;
                 return;
             }
             message_id = item.message_id;
-            avatar.text = item.sender_name;
-            avatar.custom_image = load_avatar (item.avatar_path);
-            avatar.tooltip_text = item.sender_name;
             sender_label.label = item.sender_name;
-            sender_label.tooltip_text = item.sender_address ?? item.sender_name;
-            sent_label.label = format_sent_timestamp (item.sent_timestamp);
-            sent_label.tooltip_text = sent_label.label;
+            sender_label.tooltip_text = "%s\n%s".printf (
+                item.sender_address ?? item.sender_name,
+                format_sent_timestamp (item.sent_timestamp));
             /* Must precede reveal_child: the revealer measures a hidden child
                as zero, so the slide-down would have nothing to animate. */
             content.visible = true;
@@ -294,7 +296,8 @@ namespace Dc {
             while (widget != null && widget != this) {
                 if (widget == previous_button || widget == play_button
                         || widget == next_button || widget == close_button
-                        || widget == progress || widget == speed_dropdown)
+                        || widget == progress || widget == speed_dropdown
+                        || widget == options_button)
                     return true;
                 widget = widget.get_parent ();
             }

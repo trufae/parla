@@ -1052,10 +1052,6 @@ namespace Dc {
                 font-weight: bold;
                 font-size: small;
             }
-            .conversation-media-sent {
-                font-size: x-small;
-                opacity: 0.62;
-            }
             .conversation-media-time {
                 font-family: monospace;
                 font-size: small;
