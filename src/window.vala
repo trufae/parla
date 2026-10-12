@@ -773,6 +773,14 @@ namespace Dc {
                     chat_menu.show (chat_row.chat_id, x, y, chat_listbox);
             });
             chat_listbox.add_controller (right_click);
+            var hold = context_menu_long_press (chat_listbox, settings);
+            hold.pressed.connect ((x, y) => {
+                var row = chat_listbox.get_row_at_y ((int) y);
+                var chat_row = row != null ? row.child as ChatRow : null;
+                if (chat_row == null || chat_menu == null) return;
+                hold.set_state (Gtk.EventSequenceState.CLAIMED);
+                chat_menu.show (chat_row.chat_id, x, y, chat_listbox);
+            });
 
             /* Menu / Shift+F10 open the same context menu from the keyboard,
                anchored to the focused row (works in every sidebar mode and

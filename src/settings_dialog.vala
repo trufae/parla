@@ -76,6 +76,7 @@ namespace Dc {
         public int double_click_action { get; set; default = 0; }
         public MarkdownMode markdown_mode { get; set; default = MarkdownMode.ENABLED; }
         public CodeTheme code_theme { get; set; default = CodeTheme.ADAPTIVE; }
+        public bool long_press_context_menu { get; set; default = false; }
         public bool shift_enter_sends { get; set; default = false; }
         public bool clean_pasted_links { get; set; default = false; }
         /* Replace the built-in tracking rules with a uBlock/AdGuard
@@ -197,6 +198,8 @@ namespace Dc {
             code_theme = (CodeTheme) kf_enum (kf, "code_theme",
                 (int) CodeTheme.ADAPTIVE, (int) CodeTheme.NONE);
             SyntaxHighlight.theme = code_theme;
+            long_press_context_menu = kf_bool (kf, "long_press_context_menu",
+                is_phosh_session ());
             shift_enter_sends = kf_bool (kf, "shift_enter_sends", false);
             clean_pasted_links = kf_bool (kf, "clean_pasted_links", false);
             tracking_filter_enabled =
@@ -317,6 +320,11 @@ namespace Dc {
             SyntaxHighlight.theme = theme;
             save_int ("code_theme", (int) theme);
             appearance_changed ();
+        }
+
+        public void save_long_press_context_menu (bool v) {
+            long_press_context_menu = v;
+            save_bool ("long_press_context_menu", v);
         }
 
         public void save_shift_enter_sends (bool v) {
@@ -715,6 +723,7 @@ namespace Dc {
 
             build_appearance_section (general_page);
             build_behavior_section (general_page);
+            build_accessibility_section (general_page);
             build_links_group (general_page);
             build_notifications_section (general_page);
 
@@ -851,6 +860,14 @@ namespace Dc {
             });
 
             bg_mode_combo.add_suffix (bg_color_btn);
+        }
+
+        private void build_accessibility_section (Adw.PreferencesPage page) {
+            var group = settings_group (page, _("Accessibility"));
+            add_switch_row (group, _("Long press to right-click"),
+                _("Hold a finger or the primary mouse button to open context menus. Enabled by default on Phosh."),
+                app_window.settings.long_press_context_menu,
+                app_window.settings.save_long_press_context_menu);
         }
 
         private void build_behavior_section (Adw.PreferencesPage page) {

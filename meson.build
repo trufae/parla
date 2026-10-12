@@ -158,6 +158,7 @@ sources = files(
   'src/contact_picker_dialog.vala',
   'src/new_group_dialog.vala',
   'src/settings_dialog.vala',
+  'src/context_menu.vala',
   'src/storage_quota.vala',
   'src/profile_dialog.vala',
   'src/qr_code_view.vala',
@@ -499,13 +500,16 @@ core_compat_test = executable(
         'tests/message_retry_test.vala', 'tests/message_search_test.vala',
         'tests/search_ui_test.vala', 'tests/webxdc_realtime_test.vala',
         'tests/webxdc_realtime_ui_test.vala', 'tests/sync_ui_test.vala',
-        'tests/chat_lifetime_test.vala'),
+        'tests/chat_lifetime_test.vala', 'tests/long_press_ui_test.vala'),
   sources, config_file, appdata_vala, resources,
   dependencies: deps,
   include_directories: src_inc,
   install: false,
 )
 test('core-compat', core_compat_test)
+test('long-press-settings', python, args: [
+  files('tests/long_press_test.py'), core_compat_test,
+])
 test('webxdc-realtime-settings', python, args: [
   files('tests/webxdc_realtime_test.py'), core_compat_test,
 ])

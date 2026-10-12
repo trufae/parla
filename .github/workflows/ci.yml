@@ -36,7 +36,7 @@ jobs:
             libadwaita-1-dev \
             libjson-glib-dev \
             libwebkitgtk-6.0-dev \
-            xvfb
+            xvfb xdotool
           # Ubuntu's Meson 1.3 suppresses all warnings in Vala-generated C.
           # Match the warning checks used by the packaging jobs.
           python3 -m venv "$RUNNER_TEMP/meson-venv"
@@ -56,6 +56,10 @@ jobs:
       - name: Test
         if: matrix.a11y == true
         run: meson test -C builddir --print-errorlogs
+
+      - name: Check long-press pointer gestures
+        if: matrix.a11y == true
+        run: GTK_A11Y=none GDK_BACKEND=x11 xvfb-run -a builddir/core-compat-test --long-press-ui
 
       - name: Check account setup events without a profile
         if: matrix.a11y == true

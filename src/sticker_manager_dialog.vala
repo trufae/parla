@@ -273,6 +273,11 @@ namespace Dc {
                 show_sticker_menu (sticker, card, x, y);
             });
             card.add_controller (click);
+            var hold = context_menu_long_press (card, app_window.settings);
+            hold.pressed.connect ((x, y) => {
+                hold.set_state (Gtk.EventSequenceState.CLAIMED);
+                show_sticker_menu (sticker, card, x, y);
+            });
             return card;
         }
 

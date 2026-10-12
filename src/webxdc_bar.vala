@@ -20,13 +20,15 @@ namespace Dc {
 
         private unowned RpcClient? rpc = null;
         private unowned PinnedMessagesManager? pinned = null;
+        private unowned SettingsManager settings;
         private Gtk.Box bar_content;
         private int chat_id = 0;
         private uint load_generation = 0;
         private ulong monitor_handler = 0;
         private bool closed = false;
 
-        public WebxdcAppsBar () {
+        public WebxdcAppsBar (SettingsManager settings) {
+            this.settings = settings;
             bar_content = new Gtk.Box (Gtk.Orientation.VERTICAL, 0);
             bar_content.add_css_class ("webxdc-bar");
             revealer = new Gtk.Revealer ();
@@ -151,6 +153,11 @@ namespace Dc {
                 show_context_menu (box, msg_id, x, y);
             });
             box.add_controller (context);
+            var hold = context_menu_long_press (box, settings);
+            hold.pressed.connect ((x, y) => {
+                hold.set_state (Gtk.EventSequenceState.CLAIMED);
+                show_context_menu (box, msg_id, x, y);
+            });
 
             return box;
         }

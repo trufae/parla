@@ -1256,13 +1256,13 @@ namespace Dc {
             });
             widget.add_controller (right_click);
 
-            var long_press = new Gtk.GestureLongPress ();
-            long_press.touch_only = true;
+            var long_press = context_menu_long_press (
+                widget, dialog.app_window.settings);
             long_press.pressed.connect ((x, y) => {
-                if (cell.msg != null)
-                    dialog.show_item_menu (widget, cell.msg, x, y);
+                if (cell.msg == null) return;
+                long_press.set_state (Gtk.EventSequenceState.CLAIMED);
+                dialog.show_item_menu (widget, cell.msg, x, y);
             });
-            widget.add_controller (long_press);
         }
 
         /** Menu / Shift+F10 on a grid or list opens the context menu for

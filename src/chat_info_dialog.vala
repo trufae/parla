@@ -442,6 +442,12 @@ namespace Dc {
                     show_contact_menu (contact, row, x, y);
                 });
                 row.add_controller (right_click);
+                var hold = context_menu_long_press (row, app_window.settings);
+                hold.pressed.connect ((x, y) => {
+                    hold.set_state (Gtk.EventSequenceState.CLAIMED);
+                    row.grab_focus ();
+                    show_contact_menu (contact, row, x, y);
+                });
 
                 var menu_keys = new Gtk.EventControllerKey ();
                 menu_keys.key_pressed.connect ((keyval, keycode, state) => {

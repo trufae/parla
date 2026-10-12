@@ -206,7 +206,7 @@ namespace Dc {
                 window.show_toast (message);
             }));
 
-            webxdc_bar = new WebxdcAppsBar ();
+            webxdc_bar = new WebxdcAppsBar (settings);
             webxdc_bar.set_rpc (rpc);
             webxdc_bar.set_pinned (pinned);
             track_signal (webxdc_bar, webxdc_bar.scroll_requested.connect ((mid) => {
@@ -479,6 +479,15 @@ namespace Dc {
                     row.is_outgoing, x, y, message_listview);
             }));
             message_listview.add_controller (rc);
+            var hold = context_menu_long_press (message_listview, settings);
+            track_signal (hold, hold.pressed.connect ((x, y) => {
+                if (selection_mode) return;
+                var row = pick_message_row (x, y);
+                if (row == null) return;
+                hold.set_state (Gtk.EventSequenceState.CLAIMED);
+                msg_actions.show_context_menu (row.message_id,
+                    row.is_outgoing, x, y, message_listview);
+            }));
 
             /* Menu / Shift+F10 open the message menu for the focused row,
                anchored to it. A focused text label keeps GTK's own copy

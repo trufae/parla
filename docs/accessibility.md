@@ -1,4 +1,23 @@
-# Screen reader support
+# Touch and screen reader support
+
+## Long-press context menus
+
+Settings → General → Accessibility → **Long press to right-click** opens
+Parla's context menus by holding a finger or the primary mouse button.
+It covers chats, messages, gallery items, image/video viewers, group
+members, stickers and running Webxdc apps. GTK text inputs keep their
+native editing menus. A short tap or scrolling does not open a menu.
+The option takes effect immediately and is independent of the `a11y`
+build option.
+
+When no preference has been saved, it is enabled if `XDG_CURRENT_DESKTOP`
+contains a colon-separated `Phosh` entry (for example `Phosh:GNOME`), or
+`XDG_SESSION_DESKTOP` / `DESKTOP_SESSION` identifies `phosh`, ignoring case.
+Other desktops default to disabled. An explicit choice is saved as
+`long_press_context_menu` in the `[General]` section of Parla's settings
+and overrides session detection; no GNOME/Phosh GSettings changes are needed.
+GTK's `gtk-long-press-time` controls the hold delay, and moving the pointer
+beyond GTK's threshold cancels the hold.
 
 How Parla is exposed to screen readers on each platform, and what the
 Windows/macOS bundles must ship for that to work at all.

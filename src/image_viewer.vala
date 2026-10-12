@@ -64,7 +64,7 @@ namespace Dc {
             /* Left click anywhere (outside the buttons) closes. */
             var click = new Gtk.GestureClick ();
             click.button = 1;
-            click.pressed.connect ((n, x, y) => {
+            click.released.connect ((n, x, y) => {
                 /* Don't close if the click landed on a navigation button. */
                 var picked = widget.pick (x, y, Gtk.PickFlags.DEFAULT);
                 for (var w = picked; w != null; w = w.get_parent ()) {
@@ -82,7 +82,14 @@ namespace Dc {
             widget.add_controller (right_click);
         }
 
-        public void set_window (Window w) { this.window = w; }
+        public void set_window (Window w) {
+            this.window = w;
+            var hold = context_menu_long_press (widget, w.settings);
+            hold.pressed.connect ((x, y) => {
+                hold.set_state (Gtk.EventSequenceState.CLAIMED);
+                show_menu (x, y);
+            });
+        }
 
         private void toast (string text) {
             if (window != null) window.show_toast (text);

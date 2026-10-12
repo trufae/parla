@@ -339,6 +339,8 @@ private void test_unread_calls () {
 }
 
 public int main (string[] args) {
+    if (args.length > 1 && args[1] == "--long-press-ui")
+        return run_long_press_ui_test ();
     if (args.length > 1 && args[1] == "--chat-lifetime-ui")
         return run_chat_lifetime_test (args.length > 2 ? int.parse (args[2]) : 10);
     if (args.length > 1 && args[1] == "--chat-switch-lifetime-ui")
@@ -365,6 +367,22 @@ public int main (string[] args) {
         return run_sync_ui_test ();
     if (args.length > 1 && args[1] == "--fake-core")
         return run_fake_server (args.length > 2 ? args[2] : "latest");
+    if (args.length > 2 && args[1] == "--long-press-settings") {
+        var settings = new SettingsManager ();
+        settings.load ();
+        assert (settings.long_press_context_menu == (args[2] == "true"));
+        settings.save_shift_enter_sends (true);
+        settings.load ();
+        assert (settings.long_press_context_menu == (args[2] == "true"));
+        settings.save_long_press_context_menu (false);
+        var restored = new SettingsManager ();
+        restored.load ();
+        assert (!restored.long_press_context_menu);
+        restored.save_long_press_context_menu (true);
+        settings.load ();
+        assert (settings.long_press_context_menu);
+        return 0;
+    }
     test_executable = File.new_for_path (args[0]).get_path ();
     Test.init (ref args);
     Test.add_func ("/core-compat/presence", test_presence);

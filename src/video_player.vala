@@ -60,7 +60,14 @@ namespace Dc {
             widget.add_controller (right_click);
         }
 
-        public void set_window (Window w) { this.window = w; }
+        public void set_window (Window w) {
+            this.window = w;
+            var hold = context_menu_long_press (widget, w.settings);
+            hold.pressed.connect ((x, y) => {
+                hold.set_state (Gtk.EventSequenceState.CLAIMED);
+                show_menu (x, y);
+            });
+        }
 
         public void show (string path, string? name) {
             current_path = path;
