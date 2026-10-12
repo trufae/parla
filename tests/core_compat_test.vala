@@ -81,6 +81,14 @@ private int run_fake_server (string mode) {
                 : "[]";
             break;
         case "get_next_event":
+            if (mode == "read-events") {
+                string[] kinds = { "MsgsNoticed", "ChatlistItemChanged", "ChatlistChanged" };
+                if (event_number >= kinds.length) continue;
+                string kind = kinds[event_number++];
+                result = "{\"contextId\":1,\"event\":{\"kind\":\"%s\"%s}}"
+                    .printf (kind, kind == "ChatlistChanged" ? "" : ",\"chatId\":10");
+                break;
+            }
             if (event_number >= 4) continue;
             string kind = event_number < 2 ? "TransportsModified" : "PinnedMessagesChanged";
             result = "{\"contextId\":%d,\"event\":{\"kind\":\"%s\",\"chatId\":10}}"
@@ -243,6 +251,43 @@ private void test_pin_events () {
     loop.run ();
 }
 
+private async void check_read_events () {
+    var rpc = new RpcClient ();
+    try { yield rpc.start ({ test_executable, "--fake-core", "read-events" }); }
+    catch (Error e) { error ("Start core: %s", e.message); }
+    rpc.account_id = 1;
+    var events = new EventHandler (rpc);
+    events.active_chat_id = 10;
+    int changes = 0;
+    int reloads = 0;
+    int sidebar_reloads = 0;
+    int unread_updates = 0;
+    events.chat_messages_changed.connect (() => {
+        changes++;
+        // Window invalidates the cached view and reloads the open chat.
+        events.schedule_messages_reload ();
+    });
+    events.messages_reload_fired.connect (() => reloads++);
+    events.chats_reload_fired.connect (() => sidebar_reloads++);
+    events.account_unread_changed.connect (() => unread_updates++);
+    events.start.begin ();
+    for (int i = 0; i < 100 && unread_updates < 3; i++) yield nap (10);
+    yield nap (300); // Allow the 150 ms reload timers to fire.
+    Test.message ("Read events: %d invalidations, %d message reloads", changes, reloads);
+    assert (unread_updates == 3);
+    assert (sidebar_reloads > 0);
+    assert (changes == 0);
+    assert (reloads == 0);
+    rpc.stop ();
+    while (events.is_listening) yield nap (10);
+}
+
+private void test_read_events () {
+    var loop = new MainLoop ();
+    check_read_events.begin (() => loop.quit ());
+    loop.run ();
+}
+
 private async void check_onboarding (string mode, string? qr,
                                      string? expected_relay = null) {
     var rpc = new RpcClient ();
@@ -390,6 +435,7 @@ public int main (string[] args) {
     Test.add_func ("/core-compat/channel-reactions", test_channel_reactions);
     Test.add_func ("/core-compat/account-addresses", test_account_addresses);
     Test.add_func ("/core-compat/pin-events", test_pin_events);
+    Test.add_func ("/core-compat/read-events", test_read_events);
     Test.add_func ("/core-compat/onboarding", test_onboarding);
     Test.add_func ("/core-compat/unread-calls", test_unread_calls);
     Test.add_func ("/core-compat/message-retry", test_message_retry);

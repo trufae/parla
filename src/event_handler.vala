@@ -239,10 +239,9 @@ namespace Dc {
 
             case "ChatlistChanged":
             case "ChatlistItemChanged":
-                int list_chat = event_chat_id (event);
-                if (list_chat > 0) {
-                    chat_messages_changed (rpc.account_id, list_chat);
-                }
+                /* Read receipts also update the chat list. Rebuilding the
+                   conversation here interrupts keyboard/screen-reader focus;
+                   message changes have their own events above. */
                 schedule_chats_reload ();
                 account_unread_changed (rpc.account_id);
                 break;
@@ -262,10 +261,6 @@ namespace Dc {
             default:
                 break;
             }
-        }
-
-        private static int event_chat_id (Json.Object event) {
-            return (int) json_int (event, "chatId");
         }
 
         /* Events from an account other than the active one. We can't touch
