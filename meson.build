@@ -476,6 +476,7 @@ rpc_transport_test_deps = [
   dependency('json-glib-1.0'),
 ]
 if host_machine.system() == 'windows'
+  rpc_transport_test_sources += config_file
   rpc_transport_test_sources += files(
     'src/platform.vala',
     'src/platform.c',
