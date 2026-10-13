@@ -146,6 +146,27 @@ private void test_message_identity () {
     assert (!RpcParsers.parse_message (new Json.Object ()).is_outgoing);
 }
 
+private void test_video_attachments () {
+    // Partial messages may only identify the video by its original filename.
+    var msg = RpcParsers.parse_message (object_from_json ("""
+        {"file":null,"fileName":"clip.MP4","fileMime":null,
+         "viewType":"File","downloadState":"Available",
+         "dimensionsWidth":1080,"dimensionsHeight":1920}
+        """));
+    assert (msg.has_file && !msg.has_local_file);
+    assert (msg.is_video_file () && msg.can_download_full_message);
+    assert (msg.dimensions_width == 1080 && msg.dimensions_height == 1920);
+    var copy = msg.dup ();
+    assert (copy.dimensions_width == 1080 && copy.dimensions_height == 1920);
+    // A blob path need not carry the original extension either.
+    msg.file_path = "/nonexistent/blob";
+    assert (msg.is_video_file ());
+    msg.file_name = "document.txt";
+    assert (!msg.is_video_file ());
+    msg.view_type = "Video";
+    assert (msg.is_video_file ());
+}
+
 private void test_channel_reactions () {
     foreach (string type in new string[] { "InBroadcast", "OutBroadcast" }) {
         assert (ChatActions.is_channel (type));
@@ -434,6 +455,7 @@ public int main (string[] args) {
     Test.init (ref args);
     Test.add_func ("/core-compat/presence", test_presence);
     Test.add_func ("/core-compat/message-identity", test_message_identity);
+    Test.add_func ("/core-compat/video-attachments", test_video_attachments);
     Test.add_func ("/core-compat/channel-reactions", test_channel_reactions);
     Test.add_func ("/core-compat/account-addresses", test_account_addresses);
     Test.add_func ("/core-compat/pin-events", test_pin_events);

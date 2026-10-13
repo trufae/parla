@@ -1,5 +1,34 @@
 namespace Dc {
 
+#if MACOS
+    /** Decode only a still frame in a worker, independent of GTK's optional
+        media backend. Keep a small memory cache; no extra files on disk. */
+    internal class VideoThumbnail : Object {
+        private static HashTable<string, Gdk.Texture>? cache = null;
+
+        [CCode (cname = "parla_video_thumbnail_async",
+                finish_name = "parla_video_thumbnail_finish",
+                cheader_filename = "platform.h")]
+        private static extern async Gdk.Pixbuf? generate (string path,
+                                                        Cancellable? cancellable = null);
+
+        public static async void load (string path, owned WeakRef picture_ref) {
+            if (cache == null) cache = new HashTable<string, Gdk.Texture> (
+                str_hash, str_equal);
+            Gdk.Texture? texture = cache.lookup (path);
+            if (texture == null) {
+                var pixbuf = yield generate (path);
+                if (pixbuf == null) return;
+                texture = texture_from_pixbuf (pixbuf);
+                if (cache.size () >= 32) cache.remove_all ();
+                cache.insert (path, texture);
+            }
+            var picture = picture_ref.get () as Gtk.Picture;
+            if (picture != null) picture.paintable = texture;
+        }
+    }
+#endif
+
     [CCode (lower_case_cprefix = "parla_pixbuf_animation_",
             cheader_filename = "pixbuf_animation_compat.h")]
     namespace PixbufAnimationCompat {

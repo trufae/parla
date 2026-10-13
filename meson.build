@@ -194,7 +194,7 @@ if host_machine.system() == 'darwin'
     'src/tray_macos.m',
     'src/tray_macos.vala',
   )
-  deps += dependency('appleframeworks', modules: ['Cocoa', 'AVFoundation'])
+  deps += dependency('appleframeworks', modules: ['Cocoa', 'AVFoundation', 'CoreMedia'])
 else
   sources += files('src/tray_icon.vala')
 endif

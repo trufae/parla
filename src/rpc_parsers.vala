@@ -30,6 +30,8 @@ namespace Dc {
             msg.file_name = json_str (obj, "fileName");
             msg.file_mime = json_str (obj, "fileMime");
             msg.file_bytes = (int) json_int (obj, "fileBytes");
+            msg.dimensions_width = (int) json_int (obj, "dimensionsWidth");
+            msg.dimensions_height = (int) json_int (obj, "dimensionsHeight");
             msg.view_type = json_str (obj, "viewType");
             msg.state = (int) json_int (obj, "state");
             msg.error = json_str (obj, "error");

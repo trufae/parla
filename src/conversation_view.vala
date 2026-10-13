@@ -2963,6 +2963,11 @@ namespace Dc {
                 return;
             }
             if (!msg.has_local_file) {
+                if (msg.is_video_file () && msg.can_download_full_message) {
+                    toggle_full_message.begin (msg.id);
+                    return;
+                }
+                if (msg.is_downloading_full_message) return;
                 window.show_toast (_("File not available"));
                 return;
             }

@@ -18,6 +18,21 @@
 static char parla_drop_handler_key;
 static char parla_drop_subclass_key;
 
+static BOOL
+parla_audio_connect_nodes (AVAudioEngine *engine, AVAudioNode *source,
+                           AVAudioNode *destination, AVAudioFormat *format)
+{
+#if defined(__MAC_27_0) && __MAC_OS_X_VERSION_MAX_ALLOWED >= __MAC_27_0
+	if (@available(macOS 27.0, *)) {
+		return [engine connect:source to:destination format:format error:nil];
+	}
+#endif
+	G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+	[engine connect:source to:destination format:format];
+	G_GNUC_END_IGNORE_DEPRECATIONS
+	return YES;
+}
+
 @interface ParlaMacosPlaybackState : NSObject {
 	BOOL active;
 	BOOL ended;
@@ -159,9 +174,12 @@ static char parla_drop_subclass_key;
 	time_pitch.rate = 1.0f;
 	[engine attachNode:player];
 	[engine attachNode:time_pitch];
-	[engine connect:player to:time_pitch format:file.processingFormat];
-	[engine connect:time_pitch to:engine.mainMixerNode
-	                            format:file.processingFormat];
+	if (!parla_audio_connect_nodes (engine, player, time_pitch, file.processingFormat)
+	    || !parla_audio_connect_nodes (engine, time_pitch, engine.mainMixerNode,
+	                                    file.processingFormat)) {
+		[self release];
+		return nil;
+	}
 	[engine prepare];
 	if (![engine startAndReturnError:&error] || ![self scheduleFromFrame:0]) {
 		[self release];
@@ -224,7 +242,16 @@ static char parla_drop_subclass_key;
 		NSError *error = nil;
 		if (![engine startAndReturnError:&error]) return NO;
 	}
-	[player play];
+#if defined(__MAC_27_0) && __MAC_OS_X_VERSION_MAX_ALLOWED >= __MAC_27_0
+	if (@available(macOS 27.0, *)) {
+		if (![player playAndReturnError:nil]) return NO;
+	} else
+#endif
+	{
+		G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+		[player play];
+		G_GNUC_END_IGNORE_DEPRECATIONS
+	}
 	return player.playing;
 }
 
@@ -256,7 +283,7 @@ static char parla_drop_subclass_key;
 	segment_scheduled = NO;
 	segment_start_frame = target;
 	current_frame = target;
-	if ([self scheduleFromFrame:target] && was_playing) [player play];
+	if ([self scheduleFromFrame:target] && was_playing) [self playAudio];
 }
 
 - (void)setPlaybackRate:(float)rate
@@ -782,6 +809,59 @@ parla_macos_install_file_drop_handler (GtkWidget                  *widget,
 	objc_setAssociatedObject (view, &parla_drop_handler_key, handler,
 	                          OBJC_ASSOCIATION_RETAIN_NONATOMIC);
 	[handler release];
+}
+
+static void
+parla_video_thumbnail_worker (GTask *task, gpointer source,
+                              gpointer task_data, GCancellable *cancellable)
+{
+	(void) source;
+	if (g_task_return_error_if_cancelled (task)) return;
+	GdkPixbuf *pixbuf = NULL;
+	@autoreleasepool {
+		NSString *path = [NSString stringWithUTF8String:task_data];
+		AVURLAsset *asset = [AVURLAsset URLAssetWithURL:
+			[NSURL fileURLWithPath:path] options:nil];
+		AVAssetImageGenerator *generator =
+			[[AVAssetImageGenerator alloc] initWithAsset:asset];
+		generator.appliesPreferredTrackTransform = YES;
+		generator.maximumSize = CGSizeMake (520, 520);
+		G_GNUC_BEGIN_IGNORE_DEPRECATIONS
+		CGImageRef image = [generator copyCGImageAtTime:CMTimeMake (0, 1)
+			actualTime:NULL error:NULL];
+		G_GNUC_END_IGNORE_DEPRECATIONS
+		if (image != NULL) {
+			NSBitmapImageRep *bitmap = [[NSBitmapImageRep alloc] initWithCGImage:image];
+			NSData *png = [bitmap representationUsingType:NSBitmapImageFileTypePNG
+				properties:@{}];
+			if (png != nil) {
+				GInputStream *stream = g_memory_input_stream_new_from_data (
+					png.bytes, png.length, NULL);
+				pixbuf = gdk_pixbuf_new_from_stream (stream, cancellable, NULL);
+				g_object_unref (stream);
+			}
+			[bitmap release];
+			CGImageRelease (image);
+		}
+		[generator release];
+	}
+	g_task_return_pointer (task, pixbuf, pixbuf != NULL ? g_object_unref : NULL);
+}
+
+void
+parla_video_thumbnail_async (const gchar *path, GCancellable *cancellable,
+                             GAsyncReadyCallback callback, gpointer user_data)
+{
+	GTask *task = g_task_new (NULL, cancellable, callback, user_data);
+	g_task_set_task_data (task, g_strdup (path), g_free);
+	g_task_run_in_thread (task, parla_video_thumbnail_worker);
+	g_object_unref (task);
+}
+
+GdkPixbuf *
+parla_video_thumbnail_finish (GAsyncResult *result)
+{
+	return g_task_propagate_pointer (G_TASK (result), NULL);
 }
 
 gboolean

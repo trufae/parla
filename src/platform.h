@@ -3,6 +3,7 @@
 #include <glib.h>
 
 typedef struct _GtkWidget GtkWidget;
+typedef struct _GdkPixbuf GdkPixbuf;
 
 typedef void (*ParlaMacosFileDropCallback) (const gchar *path,
                                             gdouble      x,
@@ -18,6 +19,16 @@ void parla_setup_macos_bundle_environment (void);
 void parla_macos_install_file_drop_handler (GtkWidget                  *widget,
                                             ParlaMacosFileDropCallback  callback,
                                             gpointer                    user_data);
+
+#ifdef __APPLE__
+#include <gio/gio.h>
+/* A downscaled first video frame, generated off the UI thread. */
+void parla_video_thumbnail_async (const gchar *path,
+                                  GCancellable *cancellable,
+                                  GAsyncReadyCallback callback,
+                                  gpointer user_data);
+GdkPixbuf *parla_video_thumbnail_finish (GAsyncResult *result);
+#endif
 
 /*
  * Rate-aware audio playback. macOS implements this with AVAudioEngine; other

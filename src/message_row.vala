@@ -1184,11 +1184,19 @@ namespace Dc {
             play_box.add_css_class ("message-video-play");
             play_box.halign = Gtk.Align.CENTER;
             play_box.valign = Gtk.Align.CENTER;
-            play_box.tooltip_text = _("Play video");
+            play_box.tooltip_text = msg.has_local_file ? _("Play video")
+                : _("Download attachment");
 
-            var play = new Gtk.Image.from_icon_name ("media-playback-start-symbolic");
-            play.pixel_size = 20;
-            play_box.append (play);
+            if (msg.is_downloading_full_message) {
+                var spinner = new Gtk.Spinner ();
+                spinner.start ();
+                play_box.append (spinner);
+            } else {
+                var play = new Gtk.Image.from_icon_name (msg.has_local_file
+                    ? "media-playback-start-symbolic" : "folder-download-symbolic");
+                play.pixel_size = 20;
+                play_box.append (play);
+            }
             overlay.add_overlay (play_box);
 
             if (msg.file_name != null && msg.file_name.length > 0) {
@@ -1205,7 +1213,14 @@ namespace Dc {
                 overlay.add_overlay (name);
             }
 
-            var frame = new ScaledPreviewFrame (260, 150, "message-video-frame");
+            int width = 260, height = 150;
+            if (msg.dimensions_width > 0 && msg.dimensions_height > 0) {
+                double scale = double.min (1.0, double.min (
+                    260.0 / msg.dimensions_width, 200.0 / msg.dimensions_height));
+                width = int.max (1, (int) (msg.dimensions_width * scale));
+                height = int.max (1, (int) (msg.dimensions_height * scale));
+            }
+            var frame = new ScaledPreviewFrame (width, height, "message-video-frame");
             frame.child = overlay;
             return frame;
         }
@@ -1213,9 +1228,15 @@ namespace Dc {
         private static Gtk.Widget build_video_paintable (Message msg) {
             Gtk.Picture preview;
             if (msg.has_local_file) {
+#if MACOS
+                preview = new Gtk.Picture ();
+                VideoThumbnail.load.begin (msg.file_path, WeakRef (preview));
+#else
                 var media = Gtk.MediaFile.for_filename (msg.file_path);
+                media.set_muted (true);
                 media.pause ();
                 preview = new Gtk.Picture.for_paintable (media);
+#endif
             } else {
                 preview = new Gtk.Picture.for_paintable (
                     Gdk.Paintable.empty (260, 150));

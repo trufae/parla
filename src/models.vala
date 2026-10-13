@@ -641,6 +641,8 @@ namespace Dc {
         public string? file_name { get; set; default = null; }
         public string? file_mime { get; set; default = null; }
         public int file_bytes { get; set; default = 0; }
+        public int dimensions_width { get; set; default = 0; }
+        public int dimensions_height { get; set; default = 0; }
         public string? view_type { get; set; default = null; }
         public bool is_info { get; set; default = false; }
         public bool has_html { get; set; default = false; }
@@ -813,10 +815,10 @@ namespace Dc {
         }
 
         private bool path_has_suffix (string[] suffixes) {
-            if (file_path == null) return false;
-            string lower = file_path.down ();
+            string lower = (file_path ?? "").down ();
+            string name = (file_name ?? "").down ();
             foreach (string suffix in suffixes) {
-                if (lower.has_suffix (suffix)) return true;
+                if (lower.has_suffix (suffix) || name.has_suffix (suffix)) return true;
             }
             return false;
         }
