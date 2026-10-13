@@ -1450,7 +1450,8 @@ namespace Dc {
                                                      int max_width_chars,
                                                      int emoji_count = 0,
                                                      MentionRoster? roster = null) {
-            string spread = spread_adjacent_emoji (raw);
+            bool enlarged = emoji_count == 1 || emoji_count == 2;
+            string spread = spread_adjacent_emoji (raw, enlarged);
             var text = new Gtk.Label (spread);
             try {
                 string markup = roster != null
@@ -1465,7 +1466,6 @@ namespace Dc {
             } catch {
                 /* fallback: plain text already in label */
 	    }
-            bool enlarged = emoji_count == 1 || emoji_count == 2;
             text.wrap = !enlarged;
             text.wrap_mode = Pango.WrapMode.WORD_CHAR;
             text.halign = Gtk.Align.START; text.xalign = 0;
@@ -1806,21 +1806,20 @@ namespace Dc {
             return count;
         }
 
-        /** On macOS the emoji glyphs draw wider than the advance width
-            Pango measures, so adjacent emoji visually overlap at any font
-            size.  Inserting a thin space between consecutive emoji
-            clusters restores the separation; other platforms render
-            emoji at their advance width and are returned unchanged. */
-        public static string spread_adjacent_emoji (string? raw) {
+        /** Separate enlarged emoji with an en space on every platform.
+            Normal-size macOS emoji need a thin space because their glyphs
+            draw wider than the advance width Pango measures. */
+        public static string spread_adjacent_emoji (string? raw,
+                                                   bool enlarged = false) {
             if (raw == null) return "";
-            if (!Platform.is_macos ()) return raw;
+            if (!enlarged && !Platform.is_macos ()) return raw;
             var sb = new StringBuilder ();
             int index = 0;
             bool prev_emoji = false;
             while (index < raw.length) {
                 int start = index;
                 if (consume_emoji_sequence (raw, ref index)) {
-                    if (prev_emoji) sb.append_unichar (0x2009);
+                    if (prev_emoji) sb.append_unichar (enlarged ? 0x2002 : 0x2009);
                     sb.append (raw.substring (start, index - start));
                     prev_emoji = true;
                 } else {
