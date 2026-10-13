@@ -8,15 +8,194 @@ msgid ""
 msgstr ""
 "Project-Id-Version: parla\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-10-01 13:58+0200\n"
-"PO-Revision-Date: 2026-10-06 12:40+0200\n"
+"POT-Creation-Date: 2026-10-12 12:27+0200\n"
+"PO-Revision-Date: 2026-10-13 12:32+0200\n"
 "Last-Translator: Heimen Stoffels <vistausss@fastmail.com>\n"
 "Language-Team: \n"
 "Language: nl\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "X-Generator: Poedit 3.9\n"
+
+#: data/io.github.trufae.Parla.desktop:2
+msgid "Parla"
+msgstr "Parla"
+
+#: data/io.github.trufae.Parla.desktop:3
+msgid "Messaging"
+msgstr "Berichten versturen"
+
+#: data/io.github.trufae.Parla.desktop:5
+msgid "A Delta Chat client for GNOME"
+msgstr "Een Delta Chat-toepassing voor GNOME"
+
+#: data/io.github.trufae.Parla.desktop:14
+msgid "chat;messaging;email;deltachat;parla;"
+msgstr "chat;gesprek;berichten;email;deltachat;parla;"
+
+#: src/account_creation.vala:24
+msgid "This code cannot create a profile"
+msgstr "Met deze code kan geen profiel worden aangemaakt"
+
+#. Two rows so the bar fits the narrow dialog floor: Cancel and
+#. the count on top, the actions sharing the width below.
+#: src/account_creation.vala:190 src/conversation_view.vala:1060
+#: src/full_message_dialog.vala:83 src/gallery_dialog.vala:276
+#: src/gallery_dialog.vala:1487 src/models.vala:107 src/models.vala:122
+#: src/models.vala:160 src/models.vala:246 src/sticker_manager_dialog.vala:127
+#: src/window.vala:2149 src/window.vala:3257
+msgid "Cancel"
+msgstr "Annuleren"
+
+#: src/account_creation.vala:204 src/message_details_dialog.vala:568
+msgid "Failed"
+msgstr "Mislukt"
+
+#: src/account_creation.vala:216
+msgid "Finishing…"
+msgstr "Bezig met afronden…"
+
+#: src/account_creation.vala:246
+msgid "Create New Profile"
+msgstr "Profiel aanmaken"
+
+#: src/account_creation.vala:254
+msgid ""
+"Let Parla choose fast chatmail relays, or select a server. Your profile is "
+"created automatically, with encryption keys generated on this device."
+msgstr ""
+"Laat Parla automatisch snelle Chatmail-relays zoeken of een server kiezen. "
+"Je profiel wordt automatisch aangemaakt, met lokale beveiligingssleutels."
+
+#: src/account_creation.vala:258
+msgid "Display Name"
+msgstr "Getoonde naam"
+
+#: src/account_creation.vala:260 src/profile_dialog.vala:201
+msgid "Your name"
+msgstr "Mijn naam"
+
+#: src/account_creation.vala:263 src/classic_email_dialog.vala:135
+#: src/classic_email_dialog.vala:149
+msgid "Server"
+msgstr "Server"
+
+#. / TRANSLATORS: Keep the link markup; the placeholders are its URL and label.
+#: src/account_creation.vala:275
+#, c-format
+msgid "See <a href=\"%s\">%s</a> for the full list."
+msgstr "Bekijk de volledige lijst op <a href=\"%s\">%s</a>."
+
+#: src/account_creation.vala:279 src/account_creation.vala:426
+msgid "Create Profile"
+msgstr "Profiel aanmaken"
+
+#: src/account_creation.vala:287
+msgid "Contacting server…"
+msgstr "Bezig met verbinden…"
+
+#: src/account_creation.vala:301
+msgid "Finding a fast relay…"
+msgstr "Bezig met zoeken naar snelle relay…"
+
+#: src/account_creation.vala:302
+#, c-format
+msgid "Creating profile on %s…"
+msgstr "Bezig met aanmaken van profiel op %s…"
+
+#: src/account_creation.vala:313 src/account_creation.vala:463
+#: src/account_creation.vala:624 src/classic_email_dialog.vala:323
+msgid "Failed to create account: "
+msgstr "Er kan geen account worden aangemaakt: "
+
+#: src/account_creation.vala:347 src/account_creation.vala:489
+msgid "Profile creation failed: "
+msgstr "Het profiel kan niet worden aangemaakt: "
+
+#: src/account_creation.vala:408
+msgid "Use Invitation Code"
+msgstr "Uitnodigingscode gebruiken"
+
+#: src/account_creation.vala:416
+msgid ""
+"Paste a Delta Chat account or invitation link. Account links use the linked "
+"server; contact and group invites create a new chatmail profile first."
+msgstr ""
+"Plak een Delta Chat-accountnaam of -uitnodigingslink. Accountlinks maken "
+"gebruik van de gekoppelde server; contactpersoons- en groepsuitnodigingen "
+"maken een nieuw profiel aan."
+
+#: src/account_creation.vala:421
+#, c-format
+msgid "dcaccount:example.org or %s"
+msgstr "dcaccount:voorbeeld.org of %s"
+
+#: src/account_creation.vala:436 src/account_creation.vala:453
+msgid "Checking invitation…"
+msgstr "Bezig met controleren van uitnodiging…"
+
+#: src/account_creation.vala:472
+msgid "Invitation code failed: "
+msgstr "Uitnodigingscode mislukt: "
+
+#: src/account_creation.vala:477
+msgid "This is not a valid Delta Chat invitation code."
+msgstr "Dit is geen geldige Delta Chat-uitnodigingscode."
+
+#: src/account_creation.vala:485 src/account_creation.vala:495
+msgid "Creating profile…"
+msgstr "Bezig met aanmaken van profiel…"
+
+#: src/account_creation.vala:498
+msgid "Accepting invitation…"
+msgstr "Bezig met accepteren van uitnodiging…"
+
+#: src/account_creation.vala:501
+msgid "Invitation failed: "
+msgstr "Uitnodiging mislukt: "
+
+#: src/account_creation.vala:506
+msgid "This code cannot be used to create a profile."
+msgstr "Met deze code kan geen profiel worden aangemaakt."
+
+#: src/account_creation.vala:573
+msgid "Add as Secondary Device"
+msgstr "Toevoegen als secundair apparaat"
+
+#: src/account_creation.vala:581
+msgid ""
+"On your existing device, open Settings → “Add Second Device” and copy the "
+"setup code shown there. Paste it below."
+msgstr ""
+"Pak je andere apparaat erbij, open Instellingen → Toevoegen als secundair "
+"apparaat, kopieer de getoonde instelcode en plak die hieronder."
+
+#: src/account_creation.vala:589
+msgid "Start Import"
+msgstr "Import starten"
+
+#: src/account_creation.vala:599 src/classic_email_dialog.vala:296
+#: src/window.vala:1103
+msgid "Connecting…"
+msgstr "Bezig met verbinden…"
+
+#: src/account_creation.vala:638
+msgid "Import failed: "
+msgstr "Importeren mislukt: "
+
+#: src/account_creation.vala:654
+msgid "Transferring…"
+msgstr "Bezig met overdracht…"
+
+#: src/account_finder.vala:165
+msgid "No profiles configured."
+msgstr "Er zijn geen profielen ingesteld."
+
+#: src/account_finder.vala:167
+msgid "Account setup error: "
+msgstr "Foutmelding tijdens account instellen: "
 
 #: src/application.vala:76
 msgid "Start in the background without opening a window"
@@ -34,7 +213,7 @@ msgstr "Spraakbericht"
 msgid "Transcribe voice message"
 msgstr "Spraakbericht omzetten naar tekst"
 
-#: src/audio_player.vala:614 src/compose_bar.vala:867
+#: src/audio_player.vala:614 src/compose_bar.vala:873
 msgid "Transcribing…"
 msgstr "Bezig met omzetten…"
 
@@ -46,15 +225,64 @@ msgstr "(geen spraak aangetroffen)"
 msgid "Transcription: "
 msgstr "Tekst uit spraakbericht: "
 
-#: src/audio_player.vala:633 src/compose_bar.vala:842
-#: src/conversation_media_bar.vala:215
+#: src/audio_player.vala:633 src/compose_bar.vala:848
+#: src/conversation_media_bar.vala:224 src/gallery_dialog.vala:1157
 msgid "Pause"
 msgstr "Pauzeren"
 
-#: src/audio_player.vala:633 src/conversation_media_bar.vala:63
-#: src/conversation_media_bar.vala:215
+#: src/audio_player.vala:633 src/conversation_media_bar.vala:54
+#: src/conversation_media_bar.vala:224 src/gallery_dialog.vala:1050
+#: src/gallery_dialog.vala:1157
 msgid "Play"
 msgstr "Beluisteren"
+
+#: src/audio_recorder.vala:29
+msgid "An audio recording is already active"
+msgstr "Er is al een opname actief"
+
+#: src/audio_recorder.vala:45
+msgid "The system audio recorder could not be created"
+msgstr "De systeemopname kan niet worden gestart"
+
+#: src/audio_recorder.vala:52
+msgid "Install GStreamer or FFmpeg to record voice messages"
+msgstr "Installeer GStreamer of FFmpeg om spraakberichten op te nemen"
+
+#: src/audio_recorder.vala:140
+msgid "The voice recording failed"
+msgstr "De opname is mislukt"
+
+#: src/audio_recorder.vala:143
+msgid "The recording ended unexpectedly"
+msgstr "De opname is onverwachts gestopt"
+
+#: src/audio_recorder.vala:196
+msgid ""
+"Could not access the microphone; check microphone permission and the "
+"configured media tools"
+msgstr ""
+"Parla heeft geen toegang tot de microfoon — controleer het microfoonrecht en "
+"de ingestelde mediaprogramma's"
+
+#: src/audio_recorder.vala:207
+msgid "Audio recording did not stop cleanly"
+msgstr "De opname is niet netjes afgerond"
+
+#: src/audio_recorder.vala:208
+msgid "The recording was too short or could not be encoded"
+msgstr "De opname was te kort of kon niet worden verwerkt"
+
+#: src/chat_actions.vala:27
+msgid "Delete Request…"
+msgstr "Verwijderverzoek…"
+
+#: src/chat_actions.vala:28 src/chat_info_dialog.vala:547
+msgid "Block Contact…"
+msgstr "Contactpersoon blokkeren…"
+
+#: src/chat_actions.vala:29 src/chat_info_dialog.vala:376
+msgid "Block Chat…"
+msgstr "Gesprek blokkeren…"
 
 #: src/chat_info_dialog.vala:6
 msgid "For 1 hour"
@@ -133,7 +361,7 @@ msgstr "Direct gesprek"
 msgid " · End-to-end encrypted"
 msgstr " · eind-tot-eind versleuteld"
 
-#: src/chat_info_dialog.vala:241
+#: src/chat_info_dialog.vala:241 src/profile_dialog.vala:992
 msgid "Invite Link"
 msgstr "Uitnodigingslink"
 
@@ -211,7 +439,7 @@ msgstr "Bekijk in dit gesprek gedeelde apps en media"
 msgid "Members (%u)"
 msgstr "Leden (%u)"
 
-#: src/chat_info_dialog.vala:324
+#: src/chat_info_dialog.vala:324 src/message_row.vala:2148
 msgid "Contact"
 msgstr "Contactpersoon"
 
@@ -230,10 +458,6 @@ msgstr "Nieuwe groep met dezelfde leden"
 #: src/chat_info_dialog.vala:368
 msgid "Start a new one without picking members again"
 msgstr "Begin overnieuw zonder nieuwe leden te kiezen"
-
-#: src/chat_info_dialog.vala:376
-msgid "Block Chat…"
-msgstr "Gesprek blokkeren…"
 
 #: src/chat_info_dialog.vala:377
 msgid "Hide this chat and new messages; keep the history"
@@ -275,7 +499,7 @@ msgstr "Gesprek verwijderen…"
 msgid "Delete the chat and its messages for this profile"
 msgstr "Verwijder het gesprek en alle berichten op dit profiel"
 
-#: src/chat_info_dialog.vala:413
+#: src/chat_info_dialog.vala:413 src/webxdc.vala:470
 msgid "Failed to load: "
 msgstr "Laden mislukt: "
 
@@ -283,161 +507,158 @@ msgstr "Laden mislukt: "
 msgid "View contact details"
 msgstr "Contactpersoongegevens bekijken"
 
-#: src/chat_info_dialog.vala:461
+#: src/chat_info_dialog.vala:467
 msgid "Copy email address"
 msgstr "E-mailadres kopiëren"
 
-#: src/chat_info_dialog.vala:470
+#: src/chat_info_dialog.vala:476
 msgid "Remove from channel…"
 msgstr "Verwijderen uit kanaal…"
 
-#: src/chat_info_dialog.vala:470
+#: src/chat_info_dialog.vala:476
 msgid "Remove from group…"
 msgstr "Verwijderen uit groep…"
 
-#: src/chat_info_dialog.vala:483
+#: src/chat_info_dialog.vala:489
 msgid "View Contact Details"
 msgstr "Contactpersoongegevens bekijken"
 
-#: src/chat_info_dialog.vala:489
+#: src/chat_info_dialog.vala:495
 msgid "Copy Email Address"
 msgstr "E-mailadres kopiëren"
 
-#: src/chat_info_dialog.vala:498
+#: src/chat_info_dialog.vala:504
 msgid "Remove from Channel…"
 msgstr "Verwijderen uit kanaal…"
 
-#: src/chat_info_dialog.vala:498
+#: src/chat_info_dialog.vala:504
 msgid "Remove from Group…"
 msgstr "Verwijderen uit groep…"
 
-#: src/chat_info_dialog.vala:515 src/message_actions.vala:509
+#: src/chat_info_dialog.vala:521 src/message_actions.vala:509
 msgid "Could not open contact details: "
 msgstr "De gegevens kunnen niet worden geladen: "
 
-#: src/chat_info_dialog.vala:538
+#: src/chat_info_dialog.vala:544
 msgid "Unblock Contact"
 msgstr "Contactpersoon deblokkeren"
 
-#: src/chat_info_dialog.vala:539
+#: src/chat_info_dialog.vala:545
 #, c-format
 msgid "Allow messages from %s"
 msgstr "Ontvang berichten van %s"
 
-#: src/chat_info_dialog.vala:541
-msgid "Block Contact…"
-msgstr "Contactpersoon blokkeren…"
-
-#: src/chat_info_dialog.vala:542
+#: src/chat_info_dialog.vala:548
 #, c-format
 msgid "Block direct messages from %s and keep the history"
 msgstr "Ontvang geen berichten meer van %s, maar bewaar de geschiedenis"
 
-#: src/chat_info_dialog.vala:549
+#: src/chat_info_dialog.vala:555
 msgid "this contact"
 msgstr "deze contactpersoon"
 
-#: src/chat_info_dialog.vala:554
+#: src/chat_info_dialog.vala:560
 msgid "Edit Contact Name"
 msgstr "Naam wĳzigen"
 
-#: src/chat_info_dialog.vala:555
+#: src/chat_info_dialog.vala:561
 msgid "Leave empty to use the contact's own name."
 msgstr "Laat leeg om de eigen naam van deze contactpersoon te gebruiken"
 
-#: src/chat_info_dialog.vala:555 src/chat_info_dialog.vala:593
-#: src/full_message_dialog.vala:88
+#: src/chat_info_dialog.vala:561 src/chat_info_dialog.vala:599
+#: src/full_message_dialog.vala:88 src/message_details_dialog.vala:161
+#: src/profile_dialog.vala:166
 msgid "Save"
 msgstr "Opslaan"
 
-#: src/chat_info_dialog.vala:556
+#: src/chat_info_dialog.vala:562
 msgid "Contact name"
 msgstr "Persoonsnaam"
 
-#: src/chat_info_dialog.vala:592
+#: src/chat_info_dialog.vala:598
 msgid "Edit Channel Name"
 msgstr "Kanaalnaam wĳzigen"
 
-#: src/chat_info_dialog.vala:592
+#: src/chat_info_dialog.vala:598
 msgid "Edit Group Name"
 msgstr "Groepsnaam wĳzigen"
 
-#: src/chat_info_dialog.vala:594
+#: src/chat_info_dialog.vala:600
 msgid "Channel name"
 msgstr "Kanaalnaam"
 
-#: src/chat_info_dialog.vala:594
+#: src/chat_info_dialog.vala:600
 msgid "Group name"
 msgstr "Groepsnaam"
 
-#: src/chat_info_dialog.vala:615
+#: src/chat_info_dialog.vala:621
 #, c-format
 msgid "Remove “%s” from “%s”? They keep messages already received."
 msgstr ""
 "Weet je zeker dat je ‘%s’ wilt verwijderen uit ‘%s’? Zij blijven alle reeds "
 "ontvangen berichten zien."
 
-#: src/chat_info_dialog.vala:618
+#: src/chat_info_dialog.vala:624
 msgid " They will no longer receive new messages sent to this channel."
 msgstr " Ze ontvangen geen nieuwe berichten meer van dit kanaal."
 
-#: src/chat_info_dialog.vala:619
+#: src/chat_info_dialog.vala:625
 msgid " They will no longer receive new group messages."
 msgstr " Ze ontvangen geen nieuwe berichten meer uit deze groep."
 
-#: src/chat_info_dialog.vala:620
+#: src/chat_info_dialog.vala:626
 msgid " Group members will be notified."
 msgstr " Alle groepsleden worden op de hoogte gesteld."
 
-#: src/chat_info_dialog.vala:622
+#: src/chat_info_dialog.vala:628
 msgid "Remove Subscriber?"
 msgstr "Abonnee verwijderen?"
 
-#: src/chat_info_dialog.vala:622
+#: src/chat_info_dialog.vala:628
 msgid "Remove Member?"
 msgstr "Lid verwijderen?"
 
-#: src/chat_info_dialog.vala:624
+#: src/chat_info_dialog.vala:630
 msgid "Remove Subscriber"
 msgstr "Abonnee verwijderen"
 
-#: src/chat_info_dialog.vala:624
+#: src/chat_info_dialog.vala:630
 msgid "Remove Member"
 msgstr "Lid verwijderen"
 
-#: src/chat_info_dialog.vala:631
+#: src/chat_info_dialog.vala:637
 msgid "Remove failed: "
 msgstr "Verwijderen mislukt: "
 
-#: src/chat_info_dialog.vala:710
+#: src/chat_info_dialog.vala:716
 msgid "No sent messages can be deleted for everyone"
 msgstr "Reeds verstuurde berichten kunnen niet worden gewist"
 
-#: src/chat_info_dialog.vala:711 src/chat_row.vala:450
+#: src/chat_info_dialog.vala:717 src/chat_row.vala:450
 msgid "No messages to clear"
 msgstr "Er zijn geen te wissen berichten"
 
-#: src/chat_info_dialog.vala:765 src/window.vala:2998
+#: src/chat_info_dialog.vala:771 src/window.vala:3026
 msgid "Channel created"
 msgstr "Het kanaal is aangemaakt"
 
-#: src/chat_info_dialog.vala:765 src/window.vala:2998
+#: src/chat_info_dialog.vala:771 src/window.vala:3026
 msgid "Group created"
 msgstr "De groep is aangemaakt"
 
-#: src/chat_info_dialog.vala:786 src/chat_row.vala:477
+#: src/chat_info_dialog.vala:792 src/chat_row.vala:477
 msgid "Chat left; history kept"
 msgstr "Groep verlaten; geschiedenis bewaard"
 
-#: src/chat_info_dialog.vala:792 src/chat_row.vala:485
+#: src/chat_info_dialog.vala:798 src/chat_row.vala:485
 msgid "Chat left, but its history could not be deleted: "
 msgstr "Het gesprek is verlaten, maar de geschiedenis kan niet worden gewist: "
 
-#: src/chat_info_dialog.vala:793 src/chat_row.vala:486
+#: src/chat_info_dialog.vala:799 src/chat_row.vala:486
 msgid "Could not finish leaving; chat history was kept: "
 msgstr "Het verlaten is mislukt, maar de geschiedenis is bewaard: "
 
-#: src/chat_info_dialog.vala:816
+#: src/chat_info_dialog.vala:822
 msgid "Select Avatar Image"
 msgstr "Kies een profielfoto"
 
@@ -445,7 +666,7 @@ msgstr "Kies een profielfoto"
 msgid "You were mentioned"
 msgstr "Je bent vermeld"
 
-#: src/chat_row.vala:103 src/window.vala:853
+#: src/chat_row.vala:103 src/window.vala:861
 msgid "Notifications muted"
 msgstr "Meldingen zijn onderdrukt"
 
@@ -466,7 +687,7 @@ msgstr ", %d ongelezen"
 msgid ", mentioned you"
 msgstr ", heeft je vermeld"
 
-#: src/chat_row.vala:208
+#: src/chat_row.vala:208 src/message_row.vala:2185
 msgid ", pinned"
 msgstr ", vastgemaakt"
 
@@ -475,10 +696,11 @@ msgid ", muted"
 msgstr ", onderdrukt"
 
 #: src/chat_row.vala:290 src/message_actions.vala:60
+#: src/pinned_messages_manager.vala:193 src/webxdc_bar.vala:187
 msgid "Unpin"
 msgstr "Losmaken"
 
-#: src/chat_row.vala:290 src/message_actions.vala:60
+#: src/chat_row.vala:290 src/message_actions.vala:60 src/webxdc_bar.vala:187
 msgid "Pin"
 msgstr "Vastmaken"
 
@@ -506,7 +728,7 @@ msgstr "Markeren als gelezen"
 msgid "Mark as Unread"
 msgstr "Markeren als ongelezen"
 
-#: src/chat_row.vala:350
+#: src/chat_row.vala:350 src/pinned_messages_manager.vala:106
 msgid "Failed to update pin: "
 msgstr "Het vastmaken is mislukt: "
 
@@ -563,7 +785,7 @@ msgstr "Het gesprek is verwijderd"
 msgid "Chat blocked"
 msgstr "Het gesprek is geblokkeerd"
 
-#: src/chat_row.vala:442 src/chat_row.vala:495 src/conversation_view.vala:1247
+#: src/chat_row.vala:442 src/chat_row.vala:495 src/conversation_view.vala:1257
 #: src/models.vala:240
 msgid "this chat"
 msgstr "dit gesprek"
@@ -584,10 +806,139 @@ msgstr "Het gesprek is gewist"
 msgid "Clear failed: "
 msgstr "Het wissen is mislukt: "
 
-#: src/chat_row.vala:524 src/conversation_view.vala:1218
-#: src/message_actions.vala:244
+#: src/chat_row.vala:524 src/conversation_view.vala:1228
+#: src/gallery_dialog.vala:1407 src/message_actions.vala:244
 msgid "Delete failed: "
 msgstr "Het verwijderen is mislukt: "
+
+#: src/classic_email_dialog.vala:51
+msgid "Use Classic Email Address"
+msgstr "Klassiek e-mailadres gebruiken"
+
+#: src/classic_email_dialog.vala:61
+msgid "Edit Transport"
+msgstr "Overdracht bewerken"
+
+#: src/classic_email_dialog.vala:73
+msgid ""
+"Change the login and server settings for this transport. Fields left on "
+"“Automatic” are configured automatically."
+msgstr ""
+"Pas de inlog- en serverinstellingen van deze overdracht aan. Velden met "
+"‘automatisch’ worden automatisch ingesteld."
+
+#: src/classic_email_dialog.vala:75
+msgid ""
+"Sign in with an existing email account. For most providers the address and "
+"password are enough — servers are configured automatically. If your provider "
+"needs custom IMAP/SMTP servers, set them under Advanced Settings."
+msgstr ""
+"Log in met een bestaand e-mailaccount. Bij de meeste providers zijn een e-"
+"mailadres en wachtwoord afdoende — de servers worden automatisch ingesteld. "
+"Als je provider gebruikmaakt van afwijkende imap- en smtp-servers, stel ze "
+"dan in in de uitgebreide instellingen."
+
+#: src/classic_email_dialog.vala:85 src/classic_email_dialog.vala:147
+msgid "Password"
+msgstr "Wachtwoord"
+
+#: src/classic_email_dialog.vala:90
+msgid "Advanced Settings"
+msgstr "Uitgebreide instellingen"
+
+#: src/classic_email_dialog.vala:101
+msgid ""
+"Sometimes IMAP needs to be enabled in the web interface of your provider "
+"first."
+msgstr ""
+"Soms dient imap eerst te worden ingeschakeld in de instellingen van je "
+"provider."
+
+#: src/classic_email_dialog.vala:110
+msgid "Save & Reconnect"
+msgstr "Opslaan en herverbinden"
+
+#: src/classic_email_dialog.vala:110
+msgid "Sign In"
+msgstr "Inloggen"
+
+#: src/classic_email_dialog.vala:131
+msgid "Inbox (IMAP)"
+msgstr "Postvak in (imap)"
+
+#: src/classic_email_dialog.vala:132 src/classic_email_dialog.vala:134
+#: src/classic_email_dialog.vala:148 src/classic_email_dialog.vala:157
+#: src/classic_email_dialog.vala:183 src/classic_email_dialog.vala:191
+#: src/settings_dialog.vala:985
+msgid "Automatic"
+msgstr "Automatisch"
+
+#: src/classic_email_dialog.vala:133 src/classic_email_dialog.vala:143
+msgid "Login name"
+msgstr "Inlognaam"
+
+#: src/classic_email_dialog.vala:137 src/classic_email_dialog.vala:151
+msgid "Port"
+msgstr "Poort"
+
+#: src/classic_email_dialog.vala:139 src/classic_email_dialog.vala:153
+msgid "Security"
+msgstr "Beveiliging"
+
+#: src/classic_email_dialog.vala:141
+msgid "Outbox (SMTP)"
+msgstr "Postvak uit (smtp)"
+
+#: src/classic_email_dialog.vala:142 src/classic_email_dialog.vala:145
+msgid "Same as IMAP"
+msgstr "Gelijk aan imap"
+
+#: src/classic_email_dialog.vala:155
+msgid "Certificates"
+msgstr "Certificaten"
+
+#: src/classic_email_dialog.vala:157
+msgid "Strict"
+msgstr "Strikt"
+
+#: src/classic_email_dialog.vala:157
+msgid "Accept invalid certificates"
+msgstr "Ongeldige certificaten toestaan"
+
+#: src/classic_email_dialog.vala:158
+msgid "Validation"
+msgstr "Verificatie"
+
+#: src/classic_email_dialog.vala:191
+msgid "Plain (no encryption)"
+msgstr "Platte tekst (onversleuteld)"
+
+#: src/classic_email_dialog.vala:266
+msgid "Please enter a valid email address."
+msgstr "Voer een geldig e-mailadres in."
+
+#: src/classic_email_dialog.vala:270
+msgid "Please enter your password."
+msgstr "Voer je wachtwoord in."
+
+#: src/classic_email_dialog.vala:284
+msgid "Ports must be numbers between 1 and 65535."
+msgstr "Voer een poort tussen 1 en 65535 in."
+
+#: src/classic_email_dialog.vala:309
+#, c-format
+msgid "Configuring %s…"
+msgstr "Bezig men instellen van %s…"
+
+#. Keep the dialog open so the entered settings survive a
+#. failed attempt (wrong password, typo in a server, …).
+#: src/classic_email_dialog.vala:350
+msgid "Configuration failed: "
+msgstr "Instellen mislukt: "
+
+#: src/classic_email_dialog.vala:372
+msgid "Configuring…"
+msgstr "Bezig men instellen…"
 
 #: src/compose_bar.vala:40
 msgid "Type a message"
@@ -601,7 +952,7 @@ msgstr "Typ een antwoord"
 msgid "Cancel reply"
 msgstr "Antwoord annuleren"
 
-#: src/compose_bar.vala:211 src/compose_bar.vala:270
+#: src/compose_bar.vala:211 src/compose_bar.vala:271
 msgid "Remove attachment"
 msgstr "Bijlage verwijderen"
 
@@ -618,89 +969,98 @@ msgstr ""
 msgid "Attach file"
 msgstr "Bijlage toevoegen"
 
-#: src/compose_bar.vala:251
+#: src/compose_bar.vala:252
 msgid "Insert emoji"
 msgstr "Emoji invoegen"
 
-#: src/compose_bar.vala:265 src/message_actions.vala:220
+#: src/compose_bar.vala:266 src/message_actions.vala:220
+#: src/sticker_manager_dialog.vala:287
 msgid "Emoji picker unavailable"
 msgstr "De emojikiezer is niet beschikbaar"
 
-#: src/compose_bar.vala:277
+#: src/compose_bar.vala:278
 msgid "Cancel editing"
 msgstr "Bewerken afbreken"
 
-#: src/compose_bar.vala:351
+#: src/compose_bar.vala:352
 msgid "Send message"
 msgstr "Bericht versturen"
 
-#: src/compose_bar.vala:358
+#: src/compose_bar.vala:360
 msgid "Send a sticker"
 msgstr "Sticker versturen"
 
-#: src/compose_bar.vala:367
+#: src/compose_bar.vala:369
 msgid "Record a voice message"
 msgstr "Spraakbericht opnemen"
 
-#: src/compose_bar.vala:387
+#: src/compose_bar.vala:389
 msgid "Cancel voice message"
 msgstr "Spraakbericht afbreken"
 
-#: src/compose_bar.vala:392 src/compose_bar.vala:842
+#: src/compose_bar.vala:394 src/compose_bar.vala:848
 msgid "Preview voice message"
 msgstr "Spraakbericht voorvertonen"
 
-#: src/compose_bar.vala:403 src/compose_bar.vala:803
+#: src/compose_bar.vala:405 src/compose_bar.vala:809
 msgid "Stop recording"
 msgstr "Opname stoppen"
 
-#: src/compose_bar.vala:407 src/compose_bar.vala:917
+#: src/compose_bar.vala:409 src/compose_bar.vala:923
 #: src/message_actions.vala:102
 msgid "Transcribe"
 msgstr "Omzetten naar tekst"
 
-#: src/compose_bar.vala:411
+#: src/compose_bar.vala:413
 msgid "Transcribe the recording into the message text"
 msgstr "Zet de opname om naar een leesbare tekst"
 
-#: src/compose_bar.vala:417
+#: src/compose_bar.vala:419
 msgid "Send voice message"
 msgstr "Spraakbericht versturen"
 
-#: src/compose_bar.vala:821
+#: src/compose_bar.vala:827
 msgid "Finishing recording…"
 msgstr "Bezig met afronden…"
 
-#: src/compose_bar.vala:884
+#: src/compose_bar.vala:890
 msgid "Transcription is unavailable"
 msgstr "Het bericht kan niet worden omgezet"
 
-#: src/compose_bar.vala:911
+#: src/compose_bar.vala:917
 msgid "No speech detected; the voice message is still attached"
 msgstr ""
 "Er is geen spraak aangetroffen, maar het spraakbericht is nog zichtbaar"
 
-#: src/compose_bar.vala:963
+#: src/compose_bar.vala:969
 msgid "Recording failed: "
 msgstr "De opname is mislukt: "
 
-#: src/compose_bar.vala:1007 src/compose_bar.vala:1161
+#: src/compose_bar.vala:1013 src/compose_bar.vala:1167
 #, c-format
 msgid "%d attachments"
 msgstr "%d bijlagen"
 
-#: src/compose_bar.vala:1008 src/compose_bar.vala:1162
+#: src/compose_bar.vala:1014 src/compose_bar.vala:1168
 #, c-format
 msgid "%s + %d more"
 msgstr "%s en nog %d"
 
-#: src/compose_bar.vala:1048
+#: src/compose_bar.vala:1054
 msgid "Link preview"
 msgstr "Link voorvertonen"
 
-#: src/compose_bar.vala:1419
+#: src/compose_bar.vala:1425
 msgid "Edit message…"
 msgstr "Bericht bewerken…"
+
+#: src/compose_bar.vala:1522 src/message_details_dialog.vala:201
+msgid "Message"
+msgstr "Bericht"
+
+#: src/compose_bar.vala:1572
+msgid "Select files to attach"
+msgstr "Kies bijlagen om toe te voegen"
 
 #: src/contact_picker_dialog.vala:43
 msgid "Select Destination"
@@ -722,8 +1082,8 @@ msgstr "Doorzoek gesprekken, contactpersonen of e-mails…"
 msgid "Search or enter email…"
 msgstr "Zoek of voer een e-mailadres in…"
 
-#: src/contact_picker_dialog.vala:93 src/settings_dialog.vala:857
-#: src/webxdc_manager_dialog.vala:604
+#: src/contact_picker_dialog.vala:93 src/settings_dialog.vala:874
+#: src/webxdc_manager_dialog.vala:600
 msgid "Chats"
 msgstr "Gesprekken"
 
@@ -731,7 +1091,7 @@ msgstr "Gesprekken"
 msgid "Contacts"
 msgstr "Contactpersonen"
 
-#: src/contact_picker_dialog.vala:165 src/window.vala:2553
+#: src/contact_picker_dialog.vala:165 src/window.vala:2581
 #, c-format
 msgid "Account #%d"
 msgstr "Account #%d"
@@ -745,183 +1105,191 @@ msgstr "De contactpersonen kunnen niet worden geladen: "
 msgid "Start chat with %s"
 msgstr "Begin een gesprek met %s"
 
-#: src/conversation_media_bar.vala:53
-msgid "Voice message"
-msgstr "Spraakbericht"
+#: src/conversation_media_bar.vala:70
+msgid "Playback options"
+msgstr "Afspeelopties"
 
-#: src/conversation_media_bar.vala:58
+#: src/conversation_media_bar.vala:78
 msgid "Previous voice message"
 msgstr "Vorig spraakbericht"
 
-#: src/conversation_media_bar.vala:69
+#: src/conversation_media_bar.vala:82
 msgid "Next voice message"
 msgstr "Volgend spraakbericht"
 
-#: src/conversation_media_bar.vala:96 src/conversation_media_bar.vala:99
-#: src/conversation_media_bar.vala:253
+#: src/conversation_media_bar.vala:86 src/conversation_media_bar.vala:94
+#: src/conversation_media_bar.vala:97 src/conversation_media_bar.vala:262
 msgid "Playback speed"
 msgstr "Afspeelsnelheid"
 
-#: src/conversation_media_bar.vala:152
+#: src/conversation_media_bar.vala:127
 msgid "Close player"
 msgstr "Speler sluiten"
 
-#: src/conversation_media_bar.vala:225
+#: src/conversation_media_bar.vala:234
 msgid "Drag to seek"
 msgstr "Sleep om te spoelen"
 
-#: src/conversation_media_bar.vala:227
+#: src/conversation_media_bar.vala:236
 msgid "Seeking is unavailable with the system audio player"
 msgstr "Spoelen is niet beschikbaar in de audiospeler van het systeem"
 
-#: src/conversation_media_bar.vala:228
+#: src/conversation_media_bar.vala:237
 msgid "Seeking will be available after the audio loads"
 msgstr "Spoelen kan nadat de audio geladen is"
 
-#: src/conversation_media_bar.vala:254
+#: src/conversation_media_bar.vala:263
 msgid "Install GstPlay, mpv, or ffplay to change playback speed"
 msgstr "Installeer GstPlay, mpv of ffplay om de afspeelsnelheid aan te passen"
 
-#: src/conversation_media_bar.vala:301
+#: src/conversation_media_bar.vala:309
 msgid "Sent "
 msgstr "Verstuurd: "
 
-#: src/conversation_view.vala:648
+#: src/conversation_view.vala:436
+msgid "Unread messages. "
+msgstr "Ongelezen berichten. "
+
+#: src/conversation_view.vala:657
 msgid "Search in conversation…"
 msgstr "Gesprek doorzoeken…"
 
-#: src/conversation_view.vala:657
+#: src/conversation_view.vala:666
 msgid "Previous match (Shift+Enter)"
 msgstr "Vorige overeenkomst (Shift+Enter)"
 
-#: src/conversation_view.vala:659
+#: src/conversation_view.vala:668
 msgid "Next match (Enter)"
 msgstr "Volgende overeenkomst (Enter)"
 
-#: src/conversation_view.vala:661
+#: src/conversation_view.vala:670
 msgid "Close search (Escape)"
 msgstr "Zoekveld sluiten (Escape)"
 
-#: src/conversation_view.vala:730 src/conversation_view.vala:2361
+#: src/conversation_view.vala:740 src/conversation_view.vala:2375
 msgid "Loading…"
 msgstr "Bezig met laden…"
 
-#: src/conversation_view.vala:921
+#: src/conversation_view.vala:931
 msgid "Failed to load voice message: "
 msgstr "Het spraakbericht kan niet worden geladen: "
 
-#: src/conversation_view.vala:1033 src/message_actions.vala:119
+#: src/conversation_view.vala:1043 src/gallery_dialog.vala:292
+#: src/message_actions.vala:119 src/message_details_dialog.vala:303
+#: src/sticker_manager_dialog.vala:345
 msgid "Delete…"
 msgstr "Verwijderen…"
 
-#: src/conversation_view.vala:1042 src/message_row.vala:729
+#: src/conversation_view.vala:1052 src/message_row.vala:729
 msgid "Forward"
 msgstr "Doorsturen"
 
-#: src/conversation_view.vala:1050 src/full_message_dialog.vala:83
-#: src/models.vala:107 src/models.vala:122 src/models.vala:160
-#: src/models.vala:246 src/window.vala:2124 src/window.vala:3229
-msgid "Cancel"
-msgstr "Annuleren"
-
-#: src/conversation_view.vala:1091
+#: src/conversation_view.vala:1101
 msgid "Accept"
 msgstr "Accepteren"
 
-#: src/conversation_view.vala:1111
+#: src/conversation_view.vala:1121
 msgid "Accept this group invitation to reply, or delete the request."
 msgstr ""
 "Accepteer deze groepsuitnodiging om te antwoorden, of verwijder het verzoek."
 
-#: src/conversation_view.vala:1112
+#: src/conversation_view.vala:1122
 msgid "Accept this chat request, or block it and keep its history."
 msgstr ""
 "Accepteer dit gespreksverzoek of wijs het af, maar bewaar de geschiedenis."
 
-#: src/conversation_view.vala:1235
+#: src/conversation_view.vala:1245
 msgid "Failed to accept request: "
 msgstr "Het verzoek kan niet worden geaccepteerd: "
 
-#: src/conversation_view.vala:1260
+#: src/conversation_view.vala:1270
 msgid "Could not dismiss request: "
 msgstr "Het verzoek kan niet worden afgewezen: "
 
-#: src/conversation_view.vala:1466 src/search_results_view.vala:51
+#: src/conversation_view.vala:1476 src/search_results_view.vala:51
 msgid "Searching…"
 msgstr "Bezig met zoeken…"
 
-#: src/conversation_view.vala:1467
+#: src/conversation_view.vala:1477
 msgid "Search failed"
 msgstr "Het zoeken is mislukt"
 
-#: src/conversation_view.vala:1469
+#: src/conversation_view.vala:1479
 msgid "No matches"
 msgstr "Er zijn geen zoekresultaten"
 
-#: src/conversation_view.vala:1470
+#: src/conversation_view.vala:1480 src/gallery_dialog.vala:1505
 #, c-format
 msgid "%d of %d"
 msgstr "%d van %d"
 
-#: src/conversation_view.vala:1582 src/conversation_view.vala:1608
+#: src/conversation_view.vala:1592 src/conversation_view.vala:1618
 msgid "Full message unavailable"
 msgstr "Het volledige bericht is niet beschikbaar"
 
-#: src/conversation_view.vala:1585 src/conversation_view.vala:1610
+#: src/conversation_view.vala:1595 src/conversation_view.vala:1620
 msgid "Full message failed: "
 msgstr "Het volledige bericht is mislukt: "
 
-#: src/conversation_view.vala:2006 src/conversation_view.vala:2214
+#: src/conversation_view.vala:2020 src/conversation_view.vala:2228
 msgid "Failed to load messages: "
 msgstr "De berichten kunnen niet worden geladen: "
 
-#: src/conversation_view.vala:2191
+#: src/conversation_view.vala:2205
 msgid "Failed to load earlier messages: "
 msgstr "Eerdere berichten kunnen niet worden geladen: "
 
-#: src/conversation_view.vala:2264
+#: src/conversation_view.vala:2278
 msgid "Failed to load message: "
 msgstr "Het bericht kan niet worden geladen: "
 
-#: src/conversation_view.vala:2280 src/window.vala:2000
+#: src/conversation_view.vala:2294 src/window.vala:2025
 msgid "Message is no longer available"
 msgstr "Het bericht is niet meer beschikbaar"
 
-#: src/conversation_view.vala:2479
+#: src/conversation_view.vala:2493
 msgid "Failed to load app: "
 msgstr "De app kan niet worden geladen: "
 
-#: src/conversation_view.vala:2485
+#: src/conversation_view.vala:2499
 msgid "The app file is not downloaded"
 msgstr "Het appbestand is niet gedownload"
 
-#: src/conversation_view.vala:2570
+#: src/conversation_view.vala:2584
 msgid "Send failed: "
 msgstr "Het versturen is mislukt: "
 
-#: src/conversation_view.vala:2721 src/window.vala:1849
+#: src/conversation_view.vala:2735 src/window.vala:1874
 msgid "Attach failed: cannot attach here"
 msgstr "Bijlageprobleem: er kan hier niets worden bijgevoegd"
 
-#: src/conversation_view.vala:2726
+#: src/conversation_view.vala:2740
 msgid "Attach failed: file not found"
 msgstr "Bijlageprobleem: bestand niet aangetroffen"
 
-#: src/conversation_view.vala:2740 src/window.vala:1732
+#: src/conversation_view.vala:2754 src/window.vala:1860
 msgid "Attach failed: "
 msgstr "Bijlageprobleem: "
 
-#: src/conversation_view.vala:2952
+#: src/conversation_view.vala:2966 src/gallery_dialog.vala:919
 msgid "File not available"
 msgstr "Het bestand is niet beschikbaar"
 
-#: src/conversation_view.vala:2985
+#: src/conversation_view.vala:2999
 msgid "Preview failed: "
 msgstr "Voorvertoning mislukt: "
 
-#: src/conversation_view.vala:2995
+#: src/conversation_view.vala:3009
 msgid "File is empty"
 msgstr "Het bestand is leeg"
+
+#: src/file_drop.vala:88
+msgid "unsupported drop data"
+msgstr "niet-ondersteunde gegevens"
+
+#: src/file_drop.vala:112
+msgid "file has no local path"
+msgstr "bestand heeft geen lokaal pad"
 
 #: src/full_message_dialog.vala:39
 #, c-format
@@ -948,40 +1316,295 @@ msgstr "Markdownopmaak gebruiken"
 msgid "Format headings, emphasis, code, and links"
 msgstr "Formatteer koppen, nadruk, code en links"
 
-#: src/full_message_dialog.vala:269
+#: src/full_message_dialog.vala:269 src/message_details_dialog.vala:134
 msgid "Edit Message"
 msgstr "Bericht bewerken"
 
-#: src/full_message_dialog.vala:316
+#: src/full_message_dialog.vala:316 src/message_details_dialog.vala:510
 msgid "Saving…"
 msgstr "Bezig met opslaan…"
 
 #: src/full_message_dialog.vala:330 src/full_message_dialog.vala:332
-#: src/message_actions.vala:382
+#: src/message_actions.vala:382 src/message_details_dialog.vala:522
+#: src/message_details_dialog.vala:524
 msgid "Edit failed: "
 msgstr "Bewerken mislukt: "
 
-#: src/image_viewer.vala:186
+#: src/gallery_dialog.vala:116 src/gallery_dialog.vala:216
+msgid "Apps and Media"
+msgstr "Apps en media"
+
+#: src/gallery_dialog.vala:139 src/models.vala:444
+msgid "Images"
+msgstr "Afbeeldingen"
+
+#: src/gallery_dialog.vala:143
+msgid "No Images"
+msgstr "Er zijn geen afbeeldingen"
+
+#: src/gallery_dialog.vala:144
+msgid "Images shared in this chat will appear here"
+msgstr "Gedeelde afbeeldingen worden hier getoond"
+
+#: src/gallery_dialog.vala:145
+msgid "Save all images to a folder…"
+msgstr "Alle afbeeldingen opslaan in map…"
+
+#: src/gallery_dialog.vala:148 src/sticker_manager_dialog.vala:24
+#: src/window.vala:3152
+msgid "Stickers"
+msgstr "Stickers"
+
+#: src/gallery_dialog.vala:152
+msgid "No Stickers"
+msgstr "Er zijn geen stickers"
+
+#: src/gallery_dialog.vala:153
+msgid "Stickers shared in this chat will appear here"
+msgstr "Gedeelde stickers worden hier getoond"
+
+#: src/gallery_dialog.vala:154
+msgid "Save all stickers to a folder…"
+msgstr "Alle stickers opslaan in map…"
+
+#: src/gallery_dialog.vala:158 src/message_details_dialog.vala:590
+msgid "Video"
+msgstr "Video"
+
+#: src/gallery_dialog.vala:161
+msgid "No Videos"
+msgstr "Er zijn geen video's"
+
+#: src/gallery_dialog.vala:162
+msgid "Videos shared in this chat will appear here"
+msgstr "Gedeelde video's worden hier getoond"
+
+#: src/gallery_dialog.vala:163
+msgid "Save all videos to a folder…"
+msgstr "Alle video's opslaan in map…"
+
+#: src/gallery_dialog.vala:166 src/gallery_dialog.vala:1082
+#: src/message_details_dialog.vala:591
+msgid "Audio"
+msgstr "Audio"
+
+#: src/gallery_dialog.vala:169
+msgid "No Audio"
+msgstr "Er is geen audio"
+
+#: src/gallery_dialog.vala:170
+msgid "Audio files and voice messages will appear here"
+msgstr "Audiobestand en spraakberichten worden hier getoond"
+
+#: src/gallery_dialog.vala:171
+msgid "Save all audio files to a folder…"
+msgstr "Alle audiobestanden opslaan in map…"
+
+#: src/gallery_dialog.vala:174
+msgid "Files"
+msgstr "Bestanden"
+
+#: src/gallery_dialog.vala:177
+msgid "No Files"
+msgstr "Er zijn geen bestanden"
+
+#: src/gallery_dialog.vala:178
+msgid "Documents and other files shared in this chat will appear here"
+msgstr "Gedeelde documenten en andere bestanden worden hier getoond"
+
+#: src/gallery_dialog.vala:179
+msgid "Save all files to a folder…"
+msgstr "Alle bestanden opslaan in map…"
+
+#: src/gallery_dialog.vala:183 src/settings_dialog.vala:1193
+msgid "Links"
+msgstr "Links"
+
+#: src/gallery_dialog.vala:186
+msgid "No Links"
+msgstr "Er zijn geen links"
+
+#: src/gallery_dialog.vala:187
+msgid "Links shared in this chat will appear here"
+msgstr "Gedeelde links worden hier getoond"
+
+#: src/gallery_dialog.vala:188 src/gallery_dialog.vala:1427
+msgid "Save all to a folder…"
+msgstr "Alle links opslaan in map…"
+
+#: src/gallery_dialog.vala:192 src/webxdc_manager_dialog.vala:60
+#: src/webxdc_manager_dialog.vala:113 src/window.vala:3153
+msgid "Apps"
+msgstr "Apps"
+
+#: src/gallery_dialog.vala:195
+msgid "No Apps"
+msgstr "Er zijn geen apps"
+
+#: src/gallery_dialog.vala:196
+msgid "Delta Chat apps shared in this chat will appear here"
+msgstr "Gedeelde Delta Chat-apps worden hier getoond"
+
+#: src/gallery_dialog.vala:197
+msgid "Save all apps to a folder…"
+msgstr "Alle apps opslaan in map…"
+
+#: src/gallery_dialog.vala:250
+msgid "More"
+msgstr "Meer"
+
+#: src/gallery_dialog.vala:285 src/gallery_dialog.vala:1325
+#: src/message_actions.vala:53 src/message_details_dialog.vala:310
+#: src/webxdc_bar.vala:175
+msgid "Forward…"
+msgstr "Doorsturen…"
+
+#: src/gallery_dialog.vala:289
+msgid "Save…"
+msgstr "Opslaan…"
+
+#: src/gallery_dialog.vala:293
+msgid "Delete selected messages and their attachments"
+msgstr "Geselecteerde berichten en bijlagen verwijderen"
+
+#: src/gallery_dialog.vala:508
+#, c-format
+msgid "%u message selected"
+msgid_plural "%u messages selected"
+msgstr[0] "%u bericht geselecteerd"
+msgstr[1] "%u berichten geselecteerd"
+
+#: src/gallery_dialog.vala:669
+msgid "Could not load media: "
+msgstr "De media kunnen niet worden geladen: "
+
+#: src/gallery_dialog.vala:1068 src/message_actions.vala:265
+#: src/message_details_dialog.vala:442 src/message_details_dialog.vala:470
+#: src/message_row.vala:2128 src/pinned_messages_manager.vala:133
+#: src/pinned_messages_manager.vala:142 src/webxdc.vala:389
+msgid "You"
+msgstr "Ik"
+
+#: src/gallery_dialog.vala:1082
+msgid "Voice message"
+msgstr "Spraakbericht"
+
+#: src/gallery_dialog.vala:1101
+#, c-format
+msgid "%s (+%d more)"
+msgstr "%s (en nog %d)"
+
+#: src/gallery_dialog.vala:1174 src/webxdc_manager_dialog.vala:211
+#: src/window.vala:2125
+msgid "App"
+msgstr "App"
+
+#: src/gallery_dialog.vala:1211 src/webxdc_manager_dialog.vala:786
+msgid "Could not open link: "
+msgstr "De link kan niet worden geopend: "
+
+#: src/gallery_dialog.vala:1236
+msgid "Could not open file: "
+msgstr "Het bestand kan niet worden geopend: "
+
+#: src/gallery_dialog.vala:1303
+msgid "Open Link"
+msgstr "Link openen"
+
+#: src/gallery_dialog.vala:1306 src/profile_dialog.vala:1010
+msgid "Copy Link"
+msgstr "Linkadres kopiëren"
+
+#: src/gallery_dialog.vala:1309
+msgid "Link copied"
+msgstr "De link is gekopieerd"
+
+#: src/gallery_dialog.vala:1318
+msgid "Save As…"
+msgstr "Opslaan als…"
+
+#: src/gallery_dialog.vala:1331
+msgid "Select…"
+msgstr "Selecteren…"
+
+#: src/gallery_dialog.vala:1336
+msgid "View in Conversation"
+msgstr "Bekijken in gesprek"
+
+#: src/gallery_dialog.vala:1364 src/message_actions.vala:111
+msgid "Add Sticker…"
+msgstr "Sticker toevoegen…"
+
+#: src/gallery_dialog.vala:1372
+msgid "Delete Message…"
+msgstr "Bericht verwijderen…"
+
+#: src/gallery_dialog.vala:1404
+#, c-format
+msgid "%d message deleted"
+msgid_plural "%d messages deleted"
+msgstr[0] "%d bericht verwijderd"
+msgstr[1] "%d berichten verwijderd"
+
+#: src/gallery_dialog.vala:1453
+msgid "No downloaded files to save"
+msgstr "Er zijn geen gedownloade bestanden"
+
+#: src/gallery_dialog.vala:1457
+msgid "Select Folder"
+msgstr "Kies een map"
+
+#: src/gallery_dialog.vala:1466
+msgid "Folder selection failed: "
+msgstr "Er kan geen map worden gekozen: "
+
+#: src/gallery_dialog.vala:1485
+msgid "Saving Files"
+msgstr "Bestanden opslaan"
+
+#: src/gallery_dialog.vala:1526
+#, c-format
+msgid "Saving cancelled — %d file saved"
+msgid_plural "Saving cancelled — %d files saved"
+msgstr[0] "Het opslaan is afgebroken — %d bestand opgeslagen"
+msgstr[1] "Het opslaan is afgebroken — %d bestanden opgeslagen"
+
+#: src/gallery_dialog.vala:1529
+#, c-format
+msgid "Saved %d file"
+msgid_plural "Saved %d files"
+msgstr[0] "%d bestand opgeslagen"
+msgstr[1] "%d bestanden opgeslagen"
+
+#: src/gallery_dialog.vala:1531
+#, c-format
+msgid ", %d failed"
+msgstr ", %d mislukt"
+
+#: src/gallery_dialog.vala:1532
+#, c-format
+msgid ", %d not downloaded"
+msgstr ", %d is niet gedownload"
+
+#: src/image_viewer.vala:193
 msgid "Cannot open image: "
 msgstr "Afbeelding openen mislukt: "
 
-#: src/image_viewer.vala:206
+#: src/image_viewer.vala:213
 msgid "Save image"
 msgstr "Afbeelding opslaan"
 
-#: src/message_actions.vala:49 src/message_row.vala:728
+#: src/message_actions.vala:49 src/message_details_dialog.vala:317
+#: src/message_row.vala:728
 msgid "Reply"
 msgstr "Beantwoorden"
-
-#: src/message_actions.vala:53
-msgid "Forward…"
-msgstr "Doorsturen…"
 
 #: src/message_actions.vala:65
 msgid "Edit"
 msgstr "Bewerken"
 
-#: src/message_actions.vala:71
+#: src/message_actions.vala:71 src/message_details_dialog.vala:232
+#: src/message_details_dialog.vala:252
 msgid "Retry"
 msgstr "Opnieuw proberen"
 
@@ -997,10 +1620,6 @@ msgstr "Details..."
 msgid "Save file"
 msgstr "Bestand opslaan"
 
-#: src/message_actions.vala:111
-msgid "Add Sticker…"
-msgstr "Sticker toevoegen…"
-
 #: src/message_actions.vala:154
 msgid "More emojis…"
 msgstr "Meer emoji's…"
@@ -1009,11 +1628,7 @@ msgstr "Meer emoji's…"
 msgid "Reaction failed: "
 msgstr "Reageren mislukt: "
 
-#: src/message_actions.vala:265
-msgid "You"
-msgstr "Ik"
-
-#: src/message_actions.vala:266
+#: src/message_actions.vala:266 src/pinned_messages_manager.vala:169
 msgid "(attachment)"
 msgstr "(bijlage)"
 
@@ -1041,13 +1656,255 @@ msgstr "Het bericht kan niet worden herladen: "
 msgid "Could not retry message: "
 msgstr "Het bericht kan niet opnieuw worden geprobeerd: "
 
+#: src/message_details_dialog.vala:29
+msgid "Message Details"
+msgstr "Berichtinformatie"
+
+#: src/message_details_dialog.vala:94
+msgid "Show contact details"
+msgstr "Contactpersoongegevens bekijken"
+
+#: src/message_details_dialog.vala:119
+msgid "Outgoing message"
+msgstr "Uitgaand bericht"
+
+#: src/message_details_dialog.vala:119
+msgid "Incoming message"
+msgstr "Inkomend bericht"
+
+#: src/message_details_dialog.vala:175
+msgid "Reactions"
+msgstr "Reacties"
+
+#: src/message_details_dialog.vala:180
+msgid "No reactions"
+msgstr "Er zijn geen reacties"
+
+#: src/message_details_dialog.vala:180
+msgid "Nobody has reacted to this message yet."
+msgstr "Er heeft nog niemand op dit bericht gereageerd."
+
+#: src/message_details_dialog.vala:204
+msgid "Message ID"
+msgstr "Bericht-id"
+
+#: src/message_details_dialog.vala:205
+msgid "Chat ID"
+msgstr "Gespreks-id"
+
+#: src/message_details_dialog.vala:206
+msgid "Sent"
+msgstr "Verstuurd"
+
+#: src/message_details_dialog.vala:207
+msgid "Direction"
+msgstr "Richting"
+
+#: src/message_details_dialog.vala:207
+msgid "Outgoing"
+msgstr "Uitgaand"
+
+#: src/message_details_dialog.vala:207
+msgid "Incoming"
+msgstr "Inkomend"
+
+#: src/message_details_dialog.vala:208
+msgid "Delivery"
+msgstr "Aflevering"
+
+#: src/message_details_dialog.vala:210 src/models.vala:73
+msgid "Error"
+msgstr "Foutmelding"
+
+#: src/message_details_dialog.vala:213
+msgid "Type"
+msgstr "Type"
+
+#: src/message_details_dialog.vala:214
+msgid "Flags"
+msgstr "Opties"
+
+#: src/message_details_dialog.vala:215
+msgid "Sender contact ID"
+msgstr "Contactpersoon-id van afzender"
+
+#: src/message_details_dialog.vala:216 src/message_details_dialog.vala:560
+#: src/message_details_dialog.vala:573 src/webxdc_manager_dialog.vala:331
+msgid "Unknown"
+msgstr "Onbekend"
+
+#: src/message_details_dialog.vala:220
+msgid "Sender address"
+msgstr "Adres van afzender"
+
+#: src/message_details_dialog.vala:224
+msgid "Override sender"
+msgstr "Andere afzender opgeven"
+
+#: src/message_details_dialog.vala:228
+msgid "Download state"
+msgstr "Downloadstatus"
+
+#: src/message_details_dialog.vala:244
+msgid "Retrying…"
+msgstr "Bezig met opnieuw proberen…"
+
+#: src/message_details_dialog.vala:259
+msgid "Attachment"
+msgstr "Bijlage"
+
+#: src/message_details_dialog.vala:263
+msgid "File name"
+msgstr "Bestandsnaam"
+
+#: src/message_details_dialog.vala:266
+msgid "MIME type"
+msgstr "Mimetype"
+
+#: src/message_details_dialog.vala:269
+msgid "Size"
+msgstr "Grootte"
+
+#: src/message_details_dialog.vala:272
+msgid "Local path"
+msgstr "Bestandslocatie"
+
+#: src/message_details_dialog.vala:273
+msgid "Local copy"
+msgstr "Lokale kopie"
+
+#: src/message_details_dialog.vala:274 src/settings_dialog.vala:957
+msgid "Available"
+msgstr "Beschikbaar"
+
+#: src/message_details_dialog.vala:274 src/message_details_dialog.vala:579
+msgid "Not downloaded"
+msgstr "Niet gedownload"
+
+#: src/message_details_dialog.vala:282
+msgid "Reply Context"
+msgstr "Antwoordcontext"
+
+#: src/message_details_dialog.vala:286
+msgid "Quoted message ID"
+msgstr "Id van geciteerd bericht"
+
+#: src/message_details_dialog.vala:290
+msgid "Quoted sender"
+msgstr "Geciteerde afzender"
+
+#: src/message_details_dialog.vala:293
+msgid "Quoted text"
+msgstr "Geciteerde tekst"
+
+#: src/message_details_dialog.vala:357 src/message_details_dialog.vala:604
+#: src/settings_dialog.vala:749 src/settings_dialog.vala:765
+msgid "None"
+msgstr "Geen"
+
+#: src/message_details_dialog.vala:365 src/message_row.vala:2088
+#, c-format
+msgid "%d reaction"
+msgid_plural "%d reactions"
+msgstr[0] "%d reactie"
+msgstr[1] "%d reacties"
+
+#: src/message_details_dialog.vala:461 src/message_row.vala:2140
+#: src/message_row.vala:2153
+#, c-format
+msgid "Contact %d"
+msgstr "Contactpersoon %d"
+
+#: src/message_details_dialog.vala:462 src/message_row.vala:2154
+msgid "Unknown user"
+msgstr "Onbekende gebruiker"
+
+#: src/message_details_dialog.vala:483
+msgid "Unknown sender"
+msgstr "Onbekende afzender"
+
+#: src/message_details_dialog.vala:518
+msgid "Saved"
+msgstr "Opgeslagen"
+
+#: src/message_details_dialog.vala:539 src/window.vala:1264
+#: src/window.vala:1274
+msgid "Could not open chat: "
+msgstr "Het gesprek kan niet worden geopend: "
+
+#: src/message_details_dialog.vala:567
+msgid "Received"
+msgstr "Ontvangen"
+
+#: src/message_details_dialog.vala:569 src/message_row.vala:1265
+msgid "Read"
+msgstr "Gelezen"
+
+#: src/message_details_dialog.vala:570 src/message_row.vala:1269
+msgid "Delivered"
+msgstr "Afgeleverd"
+
+#: src/message_details_dialog.vala:571
+msgid "Pending"
+msgstr "In wachtrij"
+
+#: src/message_details_dialog.vala:572
+msgid "Draft"
+msgstr "Concept"
+
+#: src/message_details_dialog.vala:573
+#, c-format
+msgid "State %d"
+msgstr "Status: %d"
+
+#: src/message_details_dialog.vala:578
+msgid "Downloaded"
+msgstr "Gedownload"
+
+#: src/message_details_dialog.vala:580
+msgid "Downloading…"
+msgstr "Bezig met downloaden…"
+
+#: src/message_details_dialog.vala:581
+msgid "Download failed"
+msgstr "Downloaden mislukt"
+
+#: src/message_details_dialog.vala:587 src/message_details_dialog.vala:601
+#: src/message_row.vala:2171
+msgid "Info"
+msgstr "Informatie"
+
+#: src/message_details_dialog.vala:589
+msgid "Image"
+msgstr "Afbeelding"
+
+#: src/message_details_dialog.vala:592
+msgid "File"
+msgstr "Bestand"
+
+#: src/message_details_dialog.vala:593
+msgid "Text"
+msgstr "Tekst"
+
+#: src/message_details_dialog.vala:598
+msgid "Forwarded"
+msgstr "Doorgestuurd"
+
+#: src/message_details_dialog.vala:599 src/message_row.vala:540
+msgid "Edited"
+msgstr "Bewerkt"
+
+#: src/message_details_dialog.vala:600 src/message_row.vala:1288
+msgid "Pinned"
+msgstr "Vastgemaakt"
+
+#: src/message_details_dialog.vala:603
+msgid "Full message action"
+msgstr "Actie op volledig bericht"
+
 #: src/message_row.vala:469
 msgid "(edited)"
 msgstr "(bewerkt)"
-
-#: src/message_row.vala:540
-msgid "Edited"
-msgstr "Bewerkt"
 
 #: src/message_row.vala:727
 msgid "React"
@@ -1101,21 +1958,9 @@ msgstr "Video afspelen"
 msgid "Sending failed"
 msgstr "Het versturen is mislukt"
 
-#: src/message_row.vala:1265
-msgid "Read"
-msgstr "Gelezen"
-
-#: src/message_row.vala:1269
-msgid "Delivered"
-msgstr "Afgeleverd"
-
 #: src/message_row.vala:1273
 msgid "Sending…"
 msgstr "Bezig met versturen…"
-
-#: src/message_row.vala:1288
-msgid "Pinned"
-msgstr "Vastgemaakt"
 
 #: src/message_row.vala:1388
 msgid "Loading full message…"
@@ -1145,11 +1990,97 @@ msgstr "Inklappen"
 msgid "Expand"
 msgstr "Uitklappen"
 
+#: src/message_row.vala:1423
+msgid "View full message"
+msgstr "Volledig bericht bekijken"
+
+#: src/message_row.vala:1605
+msgid "Mark unchecked"
+msgstr "Markeren als ongelezen"
+
+#: src/message_row.vala:1606
+msgid "Mark checked"
+msgstr "Markeren als gelezen"
+
 #: src/message_row.vala:1988
 msgid "Show reactions"
 msgstr "Reacties tonen"
 
-#: src/message_row.vala:2231
+#: src/message_row.vala:2177
+msgid ", sending failed"
+msgstr ", het versturen is mislukt"
+
+#: src/message_row.vala:2178
+msgid ", read"
+msgstr ", gelezen"
+
+#: src/message_row.vala:2179
+msgid ", delivered"
+msgstr ", afgeleverd"
+
+#: src/message_row.vala:2180
+msgid ", sending"
+msgstr ", aan het versturen"
+
+#: src/message_row.vala:2181
+msgid ", sent"
+msgstr ", verstuurd"
+
+#: src/message_row.vala:2183
+msgid ", forwarded"
+msgstr ", doorgestuurd"
+
+#: src/message_row.vala:2184
+msgid ", edited"
+msgstr ", bewerkt"
+
+#: src/message_row.vala:2187
+msgid ", replying to "
+msgstr ", antwoord op "
+
+#: src/message_row.vala:2188
+msgid "a message"
+msgstr "een bericht"
+
+#: src/message_row.vala:2197
+msgid "empty message"
+msgstr "blanco bericht"
+
+#: src/message_row.vala:2200
+msgid ", reactions: "
+msgstr ", reacties: "
+
+#: src/message_row.vala:2206
+#, c-format
+msgid "app %s"
+msgstr "app %s"
+
+#: src/message_row.vala:2209
+msgid "sticker"
+msgstr "sticker"
+
+#: src/message_row.vala:2211
+msgid "photo"
+msgstr "foto"
+
+#: src/message_row.vala:2212
+msgid "video"
+msgstr "video"
+
+#: src/message_row.vala:2213
+msgid "voice message"
+msgstr "spraakbericht"
+
+#: src/message_row.vala:2214
+msgid "audio"
+msgstr "audio"
+
+#: src/message_row.vala:2215
+#, c-format
+msgid "file %s"
+msgstr "bestand %s"
+
+#: src/message_row.vala:2230
 msgid "Unread messages"
 msgstr "Ongelezen berichten"
 
@@ -1171,10 +2102,6 @@ msgid ""
 msgstr ""
 "Elders opgeslagen bestanden en doorgestuurde (reserve)kopieën kunnen niet "
 "worden verwijderd. Deze actie is onomkeerbaar."
-
-#: src/models.vala:73
-msgid "Error"
-msgstr "Foutmelding"
 
 #: src/models.vala:148
 msgid "Could not check message deletion options: "
@@ -1377,15 +2304,15 @@ msgstr "Contactpersoon blokkeren"
 msgid "Block Chat"
 msgstr "Gesprek blokkeren"
 
-#: src/new_group_dialog.vala:20 src/window.vala:3121
+#: src/new_group_dialog.vala:20 src/window.vala:3149
 msgid "New Channel"
 msgstr "Nieuw kanaal"
 
-#: src/new_group_dialog.vala:20 src/window.vala:3120
+#: src/new_group_dialog.vala:20 src/window.vala:3148
 msgid "New Group"
 msgstr "Nieuwe groep"
 
-#: src/new_group_dialog.vala:27
+#: src/new_group_dialog.vala:27 src/sticker_manager_dialog.vala:115
 msgid "Create"
 msgstr "Maken"
 
@@ -1435,11 +2362,400 @@ msgstr "Kies een kanaalfoto"
 msgid "Select Group Avatar"
 msgstr "Kies een groepsfoto"
 
-#: src/profile_dialog.vala:951
+#: src/pinned_messages_manager.vala:81
+msgid "Failed to update pin: RPC is not connected"
+msgstr "De pincode kan niet worden bijgewerkt: geen rpc-verbinding"
+
+#: src/platform_macos.m:394
+msgid ""
+"Microphone access is restricted on this Mac (Screen Time or a management "
+"profile)"
+msgstr ""
+"Microfoontoegang is beperkt op deze Mac (schermtijd of beheerdersprofiel)"
+
+#: src/platform_macos.m:407
+msgid ""
+"Microphone access is turned off for Parla. Allow it in System Settings › "
+"Privacy & Security › Microphone"
+msgstr ""
+"Microfoontoegang is uitgeschakeld — sta toegang toe via Systeeminstellingen "
+"→ Privacy en beveiliging → Microfoon"
+
+#: src/platform_macos.m:421
+msgid "No microphone is connected to this Mac"
+msgstr "Er is geen microfoon verbonden met deze Mac"
+
+#: src/platform_macos.m:439
+msgid "Could not set up the AAC encoder"
+msgstr "De aac-encodering kan niet worden ingesteld"
+
+#: src/platform_macos.m:444
+msgid "Could not start capturing from the default microphone"
+msgstr "Er kan geen opname vanaf de standaardmicrofoon worden gestart"
+
+#. Stopped while the permission prompt was still open.
+#: src/platform_macos.m:456
+msgid "Recording stopped before the microphone was ready"
+msgstr "De opname is gestopt voordat de microfoon gereed was"
+
+#: src/platform_macos.m:468
+msgid "The microphone stopped delivering audio"
+msgstr "De microfoon levert geen audio meer aan"
+
+#: src/platform_macos.m:469
+msgid "The voice message could not be written"
+msgstr "Het spraakbericht kan niet worden weggeschreven"
+
+#: src/platform_macos.m:478
+msgid "The AAC encoder failed"
+msgstr "De aac-encodering is mislukt"
+
+#: src/profile_dialog.vala:58
+msgid "Close"
+msgstr "Sluiten"
+
+#: src/profile_dialog.vala:97
+msgid "Profile"
+msgstr "Profiel"
+
+#: src/profile_dialog.vala:109 src/profile_dialog.vala:992
+msgid "Invite Code"
+msgstr "Uitnodigingscode"
+
+#: src/profile_dialog.vala:110
+msgid "Show a contact invite QR code"
+msgstr "Toon een QR-code voor deze contactpersoon"
+
+#: src/profile_dialog.vala:110
+msgid "Share your contact"
+msgstr "Contactpersoon delen"
+
+#: src/profile_dialog.vala:119 src/relay_picker.vala:241
+msgid "Relays"
+msgstr "Relays"
+
+#: src/profile_dialog.vala:120
+msgid "Manage chatmail relays for this profile"
+msgstr "Beheer Chatmail-relays op dit profiel"
+
+#: src/profile_dialog.vala:120
+msgid "Manage the servers used by this profile"
+msgstr "Beheer de door dit profiel gebruikte servers"
+
+#: src/profile_dialog.vala:123
+msgid "Add Second Device…"
+msgstr "Secundair apparaat toevoegen…"
+
+#: src/profile_dialog.vala:124
+msgid "Show a setup QR code for another device"
+msgstr "Toon een QR-instelcode voor een ander apparaat"
+
+#: src/profile_dialog.vala:125
+msgid "Use this profile on another device"
+msgstr "Gebruik dit profiel op een ander apparaat"
+
+#: src/profile_dialog.vala:129 src/profile_dialog.vala:521
+msgid "Blocked Contacts"
+msgstr "Geblokkeerde contactpersonen"
+
+#: src/profile_dialog.vala:129
+msgid "Unblock contacts, channels and mailing lists"
+msgstr "Deblokkeer contactpersonen, kanalen en mailinglijsten"
+
+#: src/profile_dialog.vala:130
+msgid "Manage blocked contacts for this profile"
+msgstr "Beheer geblokkeerde contactpersonen op dit profiel"
+
+#: src/profile_dialog.vala:136
+msgid "Remove Profile…"
+msgstr "Profiel verwijderen…"
+
+#: src/profile_dialog.vala:137
+msgid "Remove this profile from this device"
+msgstr "Verwijder dit profiel van het apparaat"
+
+#: src/profile_dialog.vala:137
+msgid "Remove the profile and its messages from this device"
+msgstr "Verwijder het profiel en alle berichten op dit apparaat"
+
+#: src/profile_dialog.vala:183
+msgid "Change Profile Picture…"
+msgstr "Profielfoto wĳzigen…"
+
+#: src/profile_dialog.vala:206
+msgid "Name"
+msgstr "Naam"
+
+#: src/profile_dialog.vala:210
+msgid "About this profile"
+msgstr "Over dit profiel"
+
+#: src/profile_dialog.vala:211
+msgid "Bio"
+msgstr "Biografie"
+
+#: src/profile_dialog.vala:217
+msgid "Email"
+msgstr "E-mailadres"
+
+#: src/profile_dialog.vala:252
+msgid "Make Default"
+msgstr "Instellen als standaard"
+
+#: src/profile_dialog.vala:255
+msgid "Open This Profile When Parla Starts"
+msgstr "Laad dit profiel als Parla opstart"
+
+#: src/profile_dialog.vala:270
+msgid "Read Receipts"
+msgstr "Leesbevestigingen"
+
+#: src/profile_dialog.vala:274
+msgid ""
+"Let contacts know when their messages have been read. This setting syncs to "
+"other devices using this profile."
+msgstr ""
+"Laat contactpersonen weten dat hun berichten gelezen zijn. Deze instelling "
+"wordt gedeeld met gekoppelde apparaten."
+
+#: src/profile_dialog.vala:294 src/profile_dialog.vala:332
+#: src/settings_dialog.vala:1450 src/settings_dialog.vala:1451
+#: src/settings_dialog.vala:1517 src/window.vala:3220
+msgid "No active profile"
+msgstr "Er is geen actief profiel"
+
+#: src/profile_dialog.vala:308
+msgid "Unable to read read receipt setting"
+msgstr "De leesbevestigingsinstelling kan niet worden uitgelezen"
+
+#: src/profile_dialog.vala:323
+msgid ""
+"Contacts can see when their messages have been read. This setting syncs to "
+"other devices using this profile."
+msgstr ""
+"Weet je zeker dat je ‘%s’ wilt blokkeren? Het gesprek wordt verborgen, maar "
+"de geschiedenis blijft bewaard. De blokkade wordt gedeeld met gekoppelde "
+"apparaten."
+
+#: src/profile_dialog.vala:324
+msgid ""
+"Read receipts are not sent. This setting syncs to other devices using this "
+"profile."
+msgstr ""
+"Weet je zeker dat je ‘%s’ wilt blokkeren? Het gesprek wordt verborgen, maar "
+"de geschiedenis blijft bewaard. De blokkade is ook v op gekoppelde apparaten."
+
+#: src/profile_dialog.vala:349
+msgid "Failed to save read receipt setting: "
+msgstr "De leesbevestigingsinstelling kan niet worden opgeslagen: "
+
+#: src/profile_dialog.vala:377
+msgid "This profile opens when Parla starts"
+msgstr "Dit profiel wordt geladen na het opstarten van Parla"
+
+#: src/profile_dialog.vala:378
+msgid "Open this profile automatically when Parla starts"
+msgstr "Laad dit profiel automatisch als Parla opstart"
+
+#: src/profile_dialog.vala:385
+msgid "Storage and Connection"
+msgstr "Opslag en verbinding"
+
+#: src/profile_dialog.vala:392
+msgid "Checking connection…"
+msgstr "Bezig met controleren van verbinding…"
+
+#: src/profile_dialog.vala:401
+msgid "Loading server quota…"
+msgstr "Bezig met ophalen van serverlimieten…"
+
+#: src/profile_dialog.vala:408
+msgid "Refresh storage and connectivity"
+msgstr "Opslag en verbinding herladen"
+
+#: src/profile_dialog.vala:415 src/profile_dialog.vala:661
+msgid "Storage Details"
+msgstr "Opslaginformatie"
+
+#: src/profile_dialog.vala:416
+msgid "Show Storage by Chat"
+msgstr "Opslag per gesprek tonen"
+
+#: src/profile_dialog.vala:474
+msgid "Connection details unavailable"
+msgstr "Er is geen verbindingsinformatie beschikbaar"
+
+#: src/profile_dialog.vala:481
+msgid "Connected; all background work is done"
+msgstr "Verbonden; alle achtergrondtaken zijn afgerond"
+
+#: src/profile_dialog.vala:482
+msgid "Connected; sending or syncing messages"
+msgstr "Verbonden; berichten worden verstuurd of gesynchroniseerd"
+
+#: src/profile_dialog.vala:483
+msgid "Connecting to the server"
+msgstr "Verbinden met de server"
+
+#: src/profile_dialog.vala:484 src/window.vala:2448 src/window.vala:4046
+#: src/window.vala:4067
+msgid "Not connected"
+msgstr "Niet verbonden"
+
+#: src/profile_dialog.vala:485
+msgid "Connection state unknown"
+msgstr "Onbekende verbindingsstatus"
+
+#: src/profile_dialog.vala:531
+msgid "No blocked contacts"
+msgstr "Er zijn geen geblokkeerde contactpersonen"
+
+#: src/profile_dialog.vala:542
+msgid "Unblock"
+msgstr "Deblokkeren"
+
+#: src/profile_dialog.vala:571
+msgid "Could not load blocked contacts: "
+msgstr "De geblokkeerde contactpersonen kunnen niet worden geladen: "
+
+#: src/profile_dialog.vala:581
+msgid "this profile"
+msgstr "dit profiel"
+
+#: src/profile_dialog.vala:584
+msgid "Remove Profile from This Device?"
+msgstr "Weet je zeker dat je dit profiel van het apparaat wilt verwijderen?"
+
+#: src/profile_dialog.vala:585
+#, c-format
+msgid ""
+"Remove \"%s\" from this device, including its chats, contacts, downloaded "
+"attachments and keys? This does not delete the server account, backups or "
+"files saved elsewhere. Other devices and other participants keep their "
+"data.\n"
+"\n"
+"Without a backup or another device using this profile, access to it will be "
+"lost. This cannot be undone."
+msgstr ""
+"Wil je “%s” verwijderen van dit apparaat, inclusief alle gesprekken, "
+"contactpersonen, gedownloade bijlagen en sleutels? Het serveraccount wordt "
+"niet verwijderd, en reserverkopieën of elders opgeslagen ook niet. Andere "
+"apparaten en deelnemers behouden de gegevens.\n"
+"\n"
+"Let op: zonder reservekopie of ander apparaat met dit profiel, heb je geen "
+"toegang meer. Deze actie is onomkeerbaar."
+
+#: src/profile_dialog.vala:586
+msgid "Remove Profile"
+msgstr "Profiel verwijderen"
+
+#: src/profile_dialog.vala:605
+msgid "Select Avatar"
+msgstr "Kies een profielfoto"
+
+#: src/profile_dialog.vala:669
+msgid "Rescan storage usage"
+msgstr "Opslaginformatie herladen"
+
+#: src/profile_dialog.vala:676
+msgid "Server Quota"
+msgstr "Serverlimieten"
+
+#: src/profile_dialog.vala:682
+msgid "Loading quota…"
+msgstr "Bezig met laden van limieten…"
+
+#: src/profile_dialog.vala:685
+msgid "Local Copies"
+msgstr "Lokale kopieën"
+
+#: src/profile_dialog.vala:687 src/profile_dialog.vala:726
+msgid "Scanning local files…"
+msgstr "Bezig met doorzoeken van lokale bestanden…"
+
+#: src/profile_dialog.vala:690
+msgid "How to Free Up Space"
+msgstr "Uitleg omtrent ruimte vrijmaken"
+
+#: src/profile_dialog.vala:692
+msgid "Explain what can be safely cleared"
+msgstr "Leg uit wat er veilig kan worden verwijderd"
+
+#: src/profile_dialog.vala:698
+msgid "Chats by Storage Size"
+msgstr "Gesprekken per opslagomvang"
+
+#: src/profile_dialog.vala:700
+msgid "Preparing scan…"
+msgstr "Bezig met voorbereiden…"
+
+#: src/profile_dialog.vala:725
+msgid "Scanning chats…"
+msgstr "Bezig met doorzoeken…"
+
+#: src/profile_dialog.vala:747
+msgid "Server quota unavailable: "
+msgstr "De serverlimieten zijn niet beschikbaar: "
+
+#: src/profile_dialog.vala:755
+#, c-format
+msgid "%s downloaded message files · %s known attachment payload"
+msgstr "%s opgehaalde berichtbestanden · %s bekende bijlagen"
+
+#: src/profile_dialog.vala:759
+#, c-format
+msgid "%s local profile data · %s"
+msgstr "%s lokale profielgegevens · %s"
+
+#: src/profile_dialog.vala:764
+msgid "No downloaded files found in chats"
+msgstr "Er zijn geen gedownloade bestanden aangetroffen"
+
+#: src/profile_dialog.vala:765
+#, c-format
+msgid "%d chat with local or attached files"
+msgid_plural "%d chats with local or attached files"
+msgstr[0] "%d gesprek met lokaal of bijgevoegd bestand"
+msgstr[1] "%d gesprek met lokale of bijgevoegde bestanden"
+
+#: src/profile_dialog.vala:769
+msgid "Storage scan failed: "
+msgstr "Het doorzoeken is mislukt: "
+
+#: src/profile_dialog.vala:788
+#, c-format
+msgid "Scanning %s…"
+msgstr "Bezig met doorzoeken van %s…"
+
+#: src/profile_dialog.vala:807
+#, c-format
+msgid "Chat #%d"
+msgstr "Gesprek #%d"
+
+#: src/profile_dialog.vala:934
+#, c-format
+msgid "%s local · %s attached · %s · %s"
+msgstr "%s lokaal · %s bijgevoegd · %s · %s"
+
+#: src/profile_dialog.vala:937
+#, c-format
+msgid "%d file"
+msgid_plural "%d files"
+msgstr[0] "%d bestand"
+msgstr[1] "%d bestanden"
+
+#: src/profile_dialog.vala:939
+#, c-format
+msgid "%d message"
+msgid_plural "%d messages"
+msgstr[0] "%d bericht"
+msgstr[1] "%d berichten"
+
+#: src/profile_dialog.vala:955
 msgid "Free Up Space"
 msgstr "Ruimte vrijmaken"
 
-#: src/profile_dialog.vala:952
+#: src/profile_dialog.vala:956
 msgid ""
 "Delete messages or chats that are no longer needed. Unused attachment files "
 "are cleaned up automatically."
@@ -1447,7 +2763,7 @@ msgstr ""
 "Verwijder berichten en gesprekken die niet meer nodig zijn. Ongebruikte "
 "bijlagebestanden worden automatisch gewist."
 
-#: src/profile_dialog.vala:954
+#: src/profile_dialog.vala:958
 msgid ""
 "Parla cannot currently remove only downloaded files while keeping the "
 "messages. Files saved elsewhere and backups must be removed separately."
@@ -1456,9 +2772,403 @@ msgstr ""
 "te verwijderen. Elders opgeslagen (reservekopie)bestanden dienen handmatig "
 "te worden verwijderd."
 
-#: src/profile_dialog.vala:956
+#: src/profile_dialog.vala:960
 msgid "OK"
 msgstr "Oké"
+
+#: src/profile_dialog.vala:997
+msgid "Preparing invite code…"
+msgstr "Bezig met voorbereiden van code…"
+
+#: src/profile_dialog.vala:1004 src/profile_dialog.vala:1065
+msgid "Deactivate Link"
+msgstr "Link deactiveren"
+
+#: src/profile_dialog.vala:1030 src/profile_dialog.vala:1069
+msgid "Share this QR code or invite link to let others join."
+msgstr ""
+"Deel deze link of QR-code die anderen kunnen gebruiken om deel te nemen."
+
+#: src/profile_dialog.vala:1031
+msgid "Share this QR code with another user, or copy the invite link below."
+msgstr ""
+"Deel deze QR-code met een andere gebruiker of kopieer onderstaande "
+"uitnodigingslink."
+
+#: src/profile_dialog.vala:1033
+msgid "Invite link is ready, but the QR image could not be rendered: "
+msgstr ""
+"De uitnodigingslink is gereed, maar de QR-code kan niet worden getoond: "
+
+#: src/profile_dialog.vala:1071
+msgid "Activate Link"
+msgstr "Link activeren"
+
+#: src/profile_dialog.vala:1075
+msgid "This invite link is deactivated — activate it to let others join."
+msgstr ""
+"De uitnodigingslink is gedeactiveerd — activeer deze om anderen te laten "
+"deelnemen."
+
+#: src/profile_dialog.vala:1084
+msgid "Deactivating…"
+msgstr "Bezig met deactiveren…"
+
+#: src/profile_dialog.vala:1084
+msgid "Activating…"
+msgstr "Bezig met activeren…"
+
+#: src/profile_dialog.vala:1091
+msgid "Could not update the invite link: "
+msgstr "De link kan niet worden bijgewerkt: "
+
+#: src/profile_dialog.vala:1100
+msgid "Invite code creation failed: "
+msgstr "Het aanmaken van de code is mislukt: "
+
+#: src/profile_dialog.vala:1117
+msgid "Add Second Device"
+msgstr "Secundair apparaat toevoegen"
+
+#: src/profile_dialog.vala:1122
+msgid "Preparing account…"
+msgstr "Bezig met voorbereiden van account…"
+
+#: src/profile_dialog.vala:1124
+msgid "Copy Text"
+msgstr "Tekst kopiëren"
+
+#: src/profile_dialog.vala:1158
+msgid "Scan this QR code with the second device, or copy the text below."
+msgstr ""
+"Scan deze QR-rode met een secundair apparaat of kopieer onderstaande tekst."
+
+#: src/profile_dialog.vala:1159
+msgid "QR text is ready, but the image could not be rendered: "
+msgstr "De QR-tekst is gereed, maar de afbeelding kan niet worden getoond: "
+
+#: src/profile_dialog.vala:1163
+msgid "Second-device setup failed: "
+msgstr "Het instellen is mislukt: "
+
+#: src/quick_switch_dialog.vala:13
+msgid "Switch Chat"
+msgstr "Wisselen van gesprek"
+
+#: src/quick_switch_dialog.vala:28
+msgid "Type to filter chats…"
+msgstr "Typ om gesprekken te doorzoeken…"
+
+#: src/relay_picker.vala:15
+msgid "Default"
+msgstr "Standaard"
+
+#: src/relay_picker.vala:16
+msgid "German"
+msgstr "Duitsland"
+
+#: src/relay_picker.vala:17
+msgid "Poland"
+msgstr "Polen"
+
+#: src/relay_picker.vala:18 src/relay_picker.vala:19
+msgid "Italy"
+msgstr "Italië"
+
+#: src/relay_picker.vala:20 src/relay_picker.vala:31
+msgid "Falkenstein, Germany"
+msgstr "Falkenstein, Duitsland"
+
+#: src/relay_picker.vala:21
+msgid "Santa Clara, USA"
+msgstr "Santa Clara, Verenigde Staten"
+
+#: src/relay_picker.vala:22
+msgid "Nuremberg, Germany"
+msgstr "Neurenberg, Duitsland"
+
+#: src/relay_picker.vala:23
+msgid "Roubaix, France"
+msgstr "Roubaix, Frankrijk"
+
+#: src/relay_picker.vala:24
+msgid "Quebec, Canada"
+msgstr "Québec, Canada"
+
+#: src/relay_picker.vala:25
+msgid "Melbourne, Australia"
+msgstr "Melbourne, Australië"
+
+#: src/relay_picker.vala:26
+msgid "Johannesburg, South Africa"
+msgstr "Johannesburg, Zuid-Afrika"
+
+#: src/relay_picker.vala:27
+msgid "Bangalore, India"
+msgstr "Bangalore, India"
+
+#: src/relay_picker.vala:28
+msgid "Orastie, Romania"
+msgstr "Orăștie, Roemenië"
+
+#: src/relay_picker.vala:29
+msgid "Warsaw, Poland"
+msgstr "Warschau, Polen"
+
+#: src/relay_picker.vala:30
+msgid "Helsinki, Finland"
+msgstr "Helsinki, Finland"
+
+#: src/relay_picker.vala:32
+msgid "Prague, Czechia"
+msgstr "Praag, Tsjechië"
+
+#: src/relay_picker.vala:33
+msgid "Zug, Switzerland"
+msgstr "Zug, Zwitserland"
+
+#: src/relay_picker.vala:34
+msgid "Lviv, Ukraine"
+msgstr "Lviv, Oekraïne"
+
+#: src/relay_picker.vala:35
+msgid "Iceland/Japan/Kenya/South Africa"
+msgstr "IJsland/Japan/Kenia/Zuid-Afrika"
+
+#: src/relay_picker.vala:36
+msgid "Gravelines, France"
+msgstr "Grevelingen, Frankrijk"
+
+#: src/relay_picker.vala:37
+msgid "Frankfurt, Germany"
+msgstr "Frankfurt, Duitsland"
+
+#: src/relay_picker.vala:38
+msgid "Elk Grove Village, USA"
+msgstr "Elk Grove Village, Verenigde Staten"
+
+#: src/relay_picker.vala:39
+msgid "Ashburn, USA"
+msgstr "Ashburn, Verenigde Staten"
+
+#: src/relay_picker.vala:40
+msgid "Roon, Netherlands"
+msgstr "Rhoon, Nederland"
+
+#: src/relay_picker.vala:76
+msgid "Automatic (recommended)"
+msgstr "Automatisch (aanbevolen)"
+
+#: src/relay_picker.vala:90
+msgid "Custom server name"
+msgstr "Eigen servernaam"
+
+#: src/relay_picker.vala:103
+msgid "Discover from Contacts"
+msgstr "Vaststellen op basis van contactpersonen"
+
+#: src/relay_picker.vala:107
+msgid "Scan contacts on your other profiles and add the relays they use."
+msgstr ""
+"Doorzoek contactpersonen op andere profielen en maak gebruik van hun relays."
+
+#: src/relay_picker.vala:119
+msgid "Scanning…"
+msgstr "Bezig met doorzoeken…"
+
+#: src/relay_picker.vala:127
+msgid "Failed to scan contacts: "
+msgstr "Het doorzoeken is mislukt: "
+
+#: src/relay_picker.vala:133
+#, c-format
+msgid "Found %d new relay"
+msgid_plural "Found %d new relays"
+msgstr[0] "%d nieuwe relay aangetroffen"
+msgstr[1] "%d nieuwe relays aangetroffen"
+
+#: src/relay_picker.vala:135
+msgid "No new relays"
+msgstr "Er zijn geen nieuwe relays"
+
+#: src/relay_picker.vala:191
+#, c-format
+msgid "%d contact"
+msgid_plural "%d contacts"
+msgstr[0] "%d contactpersoon"
+msgstr[1] "%d contactpersonen"
+
+#: src/relay_picker.vala:257
+msgid ""
+"Transports configured for this profile. Add more relays to receive messages "
+"on additional addresses."
+msgstr ""
+"Er zijn geen overdrachten ingesteld voor dit profiel. Voeg meer relays toe "
+"om berichten op andere adressen te ontvangen."
+
+#: src/relay_picker.vala:268
+msgid "No transports configured."
+msgstr "Er zijn geen overdrachten ingesteld."
+
+#: src/relay_picker.vala:283 src/relay_picker.vala:293
+msgid "Add Relay"
+msgstr "Relay toevoegen"
+
+#: src/relay_picker.vala:324
+msgid "Failed to load transports: "
+msgstr "De gesprekken kunnen niet worden geladen: "
+
+#: src/relay_picker.vala:364
+msgid "Edit password and server settings"
+msgstr "Wachtwoord en serverinstellingen bewerken"
+
+#: src/relay_picker.vala:373
+msgid "Remove this relay"
+msgstr "Relay verwijderen"
+
+#: src/relay_picker.vala:392
+msgid "Remove Relay"
+msgstr "Relay verwijderen"
+
+#: src/relay_picker.vala:393
+#, c-format
+msgid ""
+"Remove transport \"%s\"? The profile will no longer receive messages on this "
+"address."
+msgstr ""
+"Weet je zeker dat je ‘%s’ wilt verwijderen? Dit profiel ontvangt geen "
+"berichten meer van het adres."
+
+#: src/relay_picker.vala:394
+msgid "Remove"
+msgstr "Verwijderen"
+
+#: src/relay_picker.vala:404
+msgid "Failed to remove relay: "
+msgstr "De relay kan niet worden verwijderd: "
+
+#: src/relay_picker.vala:421
+msgid "Failed to add relay: "
+msgstr "De relay kan niet worden toegevoegd: "
+
+#: src/rpc_installer.vala:204 src/rpc_installer.vala:469
+msgid "Unable to create TLS connection"
+msgstr "Er kan geen tls-verbinding worden opgezet"
+
+#: src/rpc_installer.vala:246
+#, c-format
+msgid "GitHub returned HTTP status %d"
+msgstr "GitHub gaf als http-status ‘%d’"
+
+#: src/rpc_installer.vala:251 src/rpc_installer.vala:372
+msgid "GitHub response did not include a release tag"
+msgstr "GitHub gaf geen uitgavelabel mee"
+
+#: src/rpc_installer.vala:267
+msgid "No prebuilt deltachat-rpc-server is published for this platform"
+msgstr ""
+"Er is geen voorgebouwde deltachat-rpc-server beschikbaar op dit platform"
+
+#: src/rpc_installer.vala:296
+msgid "Could not install the server binary"
+msgstr "Het serverbestand kan niet worden geïnstalleerd"
+
+#: src/rpc_installer.vala:317
+msgid "curl exited unsuccessfully"
+msgstr "curl is onverwachts gestopt"
+
+#: src/rpc_installer.vala:323 src/rpc_installer.vala:380
+msgid "curl is required to download"
+msgstr "curl is vereist voor het downloaden"
+
+#: src/rpc_installer.vala:367
+msgid "GitHub response did not include a release redirect"
+msgstr "GitHub gaf geen uitgavedoorverwijzing mee"
+
+#: src/rpc_installer.vala:433
+#, c-format
+msgid "Could not make the server executable: %s"
+msgstr "Het serverbestand kan niet worden aangemaakt: %s"
+
+#: src/rpc_installer.vala:437
+#, c-format
+msgid "Installed server is not executable: %s"
+msgstr "Het serverbestand is niet uitvoerbaar: %s"
+
+#: src/rpc_installer.vala:447
+msgid "Too many HTTP redirects"
+msgstr "Er waren te veel http-doorverwijzingen"
+
+#: src/rpc_installer.vala:514
+#, c-format
+msgid "Redirect (%d) without a Location header"
+msgstr "Doorverwijzing (%d) zonder locatiekop"
+
+#: src/rpc_installer.vala:524
+#, c-format
+msgid "Download failed with HTTP status %d"
+msgstr "Downloaden mislukt met http-status %d"
+
+#: src/rpc_installer.vala:547
+#, c-format
+msgid "Download truncated (%s of %s bytes)"
+msgstr "Downloaden voortijdig afgebroken (%s van %s bytes)"
+
+#: src/rpc_transport.vala:102 src/rpc_transport.vala:139
+msgid "RPC server failed to start"
+msgstr "De rpc-server kan niet worden gestart"
+
+#: src/rpc_transport.vala:111 src/rpc_transport.vala:112
+msgid "RPC server pipes are unavailable"
+msgstr "De rpc-serverdoorsluizingen zijn niet beschikbaar"
+
+#: src/rpc_transport.vala:126
+msgid "RPC server is not responding"
+msgstr "De rpc-server antwoordt niet"
+
+#: src/rpc_transport.vala:134
+msgid "RPC connection changed during startup"
+msgstr "De rpc-verbinding is tijdens het opstarten gewijzigd"
+
+#: src/rpc_transport.vala:160
+msgid "RPC client stopped"
+msgstr "De rpc-client is gestopt"
+
+#: src/rpc_transport.vala:202
+msgid "RPC client not connected"
+msgstr "De rpc-client is niet verbonden"
+
+#: src/rpc_transport.vala:240
+msgid "RPC server closed"
+msgstr "De rpc-server is gestopt"
+
+#: src/rpc_transport.vala:268
+msgid "Unknown RPC error"
+msgstr "Onbekende rpc-fout"
+
+#: src/rpc_transport.vala:280
+msgid "RPC read failed: "
+msgstr "De rpc-server kan niet worden uitgelezen: "
+
+#: src/rpc_transport.vala:308
+msgid "RPC writer is unavailable"
+msgstr "De rpc-wegschrijving is niet beschikbaar"
+
+#: src/rpc_transport.vala:326
+msgid "RPC writer failed: "
+msgstr "De rpc-wegschrijving is niet beschikbaar: "
+
+#: src/rpc_transport.vala:333 src/rpc_transport.vala:360
+msgid "RPC connection changed"
+msgstr "De rpc-verbinding is gewijzigd"
+
+#: src/rpc_transport.vala:340
+msgid "Incomplete RPC request write"
+msgstr "Onafgerond rpc-wegschrijfverzoek"
+
+#: src/rpc_transport.vala:344
+msgid "RPC write failed: "
+msgstr "De rpc-wegschrijving is mislukt: "
 
 #: src/search_results_view.vala:21 src/search_results_view.vala:77
 msgid "Messages in selected profile"
@@ -1507,225 +3217,241 @@ msgstr "Gearchiveerd"
 msgid "Results are no longer available"
 msgstr "De resultaten zijn niet meer beschikbaar"
 
-#: src/settings_dialog.vala:702 src/window.vala:3127
+#: src/settings_dialog.vala:710 src/window.vala:3155
 msgid "Settings"
 msgstr "Voorkeuren"
 
-#: src/settings_dialog.vala:707
+#: src/settings_dialog.vala:715
 msgid "General"
 msgstr "Algemeen"
 
-#: src/settings_dialog.vala:712
+#: src/settings_dialog.vala:720
 msgid "Advanced"
 msgstr "Geavanceerd"
 
-#: src/settings_dialog.vala:728 src/settings_dialog.vala:732
+#: src/settings_dialog.vala:737 src/settings_dialog.vala:741
 msgid "Appearance"
 msgstr "Vormgeving"
 
-#: src/settings_dialog.vala:730 src/settings_dialog.vala:828
+#: src/settings_dialog.vala:739 src/settings_dialog.vala:837
 msgid "System"
 msgstr "Systeemthema"
 
-#: src/settings_dialog.vala:730
+#: src/settings_dialog.vala:739
 msgid "Light"
 msgstr "Licht thema"
 
-#: src/settings_dialog.vala:730
+#: src/settings_dialog.vala:739
 msgid "Dark"
 msgstr "Donker thema"
 
-#: src/settings_dialog.vala:732
+#: src/settings_dialog.vala:741
 msgid "Use the system style or choose light or dark"
 msgstr "Gebruik het systeemthema of kies het lichte dan wel donkere thema"
 
-#: src/settings_dialog.vala:743
+#: src/settings_dialog.vala:749
+msgid "Adaptive"
+msgstr "Automatisch"
+
+#: src/settings_dialog.vala:752
 msgid "Code highlighting"
 msgstr "Code markeren"
 
-#: src/settings_dialog.vala:743
+#: src/settings_dialog.vala:752
 msgid "Color scheme for code blocks in messages"
 msgstr "Kleurenschema van codeblokken in berichten"
 
-#: src/settings_dialog.vala:748
+#: src/settings_dialog.vala:757
 msgid "Bubbles"
 msgstr "Bubbels"
 
-#: src/settings_dialog.vala:748
+#: src/settings_dialog.vala:757
 msgid "Compact"
 msgstr "Compact"
 
-#: src/settings_dialog.vala:748
+#: src/settings_dialog.vala:757
 msgid "Rows"
 msgstr "Rijen"
 
-#: src/settings_dialog.vala:750
+#: src/settings_dialog.vala:759
 msgid "Message layout"
 msgstr "Berichtstijl"
 
-#: src/settings_dialog.vala:750
+#: src/settings_dialog.vala:759
 msgid "Choose how messages are arranged"
 msgstr "Kies een berichtstijl en -indeling"
 
-#: src/settings_dialog.vala:756
-msgid "None"
-msgstr "Geen"
-
-#: src/settings_dialog.vala:756
+#: src/settings_dialog.vala:765
 msgid "Other People"
 msgstr "Anderen"
 
-#: src/settings_dialog.vala:756
+#: src/settings_dialog.vala:765
 msgid "Everyone"
 msgstr "Iedereen"
 
-#: src/settings_dialog.vala:759
+#: src/settings_dialog.vala:768
 msgid "Profile pictures"
 msgstr "Profielfoto's"
 
-#: src/settings_dialog.vala:759
+#: src/settings_dialog.vala:768
 msgid "Choose whose picture appears beside message bubbles"
 msgstr "Geef aan wiens foto's naast berichten moeten worden getoond"
 
-#: src/settings_dialog.vala:767
+#: src/settings_dialog.vala:776
 msgid "Show profile pictures in direct chats"
 msgstr "Profielfoto's tonen in privégesprekken"
 
-#: src/settings_dialog.vala:768
+#: src/settings_dialog.vala:777
 msgid "Apply the profile picture setting to direct chats too"
 msgstr "Profielfotovoorkeuren ook toepassen op privégesprekken"
 
-#: src/settings_dialog.vala:781
+#: src/settings_dialog.vala:790
 msgid "Message font"
 msgstr "Berichtlettertype"
 
-#: src/settings_dialog.vala:782
+#: src/settings_dialog.vala:791
 msgid "Use the system font or choose another family, style and size"
 msgstr ""
 "Gebruik het systeemlettertype of kies een ander(e) lettertype, tekststijl en "
 "-grootte"
 
-#: src/settings_dialog.vala:786
+#: src/settings_dialog.vala:795
 msgid "Choose Font"
 msgstr "Kies een lettertype"
 
-#: src/settings_dialog.vala:788 src/settings_dialog.vala:975
+#: src/settings_dialog.vala:797 src/settings_dialog.vala:992
 msgid "Choose…"
 msgstr "Kiezen…"
 
-#: src/settings_dialog.vala:789
+#: src/settings_dialog.vala:798
 msgid "Choose a font family, style and size"
 msgstr "Kies een lettertype, tekststijl en -grootte"
 
-#: src/settings_dialog.vala:794
+#: src/settings_dialog.vala:803
 msgid "Reset font settings to defaults"
 msgstr "Standaard lettertypevoorkeuren"
 
-#: src/settings_dialog.vala:805
+#: src/settings_dialog.vala:814
 msgid "Accent color"
 msgstr "Accentkleur"
 
-#: src/settings_dialog.vala:806
+#: src/settings_dialog.vala:815
 msgid "Override the system accent color"
 msgstr "Kies een andere accentkleur"
 
-#: src/settings_dialog.vala:817
+#: src/settings_dialog.vala:826
 msgid "Use system accent color"
 msgstr "Systeemaccentkleur gebruiken"
 
-#: src/settings_dialog.vala:828
+#: src/settings_dialog.vala:837
 msgid "Solid"
 msgstr "Vlakke kleur"
 
-#: src/settings_dialog.vala:828
+#: src/settings_dialog.vala:837
 msgid "Gradient"
 msgstr "Kleurverloop"
 
-#: src/settings_dialog.vala:831
+#: src/settings_dialog.vala:840
 msgid "Background color"
 msgstr "Achtergrondkleur"
 
-#: src/settings_dialog.vala:832
+#: src/settings_dialog.vala:841
 msgid "Tint the window background with a solid color or a gradient"
 msgstr "Voorzie de vensterachtergrond van een vlakke kleur of kleurverloop"
 
-#: src/settings_dialog.vala:860
+#: src/settings_dialog.vala:866
+msgid "Accessibility"
+msgstr "Toegankelijkheid"
+
+#: src/settings_dialog.vala:867
+msgid "Long press to right-click"
+msgstr "Lang indrukken om rechtermuisknopmenu te tonen"
+
+#: src/settings_dialog.vala:868
+msgid ""
+"Hold a finger or the primary mouse button to open context menus. Enabled by "
+"default on Phosh."
+msgstr ""
+"Houd de linkermuisknop ingedrukt om het rechtermuisknopmenu te openen. "
+"Standaard ingeschakeld op Phosh."
+
+#: src/settings_dialog.vala:877
 msgid "Reply to Message"
 msgstr "Reageren op bericht"
 
-#: src/settings_dialog.vala:860
+#: src/settings_dialog.vala:877
 msgid "React with ❤️"
 msgstr "Reageren met ❤️"
 
-#: src/settings_dialog.vala:860
+#: src/settings_dialog.vala:877
 msgid "React with 👍"
 msgstr "Reageren met 👍"
 
-#: src/settings_dialog.vala:861
+#: src/settings_dialog.vala:878
 msgid "Show Contact Details"
 msgstr "Contactpersoongegevens bekijken"
 
-#: src/settings_dialog.vala:861
+#: src/settings_dialog.vala:878
 msgid "Show Message Menu"
 msgstr "Berichtmenu openen"
 
-#: src/settings_dialog.vala:861
+#: src/settings_dialog.vala:878
 msgid "Do Nothing"
 msgstr "Niets doen"
 
-#: src/settings_dialog.vala:867
+#: src/settings_dialog.vala:884
 msgid "Double-click action"
 msgstr "Actie na dubbelklikken"
 
-#: src/settings_dialog.vala:868
+#: src/settings_dialog.vala:885
 msgid "Action when a message is double-clicked or Enter is pressed on its row"
 msgstr ""
 "Voer een actie uit na het dubbelklikken op een bericht of het drukken op "
 "Enter"
 
-#: src/settings_dialog.vala:875
+#: src/settings_dialog.vala:892
 msgid "Format Text"
 msgstr "Tekst opmaken"
 
-#: src/settings_dialog.vala:875
+#: src/settings_dialog.vala:892
 msgid "Hide Formatting Marks"
 msgstr "Opmaakmarkeringen verbergen"
 
-#: src/settings_dialog.vala:876
+#: src/settings_dialog.vala:893
 msgid "Show Original Text"
 msgstr "Oorspronkelijke tekst tonen"
 
-#: src/settings_dialog.vala:879
+#: src/settings_dialog.vala:896
 msgid "Message formatting"
 msgstr "Berichtopmaak"
 
-#: src/settings_dialog.vala:879
+#: src/settings_dialog.vala:896
 msgid "Choose how Markdown formatting is displayed"
 msgstr "Geef aan hoe de Markdownopmaak moet worden getoond"
 
-#: src/settings_dialog.vala:886
+#: src/settings_dialog.vala:903
 msgid "Send with Shift+Enter"
 msgstr "Versturen met Shift+Enter"
 
-#: src/settings_dialog.vala:887
+#: src/settings_dialog.vala:904
 msgid "Enter inserts a new line; Shift+Enter sends the message"
 msgstr "Enter zorgt voor een nieuwe regel; Shift+Enter verstuurt het bericht"
 
-#: src/settings_dialog.vala:892
+#: src/settings_dialog.vala:909
 msgid "Use External Audio Tools"
 msgstr "Externe audiotoepassingen gebruiken"
 
-#: src/settings_dialog.vala:893
+#: src/settings_dialog.vala:910
 msgid "Use installed audio programs for voice playback and recording"
 msgstr ""
 "Maak gebruik van geïnstalleerde audiotoepassing voor het afspelen en opnemen "
 "van spraakberichten"
 
-#: src/settings_dialog.vala:901
+#: src/settings_dialog.vala:918
 msgid "Keep Running in Background"
 msgstr "Uitvoeren op achtergrond"
 
-#: src/settings_dialog.vala:903
+#: src/settings_dialog.vala:920
 msgid ""
 "Closing the window keeps Parla running as a menu bar icon; the Dock icon "
 "stays visible and notifications still appear"
@@ -1733,7 +3459,7 @@ msgstr ""
 "Draai Parla op de achtergrond na het sluiten van het venster en toon een "
 "paneel- en dockpictogram"
 
-#: src/settings_dialog.vala:905
+#: src/settings_dialog.vala:922
 msgid ""
 "Closing the window keeps Parla running in the status bar; notifications "
 "still appear"
@@ -1741,28 +3467,28 @@ msgstr ""
 "Draai Parla op de achtergrond en toon een pictogram op de statusbalk, "
 "evenals meldingen"
 
-#: src/settings_dialog.vala:911
+#: src/settings_dialog.vala:928
 msgid "Animate Stickers"
 msgstr "Stickers voorzien van animaties"
 
-#: src/settings_dialog.vala:912
+#: src/settings_dialog.vala:929
 msgid "Play stickers automatically; click a sticker to pause or resume"
 msgstr ""
 "Toon animaties van stickers; klik op een sticker om te pauzeren/hervatten"
 
-#: src/settings_dialog.vala:922
+#: src/settings_dialog.vala:939
 msgid "Never"
 msgstr "Nooit"
 
-#: src/settings_dialog.vala:923
+#: src/settings_dialog.vala:940
 msgid "Unlimited"
 msgstr "Onbeperkt"
 
-#: src/settings_dialog.vala:926
+#: src/settings_dialog.vala:943
 msgid "Automatic download limit"
 msgstr "Automatische downloadbeperking"
 
-#: src/settings_dialog.vala:927
+#: src/settings_dialog.vala:944
 msgid ""
 "Download attachments up to this size for all profiles; larger files can be "
 "downloaded manually"
@@ -1770,229 +3496,221 @@ msgstr ""
 "Download bijlagen tot en met een bepaalde grootte; grotere bestanden dienen "
 "handmatig te worden gedownload"
 
-#: src/settings_dialog.vala:937
+#: src/settings_dialog.vala:954
 msgid "Voice transcription"
 msgstr "Tekst uit spraakberichten halen"
 
-#: src/settings_dialog.vala:938
+#: src/settings_dialog.vala:955
 msgid "Transcribe voice messages on this device with Whisper"
 msgstr "Zet spraakberichten om naar tekst met behulp van Whisper"
 
-#: src/settings_dialog.vala:938
+#: src/settings_dialog.vala:955
 msgid "Install Whisper to transcribe voice messages on this device"
 msgstr "Installeer Whisper op dit apparaat"
 
-#: src/settings_dialog.vala:940
-msgid "Available"
-msgstr "Beschikbaar"
-
-#: src/settings_dialog.vala:940
+#: src/settings_dialog.vala:957
 msgid "Not found"
 msgstr "Niet aangetroffen"
 
-#: src/settings_dialog.vala:951
+#: src/settings_dialog.vala:968 src/tray_icon.vala:158 src/tray_macos.m:279
 msgid "Notifications"
 msgstr "Meldingen"
 
-#: src/settings_dialog.vala:953
+#: src/settings_dialog.vala:970
 msgid "Desktop Notifications"
 msgstr "Bureaubladmeldingen"
 
-#: src/settings_dialog.vala:954
+#: src/settings_dialog.vala:971
 msgid "Show notifications for new messages when Parla is not the active window"
 msgstr "Toon meldingen voor nieuwe berichten als Parla niet gefocust is"
 
-#: src/settings_dialog.vala:959
+#: src/settings_dialog.vala:976
 msgid "Show Message Content"
 msgstr "Berichtinhoud tonen"
 
-#: src/settings_dialog.vala:960
+#: src/settings_dialog.vala:977
 msgid "Include message text and attachment names in notifications"
 msgstr "Toon de berichttekst en eventuele bijlagen op meldingen"
 
-#: src/settings_dialog.vala:966
+#: src/settings_dialog.vala:983
 msgid "Chatmail Core"
 msgstr "Chatmail-kern"
 
-#: src/settings_dialog.vala:968
-msgid "Automatic"
-msgstr "Automatisch"
-
-#: src/settings_dialog.vala:968
+#: src/settings_dialog.vala:985
 msgid "Custom"
 msgstr "Zelfgekozen"
 
-#: src/settings_dialog.vala:969
+#: src/settings_dialog.vala:986
 msgid "Source"
 msgstr "Bron"
 
-#: src/settings_dialog.vala:976 src/settings_dialog.vala:1576
+#: src/settings_dialog.vala:993 src/settings_dialog.vala:1593
 msgid "Choose a Chatmail Core binary"
 msgstr "Kies een Chatmail-kernbestand"
 
-#: src/settings_dialog.vala:980
+#: src/settings_dialog.vala:997
 msgid "Check for Updates"
 msgstr "Controleren op updates"
 
-#: src/settings_dialog.vala:981
+#: src/settings_dialog.vala:998
 msgid "Check for a new Chatmail Core version"
 msgstr "Controleer op nieuwe versies van de Chatmail-kern"
 
-#: src/settings_dialog.vala:982
+#: src/settings_dialog.vala:999
 msgid "Check"
 msgstr "Controleren"
 
-#: src/settings_dialog.vala:983
+#: src/settings_dialog.vala:1000
 msgid "Check for the latest Chatmail Core release"
 msgstr "Controleer op de nieuwste versie van de Chatmail-kern"
 
-#: src/settings_dialog.vala:990
+#: src/settings_dialog.vala:1007
 msgid "Check for Updates on Startup"
 msgstr "Automatisch controleren na opstarten"
 
-#: src/settings_dialog.vala:991
+#: src/settings_dialog.vala:1008
 msgid "Notify when a newer Chatmail Core version is available"
 msgstr "Melding tonen als er een nieuwe Chatmail-kernversie beschikbaar is"
 
-#: src/settings_dialog.vala:1004
+#: src/settings_dialog.vala:1021
 msgid "Profile Storage Folder"
 msgstr "Profielopslagmap"
 
-#: src/settings_dialog.vala:1008
+#: src/settings_dialog.vala:1025
 msgid "Choose a different folder"
 msgstr "Kies een andere map"
 
-#: src/settings_dialog.vala:1015
+#: src/settings_dialog.vala:1032
 msgid "Use the default folder"
 msgstr "Standaardmap gebruiken"
 
-#: src/settings_dialog.vala:1028
+#: src/settings_dialog.vala:1045
 msgid "Network"
 msgstr "Netwerk"
 
-#: src/settings_dialog.vala:1031
+#: src/settings_dialog.vala:1048
 msgid "Use Proxy"
 msgstr "Proxy gebruiken"
 
-#: src/settings_dialog.vala:1032
+#: src/settings_dialog.vala:1049
 msgid "Route this profile through the configured proxy"
 msgstr "Leidt dit profiel door de ingestelde proxy"
 
-#: src/settings_dialog.vala:1040
+#: src/settings_dialog.vala:1057
 msgid "Proxy URL"
 msgstr "Proxy-url"
 
-#: src/settings_dialog.vala:1041 src/settings_dialog.vala:1455
+#: src/settings_dialog.vala:1058 src/settings_dialog.vala:1472
 msgid "socks5://, http://, https://, or ss://"
 msgstr "socks5://, http://, https:// of ss://"
 
-#: src/settings_dialog.vala:1060 src/settings_dialog.vala:1062
-#: src/settings_dialog.vala:1856
+#: src/settings_dialog.vala:1077 src/settings_dialog.vala:1079
+#: src/settings_dialog.vala:1873
 msgid "Reset Settings"
 msgstr "Standaardwaarden"
 
-#: src/settings_dialog.vala:1063
+#: src/settings_dialog.vala:1080
 msgid ""
 "Restore Parla’s preferences and close the app; profiles and messages are kept"
 msgstr ""
 "Herstel Parla's voorkeuren en sluit de toepassing; profielen en berichten "
 "blijven behouden"
 
-#: src/settings_dialog.vala:1064
+#: src/settings_dialog.vala:1081
 msgid "Reset…"
 msgstr "Herstellen…"
 
-#: src/settings_dialog.vala:1067
+#: src/settings_dialog.vala:1084
 msgid "Reset Settings and Close Parla"
 msgstr "Herstel de voorkeuren en sluit Parla"
 
-#: src/settings_dialog.vala:1077 src/settings_dialog.vala:1081
-#: src/settings_dialog.vala:1092
+#: src/settings_dialog.vala:1094 src/settings_dialog.vala:1098
+#: src/settings_dialog.vala:1109
 msgid "In-Chat Apps"
 msgstr "Apps in gesprekken"
 
-#: src/settings_dialog.vala:1082
+#: src/settings_dialog.vala:1099
 msgid "In-chat apps are unavailable in this version of Parla"
 msgstr "Apps in gesprekken zijn niet beschikbaar in deze versie van Parla"
 
-#: src/settings_dialog.vala:1083
+#: src/settings_dialog.vala:1100
 msgid "Unavailable"
 msgstr "Niet beschikbaar"
 
-#: src/settings_dialog.vala:1093
+#: src/settings_dialog.vala:1110
 msgid "Open interactive apps shared in chats (Webxdc, experimental)"
 msgstr "Interactieve apps gedeeld in gesprekken openen (Webxdc, experimenteel)"
 
-#: src/settings_dialog.vala:1098
+#: src/settings_dialog.vala:1115
 msgid "Follow the Current Chat"
 msgstr "Huidig gesprek hanteren"
 
-#: src/settings_dialog.vala:1099
+#: src/settings_dialog.vala:1116
 msgid "Hide app windows when switching to another chat"
 msgstr "Verberg appvensters na het wisselen van gesprekken"
 
-#: src/settings_dialog.vala:1104
+#: src/settings_dialog.vala:1121
 msgid "Realtime Channels"
 msgstr "Realtime-kanalen"
 
-#: src/settings_dialog.vala:1105
+#: src/settings_dialog.vala:1122
 msgid "Let apps exchange live data with other participants in the chat"
 msgstr "Laat apps live gegevens uitwisselen met andere leden in het gesprek"
 
-#: src/settings_dialog.vala:1110
+#: src/settings_dialog.vala:1127
 msgid "Internet Access"
 msgstr "Internettoegang"
 
-#: src/settings_dialog.vala:1111
+#: src/settings_dialog.vala:1128
 msgid ""
 "Allow apps to contact websites, which can reveal your IP address and app data"
 msgstr ""
 "Sta toe dat apps verbinding maken met websites, waardoor je ip-adres en "
 "appgegevens zichtbaar worden"
 
-#: src/settings_dialog.vala:1116
+#: src/settings_dialog.vala:1133
 msgid "WebAssembly"
 msgstr "WebAssembly"
 
-#: src/settings_dialog.vala:1117
+#: src/settings_dialog.vala:1134
 msgid "Allow apps to compile and run WebAssembly"
 msgstr "Sta toe dat apps WebAssembly compileren en uitvoeren"
 
-#: src/settings_dialog.vala:1122
+#: src/settings_dialog.vala:1139
 msgid "WebGL"
 msgstr "WebGL"
 
-#: src/settings_dialog.vala:1124
+#: src/settings_dialog.vala:1141
 msgid "macOS may still allow 3D graphics when this is turned off"
 msgstr ""
 "Let op: macOS kan hardwareversnelling nog steeds toestaan als dit is "
 "uitgeschakeld"
 
-#: src/settings_dialog.vala:1125
+#: src/settings_dialog.vala:1142
 msgid "Allow apps to access accelerated 3D graphics"
 msgstr "Apps voorzien van hardwareversnelling"
 
-#: src/settings_dialog.vala:1132
+#: src/settings_dialog.vala:1149
 msgid "Hardware Acceleration"
 msgstr "Hardwareversnelling"
 
-#: src/settings_dialog.vala:1133
+#: src/settings_dialog.vala:1150
 msgid "Use the graphics processor to display apps"
 msgstr "Maak gebruik van grafische hardwareversnelling om apps te tonen"
 
-#: src/settings_dialog.vala:1140
+#: src/settings_dialog.vala:1157
 msgid "Developer Tools"
 msgstr "Ontwikkelaarsgereedschap"
 
-#: src/settings_dialog.vala:1141
+#: src/settings_dialog.vala:1158
 msgid "Open the browser inspector and JavaScript console when apps start"
 msgstr "Open de browserinspectie en JavaScript-console na het starten van apps"
 
-#: src/settings_dialog.vala:1147
+#: src/settings_dialog.vala:1164
 msgid "Restrict App Permissions"
 msgstr "Appbevoegdheden beperken"
 
-#: src/settings_dialog.vala:1148
+#: src/settings_dialog.vala:1165
 msgid ""
 "Turn off realtime channels, internet access, advanced graphics, WebAssembly, "
 "and developer tools; running apps will close"
@@ -2000,23 +3718,19 @@ msgstr ""
 "Schakel realtime-kanalen, internettoegang, hardwareverstelling, WebAssembly "
 "en ontwikkelaarsgereedschap uit — actieve apps worden gesloten"
 
-#: src/settings_dialog.vala:1149
+#: src/settings_dialog.vala:1166
 msgid "Restrict"
 msgstr "Beperken"
 
-#: src/settings_dialog.vala:1168
+#: src/settings_dialog.vala:1185
 msgid "In-chat app permissions restricted"
 msgstr "De appbevoegdheden zijn beperkt"
 
-#: src/settings_dialog.vala:1176
-msgid "Links"
-msgstr "Links"
-
-#: src/settings_dialog.vala:1179
+#: src/settings_dialog.vala:1196
 msgid "Link Previews"
 msgstr "Links voorvertonen"
 
-#: src/settings_dialog.vala:1180
+#: src/settings_dialog.vala:1197
 msgid ""
 "Attach a preview image when pasting a link. Parla contacts the website from "
 "this device; previews can be removed before sending"
@@ -2025,19 +3739,19 @@ msgstr ""
 "Parla verbinding met de websites in kwestie. Voorvertoningen kunnen per "
 "bericht worden verwijderd."
 
-#: src/settings_dialog.vala:1185
+#: src/settings_dialog.vala:1202
 msgid "Remove Link Tracking"
 msgstr "Linktracering verwijderen"
 
-#: src/settings_dialog.vala:1186
+#: src/settings_dialog.vala:1203
 msgid "Remove known tracking information from pasted links"
 msgstr "Verwijder bekende traceringsinformatie uit geplakte links"
 
-#: src/settings_dialog.vala:1194
+#: src/settings_dialog.vala:1211
 msgid "Use a Custom Filter List"
 msgstr "Eigen filterlijst hanteren"
 
-#: src/settings_dialog.vala:1195
+#: src/settings_dialog.vala:1212
 msgid ""
 "Replace the built-in rules with a uBlock Origin or AdGuard list that "
 "supports $removeparam. The list is downloaded through the active profile and "
@@ -2047,46 +3761,46 @@ msgstr ""
 "met ondersteuning voor $removeparam. De lijst wordt opgehaald via het "
 "actieve profiel en automatisch bijgewerkt."
 
-#: src/settings_dialog.vala:1200
+#: src/settings_dialog.vala:1217
 msgid "Filter list address"
 msgstr "Filterlijstadres"
 
-#: src/settings_dialog.vala:1204
+#: src/settings_dialog.vala:1221
 msgid "Set Address…"
 msgstr "Adres instellen…"
 
-#: src/settings_dialog.vala:1213
+#: src/settings_dialog.vala:1230
 msgid "Download the list again"
 msgstr "Lijst opnieuw ophalen"
 
-#: src/settings_dialog.vala:1247
+#: src/settings_dialog.vala:1264
 msgid "No list configured"
 msgstr "Er is geen lijst ingesteld"
 
-#: src/settings_dialog.vala:1256
+#: src/settings_dialog.vala:1273
 msgid "Not downloaded yet"
 msgstr "De lijst is nog niet opgehaald"
 
-#: src/settings_dialog.vala:1258
+#: src/settings_dialog.vala:1275
 #, c-format
 msgid "%d rules"
 msgstr "%d regels"
 
-#: src/settings_dialog.vala:1260
+#: src/settings_dialog.vala:1277
 #, c-format
 msgid ", version %s"
 msgstr ", versie %s"
 
-#: src/settings_dialog.vala:1263
+#: src/settings_dialog.vala:1280
 #, c-format
 msgid ", updated %s"
 msgstr ", bijgewerkt op %s"
 
-#: src/settings_dialog.vala:1273
+#: src/settings_dialog.vala:1290
 msgid "Filter List URL"
 msgstr "Filterlijst-url"
 
-#: src/settings_dialog.vala:1274
+#: src/settings_dialog.vala:1291
 msgid ""
 "Address of a uBlock Origin or AdGuard filter list with $removeparam rules, "
 "for example the AdGuard URL Tracking filter."
@@ -2094,49 +3808,44 @@ msgstr ""
 "Het adres van een uBlock Origin- of AdGuard-filterlijst, met ondersteuning "
 "voor $removeparam, bijvoorbeeld het AdGuard-url-traceringsfilter."
 
-#: src/settings_dialog.vala:1276
+#: src/settings_dialog.vala:1293
 msgid "Download"
 msgstr "Downloaden"
 
-#: src/settings_dialog.vala:1282
+#: src/settings_dialog.vala:1299
 msgid "The filter list URL must start with http(s)://"
 msgstr "De filterlijst-url moet beginnen met http(s)://"
 
-#: src/settings_dialog.vala:1303
+#: src/settings_dialog.vala:1320
 #, c-format
 msgid "Filter list updated: %d rules"
 msgstr "De filterlijst is bijgewerkt met %d regels"
 
-#: src/settings_dialog.vala:1304
+#: src/settings_dialog.vala:1321
 msgid "Filter list updated"
 msgstr "Filterlijst bijgewerkt"
 
-#: src/settings_dialog.vala:1406
+#: src/settings_dialog.vala:1423
 msgid "System default"
 msgstr "Systeemstandaard"
 
-#: src/settings_dialog.vala:1433 src/settings_dialog.vala:1434
-#: src/settings_dialog.vala:1500 src/window.vala:3192
-msgid "No active profile"
-msgstr "Er is geen actief profiel"
-
-#: src/settings_dialog.vala:1453 src/settings_dialog.vala:1545
+#: src/settings_dialog.vala:1470 src/settings_dialog.vala:1562
 msgid "Enabled for current profile"
 msgstr "Ingeschakeld op het huidige profiel"
 
-#: src/settings_dialog.vala:1454 src/settings_dialog.vala:1546
+#: src/settings_dialog.vala:1471 src/settings_dialog.vala:1563
 msgid "Disabled for current profile"
 msgstr "Uitgeschakeld op het huidige profiel"
 
-#: src/settings_dialog.vala:1458
+#: src/settings_dialog.vala:1475
 msgid "Unable to read proxy settings"
 msgstr "De proxyvoorkeuren kunnen niet worden ingelezen"
 
-#: src/settings_dialog.vala:1485
+#: src/settings_dialog.vala:1502
 msgid "Invalid proxy URL: "
 msgstr "Ongeldige proxy-url: "
 
-#: src/settings_dialog.vala:1490
+#: src/settings_dialog.vala:1507
 #, c-format
 msgid ""
 "Invalid proxy URL: %s\n"
@@ -2145,67 +3854,67 @@ msgstr ""
 "Ongeldige proxy-url: %s\n"
 "%s"
 
-#: src/settings_dialog.vala:1512
+#: src/settings_dialog.vala:1529
 msgid "Enter a proxy URL before enabling the proxy."
 msgstr "Voer een proxy-url in."
 
-#: src/settings_dialog.vala:1550
+#: src/settings_dialog.vala:1567
 msgid "Proxy settings saved"
 msgstr "De proxyvoorkeuren zijn bewaard"
 
-#: src/settings_dialog.vala:1552
+#: src/settings_dialog.vala:1569
 msgid "Failed to save proxy settings: "
 msgstr "De proxyvoorkeuren kunnen niet worden bewaard: "
 
-#: src/settings_dialog.vala:1575
+#: src/settings_dialog.vala:1592
 msgid "No custom binary selected"
 msgstr "Er is geen uitvoerbaar bestand gekozen"
 
-#: src/settings_dialog.vala:1578
+#: src/settings_dialog.vala:1595
 msgid "Custom path is not executable"
 msgstr "De locatie leidt niet naar een uitvoerbaar bestand"
 
-#: src/settings_dialog.vala:1581 src/settings_dialog.vala:1588
+#: src/settings_dialog.vala:1598 src/settings_dialog.vala:1605
 msgid "Checking version…"
 msgstr "Bezig met controleren…"
 
-#: src/settings_dialog.vala:1589
+#: src/settings_dialog.vala:1606
 msgid "Chatmail Core not found"
 msgstr "Er is geen Chatmail-kern aangetroffen"
 
-#: src/settings_dialog.vala:1591
+#: src/settings_dialog.vala:1608
 msgid "Install Chatmail Core or choose a custom binary"
 msgstr "Installeer de Chatmail-kern of kies een uitvoerbaar bestand"
 
-#: src/settings_dialog.vala:1629 src/settings_dialog.vala:1633
+#: src/settings_dialog.vala:1646 src/settings_dialog.vala:1650
 msgid "Unable to read version"
 msgstr "De versie kan niet worden uitgelezen"
 
-#: src/settings_dialog.vala:1641
+#: src/settings_dialog.vala:1658 src/webxdc.vala:469
 msgid "Dismiss"
 msgstr "Negeren"
 
-#: src/settings_dialog.vala:1654
+#: src/settings_dialog.vala:1671
 msgid "Checking for updates…"
 msgstr "Bezig met controleren…"
 
-#: src/settings_dialog.vala:1661
+#: src/settings_dialog.vala:1678
 msgid "Could not parse the latest Chatmail Core version"
 msgstr "De nieuwste Chatmail-kernversie kan niet worden verwerkt"
 
-#: src/settings_dialog.vala:1666
+#: src/settings_dialog.vala:1683
 #, c-format
 msgid "Chatmail Core is up to date: %s"
 msgstr "Je beschikt over de nieuwste Chatmail-kern: %s"
 
 #. Parla doesn't control the active binary, so it can't
 #. overwrite it — point at the release instead.
-#: src/settings_dialog.vala:1680 src/settings_dialog.vala:1689
-#: src/settings_dialog.vala:1702
+#: src/settings_dialog.vala:1697 src/settings_dialog.vala:1706
+#: src/settings_dialog.vala:1719
 msgid "Update Available"
 msgstr "Update beschikbaar"
 
-#: src/settings_dialog.vala:1681
+#: src/settings_dialog.vala:1698
 #, c-format
 msgid ""
 "Chatmail Core %s is available. Parla doesn't manage the active binary, so "
@@ -2214,11 +3923,11 @@ msgstr ""
 "Versie %s van de Chatmail-kern is beschikbaar. Let op: Parla beheert dit "
 "bestand niet, dus je moet het handmatig downloaden."
 
-#: src/settings_dialog.vala:1682 src/settings_dialog.vala:1691
+#: src/settings_dialog.vala:1699 src/settings_dialog.vala:1708
 msgid "View Release"
 msgstr "Uitgave bekijken"
 
-#: src/settings_dialog.vala:1690
+#: src/settings_dialog.vala:1707
 #, c-format
 msgid ""
 "Chatmail Core %s is available, but no prebuilt binary exists for this "
@@ -2227,45 +3936,45 @@ msgstr ""
 "Versie %s van de Chatmail-kern is beschikbaar, maar er is geen uitvoerbaar "
 "bestand beschikbaar voor dit systeem."
 
-#: src/settings_dialog.vala:1698
+#: src/settings_dialog.vala:1715
 #, c-format
 msgid "Chatmail Core %s is available to install."
 msgstr "Versie %s van de Chatmail-kern kan worden geïnstalleerd."
 
-#: src/settings_dialog.vala:1699
+#: src/settings_dialog.vala:1716
 #, c-format
 msgid "Chatmail Core %s is available (installed: %s)."
 msgstr "Versie %s van de Chatmail-kern is beschikbaar (huidige versie: %s)."
 
-#: src/settings_dialog.vala:1703
+#: src/settings_dialog.vala:1720
 msgid "Install"
 msgstr "Installeren"
 
-#: src/settings_dialog.vala:1703 src/window.vala:1448
+#: src/settings_dialog.vala:1720 src/window.vala:1456
 msgid "Update"
 msgstr "Bijwerken"
 
-#: src/settings_dialog.vala:1708
+#: src/settings_dialog.vala:1725
 msgid "Update check failed: "
 msgstr "De updatecontrole is mislukt: "
 
-#: src/settings_dialog.vala:1732
+#: src/settings_dialog.vala:1749
 msgid "Chatmail Core source saved"
 msgstr "De Chatmail-kernbron is opgeslagen"
 
-#: src/settings_dialog.vala:1739
+#: src/settings_dialog.vala:1756
 msgid "Locate a Chatmail Core binary"
 msgstr "Kies een Chatmail-kernbestand"
 
-#: src/settings_dialog.vala:1754
+#: src/settings_dialog.vala:1771
 msgid "Chatmail Core binary saved"
 msgstr "Het Chatmail-kernbestand is opgeslagen"
 
-#: src/settings_dialog.vala:1757
+#: src/settings_dialog.vala:1774
 msgid "Selected file is not an executable binary."
 msgstr "Er is geen uitvoerbaar bestand gekozen."
 
-#: src/settings_dialog.vala:1771
+#: src/settings_dialog.vala:1788
 msgid ""
 "Changing this folder switches the profiles Parla opens; existing data is not "
 "moved"
@@ -2273,37 +3982,37 @@ msgstr ""
 "Let op: door de map te wĳzigen, maakt Parla gebruik van een ander profiel — "
 "bestaande gegevens blijven bewaard"
 
-#: src/settings_dialog.vala:1778
+#: src/settings_dialog.vala:1795
 msgid "Choose Profile Storage Folder"
 msgstr "Kies een profielopslagmap"
 
-#: src/settings_dialog.vala:1793
+#: src/settings_dialog.vala:1810
 msgid "Profile storage folder changed"
 msgstr "De profielopslagmap is gewijzigd"
 
-#: src/settings_dialog.vala:1818
+#: src/settings_dialog.vala:1835
 #, c-format
 msgid "Downloading… %.0f%%"
 msgstr "Bezig met downloaden… %.0f%%"
 
-#: src/settings_dialog.vala:1821
+#: src/settings_dialog.vala:1838
 #, c-format
 msgid "Downloading… %.1f MB"
 msgstr "Bezig met downloaden… %.1f MB"
 
-#: src/settings_dialog.vala:1834
+#: src/settings_dialog.vala:1851
 msgid "Chatmail Core installed"
 msgstr "De Chatmail-kern is geïnstalleerd"
 
-#: src/settings_dialog.vala:1838 src/window.vala:1383 src/window.vala:1421
+#: src/settings_dialog.vala:1855 src/window.vala:1391 src/window.vala:1429
 msgid "Download failed: "
 msgstr "Downloaden mislukt: "
 
-#: src/settings_dialog.vala:1851
+#: src/settings_dialog.vala:1868
 msgid "Unable to open download page: "
 msgstr "De downloadpagina kan niet worden geopend: "
 
-#: src/settings_dialog.vala:1857
+#: src/settings_dialog.vala:1874
 msgid ""
 "Restore Parla’s preferences and close the app? Profiles and messages are "
 "kept. If a custom profile storage folder is in use, select it again after "
@@ -2313,9 +4022,164 @@ msgstr ""
 "sluiten? Profielen en berichten blijven bewaard. Als je een andere "
 "profielopslagmap had gekozen, moet je die na het herstarten opnieuw kiezen."
 
-#: src/settings_dialog.vala:1858
+#: src/settings_dialog.vala:1875
 msgid "Reset and Close"
 msgstr "Herstellen en sluiten"
+
+#: src/sticker_manager_dialog.vala:44
+msgid "Create a new sticker pack"
+msgstr "Stickerpakket samenstellen"
+
+#: src/sticker_manager_dialog.vala:62
+msgid "Rename the selected pack"
+msgstr "Stickerpakketnaam wĳzigen"
+
+#: src/sticker_manager_dialog.vala:69
+msgid "Delete the selected pack and all of its stickers"
+msgstr "Stickerpakket en alle bijbehorende stickers verwijderen"
+
+#: src/sticker_manager_dialog.vala:114
+msgid "New Sticker Pack"
+msgstr "Nieuw stickerpakket"
+
+#: src/sticker_manager_dialog.vala:115
+msgid "Name for the new sticker pack."
+msgstr "De naam van het nieuwe stickerpakket."
+
+#: src/sticker_manager_dialog.vala:115
+msgid "Pack name"
+msgstr "Pakketnaam"
+
+#: src/sticker_manager_dialog.vala:125
+msgid "Add Sticker"
+msgstr "Sticker toevoegen"
+
+#: src/sticker_manager_dialog.vala:126
+msgid "Choose the sticker pack to add this sticker to."
+msgstr "Kies het stickerpakket om de sticker aan toe te voegen."
+
+#: src/sticker_manager_dialog.vala:128 src/window.vala:3261
+msgid "Add"
+msgstr "Toevoegen"
+
+#: src/sticker_manager_dialog.vala:135
+msgid "New pack…"
+msgstr "Nieuw pakket…"
+
+#: src/sticker_manager_dialog.vala:140
+msgid "New pack name"
+msgstr "Nieuwe pakketnaam"
+
+#: src/sticker_manager_dialog.vala:161
+msgid "Enter a name for the new sticker pack"
+msgstr "Geef het nieuwe stickerpakket een naam"
+
+#: src/sticker_manager_dialog.vala:168
+#, c-format
+msgid "Sticker added to \"%s\""
+msgstr "De sticker is toegevoegd aan ‘%s’"
+
+#: src/sticker_manager_dialog.vala:169 src/sticker_manager_dialog.vala:332
+#, c-format
+msgid "Sticker is already in \"%s\""
+msgstr "De sticker is al toegevoegd aan ‘%s’"
+
+#: src/sticker_manager_dialog.vala:171
+msgid "Could not add sticker: "
+msgstr "De sticker kan niet worden toegevoegd: "
+
+#: src/sticker_manager_dialog.vala:229
+msgid ""
+"No sticker packs yet.\n"
+"Press + to create one."
+msgstr ""
+"Er zijn nog geen stickerpakketten.\n"
+"Druk op de plusknop om er een toe te voegen."
+
+#: src/sticker_manager_dialog.vala:234
+msgid ""
+"This pack has no stickers yet.\n"
+"Right-click a sticker in a conversation and choose \"Add Sticker…\"."
+msgstr ""
+"Er zijn nog geen stickers.\n"
+"Rechtsklik op een sticker in een gesprek en druk op ‘Sticker toevoegen…’"
+
+#: src/sticker_manager_dialog.vala:261
+msgid "Emoji associated with this sticker"
+msgstr "Bijbehorende emoji"
+
+#: src/sticker_manager_dialog.vala:297
+msgid "Could not set emoji: "
+msgstr "De emoji kan niet worden toegevoegd: "
+
+#: src/sticker_manager_dialog.vala:311
+msgid "Copy File Path"
+msgstr "Bestandslocatie kopiëren"
+
+#: src/sticker_manager_dialog.vala:315
+msgid "File path copied"
+msgstr "De bestandslocatie is gekopieerd"
+
+#: src/sticker_manager_dialog.vala:326
+#, c-format
+msgid "Move to \"%s\""
+msgstr "Verplaatsen naar ‘%s’"
+
+#: src/sticker_manager_dialog.vala:331
+#, c-format
+msgid "Sticker moved to \"%s\""
+msgstr "De sticker is verplaatst naar ‘%s’"
+
+#: src/sticker_manager_dialog.vala:335
+msgid "Could not move sticker: "
+msgstr "De sticker kan niet worden verplaatst: "
+
+#: src/sticker_manager_dialog.vala:354
+msgid "Delete Sticker?"
+msgstr "Sticker verwijderen?"
+
+#: src/sticker_manager_dialog.vala:355
+#, c-format
+msgid "Delete this sticker from \"%s\"? This cannot be undone."
+msgstr ""
+"Weet je zeker dat je de sticker wilt verwijderen uit ‘%s’? Deze actie is "
+"onomkeerbaar."
+
+#: src/sticker_manager_dialog.vala:357
+msgid "Delete"
+msgstr "Verwijderen"
+
+#: src/sticker_manager_dialog.vala:366
+msgid "Rename Sticker Pack"
+msgstr "Pakketnaam wĳzigen"
+
+#: src/sticker_manager_dialog.vala:367
+#, c-format
+msgid "New name for the pack \"%s\"."
+msgstr "De nieuwe naam van stickerpakket ‘%s’."
+
+#: src/sticker_manager_dialog.vala:367
+msgid "Rename"
+msgstr "Naam wĳzigen"
+
+#: src/sticker_manager_dialog.vala:374
+msgid "Could not rename pack: "
+msgstr "De pakketnaam kan niet worden gewijzigd: "
+
+#: src/sticker_manager_dialog.vala:395
+msgid "Delete Sticker Pack?"
+msgstr "Stickerpakket verwijderen?"
+
+#: src/sticker_manager_dialog.vala:396
+#, c-format
+msgid "Delete the pack \"%s\" and all of its stickers? This cannot be undone."
+msgstr ""
+"Weet je zeker dat je “%s” en alle stickers wilt verwijderen? Deze actie is "
+"onomkeerbaar."
+
+#: src/sticker_manager_dialog.vala:398
+msgid "Delete Pack"
+msgstr "Pakket verwijderen"
 
 #: src/sticker_picker.vala:60
 msgid ""
@@ -2331,10 +4195,103 @@ msgstr ""
 msgid "All stickers"
 msgstr "Alle stickers"
 
-#: src/webxdc_manager_dialog.vala:60 src/webxdc_manager_dialog.vala:113
-#: src/window.vala:3125
-msgid "Apps"
-msgstr "Apps"
+#: src/sticker_store.vala:175
+#, c-format
+msgid "Could not rename %s"
+msgstr "“%s” kan niet van naam worden gewijzigd"
+
+#: src/storage_quota.vala:63
+msgid "Server quota has not been reported yet."
+msgstr "Er is nog geen serverlimiet doorgegeven."
+
+#: src/storage_quota.vala:64
+#, c-format
+msgid "%s used · %s left of %s"
+msgstr "%s in gebruik · %s van %s vrije ruimte"
+
+#: src/tray_icon.vala:157
+msgid "Minimize to tray"
+msgstr "Minimaliseren naar systeemvak"
+
+#: src/tray_icon.vala:157 src/tray_macos.m:256
+msgid "Show Parla"
+msgstr "Parla openen"
+
+#: src/tray_icon.vala:159 src/window.vala:3159
+msgid "Quit"
+msgstr "Afsluiten"
+
+#: src/tray_macos.m:256
+msgid "Hide Parla"
+msgstr "Parla verbergen"
+
+#: src/tray_macos.m:289
+msgid "Quit Parla"
+msgstr "Parla afsluiten"
+
+#: src/video_player.vala:125
+msgid "Save video"
+msgstr "Video opslaan"
+
+#: src/webxdc.vala:255
+msgid ""
+"Ubuntu AppArmor is blocking the user namespace required by WebKitGTK's "
+"sandbox. Install this Webxdc build with ‘sudo make install’, then restart "
+"Parla. Webxdc will not run without its web-engine sandbox."
+msgstr ""
+"Ubuntu AppArmor blokkeert de gebruikersnaamruimte die vereist is door "
+"WebKitGTK's sandbox. Installeer deze Webxbc-uitgave met ‘sudo make install’ "
+"en herstart Parla. Webxbc kan niet zonder deze sandbox functioneren."
+
+#: src/webxdc.vala:436
+msgid "Webxdc app error"
+msgstr "Webxdc-appfout"
+
+#: src/webxdc.vala:437
+msgid "This Webxdc app could not start"
+msgstr "De Webxdc-app kan niet worden gestart"
+
+#: src/webxdc.vala:453
+msgid "Enable Web developer tools in Settings → Advanced for full diagnostics."
+msgstr ""
+"Schakel de ontwikkelaarshulpmiddelen in via Instellingen → Geavanceerd om "
+"meer foutopsporingsinformatie te verkrijgen."
+
+#: src/webxdc.vala:467
+msgid "This Webxdc app encountered an error"
+msgstr "Er is een fout opgetreden in de Webxdc-app"
+
+#: src/webxdc.vala:468
+msgid "Unknown JavaScript error"
+msgstr "Onbekende JavaScript-fout"
+
+#: src/webxdc.vala:471
+msgid "Unhandled promise rejection: "
+msgstr "Onbehandelde belofteafwijzing: "
+
+#: src/webxdc_bar.vala:118
+msgid "Webxdc app"
+msgstr "Webxdc-app"
+
+#: src/webxdc_bar.vala:132
+msgid "Raise app window"
+msgstr "Appvenster naar voren halen"
+
+#: src/webxdc_bar.vala:137
+msgid "Minimize or restore app window"
+msgstr "Appvenster minimaliseren of herstellen"
+
+#: src/webxdc_bar.vala:144 src/webxdc_bar.vala:196
+msgid "Stop app"
+msgstr "App stoppen"
+
+#: src/webxdc_bar.vala:171
+msgid "View in conversation"
+msgstr "Bekijken in gesprek"
+
+#: src/webxdc_bar.vala:181
+msgid "Save to disk…"
+msgstr "Opslaan op schijf…"
 
 #: src/webxdc_manager_dialog.vala:66
 msgid "Search apps…"
@@ -2353,18 +4310,14 @@ msgstr "Gedeelde Webxdc-apps worden hier getoond"
 msgid "Profile %d"
 msgstr "Profiel %d"
 
-#: src/webxdc_manager_dialog.vala:211
-msgid "App"
-msgstr "App"
-
 #: src/webxdc_manager_dialog.vala:242
 #, c-format
 msgid "Chat %d"
 msgstr "Gesprek %d"
 
-#: src/webxdc_manager_dialog.vala:331
-msgid "Unknown"
-msgstr "Onbekend"
+#: src/webxdc_manager_dialog.vala:330
+msgid "Me"
+msgstr "Ik"
 
 #: src/webxdc_manager_dialog.vala:403
 msgid "Remove from favorites"
@@ -2379,129 +4332,113 @@ msgid "No apps match the search"
 msgstr "Er zijn geen zoekresultaten"
 
 #: src/webxdc_manager_dialog.vala:447
-msgid "chat"
-msgstr "gesprek"
-
-#: src/webxdc_manager_dialog.vala:447
-msgid "chats"
-msgstr "gesprekken"
-
-#: src/webxdc_manager_dialog.vala:500
 #, c-format
-msgid "1 %s"
-msgstr "1 %s"
+msgid "%u chat"
+msgid_plural "%u chats"
+msgstr[0] "%u gesprek"
+msgstr[1] "%u gesprekken"
 
-#: src/webxdc_manager_dialog.vala:500
-#, c-format
-msgid "%u %s"
-msgstr "%u %s"
-
-#: src/webxdc_manager_dialog.vala:527
+#: src/webxdc_manager_dialog.vala:522
 #, c-format
 msgid "Shared by %s"
 msgstr "Gedeeld door %s"
 
-#: src/webxdc_manager_dialog.vala:529
+#: src/webxdc_manager_dialog.vala:524
 #, c-format
 msgid "First seen %s"
 msgstr "Voor het eerst gezien op %s"
 
-#: src/webxdc_manager_dialog.vala:533
+#: src/webxdc_manager_dialog.vala:528
 msgid "Requests internet access"
 msgstr "Internettoegang vereist"
 
-#: src/webxdc_manager_dialog.vala:550
+#: src/webxdc_manager_dialog.vala:545
 msgid "Run"
 msgstr "Uitvoeren"
 
-#: src/webxdc_manager_dialog.vala:556
+#: src/webxdc_manager_dialog.vala:551
 msgid "New Chat…"
 msgstr "Nieuw gesprek…"
 
-#: src/webxdc_manager_dialog.vala:559
+#: src/webxdc_manager_dialog.vala:554
 msgid "Share and start this app in a chat with a contact"
 msgstr "Deel en start deze app in een gesprek"
 
-#: src/webxdc_manager_dialog.vala:563
+#: src/webxdc_manager_dialog.vala:558
 msgid "Save to Disk…"
 msgstr "Opslaan op schijf…"
 
-#: src/webxdc_manager_dialog.vala:574
+#: src/webxdc_manager_dialog.vala:569
 msgid "Description"
 msgstr "Beschrijving"
 
-#: src/webxdc_manager_dialog.vala:577
+#: src/webxdc_manager_dialog.vala:572
 msgid "Document"
 msgstr "Document"
 
-#: src/webxdc_manager_dialog.vala:580
+#: src/webxdc_manager_dialog.vala:575
 msgid "Source Code"
 msgstr "Broncode"
 
-#: src/webxdc_manager_dialog.vala:591
+#: src/webxdc_manager_dialog.vala:586
 msgid "Used by"
 msgstr "Gebruikt door"
 
-#: src/webxdc_manager_dialog.vala:592
-msgid "person"
-msgstr "persoon"
+#: src/webxdc_manager_dialog.vala:587
+#, c-format
+msgid "%u person"
+msgid_plural "%u people"
+msgstr[0] "%u persoon"
+msgstr[1] "%u personen"
 
-#: src/webxdc_manager_dialog.vala:592
-msgid "people"
-msgstr "personen"
-
-#: src/webxdc_manager_dialog.vala:595 src/window.vala:3129
+#: src/webxdc_manager_dialog.vala:591 src/window.vala:3157
 msgid "About"
 msgstr "Over"
 
-#: src/webxdc_manager_dialog.vala:656
+#: src/webxdc_manager_dialog.vala:652
 msgid "Running"
 msgstr "Wordt uitgevoerd"
 
-#: src/webxdc_manager_dialog.vala:667
+#: src/webxdc_manager_dialog.vala:663
 msgid "Run in this chat"
 msgstr "Uitvoeren in dit gesprek"
 
-#: src/webxdc_manager_dialog.vala:699
+#: src/webxdc_manager_dialog.vala:695
 msgid "Start in a new chat…"
 msgstr "Starten in nieuw gesprek…"
 
-#: src/webxdc_manager_dialog.vala:732 src/webxdc_manager_dialog.vala:743
+#: src/webxdc_manager_dialog.vala:728 src/webxdc_manager_dialog.vala:739
 msgid "The app file has not been downloaded yet"
 msgstr "Het appbestand is nog niet opgehaald"
 
-#: src/webxdc_manager_dialog.vala:747
+#: src/webxdc_manager_dialog.vala:743
 msgid "Start App With…"
 msgstr "App starten met…"
 
-#: src/webxdc_manager_dialog.vala:767
+#: src/webxdc_manager_dialog.vala:763
 msgid "Could not share the app"
 msgstr "De app kan niet worden gedeeld"
 
-#: src/webxdc_manager_dialog.vala:770
+#: src/webxdc_manager_dialog.vala:766
 msgid "App shared into the chat"
 msgstr "De app is gedeeld in het gesprek"
 
-#: src/webxdc_manager_dialog.vala:780
+#: src/webxdc_manager_dialog.vala:776
 msgid "Could not share the app: "
 msgstr "De app kan niet worden gedeeld: "
-
-#: src/webxdc_manager_dialog.vala:790
-msgid "Could not open link: "
-msgstr "De link kan niet worden geopend: "
 
 #: src/window.vala:174
 msgid "RPC not ready"
 msgstr "RPC is nog niet gereed"
 
-#: src/window.vala:207 src/window.vala:216 src/window.vala:846
-#: src/window.vala:1498
+#: src/window.vala:207 src/window.vala:216 src/window.vala:854
+#: src/window.vala:1506
 msgid "Select a chat"
 msgstr "Kies een gesprek"
 
 #. Reset any error widget left from a previous failed attempt.
-#: src/window.vala:231 src/window.vala:897 src/window.vala:1017
-#: src/window.vala:1308
+#: src/window.vala:231 src/window.vala:905 src/window.vala:1025
+#: src/window.vala:1316
 msgid "Welcome to Parla"
 msgstr "Welkom in Parla"
 
@@ -2530,41 +4467,51 @@ msgstr "Hoofdmenu"
 msgid "Search chats or messages…"
 msgstr "Zoeken in gesprekken of berichten…"
 
-#: src/window.vala:873
+#: src/window.vala:881
 #, c-format
 msgid "Apps and media (%s)"
 msgstr "Apps en media (%s)"
 
-#: src/window.vala:879
+#: src/window.vala:887
 #, c-format
 msgid "Search in conversation (%s)"
 msgstr "Gesprek doorzoeken (%s)"
 
-#: src/window.vala:898 src/window.vala:1018
+#: src/window.vala:906 src/window.vala:1026
 msgid "Select a chat to start messaging"
 msgstr "Klik op een gesprek om berichten te versturen"
 
-#: src/window.vala:996
+#: src/window.vala:1004
 msgid "Profiles"
 msgstr "Profielen"
 
-#: src/window.vala:1026 src/window.vala:1298
+#: src/window.vala:1034 src/window.vala:1306
 msgid "RPC server not found"
 msgstr "Er is geen RPC-server aangetroffen"
 
-#: src/window.vala:1040
+#: src/window.vala:1048
 msgid "Cannot connect - account store is already in use"
 msgstr "Verbinding mislukt: de accountopslag wordt al gebruikt"
 
-#: src/window.vala:1044
+#: src/window.vala:1050
+msgid ""
+"The Delta Chat account store is already in use.\n"
+"\n"
+"Close the other Delta Chat or Parla process, then restart this app."
+msgstr ""
+"Deze Delta Chat-accountopslag is al in gebruik.\n"
+"\n"
+"Sluit het andere Delta Chat- of Parla-proces en herstart Parla."
+
+#: src/window.vala:1052
 msgid "Account store is already in use"
 msgstr "De accountopslag wordt al gebruikt"
 
-#: src/window.vala:1046
+#: src/window.vala:1054
 msgid "RPC server error: "
 msgstr "RPC-serverfout: "
 
-#: src/window.vala:1047
+#: src/window.vala:1055
 msgid ""
 "Failed to start RPC server:\n"
 "\n"
@@ -2572,35 +4519,49 @@ msgstr ""
 "De RPC-server kan niet worden gestart:\n"
 "\n"
 
-#: src/window.vala:1048
+#: src/window.vala:1056
 msgid "Cannot reach RPC server"
 msgstr "De RPC-server is onbereikbaar"
 
-#: src/window.vala:1059
+#: src/window.vala:1067
 msgid "Disconnected — "
 msgstr "Verbinding verbroken — "
 
-#: src/window.vala:1080
+#: src/window.vala:1088
 msgid "Connection setup error: "
 msgstr "Foutmelding tijdens verbinding: "
 
-#: src/window.vala:1094
+#: src/window.vala:1102
 msgid "Syncing…"
 msgstr "Bezig met synchroniseren…"
 
-#: src/window.vala:1095
-msgid "Connecting…"
-msgstr "Bezig met verbinden…"
-
-#: src/window.vala:1095
+#: src/window.vala:1103
 msgid "Offline"
 msgstr "Offline"
 
-#: src/window.vala:1256 src/window.vala:1266
-msgid "Could not open chat: "
-msgstr "Het gesprek kan niet worden geopend: "
+#: src/window.vala:1210
+msgid "New mention"
+msgstr "Nieuwe vermelding"
 
-#: src/window.vala:1310
+#: src/window.vala:1212
+msgid "Mentioned you"
+msgstr "heeft je vermeld"
+
+#: src/window.vala:1311
+msgid "Configured path is missing or not executable:\n"
+msgstr "De locatie leidt niet naar een uitvoerbaar bestand of ontbreekt:\n"
+
+#: src/window.vala:1313
+msgid ""
+"\n"
+"\n"
+"Download the engine to use it instead."
+msgstr ""
+"\n"
+"\n"
+"Download de aandrijving om die te gebruiken."
+
+#: src/window.vala:1318
 msgid ""
 "Parla needs the Delta Chat engine to connect.\n"
 "Download it once to get started."
@@ -2608,134 +4569,149 @@ msgstr ""
 "Parla heeft de Delta Chat-aandrijving nodig.\n"
 "Download deze om aan de slag te gaan."
 
-#: src/window.vala:1313
+#: src/window.vala:1321
 msgid "Delta Chat engine required"
 msgstr "Delta Chat-aandrijving vereist"
 
-#: src/window.vala:1325
+#: src/window.vala:1323
+msgid ""
+"No prebuilt deltachat-rpc-server is available for this\n"
+"architecture. Install it manually (see docs/rpc-server.md)\n"
+"or choose a binary in Settings."
+msgstr ""
+"Er is geen voorgebouwde deltachat-rpc-server beschikbaar voor deze\n"
+"architectuur. Installeer de server handmatig (zie docs/rpc-server.md)\n"
+"of kies een uitvoerbaar bestand in de instellingen."
+
+#: src/window.vala:1333
 msgid "Download & start"
 msgstr "Downloaden en starten"
 
-#: src/window.vala:1332 src/window.vala:1340
+#: src/window.vala:1340 src/window.vala:1348
 msgid "Open Settings…"
 msgstr "Voorkeuren openen…"
 
-#: src/window.vala:1346
+#: src/window.vala:1354
 msgid "deltachat-rpc-server not found"
 msgstr "deltachat-rpc-server is niet aangetroffen"
 
-#: src/window.vala:1360
+#: src/window.vala:1368
 msgid "Downloading Delta Chat engine…"
 msgstr "Bezig met downloaden van aandrijving…"
 
-#: src/window.vala:1364
+#: src/window.vala:1372
 msgid "Setting up Parla"
 msgstr "Parla wordt ingesteld"
 
-#: src/window.vala:1372
+#: src/window.vala:1380
 #, c-format
 msgid "Downloading Delta Chat engine… %.0f%% (%.1f MB)"
 msgstr "Bezig met downloaden van aandrijving %.0f%% (%.1f MB)…"
 
-#: src/window.vala:1375
+#: src/window.vala:1383
 #, c-format
 msgid "Downloading Delta Chat engine… %.1f MB"
 msgstr "Bezig met downloaden van aandrijving… %.1f MB"
 
-#: src/window.vala:1394
+#: src/window.vala:1402
 msgid "Delta Chat engine installed"
 msgstr "De aandrijving is geïnstalleerd"
 
-#: src/window.vala:1405
+#: src/window.vala:1413
 msgid "Filter list disabled"
 msgstr "De filterlijst is uitgeschakeld"
 
-#: src/window.vala:1407
+#: src/window.vala:1415
 msgid "No filter list URL configured"
 msgstr "Er is geen filterlijst-url opgegeven"
 
-#: src/window.vala:1409
+#: src/window.vala:1417
 msgid "Not connected: the list is downloaded through the active account"
 msgstr "Niet verbonden: de lijst is opgehaald via het actieve account"
 
-#: src/window.vala:1427
+#: src/window.vala:1435
 msgid "The downloaded file contains no $removeparam rules"
 msgstr "Het opgehaalde bestand bevat geen $removeparam-regels"
 
-#: src/window.vala:1429
+#: src/window.vala:1437
 msgid "Could not save the filter list"
 msgstr "De filterlijst kan niet worden opgeslagen"
 
-#: src/window.vala:1459
+#: src/window.vala:1454
+#, c-format
+msgid "Delta Chat engine update available: %s"
+msgstr "Delta Chat-aandrijvingsupdate beschikbaar: %s"
+
+#: src/window.vala:1467
 msgid "Updating Delta Chat engine…"
 msgstr "Bezig met bijwerken van aandrijving…"
 
-#: src/window.vala:1463
+#: src/window.vala:1471
 msgid "Update installed"
 msgstr "De update is geïnstalleerd"
 
-#: src/window.vala:1466
+#: src/window.vala:1474
 msgid "Update failed: "
 msgstr "Bijwerken mislukt: "
 
-#: src/window.vala:1487
+#: src/window.vala:1495
 msgid "Connecting"
 msgstr "Bezig met verbinden…"
 
-#: src/window.vala:1488
+#: src/window.vala:1496
 msgid "Starting Delta Chat engine…"
 msgstr "Bezig met starten van Delta Chat-aandrijving…"
 
-#: src/window.vala:1489
+#: src/window.vala:1497
 msgid "Reconnecting…"
 msgstr "Bezig met herverbinden…"
 
-#: src/window.vala:1501 src/window.vala:3379
+#: src/window.vala:1509 src/window.vala:3407
 msgid "Select a chat to start messaging."
 msgstr "Klik op een gesprek om berichten te versturen."
 
-#: src/window.vala:1600 src/window.vala:1601
+#: src/window.vala:1608 src/window.vala:1609
 msgid "Back to Chats"
 msgstr "Terug naar gesprekken"
 
-#: src/window.vala:1605
+#: src/window.vala:1613
 #, c-format
 msgid "Archived Chats (%d)"
 msgstr "Gearchiveerde gesprekken (%d)"
 
-#: src/window.vala:1606
+#: src/window.vala:1614
 msgid "Show Archived Chats"
 msgstr "Gearchiveerde gesprekken tonen"
 
-#: src/window.vala:1757
+#: src/window.vala:1769
 msgid "Failed to load chats: "
 msgstr "De gesprekken kunnen niet worden geladen: "
 
-#: src/window.vala:1853 src/window.vala:1859
+#: src/window.vala:1878 src/window.vala:1884
 msgid "Attach failed: chat is unavailable"
 msgstr "Bijlage mislukt: het gesprek is niet beschikbaar"
 
-#: src/window.vala:2005
+#: src/window.vala:2030
 msgid "Chat is no longer available"
 msgstr "Het gesprek is niet meer beschikbaar"
 
-#: src/window.vala:2010
+#: src/window.vala:2035
 msgid "Cannot open search result: "
 msgstr "Het zoekresultaat kan niet worden geopend: "
 
-#: src/window.vala:2086
+#: src/window.vala:2111
 msgid "File saved"
 msgstr "Het bestand is opgeslagen"
 
-#: src/window.vala:2089
+#: src/window.vala:2114
 msgid "Save failed: "
 msgstr "Het opslaan is mislukt: "
 
-#: src/window.vala:2108
+#: src/window.vala:2133
 msgid "Cannot Start Webxdc App"
 msgstr "De Webxdc-app kan niet worden gestart"
 
-#: src/window.vala:2109
+#: src/window.vala:2134
 #, c-format
 msgid ""
 "This version of Parla was built without Webxdc support, so it cannot start "
@@ -2744,11 +4720,11 @@ msgstr ""
 "Deze versie van Parla is zonder Webxdc-ondersteuning gebouwd — ‘%s’ kan "
 "daarom niet worden gestart. Je kunt wel het .xdc-bestand downloaden."
 
-#: src/window.vala:2113
+#: src/window.vala:2138
 msgid "In-Chat Apps Are Disabled"
 msgstr "Apps in gesprekken zijn uitgeschakeld"
 
-#: src/window.vala:2114
+#: src/window.vala:2139
 #, c-format
 msgid ""
 "In-chat apps are turned off in Settings, so Parla cannot start “%s”. You can "
@@ -2757,215 +4733,235 @@ msgstr ""
 "Apps in gesprekken zijn uitgeschakeld in de voorkeuren — ‘%s’ kan daarom "
 "niet worden gestart. Je kunt wel het .xdc-bestand downloaden."
 
-#: src/window.vala:2118
+#: src/window.vala:2143
 msgid "Open Webxdc App?"
 msgstr "Webxdc-app openen?"
 
-#: src/window.vala:2119
+#: src/window.vala:2144
 #, c-format
 msgid "Start “%s” in Parla, or download its .xdc file without opening it."
 msgstr ""
 "Start ‘%s’ binnen Parla of download het .xdg-bestand zonder het te openen."
 
-#: src/window.vala:2125
+#: src/window.vala:2150
 msgid "Download File"
 msgstr "Bestand downloaden"
 
-#: src/window.vala:2127
+#: src/window.vala:2152
 msgid "Start App"
 msgstr "App starten"
 
-#: src/window.vala:2156
+#: src/window.vala:2181
 msgid "This build of Parla has no Webxdc support"
 msgstr "Deze versie van Parla bevat geen Webxdc-ondersteuning"
 
-#: src/window.vala:2160
+#: src/window.vala:2185
 msgid "In-chat apps are disabled in Settings"
 msgstr "Apps in gesprekken zijn uitgeschakeld in de voorkeuren"
 
-#: src/window.vala:2177
+#: src/window.vala:2202
 msgid "The app file is still downloading"
 msgstr "Het appbestand wordt nog gedownload"
 
-#: src/window.vala:2181
+#: src/window.vala:2206
 msgid "The app file is not available for download"
 msgstr "Het appbestand is niet downloadbaar"
 
-#: src/window.vala:2186
+#: src/window.vala:2211
 msgid "Downloading app…"
 msgstr "Bezig met downloaden van app…"
 
-#: src/window.vala:2192
+#: src/window.vala:2217
 msgid "The app file has not finished downloading"
 msgstr "Het appbestand wordt nog gedownload"
 
-#: src/window.vala:2194
+#: src/window.vala:2219
 msgid "App download failed: "
 msgstr "Downloaden mislukt: "
 
-#: src/window.vala:2276 src/window.vala:2319
+#: src/window.vala:2301 src/window.vala:2346
 #, c-format
-msgid "%d new messages"
-msgstr "%d nieuwe berichten"
+msgid "%d new message"
+msgid_plural "%d new messages"
+msgstr[0] "%d nieuw bericht"
+msgstr[1] "%d nieuwe berichten"
 
-#: src/window.vala:2278
+#: src/window.vala:2304
 #, c-format
-msgid "In %d chats"
-msgstr "In %d gesprekken"
+msgid "In %d chat"
+msgid_plural "In %d chats"
+msgstr[0] "In %d gesprek"
+msgstr[1] "In %d gesprekken"
 
-#: src/window.vala:2316 src/window.vala:2317 src/window.vala:2333
+#: src/window.vala:2343 src/window.vala:2344 src/window.vala:2361
 msgid "New message"
 msgstr "Nieuw bericht"
 
-#: src/window.vala:2317
+#: src/window.vala:2344
 msgid "New reaction"
 msgstr "Nieuwe reactie"
 
-#: src/window.vala:2345
+#: src/window.vala:2373
 #, c-format
 msgid "%s reacted %s"
 msgstr "%s reageerde met %s"
 
-#: src/window.vala:2346
+#: src/window.vala:2374
 #, c-format
 msgid "Reacted %s"
 msgstr "Gereageerd met %s"
 
-#: src/window.vala:2420 src/window.vala:4018 src/window.vala:4039
-msgid "Not connected"
-msgstr "Niet verbonden"
-
-#: src/window.vala:2421
+#: src/window.vala:2449
 msgid "Open Settings to configure the RPC server"
 msgstr "Open de voorkeuren om de RPC-server in te stellen"
 
-#: src/window.vala:2455
+#: src/window.vala:2483
 msgid "No profiles"
 msgstr "Er zijn geen profielen"
 
-#: src/window.vala:2456
+#: src/window.vala:2484
 msgid "Add a profile to get started"
 msgstr "Voeg een profiel toe om aan de slag te gaan"
 
-#: src/window.vala:2467
+#: src/window.vala:2495
 msgid "Error loading accounts"
 msgstr "De accounts kunnen niet worden geladen"
 
-#: src/window.vala:2507 src/window.vala:2645
+#: src/window.vala:2535 src/window.vala:2673
 msgid "Add Profile"
 msgstr "Profiel toevoegen"
 
-#: src/window.vala:2555
+#: src/window.vala:2583
 msgid "Unconfigured account"
 msgstr "Niet-ingesteld account"
 
-#: src/window.vala:2589
+#: src/window.vala:2617
 msgid "Edit profile"
 msgstr "Profiel bewerken"
 
-#: src/window.vala:2598
+#: src/window.vala:2626
 msgid "Not configured"
 msgstr "Niet ingesteld"
 
-#: src/window.vala:2647
+#: src/window.vala:2652
+msgid "Create new profile"
+msgstr "Profiel aanmaken"
+
+#: src/window.vala:2652
+msgid "Pick a chatmail relay and create a new account"
+msgstr "Kies een Chatmail-relay en maak een nieuw account aan"
+
+#: src/window.vala:2653
+msgid "Import from another device"
+msgstr "Importeren van ander apparaat"
+
+#: src/window.vala:2653
+msgid "Link to an existing profile on the same network"
+msgstr "Koppel aan een bestaand profiel op hetzelfde netwerk"
+
+#: src/window.vala:2654
+msgid "Use classic email address"
+msgstr "Klassiek e-mailadres gebruiken"
+
+#: src/window.vala:2654
+msgid "Sign in with an existing email account"
+msgstr "Log in met een bestaand e-mailaccount"
+
+#: src/window.vala:2655
+msgid "Use invitation code"
+msgstr "Uitnodigingscode gebruiken"
+
+#: src/window.vala:2655
+msgid "Join via a dcaccount: link or QR code"
+msgstr "Neem deel via een dcaccount:-link of QR-code"
+
+#: src/window.vala:2675
 msgid "Choose how you want to add a profile."
 msgstr "Kies de manier waarop je een profiel wilt toevoegen."
 
-#: src/window.vala:2724 src/window.vala:2746
+#: src/window.vala:2752 src/window.vala:2774
 msgid "Profile created"
 msgstr "Profiel aangemaakt"
 
-#: src/window.vala:2745
+#: src/window.vala:2773
 msgid "Profile created and invitation accepted"
 msgstr "Het profiel is aangemaakt en de uitnodiging is geaccepteerd"
 
-#: src/window.vala:2761
+#: src/window.vala:2789
 msgid "Profile imported"
 msgstr "Profiel geïmporteerd"
 
-#: src/window.vala:2780
+#: src/window.vala:2808
 msgid "Unable to update attachment downloads: "
 msgstr "De bijlagedownloads kunnen niet worden bijgewerkt: "
 
-#: src/window.vala:2849
+#: src/window.vala:2877
 msgid "Profile deleted; switched profile"
 msgstr "Profiel verwijderd; ander profiel gekozen"
 
-#: src/window.vala:2850
+#: src/window.vala:2878
 msgid "Profile deleted"
 msgstr "Profiel verwijderd"
 
-#: src/window.vala:2875
+#: src/window.vala:2903
 msgid "Failed to select another profile: "
 msgstr "Er kan geen ander profiel worden gekozen: "
 
-#: src/window.vala:2971
+#: src/window.vala:2999
 msgid "Chat created with "
 msgstr "Gesprek aangemaakt met "
 
-#: src/window.vala:2973
+#: src/window.vala:3001
 msgid "Failed to create chat: "
 msgstr "Er kan geen gesprek worden aangemaakt: "
 
-#: src/window.vala:3119
+#: src/window.vala:3147
 msgid "New Chat"
 msgstr "Nieuw gesprek"
 
-#: src/window.vala:3122 src/window.vala:3197
+#: src/window.vala:3150 src/window.vala:3225
 msgid "Use Invite Link"
 msgstr "Uitnodigingslink gebruiken"
 
-#: src/window.vala:3124
-msgid "Stickers"
-msgstr "Stickers"
-
-#: src/window.vala:3128 src/window.vala:3935
+#: src/window.vala:3156 src/window.vala:3963
 msgid "Shortcuts"
 msgstr "Sneltoetsen"
 
-#: src/window.vala:3131
-msgid "Quit"
-msgstr "Afsluiten"
-
-#: src/window.vala:3183
+#: src/window.vala:3211
 msgid "Invite link will open once a profile is ready"
 msgstr "De uitnodigingslink wordt geopend zodra het profiel gereed is"
 
-#: src/window.vala:3205
+#: src/window.vala:3233
 msgid "Paste a Delta Chat invite link."
 msgstr "Plak een Delta Chat-uitnodigingslink."
 
-#: src/window.vala:3213
+#: src/window.vala:3241
 msgid "https://i.delta.chat/#..."
 msgstr "https://i.delta.chat/#…"
 
-#: src/window.vala:3233
-msgid "Add"
-msgstr "Toevoegen"
-
-#: src/window.vala:3276
+#: src/window.vala:3304
 msgid "Checking invite link…"
 msgstr "Bezig met controleren van link…"
 
-#: src/window.vala:3281
+#: src/window.vala:3309
 msgid "This is not a valid invite link."
 msgstr "Dit is geen geldige link."
 
-#: src/window.vala:3298
+#: src/window.vala:3326
 msgid "Accepting invite link…"
 msgstr "Bezig met accepteren van link…"
 
-#: src/window.vala:3303
+#: src/window.vala:3331
 msgid "Invite link accepted"
 msgstr "De link is goedgekeurd"
 
 #. Our own link, currently inactive — activate it so others
 #. can join.
-#: src/window.vala:3312
+#: src/window.vala:3340
 msgid "Activating your invite link…"
 msgstr "Bezig met activeren van link…"
 
-#: src/window.vala:3314
+#: src/window.vala:3342
 msgid ""
 "This is your own invite link. It is now active — share it with others so "
 "they can join."
@@ -2975,7 +4971,7 @@ msgstr ""
 
 #. Our own link, already active. Nothing to join — just tell
 #. the user it is ready to share.
-#: src/window.vala:3323
+#: src/window.vala:3351
 msgid ""
 "This is your own invite link and it is active. Share it with others so they "
 "can join."
@@ -2983,132 +4979,150 @@ msgstr ""
 "Dit is je eigen uitnodigingslink. Deze is nu actief en kan worden gedeeld "
 "met anderen."
 
-#: src/window.vala:3328
+#: src/window.vala:3356
 msgid "This is not a contact, group, or channel invite link."
 msgstr "Dit is geen contactpersoon-, groeps- of kanaallink."
 
-#: src/window.vala:3332
+#: src/window.vala:3360
 msgid "Invite link failed: "
 msgstr "Uitnodigingslink mislukt: "
 
-#: src/window.vala:3512
+#: src/window.vala:3540
 #, c-format
 msgid "Show Sidebar (%s)"
 msgstr "Zijbalk tonen (%s)"
 
-#: src/window.vala:3512
+#: src/window.vala:3540
 #, c-format
 msgid "Hide Sidebar (%s)"
 msgstr "Zijbalk verbergen (%s)"
 
-#: src/window.vala:3886
+#: src/window.vala:3914
 msgid "New chat"
 msgstr "Nieuw gesprek"
 
-#: src/window.vala:3887
+#: src/window.vala:3915
 msgid "New group"
 msgstr "Nieuwe groep"
 
-#: src/window.vala:3888
+#: src/window.vala:3916
 msgid "New channel"
 msgstr "Nieuw kanaal"
 
-#: src/window.vala:3889
+#: src/window.vala:3917
 msgid "Open settings"
 msgstr "Voorkeuren openen"
 
-#: src/window.vala:3890
+#: src/window.vala:3918
 msgid "Increase font size"
 msgstr "Tekst vergroten"
 
-#: src/window.vala:3891
+#: src/window.vala:3919
 msgid "Decrease font size"
 msgstr "Tekst verkleinen"
 
-#: src/window.vala:3892
+#: src/window.vala:3920
 msgid "Reset font size"
 msgstr "Standaard tekstgrootte"
 
-#: src/window.vala:3893
+#: src/window.vala:3921
 msgid "Open chat info"
 msgstr "Gespreksinformatie tonen"
 
-#: src/window.vala:3894
+#: src/window.vala:3922
 msgid "Apps and media gallery"
 msgstr "App- en mediagalerij"
 
-#: src/window.vala:3895
+#: src/window.vala:3923
 msgid "Search in conversation"
 msgstr "Gesprek doorzoeken"
 
-#: src/window.vala:3896
+#: src/window.vala:3924
 msgid "Search chats and messages"
 msgstr "Gesprekken en berichten doorzoeken"
 
-#: src/window.vala:3897
+#: src/window.vala:3925
 msgid "Quick switch chat"
 msgstr "Snel wisselen van gesprek"
 
-#: src/window.vala:3898 src/window.vala:3907
+#: src/window.vala:3926 src/window.vala:3935
 msgid "Focus message entry"
 msgstr "Berichtveld focussen"
 
-#: src/window.vala:3899
+#: src/window.vala:3927
 msgid "Message action (from Settings)"
 msgstr "Berichteactie (uit de voorkeuren)"
 
-#: src/window.vala:3900
+#: src/window.vala:3928
 msgid "Menu for focused message"
 msgstr "Menu van gefocust bericht"
 
-#: src/window.vala:3901
+#: src/window.vala:3929
 msgid "Account menu"
 msgstr "Accountmenu"
 
-#: src/window.vala:3902
+#: src/window.vala:3930
 msgid "Focus next chat"
 msgstr "Volgend gesprek focussen"
 
-#: src/window.vala:3903
+#: src/window.vala:3931
 msgid "Focus previous chat"
 msgstr "Vorig gesprek focussen"
 
-#: src/window.vala:3904
+#: src/window.vala:3932
 msgid "Refresh messages"
 msgstr "Berichten herladen"
 
-#: src/window.vala:3905
+#: src/window.vala:3933
 msgid "Toggle sidebar"
 msgstr "Zijbalk tonen/verbergen"
 
-#: src/window.vala:3906
+#: src/window.vala:3934
 msgid "Compact sidebar"
 msgstr "Compacte zijbalk"
 
-#: src/window.vala:3908
+#: src/window.vala:3936
 msgid "Select or deselect focused message"
 msgstr "(De)selecteer gefocust bericht"
 
-#: src/window.vala:3909
+#: src/window.vala:3937
 msgid "Focus message selection actions"
 msgstr "Berichtacties van gefocust bericht"
 
-#: src/window.vala:3910
+#: src/window.vala:3938
 msgid "Cancel reply/edit/image/selection"
 msgstr "Antwoord/Bewerking/Afbeeling/Selectie annuleren"
 
-#: src/window.vala:3911
+#: src/window.vala:3939
 msgid "Close window"
 msgstr "Venster sluiten"
 
-#: src/window.vala:3912
+#: src/window.vala:3940
 msgid "Quit application"
 msgstr "Toepassing afsluiten"
 
-#: src/window.vala:3961
+#: src/window.vala:3989
 msgid "Change font size"
 msgstr "Tekstgrootte wĳzigen"
 
-#: src/window.vala:3972
+#: src/window.vala:3991
+msgid "Mouse Wheel"
+msgstr "Scrolwiel"
+
+#: src/window.vala:4000
 msgid "Emoji picker"
 msgstr "Emojikiezer"
+
+#~ msgid "chats"
+#~ msgstr "gesprekken"
+
+#, c-format
+#~ msgid "1 %s"
+#~ msgstr "1 %s"
+
+#, c-format
+#~ msgid "%u %s"
+#~ msgstr "%u %s"
+
+#~ msgid "people"
+#~ msgstr "personen"
