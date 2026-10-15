@@ -9,7 +9,13 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/trufae/parla/actions/workflows/build.yml"><img alt="CI" src="https://github.com/trufae/parla/actions/workflows/build.yml/badge.svg"/></a>
+  <a href="https://trufae.github.io/parla/">Website</a> ·
+  <a href="https://github.com/trufae/parla/releases/latest">Download</a> ·
+  <a href="https://github.com/trufae/parla-haiku">Haiku native preview</a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/trufae/parla/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/trufae/parla/actions/workflows/ci.yml/badge.svg"/></a>
   <a href="https://github.com/trufae/parla/releases"><img alt="Downloads" src="https://img.shields.io/badge/downloads-releases-4a86cf?style=flat-square&logo=github&logoColor=white"/></a>
   <img alt="License" src="https://img.shields.io/badge/license-GPLv3-blue?style=flat-square"/>
   <img alt="GTK4 + libadwaita" src="https://img.shields.io/badge/GTK4-libadwaita-4a86cf?style=flat-square&logo=gnome&logoColor=white"/>
@@ -31,6 +37,11 @@ Download a package from the [Parla releases page](https://github.com/trufae/parl
 On first launch, follow the profile setup to choose a display name and a chatmail relay. The relay creates an email address and password for you, while Parla generates your encryption keys on your device. You can also redeem an invitation code or import a second device instead. Then use **New chat** or **New group** to start talking and share an invite link or QR code with others.
 
 Want to build it yourself? See [Build](#build) below.
+
+Explore the [Parla website](https://trufae.github.io/parla/) for screenshots,
+features and platform downloads. A separate [native Haiku client](https://github.com/trufae/parla-haiku)
+is available as a development preview. The website's source and deployment
+instructions are in [docs/website.md](docs/website.md).
 
 ## Highlights
 

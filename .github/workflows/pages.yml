@@ -1,0 +1,80 @@
+name: Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "www/**"
+      - "scripts/build-website.py"
+      - ".github/workflows/pages.yml"
+  release:
+    types: [published, edited]
+  # Releases created with GITHUB_TOKEN do not trigger other workflows.
+  # A completed tag CI run refreshes the download links after publication.
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Package website
+    if: >-
+      github.event_name != 'workflow_run' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout website source
+        uses: actions/checkout@v7
+        with:
+          # Always publish main, even when an older release triggers a refresh.
+          ref: main
+          persist-credentials: false
+
+      - name: Read current release downloads
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/releases/latest" > "$RUNNER_TEMP/parla-release.json"
+          gh api repos/trufae/parla-haiku/releases/latest > "$RUNNER_TEMP/haiku-release.json"
+
+      - name: Verify and package static website
+        run: |
+          node --check www/app.js
+          python3 scripts/build-website.py \
+            --release "$RUNNER_TEMP/parla-release.json" \
+            --haiku-release "$RUNNER_TEMP/haiku-release.json" \
+            --output "$RUNNER_TEMP/parla-pages"
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v6
+
+      - name: Upload website
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: ${{ runner.temp }}/parla-pages
+
+  deploy:
+    name: Deploy website
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5

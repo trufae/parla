@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f6f8fa">
+    <meta name="description" content="Big conversations. Small footprint. Parla is a lightweight, native Delta Chat client for GNOME, Linux, Windows and macOS, with a native Haiku port in development.">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Parla — a little app for big conversations">
+    <meta property="og:description" content="Native GNOME messaging. A light footprint. Encrypted conversations over email. Meet Parla.">
+    <meta property="og:url" content="https://trufae.github.io/parla/">
+    <meta property="og:image" content="https://trufae.github.io/parla/assets/parla.png">
+    <meta name="twitter:card" content="summary">
+    <title>Parla — a little app for big conversations</title>
+    <link rel="canonical" href="https://trufae.github.io/parla/">
+    <link rel="icon" href="assets/parla.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="assets/parla.png">
+    <link rel="stylesheet" href="styles.css">
+    <script src="app.js" defer></script>
+  </head>
+  <body id="top">
+    <a class="skip-link" href="#main">Skip to content</a>
+    <svg class="icon-definitions" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <defs>
+        <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M7 17 17 7M7 7h10v10"/></symbol>
+        <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M5 16v5h14v-5"/></symbol>
+        <symbol id="i-chat" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 1-8 8H4l1.5-4A8 8 0 1 1 20 11Z"/><path d="M8 10h8m-8 4h5"/></symbol>
+        <symbol id="i-leaf" viewBox="0 0 24 24"><path d="M20 3c-11-1-17 4-15 11 2 7 14 8 15-11ZM4 21 15 10"/></symbol>
+        <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3m-4 5v2"/></symbol>
+        <symbol id="i-spark" viewBox="0 0 24 24"><path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5L12 3Z"/></symbol>
+        <symbol id="i-gallery" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="m3 17 6-6 5 5 3-3 4 4"/><circle cx="16" cy="8" r="1"/></symbol>
+        <symbol id="i-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></symbol>
+        <symbol id="i-keyboard" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="M6 9h1m4 0h1m4 0h1M6 12h1m4 0h1m4 0h1M7 15h10"/></symbol>
+        <symbol id="i-apps" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/></symbol>
+        <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="13" rx="3"/><path d="M5 11a7 7 0 0 0 14 0m-7 7v4m-4 0h8"/></symbol>
+      </defs>
+    </svg>
+    <header class="site-header">
+      <a class="brand" href="#top"><img src="assets/parla.svg" alt="" width="40" height="40"><span>Parla</span></a>
+      <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="navigation" hidden>Menu <span aria-hidden="true">☰</span></button>
+      <nav id="navigation" aria-label="Main navigation">
+        <a href="#features">Features</a><a href="#screenshots">A closer look</a><a href="#name">Why Parla?</a><a href="https://github.com/trufae/parla">Source <svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></a><a class="button button-small" href="#download">Get Parla <span aria-hidden="true">↓</span></a>
+      </nav>
+    </header>
+    <main id="main">
+      <section class="hero shell" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <p class="eyebrow"><span class="live-dot" aria-hidden="true"></span> Say hello to native messaging</p>
+          <h1 id="hero-title">Big conversations.<br><span>Small footprint.</span></h1>
+          <p class="lede">Your people, a little closer. A lightweight, native <a href="https://delta.chat/">Delta Chat</a> client that feels right at home on GNOME.</p>
+          <div class="hero-actions"><a class="button" href="#download">Download Parla <svg class="icon" aria-hidden="true"><use href="#i-download"/></svg></a><a class="quiet-link" href="#features">Let’s talk features <span aria-hidden="true">→</span></a></div>
+          <p class="hero-platforms">Linux · Windows · macOS <span aria-hidden="true">/</span> <a href="#haiku">Haiku native preview</a></p>
+        </div>
+        <div class="hero-stage">
+          <div class="orbit orbit-one" aria-hidden="true"></div><div class="orbit orbit-two" aria-hidden="true"></div>
+          <div class="app-stamp"><img src="assets/parla.svg" alt="Parla logo" width="86" height="86"><span>Less overhead.<br><strong>More hello.</strong></span></div>
+          <figure class="hero-window">
+            <a class="screenshot-link" href="assets/screenshots/welcome-dark.png" data-lightbox data-caption="Parla’s native desktop interface in dark mode. Welcome screen from the project’s screenshot collection."><img src="assets/screenshots/welcome-dark.png" alt="Parla in dark mode, with a chat sidebar and a welcome pane showing the Parla logo" width="970" height="690" fetchpriority="high" id="desktop-screenshot"></a>
+            <figcaption><span><span class="live-dot" aria-hidden="true"></span> Native GTK4 + libadwaita</span><div class="appearance-control" role="group" aria-label="Screenshot appearance" hidden><button type="button" data-appearance="light" aria-pressed="false">Light</button><button type="button" data-appearance="dark" aria-pressed="true">Dark</button></div><a class="no-js-light" href="assets/screenshots/welcome.png">Light screenshot ↗</a></figcaption>
+          </figure>
+          <span class="stage-note">A little app for your daily catch-ups.</span>
+        </div>
+      </section>
+
+      <div class="principles shell" aria-label="At a glance"><span><svg class="icon" aria-hidden="true"><use href="#i-chat"/></svg> Made for GNOME</span><span><svg class="icon" aria-hidden="true"><use href="#i-leaf"/></svg> Light on resources</span><span><svg class="icon" aria-hidden="true"><use href="#i-lock"/></svg> Delta Chat encryption</span><a href="https://github.com/trufae/parla/blob/main/COPYING">Free &amp; open source <svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></a></div>
+
+      <section class="intro shell section" id="features" aria-labelledby="intro-title">
+        <div class="section-heading"><p class="eyebrow">All the chat. A little less baggage.</p><h2 id="intro-title">Feels like your desktop.<br>Talks to your world.</h2><p>Catch up with a friend. Make plans in a group. Send that sticker that says it better. Parla brings everyday instant messaging to a native desktop app.</p></div>
+        <div class="pillar-grid">
+          <article class="pillar"><span class="icon-tile blue"><svg class="icon" aria-hidden="true"><use href="#i-chat"/></svg></span><h3>GNOME, down to the details.</h3><p>GTK4, libadwaita, familiar controls and an adaptive layout. A real desktop app, written in Vala, with an interface that belongs.</p></article>
+          <article class="pillar"><span class="icon-tile green"><svg class="icon" aria-hidden="true"><use href="#i-leaf"/></svg></span><h3>Room for the rest of your day.</h3><p>A lean native interface designed to keep RAM use low. Keep a conversation open while your computer gets on with everything else.</p><p class="fine-print">Memory use varies with chats, media and enabled mini-apps.</p></article>
+          <article class="pillar"><span class="icon-tile purple"><svg class="icon" aria-hidden="true"><use href="#i-lock"/></svg></span><h3>Your conversations, connected.</h3><p>Chat with other Delta Chat users, across their favorite clients. Decentralized messaging over email, with end-to-end encryption handled by the Delta Chat core.</p><a class="inline-link" href="https://delta.chat/en/help">Meet the Delta Chat network ↗</a></article>
+        </div>
+      </section>
+
+      <section class="conversation-section" id="screenshots" aria-labelledby="conversation-title">
+        <div class="shell conversation-grid">
+          <div class="conversation-copy"><p class="eyebrow">From a quick hello to the whole story</p><h2 id="conversation-title">Say it your way.</h2><p class="section-lede">Some things need a few words.<br>Others need a voice, a photo, or a very good sticker.</p>
+            <ul class="feature-list">
+              <li><svg class="icon" aria-hidden="true"><use href="#i-spark"/></svg><div><h3>A sticker worth keeping.</h3><p>Send stickers, save the ones you receive, and build your own local packs. Pause animations when you want a quieter chat.</p></div></li>
+              <li><svg class="icon" aria-hidden="true"><use href="#i-mic"/></svg><div><h3>Press play. Keep talking.</h3><p>Listen to voice messages with playback controls that stay in reach. Optional local Whisper transcription turns downloaded voice notes into text.</p></div></li>
+              <li><svg class="icon" aria-hidden="true"><use href="#i-chat"/></svg><div><h3>Keep the thread together.</h3><p>Reply, react, edit, forward and pin messages. Start a one-to-one chat or bring everyone into a group.</p></div></li>
+            </ul>
+          </div>
+          <figure class="phone-showcase"><div class="phone-halo" aria-hidden="true"></div><span class="small-label phone-label">Small window. Full conversation.</span><a class="screenshot-link phone-window" href="assets/screenshots/audio-player-mobile.png" data-lightbox data-caption="Parla’s voice-message player in a narrow window. Screenshot from an offline UI test using sample messages."><img src="assets/screenshots/audio-player-mobile.png" alt="A narrow Parla conversation showing voice messages, a playback bar and the message composer" width="350" height="710" loading="lazy"></a><figcaption>Actual app screenshot · offline test conversation<br>Adaptive layouts, from wide desktops to narrow windows.</figcaption></figure>
+        </div>
+      </section>
+
+      <section class="section shell more-features" aria-labelledby="more-title">
+        <div class="section-heading"><p class="eyebrow">Little details. Everyday superpowers.</p><h2 id="more-title">Less hunting.<br>More getting together.</h2></div>
+        <div class="feature-grid">
+          <article><span class="icon-tile blue"><svg class="icon" aria-hidden="true"><use href="#i-gallery"/></svg></span><h3>The good stuff, all together.</h3><p>Browse each chat’s images, stickers, files, audio and video in a media gallery. Jump straight back to the message behind a memory.</p></article>
+          <article><span class="icon-tile orange"><svg class="icon" aria-hidden="true"><use href="#i-search"/></svg></span><h3>“Where did we put that?”</h3><p>Search a conversation’s history or search chats and messages from the sidebar. Find the plan, the link, or the thing you almost forgot.</p></article>
+          <article><span class="icon-tile purple"><svg class="icon" aria-hidden="true"><use href="#i-keyboard"/></svg></span><h3>Stay in your flow.</h3><p>Switch chats, search and compose from the keyboard. Pick bubble, compact IRC or workspace layouts. Keep multiple profiles close by.</p><div class="shortcut-hint"><kbd>Ctrl</kbd> <span>+</span> <kbd>K</kbd><span>Quick chat switcher</span></div></article>
+          <article class="mini-app-feature"><span class="icon-tile green"><svg class="icon" aria-hidden="true"><use href="#i-apps"/></svg></span><h3>A little app inside your chat.</h3><p>Share Webxdc mini-apps and do more together in a conversation. Experimental support is available on supported Linux, Windows and macOS builds.</p><p class="fine-print">AppImage builds exclude Webxdc. Mini-apps can be disabled in Settings.</p><a class="inline-link" href="https://github.com/trufae/parla/blob/main/docs/webxdc.md">Explore Webxdc support ↗</a></article>
+        </div>
+        <div class="accessibility-note"><svg class="icon" aria-hidden="true"><use href="#i-keyboard"/></svg><p><strong>More ways to join in.</strong> Keyboard navigation and screen-reader support, including Orca, NVDA, JAWS and VoiceOver. <a href="https://github.com/trufae/parla/blob/main/docs/accessibility.md">Read the accessibility guide ↗</a></p></div>
+      </section>
+
+      <section class="start-section" aria-labelledby="start-title"><div class="shell"><div class="section-heading"><p class="eyebrow">Hello is only a few steps away</p><h2 id="start-title">Find your people.<br>Start your Parla.</h2></div><ol class="steps"><li><span>01</span><h3>Make yourself at home.</h3><p>Download Parla. Create a profile with a chatmail relay, use an existing email account, or link another device.</p></li><li><span>02</span><h3>Share a hello.</h3><p>Exchange an invitation link or QR code. Meet friends using Parla or another Delta Chat client.</p></li><li><span>03</span><h3>Make it a conversation.</h3><p>Start a chat, gather a group, share files and send a voice note. Pick the layout that feels like you.</p></li></ol><a class="inline-link" href="https://github.com/trufae/parla/blob/main/docs/onboard.md">The first-profile guide ↗</a></div></section>
+
+      <section class="section shell download-section" id="download" aria-labelledby="download-title">
+        <div class="download-heading"><img src="assets/parla.svg" alt="" width="84" height="84"><div><p class="eyebrow">A native hello, wherever you are</p><h2 id="download-title">Come on in.</h2><p>Get Parla for your desktop. Free software, yours to explore.</p></div><a class="release-link" href="https://github.com/trufae/parla/releases/latest">Release notes <svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></a></div>
+        <div class="download-grid">
+          <article class="download-card"><span class="os-mark" aria-hidden="true">L<span>↗</span></span><h3>Linux</h3><p>Made for GNOME.<br>At home on your Linux desktop.</p><div class="download-links"><a data-download="appimage-x64" href="https://github.com/trufae/parla/releases/latest">AppImage · x86_64 <span aria-hidden="true">↓</span></a><a data-download="appimage-arm64" href="https://github.com/trufae/parla/releases/latest">AppImage · ARM64 <span aria-hidden="true">↓</span></a><a data-download="flatpak-x64" href="https://github.com/trufae/parla/releases/latest">Flatpak · x86_64 <span aria-hidden="true">↓</span></a><a data-download="flatpak-arm64" href="https://github.com/trufae/parla/releases/latest">Flatpak · ARM64 <span aria-hidden="true">↓</span></a><a data-download="deb-x64" href="https://github.com/trufae/parla/releases/latest">Debian package · amd64 <span aria-hidden="true">↓</span></a></div></article>
+          <article class="download-card"><span class="os-mark windows-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><h3>Windows</h3><p>Your chats, on Windows.<br>Download, extract, say hello.</p><div class="download-links"><a data-download="windows-x64" href="https://github.com/trufae/parla/releases/latest">Windows · x86_64 ZIP <span aria-hidden="true">↓</span></a></div><p class="fine-print">Extract the archive and launch <code>parla.exe</code>.</p></article>
+          <article class="download-card"><span class="os-mark" aria-hidden="true">⌘</span><h3>macOS</h3><p>A little Parla for your Mac.<br>Apple silicon and Intel builds.</p><div class="download-links"><a data-download="macos-arm64" href="https://github.com/trufae/parla/releases/latest">Apple silicon · DMG <span aria-hidden="true">↓</span></a><a data-download="macos-intel" href="https://github.com/trufae/parla/releases/latest">Intel · DMG <span aria-hidden="true">↓</span></a><a data-download="macos-arm64-legacy" href="https://github.com/trufae/parla/releases/latest">Apple silicon · legacy DMG <span aria-hidden="true">↓</span></a></div><p class="fine-print">Open the disk image and move Parla to Applications. See release notes for system requirements.</p></article>
+          <article class="download-card haiku-download"><span class="preview-badge">Development preview</span><span class="os-mark" aria-hidden="true">H<span>✦</span></span><h3>Haiku</h3><p>A separate native client.<br>Built with Haiku’s Interface Kit.</p><div class="download-links"><a data-download="haiku-x64" href="https://github.com/trufae/parla-haiku/releases/latest">Haiku · x86_64 HPKG <span aria-hidden="true">↓</span></a><a data-download="haiku-x86" href="https://github.com/trufae/parla-haiku/releases/latest">Haiku · 32-bit hybrid HPKG <span aria-hidden="true">↓</span></a></div><p class="fine-print">Work in progress; features differ from the GTK app. <a href="#haiku">Meet the native port ↓</a></p></article>
+        </div>
+        <p class="download-footer"><a href="https://github.com/trufae/parla/releases/latest">All packages &amp; release notes ↗</a><span>Feeling curious? <a href="https://github.com/trufae/parla#build">Build it yourself</a> · <a href="https://github.com/trufae/parla/blob/main/dist/sailfishos/README.md">Sailfish OS preview</a></span></p>
+      </section>
+
+      <section class="haiku-section shell" id="haiku" aria-labelledby="haiku-title"><div><span class="preview-badge">A native adventure · work in progress</span><h2 id="haiku-title">A little different.<br>Very Haiku.</h2><p>The Haiku port takes its own path: a native C++ client using Haiku’s Interface Kit and the real Chatmail core. Native menus, system colors, notifications and a familiar place for your conversations.</p><p class="fine-print">A development preview, with ongoing interoperability testing and feature work. It does not yet have feature parity with Parla for GNOME.</p><a class="button button-light" href="https://github.com/trufae/parla-haiku">Follow Parla for Haiku <svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></a></div><figure><a class="screenshot-link" href="assets/screenshots/haiku-conversation.png" data-lightbox data-caption="The separate native Haiku client, from its v0.1.5 development-preview release."><img src="assets/screenshots/haiku-conversation.png" alt="Parla’s native Haiku development preview showing a test conversation on the Haiku desktop" width="1280" height="800" loading="lazy"></a><figcaption><a href="https://github.com/trufae/parla-haiku/releases/tag/v0.1.5">Screenshot from the Haiku development preview ↗</a></figcaption></figure></section>
+
+      <section class="section shell name-section" id="name" aria-labelledby="name-title"><div class="name-intro"><p class="eyebrow">A name made for conversation</p><h2 id="name-title">par·la<span class="word-dot">.</span></h2><p>A small word with plenty to say.<br>A familiar sound across languages.</p><img src="assets/parla.svg" alt="" width="72" height="72" loading="lazy"></div><div class="dictionary"><article><div><h3 lang="ca">Català</h3><span>noun · feminine</span></div><p><dfn lang="ca">Parla</dfn>: speech, or a person’s way of speaking. A fitting name for a place to express yourself.</p><a href="https://www.diccionari.cat/GDLC/parla">Gran Diccionari de la llengua catalana ↗</a></article><article><div><h3 lang="it">Italiano</h3><span>verb · from <i lang="it">parlare</i></span></div><p><span lang="it">Parla!</span> means “Speak!” The same form also means “he/she speaks.” An invitation to start a conversation.</p><a href="https://www.treccani.it/vocabolario/parlare/">Treccani · parlare ↗</a></article><article><div><h3 lang="es">Español</h3><span>noun · feminine</span></div><p><dfn lang="es">Parla</dfn> can mean chatter, or, colloquially, a gift for talking. Every group has someone with a little extra.</p><a href="https://dle.rae.es/parla">Real Academia Española · parla ↗</a></article></div></section>
+
+      <section class="closing shell"><img src="assets/parla.svg" alt="" width="64" height="64"><h2>Good things start<br>with a hello.</h2><a class="button" href="#download">Find your Parla <svg class="icon" aria-hidden="true"><use href="#i-download"/></svg></a></section>
+    </main>
+    <footer class="site-footer shell"><a class="brand" href="#top"><img src="assets/parla.svg" alt="" width="32" height="32"><span>Parla</span></a><p>Made with Vala, GTK4, libadwaita &amp; a little conversation.</p><nav aria-label="Footer"><a href="https://github.com/trufae/parla">GitHub</a><a href="https://github.com/trufae/parla/issues">Report an issue</a><a href="https://github.com/trufae/parla/blob/main/COPYING">GPLv3</a><a href="https://delta.chat/">Delta Chat</a></nav></footer>
+    <dialog class="lightbox" aria-labelledby="lightbox-caption"><form method="dialog"><button class="lightbox-close" aria-label="Close screenshot" autofocus>Close <span aria-hidden="true">×</span></button></form><img src="assets/screenshots/welcome-dark.png" alt="" width="970" height="690"><p id="lightbox-caption"></p></dialog>
+  </body>
+</html>
