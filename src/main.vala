@@ -47,7 +47,7 @@ int main (string[] args) {
 #if WINDOWS
             try {
                 Pid pid;
-                Process.spawn_async (null, restart_args, original_environment, SpawnFlags.DEFAULT,
+                Process.spawn_async (null, restart_args, original_environment, 0,
                                      null, out pid);
             } catch (SpawnError e) {
                 warning ("Unable to restart Parla: %s", e.message);
