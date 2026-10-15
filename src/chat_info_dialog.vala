@@ -433,20 +433,11 @@ namespace Dc {
                 row.tooltip_text = _("View contact details");
                 row.activated.connect (() => show_contact_details.begin (contact));
 
-                var right_click = new Gtk.GestureClick ();
-                right_click.button = 3;
-                right_click.propagation_phase = Gtk.PropagationPhase.CAPTURE;
-                right_click.pressed.connect ((n, x, y) => {
-                    right_click.set_state (Gtk.EventSequenceState.CLAIMED);
+                var context_menu = new ContextMenuGestures (row, app_window.settings);
+                context_menu.requested.connect ((x, y, long_press) => {
                     row.grab_focus ();
                     show_contact_menu (contact, row, x, y);
-                });
-                row.add_controller (right_click);
-                var hold = context_menu_long_press (row, app_window.settings);
-                hold.pressed.connect ((x, y) => {
-                    hold.set_state (Gtk.EventSequenceState.CLAIMED);
-                    row.grab_focus ();
-                    show_contact_menu (contact, row, x, y);
+                    return true;
                 });
 
                 var menu_keys = new Gtk.EventControllerKey ();

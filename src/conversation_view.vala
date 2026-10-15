@@ -457,36 +457,17 @@ namespace Dc {
                 message_listview.margin_bottom = 10;
             }
 
-            /* One gesture pair on the listview, not per-row: a per-row
-               left-click controller competes with the label's link gesture
-               and breaks URL clicks. */
-            var rc = new Gtk.GestureClick ();
-            rc.button = Gdk.BUTTON_SECONDARY;
-            /* Selectable labels normally consume secondary clicks for their
-               copy menu. Intercept them first so right-clicking unselected
-               message text opens the message menu; an existing selection is
-               still handed back to the label for its native menu. */
-            rc.propagation_phase = Gtk.PropagationPhase.CAPTURE;
-            track_signal (rc, rc.pressed.connect ((n, x, y) => {
+            /* Attach to the list, not each row, so label link gestures keep
+               working. Selected text keeps GTK's native right-click menu. */
+            var context_menu = new ContextMenuGestures (message_listview, settings);
+            track_signal (context_menu, context_menu.requested.connect ((x, y, long_press) => {
+                if (long_press ? selection_mode : pointer_on_selected_text (x, y))
+                    return false;
                 var row = pick_message_row (x, y);
-                if (row == null) return;
-                if (pointer_on_selected_text (x, y)) {
-                    rc.set_state (Gtk.EventSequenceState.DENIED);
-                    return;
-                }
-                rc.set_state (Gtk.EventSequenceState.CLAIMED);
+                if (row == null) return false;
                 msg_actions.show_context_menu (row.message_id,
                     row.is_outgoing, x, y, message_listview);
-            }));
-            message_listview.add_controller (rc);
-            var hold = context_menu_long_press (message_listview, settings);
-            track_signal (hold, hold.pressed.connect ((x, y) => {
-                if (selection_mode) return;
-                var row = pick_message_row (x, y);
-                if (row == null) return;
-                hold.set_state (Gtk.EventSequenceState.CLAIMED);
-                msg_actions.show_context_menu (row.message_id,
-                    row.is_outgoing, x, y, message_listview);
+                return true;
             }));
 
             /* Menu / Shift+F10 open the message menu for the focused row,

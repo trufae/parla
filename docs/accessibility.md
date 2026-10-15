@@ -19,6 +19,18 @@ and overrides session detection; no GNOME/Phosh GSettings changes are needed.
 GTK's `gtk-long-press-time` controls the hold delay, and moving the pointer
 beyond GTK's threshold cancels the hold.
 
+The same option applies to touch and mouse holds on every display; Parla
+does not change behavior based on touchscreen detection. Right-click menus
+remain available when long-press is disabled.
+
+Code that adds a context menu uses `ContextMenuGestures (widget, settings)`
+and connects its `requested (x, y, long_press)` signal once for both input
+methods. Coordinates are relative to `widget`; return `true` after opening
+the menu, or `false` to let child widgets handle the event. The helper owns
+capture, gesture claiming and live preference updates. Resolve recycled
+list/grid items at event time. Keyboard handlers can call the same menu
+function with their own focus-based anchor.
+
 How Parla is exposed to screen readers on each platform, and what the
 Windows/macOS bundles must ship for that to work at all.
 

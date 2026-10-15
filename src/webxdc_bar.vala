@@ -147,16 +147,10 @@ namespace Dc {
             });
             box.append (stop);
 
-            var context = new Gtk.GestureClick ();
-            context.button = Gdk.BUTTON_SECONDARY;
-            context.pressed.connect ((n_press, x, y) => {
+            var context_menu = new ContextMenuGestures (box, settings);
+            context_menu.requested.connect ((x, y, long_press) => {
                 show_context_menu (box, msg_id, x, y);
-            });
-            box.add_controller (context);
-            var hold = context_menu_long_press (box, settings);
-            hold.pressed.connect ((x, y) => {
-                hold.set_state (Gtk.EventSequenceState.CLAIMED);
-                show_context_menu (box, msg_id, x, y);
+                return true;
             });
 
             return box;

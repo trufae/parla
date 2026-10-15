@@ -759,27 +759,13 @@ namespace Dc {
                 if (view != null) view.focus_entry ();
             });
 
-            /* Right-click context menu */
-            var right_click = new Gtk.GestureClick ();
-            right_click.button = 3; /* secondary button */
-            right_click.propagation_phase = Gtk.PropagationPhase.CAPTURE;
-            right_click.pressed.connect ((n, x, y) => {
-                var row = chat_listbox.get_row_at_y ((int) y);
-                if (row == null) return;
-                var chat_row = row.child as ChatRow;
-                if (chat_row == null) return;
-                right_click.set_state (Gtk.EventSequenceState.CLAIMED);
-                if (chat_menu != null)
-                    chat_menu.show (chat_row.chat_id, x, y, chat_listbox);
-            });
-            chat_listbox.add_controller (right_click);
-            var hold = context_menu_long_press (chat_listbox, settings);
-            hold.pressed.connect ((x, y) => {
+            var context_menu = new ContextMenuGestures (chat_listbox, settings);
+            context_menu.requested.connect ((x, y, long_press) => {
                 var row = chat_listbox.get_row_at_y ((int) y);
                 var chat_row = row != null ? row.child as ChatRow : null;
-                if (chat_row == null || chat_menu == null) return;
-                hold.set_state (Gtk.EventSequenceState.CLAIMED);
+                if (chat_row == null || chat_menu == null) return false;
                 chat_menu.show (chat_row.chat_id, x, y, chat_listbox);
+                return true;
             });
 
             /* Menu / Shift+F10 open the same context menu from the keyboard,

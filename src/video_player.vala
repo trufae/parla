@@ -51,22 +51,12 @@ namespace Dc {
             overlay.add_overlay (close_btn);
 
             widget = overlay;
-
-            var right_click = new Gtk.GestureClick ();
-            right_click.button = 3;
-            right_click.pressed.connect ((n, x, y) => {
-                show_menu (x, y);
-            });
-            widget.add_controller (right_click);
         }
 
         public void set_window (Window w) {
             this.window = w;
-            var hold = context_menu_long_press (widget, w.settings);
-            hold.pressed.connect ((x, y) => {
-                hold.set_state (Gtk.EventSequenceState.CLAIMED);
-                show_menu (x, y);
-            });
+            var context_menu = new ContextMenuGestures (widget, w.settings);
+            context_menu.requested.connect ((x, y, long_press) => show_menu (x, y));
         }
 
         public void show (string path, string? name) {
@@ -111,8 +101,8 @@ namespace Dc {
             return true;
         }
 
-        private void show_menu (double x, double y) {
-            if (current_path == null) return;
+        private bool show_menu (double x, double y) {
+            if (current_path == null) return false;
             string path = current_path;
             string? name = current_name;
 
@@ -135,6 +125,7 @@ namespace Dc {
             popover.set_pointing_to ({ (int) x, (int) y, 1, 1 });
             unparent_on_close (popover);
             popover.popup ();
+            return true;
         }
     }
 }

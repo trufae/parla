@@ -267,16 +267,10 @@ namespace Dc {
             card.append (emoji_btn);
 
             /* Right-click: copy path, move to another pack or delete */
-            var click = new Gtk.GestureClick ();
-            click.button = Gdk.BUTTON_SECONDARY;
-            click.pressed.connect ((n, x, y) => {
+            var context_menu = new ContextMenuGestures (card, app_window.settings);
+            context_menu.requested.connect ((x, y, long_press) => {
                 show_sticker_menu (sticker, card, x, y);
-            });
-            card.add_controller (click);
-            var hold = context_menu_long_press (card, app_window.settings);
-            hold.pressed.connect ((x, y) => {
-                hold.set_state (Gtk.EventSequenceState.CLAIMED);
-                show_sticker_menu (sticker, card, x, y);
+                return true;
             });
             return card;
         }

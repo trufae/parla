@@ -1242,26 +1242,17 @@ namespace Dc {
          *  Context menu
          * ================================================================ */
 
-        /** Right click and touch long-press open the item context menu.
+        /** Right click and long-press open the item context menu.
             The message is read at event time because cells are recycled
             and rebound to different messages. */
         private static void add_context_menu_gestures (GalleryCell cell,
                                                        GalleryDialog dialog) {
             var widget = (Gtk.Widget) cell;
-            var right_click = new Gtk.GestureClick ();
-            right_click.button = 3;
-            right_click.pressed.connect ((n, x, y) => {
-                if (cell.msg != null)
-                    dialog.show_item_menu (widget, cell.msg, x, y);
-            });
-            widget.add_controller (right_click);
-
-            var long_press = context_menu_long_press (
-                widget, dialog.app_window.settings);
-            long_press.pressed.connect ((x, y) => {
-                if (cell.msg == null) return;
-                long_press.set_state (Gtk.EventSequenceState.CLAIMED);
+            var context_menu = new ContextMenuGestures (widget, dialog.app_window.settings);
+            context_menu.requested.connect ((x, y, long_press) => {
+                if (cell.msg == null) return false;
                 dialog.show_item_menu (widget, cell.msg, x, y);
+                return true;
             });
         }
 
