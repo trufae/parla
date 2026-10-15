@@ -18,7 +18,9 @@ public int run_language_settings_test () {
     assert (settings.language == "");
     assert (SettingsManager.load_language () == "");
 
-    Intl.setlocale (LocaleCategory.ALL, "");
+    /* Use the same locale setup for both selections. On Windows, gettext's
+       setlocale wrapper honors LC_ALL while the CRT's setlocale does not. */
+    Localization.initialize ("");
     string numeric = Intl.setlocale (LocaleCategory.NUMERIC, null);
     string dates = Intl.setlocale (LocaleCategory.TIME, null);
     Localization.initialize ("ca");
