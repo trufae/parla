@@ -18,6 +18,9 @@ namespace Dc.Platform {
     [CCode (cheader_filename = "platform.h", cname = "parla_platform_is_macos")]
     private extern bool platform_is_macos ();
 
+    [CCode (cheader_filename = "platform.h", cname = "parla_get_system_languages")]
+    public extern string? get_system_languages ();
+
     [CCode (cheader_filename = "platform.h", cname = "parla_setup_macos_bundle_environment")]
     private extern void platform_setup_macos_bundle_environment ();
 

@@ -118,6 +118,7 @@ namespace Dc {
         public SidebarMode sidebar_mode { get; set; default = SidebarMode.FULL; }
         public string default_account_addr { get; set; default = ""; }
         public ThemeOverride theme_override { get; set; default = ThemeOverride.SYSTEM; }
+        public string language { get; private set; default = ""; }
         public MessageStyle message_style { get; set; default = MessageStyle.BUBBLES; }
         public BubbleAvatarDisplay bubble_avatar_display { get; set; default = BubbleAvatarDisplay.NONE; }
         public bool bubble_avatars_in_direct_chats { get; set; default = false; }
@@ -243,6 +244,7 @@ namespace Dc {
             int sb = kf_enum (kf, "sidebar_mode", (int) SidebarMode.FULL, 2);
             sidebar_mode = (SidebarMode) sb;
             default_account_addr = kf_str (kf, "default_account_addr", "");
+            language = Localization.normalize_language (kf_str (kf, "language", ""));
             int theme = kf_enum (kf, "theme_override",
                                  (int) ThemeOverride.SYSTEM, 2);
             theme_override = (ThemeOverride) theme;
@@ -269,6 +271,20 @@ namespace Dc {
 
         private static int kf_int (KeyFile kf, string k, int d) {
             try { return kf.get_integer ("General", k); } catch { return d; }
+        }
+
+        /* Read before initializing GTK/gettext, without loading unrelated
+           settings or constructing any widgets. */
+        public static string load_language () {
+            var kf = new KeyFile ();
+            try { kf.load_from_file (get_config_path (), KeyFileFlags.NONE); }
+            catch (Error e) { return ""; }
+            return Localization.normalize_language (kf_str (kf, "language", ""));
+        }
+
+        public void save_language (string code) {
+            language = Localization.normalize_language (code);
+            save_string ("language", language);
         }
 
         private static bool kf_bool (KeyFile kf, string k, bool d) {
@@ -721,6 +737,7 @@ namespace Dc {
             advanced_page.icon_name = "preferences-other-symbolic";
             this.add (advanced_page);
 
+            build_language_section (general_page);
             build_appearance_section (general_page);
             build_behavior_section (general_page);
             build_accessibility_section (general_page);
@@ -860,6 +877,45 @@ namespace Dc {
             });
 
             bg_mode_combo.add_suffix (bg_color_btn);
+        }
+
+        private void build_language_section (Adw.PreferencesPage page) {
+            var group = settings_group (page, _("Language"));
+            string[] codes = Localization.languages ();
+            string[] labels = {};
+            uint selected = 0;
+            for (int i = 0; i < codes.length; i++) {
+                labels += Localization.language_name (codes[i]);
+                if (codes[i] == app_window.settings.language) selected = (uint) i;
+            }
+            var row = row_combo (group, _("Language"),
+                _("Choose the language used by Parla"), labels, selected);
+            row.notify["selected"].connect (() => {
+                if (row.selected < codes.length) change_language.begin (row, codes);
+            });
+        }
+
+        private async void change_language (Adw.ComboRow row, string[] codes) {
+            string code = codes[row.selected];
+            if (code == app_window.settings.language) return;
+            row.sensitive = false;
+            var dialog = new Adw.AlertDialog (_("Restart to Change Language?"),
+                _("Parla needs to restart to apply the new language."));
+            dialog.add_response ("cancel", _("Cancel"));
+            dialog.add_response ("restart", _("Restart"));
+            dialog.set_response_appearance ("restart", Adw.ResponseAppearance.SUGGESTED);
+            dialog.default_response = "restart";
+            dialog.close_response = "cancel";
+            if ((yield dialog.choose (app_window, null)) == "restart") {
+                app_window.settings.save_language (code);
+                ((Dc.Application) app_window.application).request_restart ();
+            } else {
+                for (int i = 0; i < codes.length; i++) {
+                    if (codes[i] == app_window.settings.language)
+                        row.selected = (uint) i;
+                }
+                row.sensitive = true;
+            }
         }
 
         private void build_accessibility_section (Adw.PreferencesPage page) {

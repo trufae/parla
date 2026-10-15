@@ -57,6 +57,11 @@ config.set('VERSION', meson.project_version())
 config.set('RPC_SERVER_PATH', get_option('rpc_server_path'))
 config.set('GETTEXT_PACKAGE', meson.project_name())
 config.set('LOCALEDIR', get_option('prefix') / get_option('localedir'))
+translation_languages = []
+foreach line : import('fs').read('po/LINGUAS').split('\n')
+  translation_languages += line.split('#')[0].strip().split()
+endforeach
+config.set('TRANSLATION_LANGUAGES', ' '.join(translation_languages))
 config_file = configure_file(
   input: 'src/config.vala.in',
   output: 'config.vala',
@@ -111,6 +116,7 @@ subdir('po')
 src_inc = include_directories('src')
 sources = files(
   'src/platform.vala',
+  'src/localization.vala',
   'src/subprocess.vala',
   'src/platform.c',
   'src/application.vala',
@@ -295,7 +301,7 @@ if host_machine.system() == 'windows'
   )
 endif
 
-executable('parla',
+parla = executable('parla',
   files('src/main.vala'), sources, config_file, appdata_vala, resources,
   dependencies: deps,
   include_directories: src_inc,
@@ -506,13 +512,16 @@ core_compat_test = executable(
         'tests/search_ui_test.vala', 'tests/webxdc_realtime_test.vala',
         'tests/webxdc_realtime_ui_test.vala', 'tests/sync_ui_test.vala',
         'tests/chat_lifetime_test.vala', 'tests/long_press_ui_test.vala',
-        'tests/audio_player_ui_test.vala'),
+        'tests/audio_player_ui_test.vala', 'tests/language_test.vala'),
   sources, config_file, appdata_vala, resources,
   dependencies: deps,
   include_directories: src_inc,
   install: false,
 )
 test('core-compat', core_compat_test)
+test('language', python, args: [
+  files('tests/language_test.py'), parla, core_compat_test,
+])
 test('long-press-settings', python, args: [
   files('tests/long_press_test.py'), core_compat_test,
 ])

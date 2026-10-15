@@ -16,6 +16,7 @@ src/file_drop.vala
 src/full_message_dialog.vala
 src/gallery_dialog.vala
 src/image_viewer.vala
+src/localization.vala
 src/message_actions.vala
 src/message_details_dialog.vala
 src/message_row.vala

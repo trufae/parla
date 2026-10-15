@@ -9,4 +9,5 @@ namespace Parla {
        LOCALEDIR is normally <prefix>/share/locale. */
     public const string GETTEXT_PACKAGE = "@GETTEXT_PACKAGE@";
     public const string LOCALEDIR = "@LOCALEDIR@";
+    public const string TRANSLATION_LANGUAGES = "@TRANSLATION_LANGUAGES@";
 }

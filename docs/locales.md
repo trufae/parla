@@ -26,7 +26,24 @@ to `po/POTFILES`; no architecture change is needed for that.
 
 ## Selecting a language on startup
 
-Gettext follows the usual GNU locale environment variables. The simplest way
+Settings → General → Language offers **System Language** (the default),
+**English**, and all catalogs listed in `po/LINGUAS`. The current translations
+appear as **Català** and **Nederlands**, using their own names. Selecting a
+different language opens a **Restart** / **Cancel** dialog: Restart saves the
+choice and relaunches Parla, while Cancel keeps the previous selection.
+Existing widgets do not support live retranslation.
+
+The choice is stored as a locale code in `[General] language` in `settings.ini`;
+an empty or unsupported code follows the system. The list of codes is generated
+from `po/LINGUAS` at build time. Add an autonym in `src/localization.vala` for
+new languages; otherwise their code is displayed.
+
+On macOS, Finder launches without locale environment variables use the native
+preferred-language list. An explicit choice also works when the process starts
+in the C locale, without changing date or number formatting.
+
+With **System Language** selected, gettext follows the usual GNU locale
+environment variables. The simplest way
 to force a language for one launch is to set `LC_ALL` to a UTF-8 locale that
 is installed on the system:
 

@@ -18,6 +18,23 @@
 static char parla_drop_handler_key;
 static char parla_drop_subclass_key;
 
+gchar *
+parla_get_system_languages (void)
+{
+	@autoreleasepool {
+		NSMutableArray *languages = [NSMutableArray array];
+		for (NSString *language in [NSLocale preferredLanguages]) {
+			[languages addObject:[language stringByReplacingOccurrencesOfString:@"-" withString:@"_"]];
+			if ([language isEqualToString:@"en"] || [language hasPrefix:@"en-"]) {
+				/* English is the source language, so it has no catalog. */
+				[languages addObject:@"C"];
+				break;
+			}
+		}
+		return g_strdup ([[languages componentsJoinedByString:@":"] UTF8String]);
+	}
+}
+
 static BOOL
 parla_audio_connect_nodes (AVAudioEngine *engine, AVAudioNode *source,
                            AVAudioNode *destination, AVAudioFormat *format)

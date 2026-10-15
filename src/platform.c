@@ -243,6 +243,12 @@ parla_setup_macos_bundle_environment (void)
 }
 
 #if !defined(__APPLE__)
+gchar *
+parla_get_system_languages (void)
+{
+	return NULL;
+}
+
 void
 parla_macos_install_file_drop_handler (GtkWidget                  *widget,
                                        ParlaMacosFileDropCallback  callback,

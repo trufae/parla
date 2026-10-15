@@ -34,6 +34,12 @@ namespace Dc {
     public class Application : Adw.Application {
 
         public RpcClient rpc { get; private set; }
+        public bool restart_requested { get; private set; default = false; }
+
+        public void request_restart () {
+            restart_requested = true;
+            get_or_create_window ().quit_application ();
+        }
 
         /* Set once by --background: the process is a long-lived service
            whose window is optional. It keeps running with no window and
