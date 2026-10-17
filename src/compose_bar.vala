@@ -115,8 +115,10 @@ namespace Dc {
         private int suspended_replying_msg_id = 0;
         private string suspended_reply_label = "";
         private bool closed = false;
-        /* Last natural height a resize was queued for; guards the
-           vadjustment-driven requeue below against self-feeding. */
+        private uint cursor_scroll_tick = 0;
+        private int cursor_scroll_width = -1;
+        private int cursor_scroll_height = -1;
+        private double cursor_scroll_upper = -1;
 
         public ComposeBar () {
             Object (
@@ -443,6 +445,10 @@ namespace Dc {
         public void close () {
             if (closed) return;
             closed = true;
+            if (cursor_scroll_tick != 0) {
+                text_view.remove_tick_callback (cursor_scroll_tick);
+                cursor_scroll_tick = 0;
+            }
             stop_recording_timer ();
             stop_recording_preview ();
             if (transcriber_handler != 0) {
@@ -719,17 +725,43 @@ namespace Dc {
             if (open_emoji) open_emoji_picker_after_typed_colon ();
         }
 
-        /* Replace the entry text with the cursor at the end, scrolled on
-           screen once the text view has validated the new content. */
+        /* Scrolling before the growing entry has been allocated starts an
+           animation with the old viewport height. GTK then skips updating
+           the adjustment during allocation, leaving blank space below the
+           cursor. Text validation and resizing can span several frames, so
+           wait until the viewport and content size stop changing. */
+        private void queue_cursor_scroll () {
+            if (closed) return;
+            cursor_scroll_width = -1;
+            cursor_scroll_height = -1;
+            cursor_scroll_upper = -1;
+            if (cursor_scroll_tick == 0)
+                cursor_scroll_tick = text_view.add_tick_callback (scroll_cursor_after_resize);
+        }
+
+        private bool scroll_cursor_after_resize (Gtk.Widget widget, Gdk.FrameClock clock) {
+            int width = text_view.get_width ();
+            int height = text_view.get_height ();
+            double upper = text_view.vadjustment.upper;
+            if (width != cursor_scroll_width || height != cursor_scroll_height
+                || upper != cursor_scroll_upper) {
+                cursor_scroll_width = width;
+                cursor_scroll_height = height;
+                cursor_scroll_upper = upper;
+                return Source.CONTINUE;
+            }
+            cursor_scroll_tick = 0;
+            text_view.scroll_mark_onscreen (text_view.buffer.get_insert ());
+            return Source.REMOVE;
+        }
+
+        /* Replace the entry text with the cursor at the end. */
         private void set_entry_text (string text) {
             text_view.buffer.text = text;
             Gtk.TextIter end_iter;
             text_view.buffer.get_end_iter (out end_iter);
             text_view.buffer.place_cursor (end_iter);
-            GLib.Idle.add (() => {
-                text_view.scroll_mark_onscreen (text_view.buffer.get_insert ());
-                return GLib.Source.REMOVE;
-            });
+            queue_cursor_scroll ();
         }
 
         private string get_text () {
@@ -1811,7 +1843,7 @@ namespace Dc {
                     buffer.delete_selection (true, text_view.editable);
                 buffer.insert_at_cursor (text, text.length);
                 buffer.end_user_action ();
-                text_view.scroll_mark_onscreen (buffer.get_insert ());
+                queue_cursor_scroll ();
             } catch (Error e) {
             }
         }
