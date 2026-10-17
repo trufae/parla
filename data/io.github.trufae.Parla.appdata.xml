@@ -35,13 +35,26 @@
     </screenshot>
   </screenshots>
 
-  <url type="homepage">https://github.com/trufae/parla</url>
+  <url type="homepage">https://trufae.github.io/parla</url>
   <url type="bugtracker">https://github.com/trufae/parla/issues</url>
   <url type="vcs-browser">https://github.com/trufae/parla</url>
   <developer id="io.github.trufae">
     <name translate="no">pancake</name>
   </developer>
   <releases>
+    <release version="0.10.0" date="2026-10-17">
+      <description>
+        <ul>
+          <li>Add Dutch translation</li>
+          <li>Override language in settings</li>
+          <li>Reduce chat reloads</li>
+          <li>Fixes for small screens</li>
+          <li>Keep composer focus on common actions</li>
+          <li>Initial video thumbnails</li>
+          <li>Handle long press as right click</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.9.9" date="2026-10-03">
       <description>
         <ul>
