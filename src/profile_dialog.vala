@@ -79,8 +79,7 @@ namespace Dc {
         private Gtk.ProgressBar storage_progress;
         private Gtk.Switch read_receipts_switch;
         private Gtk.Label read_receipts_caption_label;
-        private string? avatar_path = null;
-        private bool avatar_changed = false;
+        private LocalFile? picked_avatar = null;
         private bool loading_read_receipts = false;
         private bool saving_read_receipts = false;
         private bool saved_read_receipts_enabled = true;
@@ -150,6 +149,7 @@ namespace Dc {
                 if (id == account_id) load_addresses.begin ();
             });
             this.closed.connect (() => {
+                picked_avatar = null;
                 addresses_generation++;
                 if (transports_handler != 0) {
                     events.disconnect (transports_handler);
@@ -436,10 +436,6 @@ namespace Dc {
                     avatar_widget.text = name;
                 }
                 if (status != null) status_entry.text = status;
-                if (avatar != null && avatar.length > 0 &&
-                    FileUtils.test (avatar, FileTest.EXISTS)) {
-                    avatar_path = avatar;
-                }
                 avatar_widget.custom_image = load_avatar (avatar);
             } catch (Error e) {
                 /* ignore */
@@ -486,11 +482,12 @@ namespace Dc {
         }
 
         private async void do_save () {
+            var avatar = picked_avatar;
             try {
                 yield rpc.batch_set_config ("displayname", name_entry.text.strip (), account_id);
                 yield rpc.batch_set_config ("selfstatus", status_entry.text.strip (), account_id);
-                if (avatar_changed && avatar_path != null) {
-                    yield rpc.batch_set_config ("selfavatar", avatar_path, account_id);
+                if (avatar != null) {
+                    yield rpc.batch_set_config ("selfavatar", avatar.path, account_id);
                 }
                 profile_updated ();
                 this.close ();
@@ -601,12 +598,11 @@ namespace Dc {
         }
 
         private async void pick_avatar () {
-            string? path = yield pick_image_file (
+            var file = yield pick_image_file (
                 (Gtk.Window) this.get_root (), _("Select Avatar"));
-            if (path != null) {
-                avatar_path = path;
-                avatar_changed = true;
-                avatar_widget.custom_image = load_avatar (path);
+            if (file != null && get_root () != null) {
+                picked_avatar = file;
+                avatar_widget.custom_image = load_avatar (file.path);
             }
         }
     }

@@ -809,12 +809,14 @@ namespace Dc {
         }
 
         private async void pick_avatar () {
-            string? path = yield pick_image_file (
+            var file = yield pick_image_file (
                 (Gtk.Window) this.get_root (), _("Select Avatar Image"));
-            if (path == null) return;
+            if (file == null || get_root () == null) return;
             try {
-                yield rpc.set_chat_profile_image (chat_id, path);
-            } catch (Error e) { /* ignore */ }
+                yield rpc.set_chat_profile_image (chat_id, file.path);
+            } catch (Error e) {
+                show_error (this, e.message);
+            }
         }
     }
 }
