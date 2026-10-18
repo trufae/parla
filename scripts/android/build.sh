@@ -42,6 +42,7 @@ for dep in curl libxml2 libyaml; do
   fi
 done
 cp dist/android/*.wrap subprojects/
+cp dist/android/*.patch subprojects/packagefiles/
 python3 scripts/android/prepare.py
 pw="$PWD/.cache/android/pixiewood/pixiewood"
 "$pw" prepare --release --toolchain "$ANDROID_HOME/ndk/$ANDROID_NDK_VERSION" \
