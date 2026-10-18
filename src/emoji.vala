@@ -1,9 +1,9 @@
 namespace Dc {
 
-    /* A modal popover's grab interrupts the Android IM context even when
-       its menu button has focus_on_click=false. Keep the current editor
-       focused until the user explicitly taps another field (emoji search),
-       and replace the grab's outside-click/Escape dismissal. */
+    /* A modal popover's grab interrupts the editor's IM context even when
+       its menu button has focus_on_click=false. Preserve focus on every
+       platform so virtual keyboards do not hide/reopen when a picker opens.
+       Replace the grab's outside-click/Escape dismissal. */
     internal void preserve_picker_focus (Gtk.MenuButton button) {
         unowned Gtk.MenuButton anchor = button;
         unowned Gtk.Popover popover = button.get_popover ();
@@ -38,17 +38,25 @@ namespace Dc {
             });
             keys = new Gtk.EventControllerKey ();
             keys.propagation_phase = Gtk.PropagationPhase.CAPTURE;
+            keys.propagation_limit = Gtk.PropagationLimit.NONE;
             keys.key_pressed.connect ((keyval, keycode, state) => {
                 if (keyval != Gdk.Key.Escape) return false;
                 /* Let a nested chooser dismiss itself first. */
                 var focus = ((Gtk.Root) root).get_focus ();
                 if (focus != null && focus.get_native () != popover
                     && focus.is_ancestor (popover)) return false;
+                bool return_to_button = focus != null && focus.is_ancestor (popover);
                 popover.popdown ();
+                if (return_to_button) anchor.grab_focus ();
                 return true;
             });
             root.add_controller (click);
             root.add_controller (keys);
+            /* Keyboard activation starts on the menu button, not an editor.
+               Move into the picker in that case, preserving Tab/Enter use. */
+            var focus = ((Gtk.Root) root).get_focus ();
+            if (focus != null && (focus == anchor || focus.is_ancestor (anchor)))
+                popover.child_focus (Gtk.DirectionType.TAB_FORWARD);
         });
         popover.unmap.connect (() => {
             popover.can_focus = false;
