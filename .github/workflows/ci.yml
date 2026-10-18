@@ -260,6 +260,88 @@ jobs:
           path: Parla-*.zip
           if-no-files-found: error
 
+  build-android:
+    name: Android arm64
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install Android build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake gettext ninja-build valac \
+            libgtk-4-dev libadwaita-1-dev libjson-glib-dev glslc sassc gperf \
+            libcurl4-openssl-dev libyaml-dev libxml2-dev libxmlb-dev itstool xsltproc docbook-xsl \
+            libglib-perl libglib-object-introspection-perl libipc-run-perl \
+            libjson-perl libset-scalar-perl libxml-libxml-perl libxml-libxslt-perl \
+            gir1.2-appstream-1.0 gobject-introspection libxml2-utils python3-venv
+          python3 -m venv "$RUNNER_TEMP/android-venv"
+          "$RUNNER_TEMP/android-venv/bin/pip" install meson==1.12.1
+          echo "$RUNNER_TEMP/android-venv/bin" >> "$GITHUB_PATH"
+          source scripts/android/versions.env
+          sdkmanager "platforms;android-36" "build-tools;$ANDROID_BUILD_TOOLS" "ndk;$ANDROID_NDK_VERSION"
+      - name: Cache downloaded sources and Rust build
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            .cache/android
+            subprojects
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: android-arm64-${{ runner.os }}-${{ hashFiles('scripts/android/**', 'dist/android/**') }}
+      - name: Build APK
+        env:
+          RELEASE_BUILD: ${{ startsWith(github.ref, 'refs/tags/') }}
+        run: |
+          variant=debug
+          if [[ "$RELEASE_BUILD" == true ]]; then variant=release; fi
+          scripts/android/build.sh "$variant"
+      - name: Upload Android artifact
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: parla-android-arm64-build
+          path: dist/android/*.apk
+          if-no-files-found: error
+      - name: Upload Android build logs
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: parla-android-logs
+          path: .pixiewood/bin-aarch64/meson-logs/
+
+  android-sign:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build-android
+    runs-on: ubuntu-24.04
+    environment: release
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: parla-android-arm64-build
+          path: dist/android
+      - name: Sign and verify release APK
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          source scripts/android/versions.env
+          sdkmanager "build-tools;$ANDROID_BUILD_TOOLS"
+          scripts/android/sign.sh
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: parla-android-arm64-signed
+          path: dist/android/*-android-arm64.apk
+          if-no-files-found: error
+
   build-windows:
     runs-on: windows-latest
     defaults:
@@ -389,7 +471,7 @@ jobs:
 
   release:
     if: startsWith(github.ref, 'refs/tags/')
-    needs: [build-deb, build-flatpak, build-appimage, build-sfos, macos-sign, build-windows]
+    needs: [build-deb, build-flatpak, build-appimage, build-sfos, macos-sign, build-windows, android-sign]
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -414,9 +496,10 @@ jobs:
           # One DMG per entry in the build-macos matrix
           dmgs=(artifacts/parla-macos-signed/*.dmg)
           zips=(artifacts/parla-windows-*/*.zip)
-          if (( ${#debs[@]} == 0 || ${#flatpaks[@]} == 0 || ${#appimages[@]} == 0 || ${#rpms[@]} == 0 || ${#dmgs[@]} != 3 || ${#zips[@]} == 0 )); then
+          apks=(artifacts/parla-android-arm64-signed/*.apk)
+          if (( ${#debs[@]} == 0 || ${#flatpaks[@]} == 0 || ${#appimages[@]} == 0 || ${#rpms[@]} == 0 || ${#dmgs[@]} != 3 || ${#zips[@]} == 0 || ${#apks[@]} != 1 )); then
             find artifacts -maxdepth 4 -type f
-            echo "::error::Missing release artifact (.deb, .flatpak, .AppImage, SailfishOS .rpm, three .dmg files, or .zip)"
+            echo "::error::Missing release artifact (.deb, .flatpak, .AppImage, SailfishOS .rpm, three .dmg files, .zip, or signed Android APK)"
             exit 1
           fi
           declare -A dmg_names
@@ -444,6 +527,7 @@ jobs:
             artifacts/parla-sfos-*/*.rpm
             artifacts/parla-macos-signed/*.dmg
             artifacts/parla-windows-*/*.zip
+            artifacts/parla-android-arm64-signed/*.apk
 
       - name: Wait before retrying release upload
         if: steps.publish.outcome == 'failure'

@@ -67,3 +67,11 @@ Distribution packages should either depend on a packaged
 
 Known packaged examples include Arch Linux `extra/deltachat-rpc-server` and the
 FreeBSD `net/deltachat-rpc-server` port.
+
+## Android
+
+Android APKs bundle an arm64 Android/Bionic core in the APK native library
+directory. Linux arm64 binaries are not interchangeable with Android binaries.
+The in-app downloader and custom-binary selector are disabled on Android:
+Android 10+ cannot execute downloads from writable app storage. Update the APK
+to update its core. See [Android packaging](../dist/android/README.md).

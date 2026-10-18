@@ -72,6 +72,9 @@ namespace Dc {
                    repairs the known damage there. */
                 flags: ApplicationFlags.HANDLES_COMMAND_LINE
                     | ApplicationFlags.HANDLES_OPEN
+#if ANDROID
+                    | ApplicationFlags.NON_UNIQUE
+#endif
             );
         }
 

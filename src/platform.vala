@@ -1,4 +1,9 @@
 namespace Dc.Platform {
+#if ANDROID
+    [CCode (cheader_filename = "platform.h", cname = "parla_setup_android_environment")]
+    public extern void setup_android_environment ();
+#endif
+
     [CCode (has_target = false)]
     public delegate void RawMacosFileDropCallback (string path, double x,
                                                    double y, void* user_data);
@@ -186,7 +191,19 @@ namespace Dc.Platform {
         return platform_get_executable_path ();
     }
 
+    public bool is_android () {
+#if ANDROID
+        return true;
+#else
+        return false;
+#endif
+    }
+
     public string get_locale_dir () {
+        if (is_android ()) {
+            return Path.build_filename (Environment.get_variable ("PARLA_ANDROID_FILES"),
+                                        "share", "locale");
+        }
         string? executable = get_executable_path ();
         if (executable != null) {
             string bin_dir = Path.get_dirname (executable);

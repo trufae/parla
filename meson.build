@@ -9,6 +9,23 @@ project('parla', ['vala', 'c'],
   default_options: ['werror=true', 'cpp_std=c++17'],
 )
 
+android = host_machine.system() == 'android'
+android_args = {}
+if android
+  if not meson.version().version_compare('>= 1.9.0')
+    error('Android requires Meson >= 1.9.0')
+  endif
+  if host_machine.cpu_family() != 'aarch64'
+    error('The Android package currently supports arm64 only')
+  endif
+  android_args = {'android_exe_type': 'application'}
+  add_project_arguments('--define=ANDROID', language: 'vala')
+  # Cross-built libraries have no introspection/VAPI generation. Use the
+  # build host's VAPI files; only the generated C is compiled by the NDK.
+  add_project_arguments(['--pkg', 'gtk4', '--pkg', 'libadwaita-1',
+                         '--pkg', 'json-glib-1.0'], language: 'vala')
+endif
+
 # posix vapi provides Posix.getpid () for the StatusNotifierItem bus name.
 # mingw-w64 ships pid_t/getpid but no kill()/SIGKILL, so Windows-only code
 # paths are selected with the WINDOWS Vala define.
@@ -301,6 +318,10 @@ if host_machine.system() == 'windows'
   )
 endif
 
+if android
+  sources += files('src/platform_android.c')
+endif
+
 parla = executable('parla',
   files('src/main.vala'), sources, config_file, appdata_vala, resources,
   dependencies: deps,
@@ -308,6 +329,7 @@ parla = executable('parla',
   install: true,
   # GUI subsystem on Windows so no console window pops up; ignored elsewhere.
   win_subsystem: 'windows',
+  kwargs: android_args,
 )
 
 install_data(
@@ -334,6 +356,8 @@ install_data(
   install_dir: get_option('datadir') / 'icons' / 'hicolor' / 'scalable' / 'apps',
 )
 
+# Device packages do not ship or run the desktop test executables.
+if not android
 save_folder_test = executable(
   'save-folder-test',
   files('tests/save_folder_test.vala', 'src/save_folder.vala'),
@@ -536,4 +560,6 @@ if node.found()
     files('tests/webxdc_realtime_test.js'),
     files('data/webxdc-realtime.js'),
   ])
+endif
+
 endif

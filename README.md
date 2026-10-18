@@ -172,6 +172,10 @@ switcher can resolve Parla's name and icon, especially on Wayland.
 
 **AppImage:** `make appimage`
 
+**Android (12+, arm64, experimental):** CI builds an APK using the native GTK
+Android backend. See [Android build and release instructions](dist/android/README.md)
+for installation, signing setup and current foreground-client limitations.
+
 **Sailfish OS (5.1.0.11 / aarch64, experimental):** `harbour-parla` RPMs use
 the shared GTK4/libadwaita runtime from
 [sailfishos-gnome](https://github.com/trufae/sailfishos-gnome).

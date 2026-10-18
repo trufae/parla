@@ -97,3 +97,7 @@ gint parla_win32_process_wait_sync (void *process, guint timeout_ms);
 void parla_win32_process_terminate (void *process);
 void parla_win32_process_free (void *process);
 #endif
+
+#ifdef __ANDROID__
+void parla_setup_android_environment (void);
+#endif

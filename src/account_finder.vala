@@ -27,6 +27,11 @@ namespace Dc {
          */
         public static string? find_rpc_server (string? custom_path = null,
                                                RpcServerSource source = RpcServerSource.AUTO) {
+            if (Platform.is_android ()) {
+                // Never execute a user-supplied or downloaded core on Android.
+                string? bundled = Environment.get_variable ("PARLA_RPC_SERVER");
+                return is_executable (bundled) ? bundled : null;
+            }
             switch (source) {
             case RpcServerSource.CUSTOM:
                 return is_executable (custom_path) ? custom_path : null;

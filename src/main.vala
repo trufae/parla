@@ -1,4 +1,4 @@
-#if !WINDOWS
+#if !WINDOWS && !ANDROID
 /* The POSIX VAPI only exposes execv/execvp. Pass the original environment
    explicitly so a language override never leaks into the restarted app. */
 [CCode (cname = "execve", cheader_filename = "unistd.h")]
@@ -8,8 +8,13 @@ private extern int exec_with_environment (string path,
 #endif
 
 int main (string[] args) {
+#if ANDROID
+    Dc.Platform.setup_android_environment ();
+#endif
     /* Keep restart independent of language and bundle environment overrides. */
+#if !ANDROID
     string[] original_environment = Environ.get ();
+#endif
 #if SAILFISHOS || !A11Y
     /* Sailfish OS has no AT-SPI accessibility bus, and -Da11y=false builds
        opt out of assistive technology entirely. Select GTK's supported
@@ -37,6 +42,10 @@ int main (string[] args) {
     app.rpc.stop ();
     app = null;
     if (restart) {
+#if ANDROID
+        // GTK is loaded by Android, not an executable we can execve.
+        return status;
+#else
         string? executable = Dc.Platform.get_executable_path ();
 #if !MACOS && !WINDOWS
         /* Relaunch the outer AppImage, whose mount belongs to this process. */
@@ -62,6 +71,7 @@ int main (string[] args) {
             warning ("Unable to find the Parla executable for restart");
             return 1;
         }
+#endif
     }
     return status;
 }
