@@ -14,7 +14,7 @@ unset ANDROID_KEYSTORE_BASE64
 version=$(python3 scripts/android/prepare.py --version)
 apk="dist/android/Parla-$version-android-arm64.apk"
 signer="$ANDROID_HOME/build-tools/$ANDROID_BUILD_TOOLS/apksigner"
-"$signer" sign --ks "$keystore" --ks-key-alias "$ANDROID_KEY_ALIAS" \
+"$signer" sign --v4-signing-enabled false --ks "$keystore" --ks-key-alias "$ANDROID_KEY_ALIAS" \
   --ks-pass env:ANDROID_KEYSTORE_PASSWORD --key-pass env:ANDROID_KEY_PASSWORD \
   --out "$apk" "dist/android/Parla-$version-android-arm64-unsigned.apk"
 "$signer" verify --verbose "$apk"
