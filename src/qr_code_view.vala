@@ -2,6 +2,9 @@ namespace Dc {
 
     public class QrCodeView : Gtk.Box {
 
+        [CCode (cname = "parla_qr_svg_from_bytes", cheader_filename = "qr_svg_compat.h")]
+        private static extern Gdk.Paintable load_qr_svg (Bytes bytes) throws Error;
+
         public string? code_text { get; private set; default = null; }
 
         private Gtk.Label status_label;
@@ -62,9 +65,11 @@ namespace Dc {
 
             try {
                 var bytes = new Bytes (svg.data);
-                qr_picture.paintable = Gdk.Texture.from_bytes (bytes);
+                qr_picture.paintable = load_qr_svg (bytes);
                 qr_picture.visible = true;
             } catch (Error e) {
+                qr_picture.paintable = null;
+                qr_picture.visible = false;
                 status_label.label = render_error_status + e.message;
             }
         }
