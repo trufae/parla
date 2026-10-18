@@ -1,0 +1,13 @@
+--- a/meson.build
++++ b/meson.build
+@@ -227,7 +227,9 @@
+ subdir('data/')
+ subdir('contrib/')
+ subdir('docs/')
+-subdir('tests/')
++if host_machine.system() != 'android'
++    subdir('tests/')
++endif
+ if get_option('qt')
+     subdir('qt/')
+ endif

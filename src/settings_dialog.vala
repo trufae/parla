@@ -143,13 +143,21 @@ namespace Dc {
          * the Custom server and never auto-update the engine.
          */
         public static bool rpc_server_path_is_fixed () {
+#if ANDROID
+            return true; // The core is installed and updated with the APK.
+#else
             return Parla.RPC_SERVER_PATH.length > 0;
+#endif
         }
 
         /** Server path to actually use: the pinned one if set, else the user's. */
         public string effective_rpc_server_path () {
+#if ANDROID
+            return Environment.get_variable ("PARLA_RPC_SERVER") ?? "";
+#else
             return rpc_server_path_is_fixed ()
                 ? Parla.RPC_SERVER_PATH : rpc_server_path;
+#endif
         }
 
         /** Server source to actually use: Custom when pinned, else the user's. */
@@ -200,7 +208,7 @@ namespace Dc {
                 (int) CodeTheme.ADAPTIVE, (int) CodeTheme.NONE);
             SyntaxHighlight.theme = code_theme;
             long_press_context_menu = kf_bool (kf, "long_press_context_menu",
-                is_phosh_session ());
+                Platform.is_android () || is_phosh_session ());
             shift_enter_sends = kf_bool (kf, "shift_enter_sends", false);
             clean_pasted_links = kf_bool (kf, "clean_pasted_links", false);
             tracking_filter_enabled =
@@ -212,6 +220,10 @@ namespace Dc {
             show_notification_contents =
                 kf_bool (kf, "show_notification_contents", true);
             minimize_to_tray = kf_bool (kf, "minimize_to_tray", false);
+#if ANDROID
+            minimize_to_tray = false;
+            notifications_enabled = false;
+#endif
             system_audio_player = kf_bool (kf, "system_audio_player", false);
             AudioPlayer.prefer_system = system_audio_player;
             animate_stickers = kf_bool (kf, "animate_stickers", true);
@@ -742,7 +754,7 @@ namespace Dc {
             build_behavior_section (general_page);
             build_accessibility_section (general_page);
             build_links_group (general_page);
-            build_notifications_section (general_page);
+            if (!Platform.is_android ()) build_notifications_section (general_page);
 
             build_chatmail_core_section (advanced_page);
             build_network_section (advanced_page);
@@ -899,10 +911,17 @@ namespace Dc {
             string code = codes[row.selected];
             if (code == app_window.settings.language) return;
             row.sensitive = false;
+#if ANDROID
+            var dialog = new Adw.AlertDialog (_("Close to Change Language?"),
+                _("Close Parla, then reopen it to apply the new language."));
+            dialog.add_response ("cancel", _("Cancel"));
+            dialog.add_response ("restart", _("Close"));
+#else
             var dialog = new Adw.AlertDialog (_("Restart to Change Language?"),
                 _("Parla needs to restart to apply the new language."));
             dialog.add_response ("cancel", _("Cancel"));
             dialog.add_response ("restart", _("Restart"));
+#endif
             dialog.set_response_appearance ("restart", Adw.ResponseAppearance.SUGGESTED);
             dialog.default_response = "restart";
             dialog.close_response = "cancel";
@@ -970,6 +989,7 @@ namespace Dc {
                 app_window.settings.save_system_audio_player (audio_switch.active);
             });
 
+#if !ANDROID
             add_switch_row (behavior_group,
                 _("Keep Running in Background"),
                 Platform.is_macos ()
@@ -979,6 +999,7 @@ namespace Dc {
                         + "notifications still appear"),
                 app_window.settings.minimize_to_tray,
                 (v) => app_window.set_minimize_to_tray (v));
+#endif
 
             var sticker_row = action_row (
                 _("Animate Stickers"),

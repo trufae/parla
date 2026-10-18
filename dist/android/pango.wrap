@@ -1,0 +1,10 @@
+[wrap-git]
+directory = pango
+url = https://gitlab.gnome.org/GNOME/pango.git
+revision = 1.58.0
+depth = 1
+
+[provide]
+pango = libpango_dep
+pangocairo = libpangocairo_dep
+pangoft2 = libpangoft2_dep

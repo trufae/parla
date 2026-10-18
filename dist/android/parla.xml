@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<app xmlns="https://sp1rit.arpa/pixiewood/" xmlns:xi="http://www.w3.org/2001/XInclude">
+  <metainfo vercalc="sem121010">
+    <xi:include href="src://.cache/android/metainfo.xml" parse="xml"/>
+  </metainfo>
+  <style>
+    <theme name="adw"/>
+    <icon type="generate">
+      <drawable target="foreground" scale=".65" type="svg" path="src://data/icons/hicolor/scalable/apps/io.github.trufae.Parla.svg"/>
+      <color target="background">#FFFFFF</color>
+    </icon>
+  </style>
+  <dependencies>
+    <glib revision="2.90.0"><patch>hack</patch></glib>
+    <gtk revision="4.24.1"/>
+    <libadwaita revision="1.9.4"/>
+    <cairo revision="1.18.4"/>
+    <fontconfig revision="2.17.1"/>
+    <harfbuzz revision="11.2.1"/>
+    <gdk-pixbuf revision="2.43.3"/>
+  </dependencies>
+  <build target="parla">
+    <architectures><arch>aarch64</arch></architectures>
+    <configure-options>
+      <option>--cross-file=.cache/android/extra.cross</option>
+      <option>-Dwebxdc=false</option>
+      <!-- Third-party code has NDK warnings; Parla keeps werror on its target. -->
+      <option>-Dwerror=false</option>
+      <option>-Dfontconfig:tools=disabled</option>
+      <option>-Dgraphene:tests=false</option>
+      <option>-Dgraphene:introspection=disabled</option>
+      <option>-Dappstream:zstd-support=false</option>
+      <option>-Dlibxmlb:tests=false</option>
+      <option>-Dlibxmlb:introspection=false</option>
+      <option>-Dlibxmlb:gtkdoc=false</option>
+      <option>-Dcurl:ssl=disabled</option>
+      <option>-Dcurl:tool=disabled</option>
+      <option>-Dcurl:tests=disabled</option>
+      <option>-Dcurl:unittests=disabled</option>
+      <option>-Dbundle_icons=true</option>
+      <option>-Djson-glib:introspection=disabled</option>
+      <option>-Djson-glib:tests=false</option>
+      <option>-Djson-glib:gtk_doc=disabled</option>
+      <option>-Dgtk:vulkan=disabled</option>
+      <option>-Dc_link_args=-Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384</option>
+      <option>-Dcpp_link_args=-Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384</option>
+    </configure-options>
+  </build>
+</app>

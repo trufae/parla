@@ -28,3 +28,9 @@ scripts/stickers/.tools/
 ./*.zip
 .cache/
 builddir-gtk4-accesskit/
+
+# Android build products and generated dependency wraps
+.pixiewood/
+.buildconfig
+subprojects/
+dist/android/*.apk

@@ -33,7 +33,12 @@ namespace Dc {
          * click. The package source differs by OS, but the UX is the same.
          */
         public static bool can_auto_install () {
+#if ANDROID
+            // Android 10+ forbids execve from writable app data directories.
+            return false;
+#else
             return detect_asset_name () != null;
+#endif
         }
 
         /**
@@ -41,6 +46,7 @@ namespace Dc {
          * or null when no prebuilt binary is published for this machine.
          */
         public static string? detect_asset_name () {
+            if (Platform.is_android ()) return "%s-arm64-v8a-android".printf (RPC_BIN);
 #if WINDOWS
             /* Upstream publishes win32/win64 exes; Parla only ships 64-bit
                Windows builds, so win64 is always the right pick. */
@@ -258,6 +264,10 @@ namespace Dc {
          * directory and atomically install it. Returns the installed path.
          */
         public async string download_latest () throws Error {
+            if (Platform.is_android ()) {
+                throw new IOError.NOT_SUPPORTED (
+                    _("Update Parla to update the bundled Chatmail Core."));
+            }
             string? asset = detect_asset_name ();
             if (asset != null) {
                 return yield download_release_asset (asset);

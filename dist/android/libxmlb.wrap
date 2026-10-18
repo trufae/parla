@@ -1,0 +1,8 @@
+[wrap-git]
+directory = libxmlb
+url = https://github.com/hughsie/libxmlb.git
+revision = 0.3.22
+depth = 1
+
+[provide]
+xmlb = libxmlb_dep
