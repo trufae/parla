@@ -263,6 +263,7 @@ namespace Dc {
                     });
                 });
                 emoji_button.set_popover (emoji_chooser);
+                if (Platform.is_android ()) preserve_picker_focus (emoji_button);
             } else {
                 emoji_button.sensitive = false;
                 emoji_button.tooltip_text = _("Emoji picker unavailable");
@@ -364,6 +365,7 @@ namespace Dc {
             var sticker_picker = new StickerPicker ();
             sticker_picker.sticker_picked.connect (on_sticker_picked);
             sticker_button.set_popover (sticker_picker);
+            if (Platform.is_android ()) preserve_picker_focus (sticker_button);
 
             var idle_actions = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 2);
             idle_actions.append (sticker_button);
