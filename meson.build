@@ -18,7 +18,8 @@ if android
   if host_machine.cpu_family() != 'aarch64'
     error('The Android package currently supports arm64 only')
   endif
-  android_args = {'android_exe_type': 'application'}
+  android_args = {'android_exe_type': 'application',
+                  'override_options': ['werror=true']}
   add_project_arguments('--define=ANDROID', language: 'vala')
   # Cross-built libraries have no introspection/VAPI generation. Use the
   # build host's VAPI files; only the generated C is compiled by the NDK.

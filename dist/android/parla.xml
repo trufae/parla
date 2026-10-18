@@ -24,8 +24,8 @@
     <configure-options>
       <option>--cross-file=.cache/android/extra.cross</option>
       <option>-Dwebxdc=false</option>
-      <option>-Dglib:werror=false</option>
-      <option>-Dfribidi:werror=false</option>
+      <!-- Third-party code has NDK warnings; Parla keeps werror on its target. -->
+      <option>-Dwerror=false</option>
       <option>-Dfontconfig:tools=disabled</option>
       <option>-Dgraphene:tests=false</option>
       <option>-Dgraphene:introspection=disabled</option>
