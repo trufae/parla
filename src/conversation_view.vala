@@ -2512,9 +2512,9 @@ namespace Dc {
 
         private void on_send_message (string text, string? file_path,
                                       string? file_name, int quote_msg_id,
-                                      string? view_type) {
+                                      string? view_type, bool temporary) {
             queue_send (new PendingSend (
-                text, file_path, file_name, quote_msg_id, view_type));
+                text, file_path, file_name, quote_msg_id, view_type, temporary));
         }
 
         /* `text` carries the transcription when the composer attached one to
