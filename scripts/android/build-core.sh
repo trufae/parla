@@ -17,7 +17,7 @@ export PATH="$ndk/bin:$PATH"
 export CC_aarch64_linux_android=aarch64-linux-android31-clang
 export AR_aarch64_linux_android=llvm-ar
 export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$CC_aarch64_linux_android"
-export CARGO_TARGET_AARCH64_LINUX_ANDROID_RUSTFLAGS='-C link-arg=-Wl,-z,max-page-size=16384'
+export CARGO_TARGET_AARCH64_LINUX_ANDROID_RUSTFLAGS='-C link-arg=-Wl,-z,max-page-size=16384 -C link-arg=-Wl,-z,common-page-size=16384'
 export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/$ANDROID_NDK_VERSION"
 rustup toolchain install "$RUST_VERSION" --profile minimal --target aarch64-linux-android
 cargo +"$RUST_VERSION" build --manifest-path "$core/Cargo.toml" --locked \

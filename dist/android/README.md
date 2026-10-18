@@ -45,7 +45,8 @@ key, so uninstall an earlier CI debug build before installing another. Productio
 updates must always use the same backed-up release key.
 
 Toolchain/source pins live in `scripts/android/versions.env`, `parla.xml`, and
-these wrap files. Update them intentionally and test a fresh build. To clear
+these wrap files. The small AppStream patch skips desktop test executables when
+cross-compiling for Android. Update the pins intentionally and test a fresh build. To clear
 all Android-generated sources and outputs, remove `.cache/android`,
 `.pixiewood`, and `subprojects` (do not do this during another build).
 

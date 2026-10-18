@@ -36,14 +36,13 @@ else:
     app = manifest.find('application')
     app.set(f'{{{ns}}}name', 'io.github.trufae.parla.ParlaApplication')
     app.set(f'{{{ns}}}allowBackup', 'false')
-    # The RPC executable must be installed in nativeLibraryDir, not writable
-    # app storage. AGP's matching setting keeps the native libraries compressed.
-    app.set(f'{{{ns}}}extractNativeLibs', 'true')
     manifest.write(android / 'src/main/AndroidManifest.xml', encoding='utf-8', xml_declaration=True)
     java = android / 'src/main/java/io/github/trufae/parla'
     java.mkdir(parents=True, exist_ok=True)
     (java / 'ParlaApplication.java').write_text((root / 'dist/android/ParlaApplication.java').read_text())
     gradle = android / 'build.gradle'
     content = gradle.read_text().replace('enable = true', 'enable = false')
+    # AGP sets extractNativeLibs in the merged manifest: the RPC executable
+    # must be extracted into nativeLibraryDir, not writable app storage.
     content += '\nandroid { packaging { jniLibs { useLegacyPackaging = true } }; buildTypes { debug { applicationIdSuffix = ".debug" } } }\n'
     gradle.write_text(content)

@@ -42,8 +42,8 @@
       <option>-Djson-glib:tests=false</option>
       <option>-Djson-glib:gtk_doc=disabled</option>
       <option>-Dgtk:vulkan=disabled</option>
-      <option>-Dc_link_args=-Wl,-z,max-page-size=16384</option>
-      <option>-Dcpp_link_args=-Wl,-z,max-page-size=16384</option>
+      <option>-Dc_link_args=-Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384</option>
+      <option>-Dcpp_link_args=-Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384</option>
     </configure-options>
   </build>
 </app>
