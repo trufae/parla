@@ -23,7 +23,7 @@ namespace Dc {
             uint generation);
 
         public signal void send_message (string text, string? file_path,
-            string? file_name, int quote_msg_id, string? view_type);
+            string? file_name, int quote_msg_id, string? view_type, bool temporary);
         /* `text` is the transcription typed into the composer alongside the
            recording, empty for a plain voice message. `temporary` marks a file
            the receiver of this signal owns and must delete after sending; a
@@ -793,7 +793,7 @@ namespace Dc {
             if (editing_msg_id > 0) return;
             int qid = replying_msg_id;
             send_message ("", StickerStore.sticker_path (sticker.file_name),
-                sticker.display_name, qid, "Sticker");
+                sticker.display_name, qid, "Sticker", false);
             suppress_draft_signal = true;
             cancel_reply ();
             suppress_draft_signal = false;
@@ -1400,15 +1400,15 @@ namespace Dc {
             } else if (pending_file != null) {
                 send_message (text, pending_file,
                     pending_file_name ?? Path.get_basename (pending_file), qid,
-                    null);
+                    null, pending_file_is_temp);
             } else {
-                send_message (text, null, null, qid, null);
+                send_message (text, null, null, qid, null, false);
             }
             for (int i = 0; i < extra_pending_files.length; i++) {
                 send_message (
                     i < extra_pending_captions.length ? extra_pending_captions[i] : "",
                     extra_pending_files[i], extra_pending_file_names[i], 0,
-                    null);
+                    null, contains_url (extra_pending_temp_files, extra_pending_files[i]));
             }
             suppress_draft_signal = true;
             cancel_reply ();
@@ -1600,31 +1600,28 @@ namespace Dc {
         }
 
         private void on_attach_clicked () {
+            pick_attachments.begin ();
+        }
+
+        private async void pick_attachments () {
             var dialog = new Gtk.FileDialog ();
             dialog.title = _("Select files to attach");
             var window = (Gtk.Window) get_root ();
-            dialog.open_multiple.begin (window, null, (obj, res) => {
-                try {
-                    var files = dialog.open_multiple.end (res);
-                    bool attached = false;
-                    for (uint i = 0; i < files.get_n_items (); i++) {
-                        var file = files.get_item (i) as GLib.File;
-                        if (file == null) continue;
-                        var path = file.get_path ();
-                        if (path != null) {
-                            set_pending_attachment (path, file.get_basename ());
-                            attached = true;
-                        }
-                    }
-                    /* A native file chooser owns focus while it is open.
-                       Put it back in the composer once at least one file
-                       was accepted, so Return can immediately send it. */
-                    if (attached) grab_entry_focus ();
-                } catch (Error e) {
-                    if (!is_dialog_dismissal (e))
-                        warning ("attachment picker: %s", e.message);
+            uint generation = preview_generation;
+            try {
+                var files = yield dialog.open_multiple (window, null);
+                for (uint i = 0; i < files.get_n_items (); i++) {
+                    var file = files.get_item (i) as GLib.File;
+                    if (file == null) continue;
+                    var local = yield LocalFile.from_file (file);
+                    if (closed || generation != preview_generation || get_root () != window) return;
+                    bool temporary = local.temporary;
+                    set_pending_attachment (local.take_path (), local.name, temporary);
                 }
-            });
+                grab_entry_focus ();
+            } catch (Error e) {
+                if (!is_dialog_dismissal (e)) show_error (window, e.message);
+            }
         }
 
         private bool on_entry_key_pressed (uint keyval, uint keycode,
@@ -1804,9 +1801,14 @@ namespace Dc {
                     var fl = value == null ? null : (Gdk.FileList?) value.get_boxed ();
                     var gf = fl == null || fl.get_files () == null
                         ? null : fl.get_files ().data;
-                    var path = gf == null ? null : gf.get_path ();
-                    if (path != null && GLib.FileUtils.test (path, GLib.FileTest.EXISTS)) {
-                        set_pending_attachment (path, gf.get_basename ());
+                    if (gf != null) {
+                        uint generation = preview_generation;
+                        var local = yield LocalFile.from_file (gf);
+                        if (closed || generation != preview_generation || get_root () == null) return;
+                        if (!FileUtils.test (local.path, FileTest.EXISTS))
+                            throw new IOError.NOT_FOUND ("Clipboard file no longer exists");
+                        bool temporary = local.temporary;
+                        set_pending_attachment (local.take_path (), local.name, temporary);
                         return;
                     }
                 } catch (Error e) {
