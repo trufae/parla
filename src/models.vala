@@ -436,7 +436,7 @@ namespace Dc {
         return ids;
     }
 
-    public static async string? pick_image_file (Gtk.Window parent, string title) {
+    public static async LocalFile? pick_image_file (Gtk.Window parent, string title) {
         var chooser = new Gtk.FileDialog ();
         chooser.title = title;
         var filter = new Gtk.FileFilter ();
@@ -447,10 +447,10 @@ namespace Dc {
         chooser.filters = filters;
         try {
             var file = yield chooser.open (parent, null);
-            if (file != null) return file.get_path ();
+            if (file != null) return yield LocalFile.from_file (file);
         } catch (Error e) {
             if (!is_dialog_dismissal (e))
-                warning ("image picker: %s", e.message);
+                show_error (parent, e.message);
         }
         return null;
     }

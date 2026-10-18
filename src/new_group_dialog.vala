@@ -10,7 +10,7 @@ namespace Dc {
         private Gtk.Entry name_entry;
         private Gtk.ListBox member_listbox;
         private GenericArray<string> member_emails = new GenericArray<string> ();
-        private string? avatar_path = null;
+        private LocalFile? picked_avatar = null;
         private Adw.Avatar avatar_widget;
 
         public NewGroupDialog (RpcClient rpc, bool is_channel = false) {
@@ -20,6 +20,7 @@ namespace Dc {
             this.title = is_channel ? _("New Channel") : _("New Group");
             this.content_width = 360;
             this.content_height = 480;
+            this.closed.connect (() => { picked_avatar = null; });
 
             var box = new Gtk.Box (Gtk.Orientation.VERTICAL, 0);
 
@@ -151,6 +152,7 @@ namespace Dc {
         }
 
         private async void do_create () {
+            var avatar = picked_avatar;
             string name = name_entry.text.strip ();
             if (name.length == 0) {
                 name_entry.add_css_class ("error");
@@ -164,9 +166,9 @@ namespace Dc {
                     : yield rpc.create_group (name, true);
 
                 /* Set avatar if picked */
-                if (avatar_path != null) {
+                if (avatar != null) {
                     try {
-                        yield rpc.set_chat_profile_image (new_chat_id, avatar_path);
+                        yield rpc.set_chat_profile_image (new_chat_id, avatar.path);
                     } catch (Error ae) {
                         /* non-fatal */
                     }
@@ -191,12 +193,12 @@ namespace Dc {
         }
 
         private async void pick_avatar () {
-            string? path = yield pick_image_file (
+            var file = yield pick_image_file (
                 (Gtk.Window) this.get_root (),
                 is_channel ? _("Select Channel Avatar") : _("Select Group Avatar"));
-            if (path != null) {
-                avatar_path = path;
-                avatar_widget.custom_image = load_avatar (path);
+            if (file != null && get_root () != null) {
+                picked_avatar = file;
+                avatar_widget.custom_image = load_avatar (file.path);
             }
         }
     }

@@ -159,6 +159,7 @@ sources = files(
   'src/syntax_highlight.vala',
   'src/mentions.vala',
   'src/image_utils.vala',
+  'src/local_file.vala',
   'src/message_row.vala',
   'src/image_viewer.vala',
   'src/video_player.vala',
@@ -359,6 +360,14 @@ install_data(
 
 # Device packages do not ship or run the desktop test executables.
 if not android
+local_file_test = executable(
+  'local-file-test',
+  files('tests/local_file_test.vala', 'src/local_file.vala'), resources,
+  dependencies: [dependency('gio-2.0')],
+  install: false,
+)
+test('local-file', local_file_test)
+
 save_folder_test = executable(
   'save-folder-test',
   files('tests/save_folder_test.vala', 'src/save_folder.vala'),
