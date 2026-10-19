@@ -333,6 +333,7 @@ namespace Dc {
                 notify_draft_changed ();
                 update_mention_popup ();
                 update_long_message_hint ();
+                queue_cursor_scroll ();
             });
             text_view.paste_clipboard.connect (on_paste_clipboard);
             update_placeholder ();
@@ -748,6 +749,16 @@ namespace Dc {
                 cursor_scroll_width = width;
                 cursor_scroll_height = height;
                 cursor_scroll_upper = upper;
+                return Source.CONTINUE;
+            }
+            Gdk.Rectangle visible;
+            text_view.get_visible_rect (out visible);
+            var adjustment = text_view.vadjustment;
+            if (adjustment.page_size != visible.height) {
+                // Native typing can start a scroll before resizing. Stop that
+                // animation so GTK updates the viewport on the next allocation.
+                adjustment.set_value (adjustment.get_value ());
+                text_view.queue_allocate ();
                 return Source.CONTINUE;
             }
             cursor_scroll_tick = 0;

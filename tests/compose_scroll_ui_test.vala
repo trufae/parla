@@ -25,6 +25,43 @@ private void check_compose_viewport (Gtk.TextView entry) {
 private async void check_compose_scroll_ui (Gtk.Window window, ComposeBar compose) {
     var entry = (Gtk.TextView) search_widget (compose, typeof (Gtk.TextView));
     yield nap (300);
+    // Native typing scrolls the cursor before the growing entry is allocated.
+    // Exercise every line count: a stale viewport used to clip the top of the
+    // text and leave extra space at the bottom on alternate lines.
+    entry.grab_focus ();
+    for (int lines = 1; lines <= 8; lines++) {
+        entry.buffer.insert_at_cursor (lines == 1 ? "Message line" : "\nMessage line", -1);
+        entry.scroll_mark_onscreen (entry.buffer.get_insert ());
+        yield nap (300);
+        check_compose_viewport (entry);
+        Gdk.Rectangle visible, last;
+        entry.get_visible_rect (out visible);
+        Gtk.TextIter end;
+        entry.buffer.get_end_iter (out end);
+        entry.get_iter_location (end, out last);
+        assert (visible.y == -entry.top_margin);
+        assert (visible.y + visible.height - last.y - last.height == entry.bottom_margin);
+    }
+    for (int lines = 7; lines >= 1; lines--) {
+        Gtk.TextIter start, end;
+        entry.buffer.get_iter_at_line (out start, lines);
+        start.backward_char ();
+        entry.buffer.get_end_iter (out end);
+        entry.buffer.delete (ref start, ref end);
+        entry.scroll_mark_onscreen (entry.buffer.get_insert ());
+        yield nap (300);
+        check_compose_viewport (entry);
+    }
+
+    entry.buffer.text = "";
+    yield nap (300);
+    for (int i = 0; i < 20; i++) {
+        entry.buffer.insert_at_cursor (string.nfill (25, 'a'), -1);
+        entry.scroll_mark_onscreen (entry.buffer.get_insert ());
+        yield nap (300);
+        check_compose_viewport (entry);
+    }
+
     foreach (int lines in new int[] { 8, 40 }) {
         var message = new StringBuilder ();
         for (int i = 0; i < lines; i++) {
