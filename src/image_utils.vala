@@ -62,6 +62,11 @@ namespace Dc {
     internal Gdk.Pixbuf scaled_frame_from_file (string path,
                                                 int max_px) throws Error {
         var anim = PixbufAnimationCompat.load (path);
+        return scaled_frame_from_animation (anim, max_px);
+    }
+
+    internal Gdk.Pixbuf scaled_frame_from_animation (
+            Gdk.PixbufAnimation anim, int max_px) {
         Gdk.Pixbuf frame = PixbufAnimationCompat.get_static_image (anim);
         double scale = double.min (1.0, double.min (
             (double) max_px / frame.width,

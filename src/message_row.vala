@@ -79,18 +79,18 @@ namespace Dc {
     }
 
     /**
-     * Holds the current frame of a sticker animation. Gtk.Picture reacts to
+     * Holds the current frame of an image animation. Gtk.Picture reacts to
      * set_paintable (and to invalidate-size) with queue_resize, which would
      * relayout the whole window once per frame — breaking clicks and
-     * popovers while an animated sticker is visible — so frames must be
+     * popovers while an animated image is visible — so frames must be
      * swapped behind one long-lived paintable that only invalidates its
      * contents. All frames of a PixbufAnimation share the animation's size,
      * so the intrinsic size never changes.
      */
-    internal class StickerFramePaintable : Object, Gdk.Paintable {
+    internal class ImageFramePaintable : Object, Gdk.Paintable {
         private Gdk.Texture texture;
 
-        public StickerFramePaintable (Gdk.Texture texture) {
+        public ImageFramePaintable (Gdk.Texture texture) {
             this.texture = texture;
         }
 
@@ -123,25 +123,23 @@ namespace Dc {
     /**
      * Steps a Gtk.Picture through a Gdk.PixbufAnimation while the picture is
      * mapped. Frame delays come from the animation itself; the timer stops
-     * whenever the widget leaves the visible tree, so off-screen stickers
-     * cost nothing. Owned by the picture via object data (see
-     * MessageRow.load_sticker), which keeps it alive exactly as long as the
-     * widget.
+     * whenever the widget leaves the visible tree. Owned by the picture via
+     * object data, which keeps it alive exactly as long as the widget.
      */
-    internal class StickerAnimation : Object {
+    internal class ImageAnimation : Object {
         private Gdk.PixbufAnimation animation;
         private Gdk.PixbufAnimationIter? iter = null;
         private uint timeout_id = 0;
-        private StickerFramePaintable paintable;
+        private ImageFramePaintable paintable;
         private bool playing;
         private bool mapped = false;
 
-        public StickerAnimation (Gtk.Picture picture,
-                                 Gdk.PixbufAnimation animation,
-                                 bool playing) {
+        public ImageAnimation (Gtk.Picture picture,
+                               Gdk.PixbufAnimation animation,
+                               bool playing) {
             this.animation = animation;
             this.playing = playing;
-            paintable = new StickerFramePaintable (texture_from_pixbuf (
+            paintable = new ImageFramePaintable (texture_from_pixbuf (
                 PixbufAnimationCompat.get_static_image (animation)));
             picture.paintable = paintable;
             picture.map.connect (on_map);
@@ -981,10 +979,10 @@ namespace Dc {
                         dh = int.max (1, (int) (dh * scale + 0.5));
 
                         var picture = new Gtk.Picture ();
-                        var sticker = new StickerAnimation (
+                        var sticker = new ImageAnimation (
                             picture, anim, animate_stickers);
-                        picture.set_data<StickerAnimation> (
-                            "parla-sticker-animation", sticker);
+                        picture.set_data<ImageAnimation> (
+                            "parla-image-animation", sticker);
                         var frame = framed_preview (picture, dw, dh,
                             "message-sticker");
                         var click = add_play_toggle (frame);
@@ -1055,17 +1053,23 @@ namespace Dc {
                                                   string css_class
                                                       = "message-image") {
             try {
-                int dw, dh;
-                if (Gdk.Pixbuf.get_file_info (path, out dw, out dh) == null ||
-                    dw <= 0 || dh <= 0) {
+                var anim = PixbufAnimationCompat.load (path);
+                int dw = PixbufAnimationCompat.get_width (anim);
+                int dh = PixbufAnimationCompat.get_height (anim);
+                if (dw <= 0 || dh <= 0) {
                     return null;
                 }
                 fit_size (ref dw, ref dh, max_w, max_h, min_w, min_h);
 
-                var pixbuf = new Gdk.Pixbuf.from_file_at_scale (
-                    path, dw, dh, true);
-                var texture = texture_from_pixbuf (pixbuf);
-                var picture = new Gtk.Picture.for_paintable (texture);
+                var picture = new Gtk.Picture ();
+                if (PixbufAnimationCompat.is_static_image (anim)) {
+                    picture.paintable = texture_from_pixbuf (
+                        scaled_frame_from_animation (anim, int.max (dw, dh)));
+                } else {
+                    var animation = new ImageAnimation (picture, anim, true);
+                    picture.set_data<ImageAnimation> (
+                        "parla-image-animation", animation);
+                }
                 return framed_preview (picture, dw, dh, css_class);
             } catch (Error e) {
                 stderr.printf ("  -> Image load failed: %s\n", e.message);

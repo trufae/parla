@@ -175,8 +175,9 @@ namespace Dc {
             if (index < 0 || index >= paths.length) return false;
             string path = paths[index];
             try {
-                var texture = Gdk.Texture.from_filename (path);
-                picture.paintable = texture;
+                var animation = PixbufAnimationCompat.load (path);
+                picture.paintable = texture_from_pixbuf (
+                    PixbufAnimationCompat.get_static_image (animation));
                 update_nav_buttons ();
                 return true;
             } catch (Error e) {

@@ -547,7 +547,7 @@ core_compat_test = executable(
         'tests/webxdc_realtime_ui_test.vala', 'tests/sync_ui_test.vala',
         'tests/chat_lifetime_test.vala', 'tests/long_press_ui_test.vala',
         'tests/audio_player_ui_test.vala', 'tests/language_test.vala',
-        'tests/compose_scroll_ui_test.vala'),
+        'tests/compose_scroll_ui_test.vala', 'tests/image_preview_ui_test.vala'),
   sources, config_file, appdata_vala, resources,
   dependencies: deps,
   include_directories: src_inc,
