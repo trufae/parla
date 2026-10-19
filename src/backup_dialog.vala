@@ -61,6 +61,9 @@ namespace Dc {
             run = new Gtk.Button.with_label (action == BackupAction.CREATE ? _("Create Backup") : action == BackupAction.VERIFY ? _("Check Backup") : _("Restore to New Folder…"));
             run.add_css_class ("suggested-action");
             run.clicked.connect (() => { execute.begin (); }); box.append (run);
+            password.changed.connect (update_run_button);
+            confirmation.changed.connect (update_run_button);
+            update_run_button ();
             use_restored = new Gtk.Button.with_label (_("Use Restored Accounts"));
             use_restored.visible = false;
             use_restored.clicked.connect (() => { activate_restored.begin (); }); box.append (use_restored);
@@ -92,11 +95,18 @@ namespace Dc {
                 choose.tooltip_text = archive_path;
                 status.label = archive_path;
             } catch (Error e) { if (!is_dialog_dismissal (e)) status.label = e.message; }
+            finally { update_run_button (); }
+        }
+
+        private void update_run_button () {
+            run.sensitive = !running && archive_path != null && password.text.length > 0 &&
+                (action != BackupAction.CREATE || password.text == confirmation.text);
         }
 
         private void set_running (bool active) {
             running = active; can_close = !active;
-            run.sensitive = !active; choose.sensitive = !active;
+            update_run_button ();
+            choose.sensitive = !active;
             password.sensitive = !active; confirmation.sensitive = !active;
             use_restored.sensitive = !active;
             cancel_button.label = active ? _("Cancel") : _("Close");
