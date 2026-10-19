@@ -176,13 +176,7 @@ namespace Dc {
         }
 
         private string normalize_accounts_path (string value) {
-            string path = value.strip ();
-            while (path.length > 1 &&
-                   (path.has_suffix ("/") || path.has_suffix ("\\"))) {
-                if (path.length == 3 && path[1] == ':') break;
-                path = path[0:path.length - 1];
-            }
-            return path;
+            return SafeStore.AccountsLocation.normalize (value);
         }
 
         public bool is_default_accounts_path (string value) {
@@ -194,7 +188,8 @@ namespace Dc {
         }
 
         public string effective_accounts_path () {
-            return accounts_path.length > 0 ? accounts_path : default_accounts_path ();
+            return SafeStore.AccountsLocation.resolve (
+                Environment.get_variable ("DC_ACCOUNTS_PATH"), accounts_path, default_accounts_path ());
         }
 
         public void load () {

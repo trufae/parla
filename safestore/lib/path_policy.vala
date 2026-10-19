@@ -22,6 +22,41 @@ namespace SafeStore {
             return Filename.canonicalize (clean);
         }
 
+        // Resolve parent aliases without resolving a live mount's root.
+        public static string slot (string path) throws Error {
+            string clean = normalize (path);
+            if (FileUtils.test (clean, FileTest.IS_SYMLINK)) {
+                throw new PathPolicyError.INVALID ("Store paths must not be symbolic links");
+            }
+#if WINDOWS
+            return clean;
+#else
+            return Path.build_filename (resolved_for_comparison (Path.get_dirname (clean)),
+                Path.get_basename (clean));
+#endif
+        }
+
+        public static void sync_directory (string path) throws Error {
+#if !WINDOWS
+            int fd = Posix.open (path, Posix.O_RDONLY | Posix.O_DIRECTORY | Posix.O_CLOEXEC | Posix.O_NOFOLLOW);
+            if (fd < 0) throw new IOError.FAILED ("Could not open directory for synchronization");
+            int result = Posix.fsync (fd);
+            Posix.close (fd);
+            if (result != 0) throw new IOError.FAILED ("Could not synchronize directory");
+#endif
+        }
+
+        public static void ensure_durable_directory (string path) throws Error {
+            if (!FileUtils.test (path, FileTest.EXISTS)) {
+                string parent = Path.get_dirname (path);
+                if (parent != path && !FileUtils.test (parent, FileTest.EXISTS)) ensure_durable_directory (parent);
+                ensure_private_directory (path);
+                sync_directory (parent);
+            } else {
+                ensure_private_directory (path);
+            }
+        }
+
         private static bool same_or_nested (string candidate,
                                             string parent) {
             if (candidate.length == 0 || parent.length == 0) return false;

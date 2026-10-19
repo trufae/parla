@@ -17,11 +17,8 @@ namespace SafeStore {
     internal class AccountsPath : Object {
 
         public static string resolve () {
-            string env = environment_path ();
-            if (env.length > 0) return env;
-            string configured = parla_configured_path ();
-            if (configured.length > 0) return configured;
-            return Path.build_filename (parla_data_dir (), "accounts");
+            return AccountsLocation.resolve (Environment.get_variable ("DC_ACCOUNTS_PATH"),
+                parla_configured_path (), Path.build_filename (parla_data_dir (), "accounts"));
         }
 
         /** Where the resolved path came from, for status output. */
@@ -62,13 +59,7 @@ namespace SafeStore {
         // Mirrors Parla's normalize_accounts_path: trim and strip trailing
         // separators while preserving "X:\" drive roots.
         private static string normalize (string value) {
-            string path = value.strip ();
-            while (path.length > 1
-                   && (path.has_suffix ("/") || path.has_suffix ("\\"))) {
-                if (path.length == 3 && path[1] == ':') break;
-                path = path[0:path.length - 1];
-            }
-            return path;
+            return AccountsLocation.normalize (value);
         }
 
         private static string parla_configured_path () {

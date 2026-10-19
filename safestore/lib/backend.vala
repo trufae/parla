@@ -92,6 +92,16 @@ namespace SafeStore {
             return Environment.find_program_in_path (binary) != null;
         }
 
+        internal static string stable_cryfs_version (string output) throws Error {
+            foreach (string line in output.split ("\n")) {
+                string clean = line.strip ();
+                if (Regex.match_simple ("^(CryFS Version|cryfs) 1\\.[0-9]+\\.[0-9]+$", clean)) {
+                    return clean.substring (clean.last_index_of_char (' ') + 1);
+                }
+            }
+            throw new StoreError.NOT_SUPPORTED ("A stable CryFS 1.x release is required");
+        }
+
         private static BackendInfo inspect_cryfs (Settings settings) {
             bool available = executable_available (settings.cryfs_binary);
             string status = available
@@ -99,17 +109,24 @@ namespace SafeStore {
                 : "Unavailable: CryFS executable was not found";
             if (available) {
                 try {
-                    string version = Vault.backend_version (
-                        settings.cryfs_binary);
-                    available = version.contains ("CryFS Version 1.")
-                        || version.ascii_down ().has_prefix ("cryfs 1.");
-                    status = available ? version
-                        : "Unsupported version: %s".printf (version);
+                    string version = stable_cryfs_version (Vault.backend_version (settings.cryfs_binary));
+                    string unmount = CryfsBackend.unmount_binary_for (settings.cryfs_binary);
+                    if (!executable_available (unmount)) {
+                        throw new StoreError.BACKEND ("Matching cryfs-unmount executable was not found");
+                    }
+                    if (stable_cryfs_version (Vault.backend_version (unmount)) != version) {
+                        throw new StoreError.BACKEND ("CryFS and cryfs-unmount versions do not match");
+                    }
+                    status = "CryFS " + version;
                 } catch (Error error) {
                     available = false;
                     status = "Unavailable: " + error.message;
                 }
             }
+#if WINDOWS
+            available = false;
+            status = "Unavailable: Windows mount identity and durable transitions are not qualified";
+#endif
             return new BackendInfo (
                 BackendKind.CRYFS,
                 "CryFS",
@@ -152,71 +169,6 @@ namespace SafeStore {
                 "Extracts a full plaintext copy while unlocked and rewrites the "
                     + "archive when locking. Passwords use a private pseudo-terminal."
             );
-        }
-    }
-
-    // Existing detached backend operations, used behind the public facade.
-    internal class EncryptedStore : Object {
-
-        public static void create (Settings settings,
-                                   string password,
-                                   bool allow_executable_files = false)
-                                   throws Error {
-            require_available (settings);
-            if (BackendKind.parse (settings.backend) == BackendKind.ZIP) {
-                ZipBackend.create (settings, password);
-            } else {
-                Vault.mount (
-                    settings.cryfs_binary,
-                    settings.vault_path,
-                    settings.mount_path,
-                    password,
-                    true,
-                    settings.idle_minutes,
-                    allow_executable_files, settings.state_directory);
-            }
-        }
-
-        public static void unlock (Settings settings,
-                                   string password,
-                                   bool allow_executable_files = false)
-                                   throws Error {
-            require_available (settings);
-            if (BackendKind.parse (settings.backend) == BackendKind.ZIP) {
-                ZipBackend.unlock (settings, password);
-            } else {
-                Vault.mount (
-                    settings.cryfs_binary,
-                    settings.vault_path,
-                    settings.mount_path,
-                    password,
-                    false,
-                    settings.idle_minutes,
-                    allow_executable_files, settings.state_directory);
-            }
-        }
-
-        public static void lock (Settings settings,
-                                 string? password = null) throws Error {
-            require_available (settings);
-            if (BackendKind.parse (settings.backend) == BackendKind.ZIP) {
-                if (password == null || password.length == 0) {
-                    throw new StoreError.WRONG_PASSWORD (
-                        "The ZIP backend needs a password when locking");
-                }
-                ZipBackend.lock (settings, password);
-            } else {
-                Vault.unmount (
-                    settings.cryfs_binary, settings.mount_path);
-            }
-        }
-
-        private static void require_available (Settings settings)
-                                               throws Error {
-            BackendInfo backend = Backends.selected (settings);
-            if (!backend.available) {
-                throw new StoreError.BACKEND ("%s", backend.status);
-            }
         }
     }
 

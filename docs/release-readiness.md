@@ -69,8 +69,12 @@ and [account removal](https://github.com/chatmail/core/blob/c41657d7fd2618234062
    messages with placeholders rather than assembling translated fragments;
    test a longer translation and a right-to-left locale. Follow the system
    language by default. Do not ship a language selector before catalogs exist.
-3. **Integrate encrypted storage as a separate feature.** `safestore/` is a
-   standalone project; the main Meson build and RPC startup do not use it.
+3. **Integrate encrypted storage as a separate feature.** The main build links
+   the SafeStore Vala library. Per-store metadata, exclusive sessions, access-loss
+   monitoring, and interrupted ZIP cleanup detection are implemented; RPC startup
+   and Settings do not yet activate protection. Follow the remaining
+   [SafeStore milestones](safestore-plan.md): platform qualification, migration
+   and recovery, application integration, then release checks.
    Wire unlock into startup before opening the account manager, and close the
    RPC process and file users before locking. Specify migration, cancellation,
    crash recovery and backup/restore behavior before exposing an encryption

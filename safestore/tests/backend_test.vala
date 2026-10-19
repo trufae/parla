@@ -1,7 +1,8 @@
 private SafeStore.Settings test_settings () {
     string accounts = Path.build_filename (Environment.get_tmp_dir (), "safestore-unit-accounts");
-    return new SafeStore.Settings (accounts, accounts + ".zip",
-        SafeStore.BackendKind.CRYFS, new SafeStore.StoreOptions ());
+    try { return new SafeStore.Settings (accounts, accounts + ".zip",
+        SafeStore.BackendKind.CRYFS, new SafeStore.StoreOptions ()); }
+    catch (Error error) { assert_not_reached (); }
 }
 
 private const string PASSWORD = "a-long-disposable-password";
@@ -81,7 +82,8 @@ private void test_zip_roundtrip () {
         FileUtils.set_contents (
             Path.build_filename (account, "dc.db"), "database\n");
 
-        SafeStore.ZipBackend.lock (settings, PASSWORD);
+        bool rollback_safe = false;
+        SafeStore.ZipBackend.lock (settings, PASSWORD, () => {}, ref rollback_safe);
         assert_true (FileUtils.test (
             settings.vault_path, FileTest.IS_REGULAR));
         Posix.Stat archive_info;
@@ -97,7 +99,7 @@ private void test_zip_roundtrip () {
         bool wrong_password_failed = false;
         try {
             SafeStore.ZipBackend.unlock (
-                settings, "a-different-wrong-password");
+                settings, "a-different-wrong-password", ref rollback_safe);
         } catch (Error error) {
             wrong_password_failed = true;
         }
@@ -113,7 +115,7 @@ private void test_zip_roundtrip () {
             assert_true (!root_entry.has_prefix (".safestore-unlock-"));
         }
 
-        SafeStore.ZipBackend.unlock (settings, PASSWORD);
+        SafeStore.ZipBackend.unlock (settings, PASSWORD, ref rollback_safe);
         string restored;
         FileUtils.get_contents (
             Path.build_filename (account, "dc.db"), out restored);

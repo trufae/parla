@@ -12,16 +12,16 @@ JSON-RPC server will use. CryFS stores "<accounts>.vault"; ZIP stores
 Commands:
   backends       List encryption backends, availability, and security model
   check          Classify a storage candidate, without verifying integrity (exit 0),
-                 unlocked plaintext view (exit 3), or neither (exit 1)
+                 plaintext (exit 3), recovery required (exit 4), or neither (exit 1)
   status         Show the resolved paths and the vault and mount state
-  create         Create and unlock the selected encrypted store
-  mount          Unlock the selected store onto the accounts path
-  umount         Lock the selected store again
+  create         Create and hold a new store; Enter/EOF locks it before exit
+  mount          Hold an unlocked session; Enter/EOF locks it before exit
+  umount         Verify closure; cannot close a session owned by another process
   forget         Remove the stored vault password from the keyring
   version        Show status for the selected encryption backend
 
 Options:
-      --backend NAME      Select cryfs or zip (and save the selection)
+      --backend NAME      Select a method for a new store; existing stores keep theirs
   -b, --binary PATH       Main executable for the selected backend
       --unzip-binary PATH unzip executable for the ZIP backend
       --shred              Best-effort overwrite of ZIP plaintext before removal
@@ -29,7 +29,7 @@ Options:
   -k, --keyring           Read the password from the system keyring; after a
                           successful interactive unlock, store it there
   -p, --password-stdin    Read the password from standard input (for scripts)
-  -i, --idle MINUTES      CryFS: auto-lock after this many idle minutes
+  -i, --idle MINUTES      Only 0 is supported; locking requires stopping writers
       --allow-exec        CryFS: allow direct execution inside the mount
   -q, --quiet             Print errors only
   -h, --help              Show this help
@@ -41,6 +41,7 @@ in plain text; the optional keyring entry lives in the OS secret service.
         private ToolSettings settings;
         private Store store;
         private CredentialStore credentials;
+        private bool backend_requested = false;
         private bool use_keyring = false;
         private bool password_stdin = false;
         private bool allow_executable_files = false;
@@ -98,10 +99,10 @@ in plain text; the optional keyring entry lives in the OS secret service.
                     if (++i >= args.length) return usage_error ("--backend needs a name");
                     try {
                         settings.backend = BackendKind.parse (args[i]).id ();
+                        backend_requested = true;
                     } catch (Error error) {
                         return usage_error (error.message);
                     }
-                    settings.save ();
                     break;
                 case "--unzip-binary":
                     if (++i >= args.length) return usage_error ("--unzip-binary needs a path");
@@ -130,13 +131,6 @@ in plain text; the optional keyring entry lives in the OS secret service.
             }
 
             if (rest.length == 0) return usage_error ("Missing command");
-            if (binary_override != null) {
-                if (settings.backend == "zip") {
-                    settings.zip_binary = binary_override;
-                } else {
-                    settings.cryfs_binary = binary_override;
-                }
-            }
             string command = rest[0];
             if (rest.length > 1) {
                 return usage_error (
@@ -145,10 +139,10 @@ in plain text; the optional keyring entry lives in the OS secret service.
             }
 
             try {
-                settings.mount_mode = MountMode.DETACHED;
+                settings.mount_mode = MountMode.MANAGED;
                 settings.allow_executable_files = allow_executable_files;
                 if (idle_minutes >= 0) settings.idle_minutes = idle_minutes;
-                store = settings.open_store ();
+                store = yield settings.open_store (backend_requested, binary_override);
                 credentials = new CredentialStore (store.storage_path);
                 switch (command) {
                 case "backends":
@@ -197,7 +191,7 @@ in plain text; the optional keyring entry lives in the OS secret service.
         private async int cmd_check () throws Error {
             var status = yield store.inspect ();
             report (status.detail);
-            return status.plaintext_exposed ? 3 : (status.recognized ? 0 : 1);
+            return status.recovery_required ? 4 : (status.plaintext_exposed ? 3 : (status.recognized ? 0 : 1));
         }
 
         private async int cmd_status () throws Error {
@@ -211,7 +205,7 @@ in plain text; the optional keyring entry lives in the OS secret service.
             report ("storage: " + store.storage_path);
             report (status.detail);
             if (settings.backend == "zip") report (store.removal_info ().status);
-            return status.recognized ? 0 : 1;
+            return status.recovery_required ? 4 : (status.recognized ? 0 : 1);
         }
 
         private async int cmd_mount (bool create) throws Error {
@@ -250,45 +244,48 @@ in plain text; the optional keyring entry lives in the OS secret service.
             try {
                 if (create) yield store.create_empty (secret);
                 else yield store.unlock (secret);
+                store.session.access_lost.connect ((reason) => {
+                    stderr.printf ("safestore: access lost; stop account writers: %s\n", reason);
+                });
                 report ((create ? "Vault created and unlocked at %s"
                                 : "Vault unlocked at %s").printf (
                     store.accounts_path));
 
                 if (use_keyring && !from_keyring && credentials.available) {
-                    yield credentials.save (secret);
-                    report ("Password stored in the system keyring.");
+                    try {
+                        yield credentials.save (secret);
+                        report ("Password stored in the system keyring.");
+                    } catch (Error error) {
+                        stderr.printf ("safestore: could not remember the password: %s\n", error.message);
+                    }
                 }
+                settings.save ();
+                report ("This process holds the store lease. Press Enter (or close input) to lock and exit.");
+                yield wait_for_close ();
+                yield store.lock ();
+                report ("Storage locked; the session is closed.");
             } finally {
                 secret.clear ();
             }
             return 0;
         }
 
+        private async void wait_for_close () {
+            var context = MainContext.ref_thread_default ();
+            SourceFunc resume = wait_for_close.callback;
+            new Thread<void*> ("safestore-console", () => {
+                stdin.read_line ();
+                var source = new IdleSource ();
+                source.set_callback (() => { resume (); return Source.REMOVE; });
+                source.attach (context);
+                return null;
+            });
+            yield;
+        }
+
         private async int cmd_umount () throws Error {
-            if (settings.backend == "zip") {
-                string? password = null;
-                if (use_keyring) {
-                    var saved = yield credentials.lookup ();
-                    if (saved != null) { password = saved.peek (); saved.clear (); }
-                }
-                // ZIP locking rewrites and re-encrypts the archive, so an
-                // interactive password must be entered twice to avoid making
-                // a typo the new (and only) vault password.
-                if (password == null) password = obtain_password (true, false);
-                if (password == null) return 1;
-                var secret = new SecretValue (password);
-                password = "";
-                try {
-                    yield store.lock (secret);
-                } finally {
-                    secret.clear ();
-                }
-                report ("ZIP vault locked; plaintext accounts were removed.");
-            } else {
-                yield store.lock ();
-                report ("Vault locked; %s is no longer mounted.".printf (
-                    store.accounts_path));
-            }
+            yield store.lock ();
+            report ("The store is locked.");
             return 0;
         }
 

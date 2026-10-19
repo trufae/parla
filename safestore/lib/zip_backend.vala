@@ -12,6 +12,7 @@ namespace SafeStore {
         private const string MARKER_PREFIX = ".safestore-zip-marker-";
         private const string MARKER_CONTENT = "SafeStore ZIP backend v1\n";
         private const string LOCKED_NAME = ".safestore-locked";
+        private const string LOCKED_CONTENT = "SafeStore ZIP vault is locked; do not remove this file.\n";
 
         [CCode (cname = "safestore_run_pty_password",
                 cheader_filename = "pty_password.h")]
@@ -41,18 +42,13 @@ namespace SafeStore {
         }
 
         public static bool is_encrypted (Settings settings) {
-            string archive = settings.vault_path;
-            return FileUtils.test (archive, FileTest.IS_REGULAR)
-                && !FileUtils.test (archive, FileTest.IS_SYMLINK);
+            try { ZipFormat.validate (settings.vault_path); return true; }
+            catch (Error error) { return false; }
         }
 
-        public static bool is_unlocked (Settings settings) {
-            string accounts = PathPolicy.normalize (settings.mount_path);
-            return is_encrypted (settings)
-                && FileUtils.test (accounts, FileTest.IS_DIR)
-                && !FileUtils.test (
-                    Path.build_filename (accounts, LOCKED_NAME),
-                    FileTest.IS_REGULAR);
+        public static bool plaintext_present (Settings settings) {
+            try { ensure_locked_destination (settings.mount_path); return false; }
+            catch (Error error) { return true; }
         }
 
         public static void ensure_available (Settings settings) throws Error {
@@ -115,7 +111,8 @@ namespace SafeStore {
 
         /** Extract to staging, validate the format, then expose the accounts. */
         public static void unlock (Settings settings,
-                                   string password) throws Error {
+                                   string password, ref bool rollback_safe) throws Error {
+            rollback_safe = false;
             ensure_available (settings);
             string archive = settings.vault_path;
             if (!is_encrypted (settings)) {
@@ -123,7 +120,8 @@ namespace SafeStore {
                     "No ZIP vault was found at %s", archive);
             }
             ensure_locked_destination (settings.mount_path);
-            validate_archive_names (settings, archive);
+            ZipFormat.validate (archive);
+            bool exposed = false;
 
             string parent = Path.get_dirname (settings.mount_path);
             string staging = unique_directory (parent, ".safestore-unlock-");
@@ -154,13 +152,15 @@ namespace SafeStore {
                 File.new_for_path (payload).move (
                     File.new_for_path (settings.mount_path),
                     FileCopyFlags.NONE);
+                exposed = true;
             } catch (Error error) {
                 try {
                     PlaintextEraser.erase_tree (staging, settings);
                 } catch (Error cleanup_error) {
-                    warning ("Could not clean ZIP staging folder: %s",
-                             cleanup_error.message);
+                    throw new StoreError.RECOVERY_REQUIRED (
+                        "ZIP staging cleanup failed at %s: %s", staging, cleanup_error.message);
                 }
+                rollback_safe = !exposed;
                 throw error;
             }
             if (FileUtils.test (staging, FileTest.EXISTS)) {
@@ -171,7 +171,8 @@ namespace SafeStore {
 
         /** Archive first; plaintext is removed only after atomic replacement. */
         public static void lock (Settings settings,
-                                 string password) throws Error {
+                                 string password, Worker committed, ref bool rollback_safe) throws Error {
+            rollback_safe = true;
             ensure_available (settings);
             validate_plain_accounts (settings.mount_path);
             PlaintextEraser.validate_tree (
@@ -179,9 +180,13 @@ namespace SafeStore {
             int guard = acquire_accounts_guard (Path.build_filename (
                 settings.mount_path, "accounts.lock"));
             try {
+                rollback_safe = false;
                 write_archive (settings, password);
+                committed ();
                 PlaintextEraser.erase_tree (settings.mount_path, settings);
                 create_locked_destination (settings.mount_path);
+                PathPolicy.sync_directory (settings.mount_path);
+                PathPolicy.sync_directory (Path.get_dirname (settings.mount_path));
             } finally {
                 release_accounts_guard (guard);
             }
@@ -228,6 +233,7 @@ namespace SafeStore {
                         "Could not restrict ZIP archive permissions");
                 }
 #endif
+                ZipFormat.validate (temporary);
                 durable_replace (temporary, archive);
             } finally {
                 if (FileUtils.test (marker_path, FileTest.EXISTS)) {
@@ -355,62 +361,6 @@ namespace SafeStore {
             children.close ();
         }
 
-        private static void validate_archive_names (Settings settings,
-                                                    string archive) throws Error {
-            string? stdout_text;
-            string? stderr_text;
-            var process = new Subprocess (
-                SubprocessFlags.STDOUT_PIPE | SubprocessFlags.STDERR_PIPE,
-                settings.unzip_binary, "-Z1", archive);
-            process.communicate_utf8 (
-                null, null, out stdout_text, out stderr_text);
-            if (!process.get_successful ()) {
-                throw new StoreError.NOT_A_VAULT (
-                    "Could not inspect ZIP vault entries");
-            }
-
-            bool marker_found = false;
-            string? payload_root = null;
-            foreach (string raw_name in (stdout_text ?? "").split ("\n")) {
-                if (raw_name.length == 0) continue;
-                if (raw_name.has_prefix ("/") || raw_name.contains ("\\")) {
-                    throw new StoreError.NOT_A_VAULT (
-                        "ZIP vault contains an unsafe path");
-                }
-                string[] parts = raw_name.split ("/");
-                if (parts.length == 0 || parts[0].length == 0
-                        || parts[0].contains (":")) {
-                    throw new StoreError.NOT_A_VAULT (
-                        "ZIP vault contains an unsafe path");
-                }
-                foreach (string part in parts) {
-                    if (part == "." || part == "..") {
-                        throw new StoreError.NOT_A_VAULT (
-                            "ZIP vault contains a path traversal entry");
-                    }
-                    if (part.length > 0) validate_entry_name (part);
-                }
-                if (parts.length == 1
-                        && parts[0].has_prefix (MARKER_PREFIX)) {
-                    if (marker_found) {
-                        throw new StoreError.NOT_A_VAULT (
-                            "ZIP vault contains multiple format markers");
-                    }
-                    marker_found = true;
-                    continue;
-                }
-                if (payload_root == null) payload_root = parts[0];
-                else if (payload_root != parts[0]) {
-                    throw new StoreError.NOT_A_VAULT (
-                        "ZIP vault contains multiple payload roots");
-                }
-            }
-            if (!marker_found || payload_root == null) {
-                throw new StoreError.NOT_A_VAULT (
-                    "ZIP archive is not a SafeStore vault");
-            }
-        }
-
         private static void validate_entry_name (string name) throws Error {
             for (int index = 0; index < name.length; index++) {
                 uint8 byte = name.data[index];
@@ -436,7 +386,7 @@ namespace SafeStore {
             PathPolicy.ensure_private_directory (clean);
         }
 
-        private static void prepare_destination (string path) throws Error {
+        public static void prepare_destination (string path) throws Error {
             string clean = PathPolicy.normalize (path);
             if (FileUtils.test (clean, FileTest.EXISTS)) {
                 var directory = Dir.open (clean);
@@ -448,8 +398,11 @@ namespace SafeStore {
             PathPolicy.ensure_private_directory (clean);
         }
 
-        private static void ensure_locked_destination (string path) throws Error {
+        public static void ensure_locked_destination (string path) throws Error {
             string clean = PathPolicy.normalize (path);
+            if (FileUtils.test (clean, FileTest.IS_SYMLINK)) {
+                throw new PathPolicyError.INVALID ("Accounts path must not be a symbolic link");
+            }
             if (!FileUtils.test (clean, FileTest.EXISTS)) return;
             if (!FileUtils.test (clean, FileTest.IS_DIR)) {
                 throw new PathPolicyError.INVALID (
@@ -461,6 +414,17 @@ namespace SafeStore {
             if (first != LOCKED_NAME || directory.read_name () != null) {
                 throw new PathPolicyError.NOT_EMPTY (
                     "Accounts folder contains plaintext data; refusing to overwrite it");
+            }
+            string sentinel = Path.build_filename (clean, LOCKED_NAME);
+            var info = File.new_for_path (sentinel).query_info (
+                "standard::type,standard::size", FileQueryInfoFlags.NOFOLLOW_SYMLINKS);
+            string content;
+            if (info.get_file_type () != FileType.REGULAR || info.get_size () != LOCKED_CONTENT.length) {
+                throw new PathPolicyError.NOT_EMPTY ("Accounts placeholder contains unexpected data");
+            }
+            FileUtils.get_contents (sentinel, out content);
+            if (content != LOCKED_CONTENT) {
+                throw new PathPolicyError.NOT_EMPTY ("Accounts placeholder contains unexpected data");
             }
         }
 
@@ -480,9 +444,7 @@ namespace SafeStore {
         private static void create_locked_destination (string path) throws Error {
             PathPolicy.ensure_private_directory (path);
             string sentinel = Path.build_filename (path, LOCKED_NAME);
-            FileUtils.set_contents (
-                sentinel,
-                "SafeStore ZIP vault is locked; do not remove this file.\n");
+            FileUtils.set_contents (sentinel, LOCKED_CONTENT);
 #if !WINDOWS
             FileUtils.chmod (sentinel, 0600);
 #endif

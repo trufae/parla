@@ -20,6 +20,7 @@ namespace SafeStore {
             get { return cryfs_process != null; }
         }
 
+        public int last_exit_status { get; private set; default = -1; }
         private Subprocess? cryfs_process;
         private uint process_generation = 0;
         private bool expected_exit = false;
@@ -28,7 +29,6 @@ namespace SafeStore {
                            string vault_path,
                            string mount_path,
                            string password,
-                           int idle_minutes,
                            bool create,
                            bool allow_executable_files = false,
                                   string state_directory = "") throws Error {
@@ -73,10 +73,6 @@ namespace SafeStore {
                 argv += "--cipher";
                 argv += "xchacha20-poly1305";
             }
-            if (idle_minutes > 0) {
-                argv += "--unmount-idle";
-                argv += idle_minutes.to_string ();
-            }
 #if !WINDOWS
             if (!allow_executable_files) {
                 argv += "-o";
@@ -109,6 +105,7 @@ namespace SafeStore {
                 throw error;
             }
 
+            last_exit_status = -1;
             cryfs_process = process;
             transition (StoreState.STARTING, starting_detail);
             expected_exit = false;
@@ -132,22 +129,29 @@ namespace SafeStore {
             }
 
             confirm_mount.begin (
-                process, generation, mount, idle_minutes);
+                process, generation, mount, vault);
         }
 
         private async void confirm_mount (Subprocess process,
                                           uint generation,
                                           string mount_path,
-                                          int idle_minutes) {
+                                          string vault_path) {
             bool mounted = false;
             for (int attempt = 0;
                  attempt < 40
                     && generation == process_generation
                     && cryfs_process == process;
                  attempt++) {
-                if (MountCheck.is_active (mount_path)) {
-                    mounted = true;
-                    break;
+                try {
+                    var found = MountCheck.find (mount_path);
+                    if (found != null) {
+                        MountCheck.require_exact (mount_path, vault_path);
+                        mounted = true;
+                        break;
+                    }
+                } catch (Error error) {
+                    transition (StoreState.ERROR, error.message);
+                    return;
                 }
                 yield delay (250);
             }
@@ -155,10 +159,7 @@ namespace SafeStore {
                     && state == StoreState.STARTING) {
                 transition (
                     StoreState.MOUNTED,
-                    idle_minutes > 0
-                        ? "Mounted; auto-lock after %d idle minutes".printf (
-                            idle_minutes)
-                        : "Vault is mounted"
+                    "The expected vault is mounted"
                 );
                 output ("Vault mounted successfully.");
             } else if (state == StoreState.ERROR || cryfs_process == null) {
@@ -172,8 +173,9 @@ namespace SafeStore {
             }
         }
 
-        public async void unmount (string binary,
-                                   string mount_path) throws Error {
+        public async void unmount (string binary, string storage_path,
+                                   string mount_path, string mount_identity) throws Error {
+            MountCheck.require_exact (mount_path, storage_path, mount_identity);
             if (cryfs_process == null) {
                 throw new IOError.NOT_CONNECTED (
                     "No SafeStore-managed vault is mounted.");
@@ -225,6 +227,10 @@ namespace SafeStore {
                 );
                 throw new IOError.TIMED_OUT ("%s", detail);
             }
+            if (MountCheck.find (mount_path) != null) {
+                transition (StoreState.ERROR, "CryFS exited but a mount remains");
+                throw new StoreError.UNMOUNT_FAILED ("The accounts path is still mounted");
+            }
             transition (StoreState.LOCKED, "Vault is locked");
             output ("Vault locked cleanly.");
         }
@@ -270,17 +276,14 @@ namespace SafeStore {
             bool was_expected = expected_exit;
             expected_exit = false;
             if (was_expected || state == StoreState.STOPPING) {
-                transition (StoreState.LOCKED, "Vault is locked");
+                // unmount() verifies disappearance before reporting LOCKED.
                 return;
             }
 
             int status = 1;
             if (process.get_if_exited ()) status = process.get_exit_status ();
-            string message = CryfsBackend.exit_message (status);
-            transition (
-                status == 0 ? StoreState.LOCKED : StoreState.ERROR,
-                message
-            );
+            last_exit_status = status;
+            transition (StoreState.ERROR, "CryFS access was lost: " + CryfsBackend.exit_message (status));
         }
 
         private void transition (StoreState new_state, string new_detail) {

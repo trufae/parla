@@ -31,6 +31,13 @@ Cancelling setup leaves these choices available. Removing the last configured
 profile returns to the same screen. Once a profile is ready, Parla shows its chat
 list; additional profiles can still be added through **Profiles → Add Profile**.
 
+Account storage protection is still being integrated. The SafeStore library now
+provides persistent store identity and managed sessions; Parla does not yet
+unlock or lock storage automatically. The planned Account Protection section in
+Settings must be available before creating or importing the first profile,
+without requiring the standalone SafeStore tools. See the
+[implementation milestones](safestore-plan.md).
+
 ## How Parla finds the engine
 
 In the default `Auto` mode, Parla resolves `deltachat-rpc-server` in this order,

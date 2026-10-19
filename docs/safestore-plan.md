@@ -45,10 +45,9 @@ and Parla links the dependency without enabling protection. See the
 
 Implemented operations are explicit-path construction, async discovery and
 classification, empty-store creation, unlock/lock, and optional credential
-storage. Other operation capabilities remain unavailable. Instance-level
-serialization, managed/detached CryFS modes, copied options and secret handoff
-are implemented; durable ownership and transaction/session guarantees remain
-milestones 2–4. The larger contract below describes that target API.
+storage. Other operation capabilities remain unavailable. Copied options and secret handoff are implemented. Milestone 2 adds durable
+ownership and managed sessions; detached mutation is now rejected. Full
+migration/recovery transactions remain milestone 4. The larger contract below describes that target API.
 
 Validation includes standalone and library-only builds, an installed public
 consumer, the original 17 tests, new public API/ZIP tests, and the Parla build.
@@ -96,8 +95,8 @@ VAPI/header and pkg-config metadata.
 
 The implemented facade is documented in the SafeStore README. The table below
 retains the target contracts for the remaining lifecycle and transaction work;
-`Session`, `ChangePlan`, progress and transaction-result types are deliberately
-not published before their guarantees can be implemented.
+`Session` is now implemented. `ChangePlan`, progress and transaction-result types
+remain unpublished until their transaction guarantees can be implemented.
 
 | Type | Contract |
 | --- | --- |
@@ -157,6 +156,33 @@ Parla must explicitly await closure.
 
 ## Milestone 2 Establish reliable state and lifecycle operations
 
+Implemented: per-store versioned metadata; native ownership locks for accounts
+and ciphertext; managed `Session` results with access-loss notification and a
+retained wipeable credential; conservative legacy import; exact mount-source
+and process checks; matching stable CryFS/unmount version checks; shared path
+precedence; encrypted ZIP32 format recognition; durable ZIP commit/cleanup
+phases. Detached and backend idle unmount operations are rejected. Frontends
+read the store's recorded backend instead of global backend preferences.
+
+Regression coverage includes process contention, wrong-password retry, mount
+mismatch, working-directory replacement, corrupt metadata, legacy plaintext
+conflicts, malformed/unencrypted ZIPs, missing/mismatched tools, and a process
+killed after archive commit. That crash test verifies the complete archive
+survives and refuses to archive the partly removed plaintext on retry.
+
+Validation on Linux: 28 SafeStore checks, 24 Parla test targets, standalone
+CLI/GUI and library-only builds, strict C compilation, and an installed public
+API consumer. Windows, macOS, and unsupported-platform Vala branches type-check;
+that is not native runtime or power-loss qualification.
+
+Windows mutation fails closed until reliable native mount identity and durable
+replacement are qualified in milestone 3. macOS runtime qualification also
+remains there. Recovery detection and refusal are implemented; recovery execution
+and verified retained-copy migrations remain milestone 4. Parla Settings and
+automatic startup/shutdown protection remain milestone 5.
+
+The requirements implemented by this milestone follow.
+
 Replace global selected-backend preferences with versioned metadata per store.
 Record a store identifier, active generation, backend/format version, and any
 transaction state outside the mounted or extracted account tree. Keep secret
@@ -176,15 +202,14 @@ supported versions, including the unmount path. Do not enable backend-controlled
 idle unmounting while the account server remains active; idle locking must use
 the same coordinated Parla lifecycle.
 
-Fix the known blockers before exposing mutating Settings actions:
+The following blockers are addressed before exposing mutating Settings actions:
 
-- Parla and SafeStore currently disagree about environment path precedence.
-- ZIP status accepts an arbitrary regular `.zip` file as encrypted.
-- A partially removed plaintext tree after ZIP archive commit can be accepted
-  as unlocked and overwrite the complete archive on a subsequent lock.
-- Existing CryFS readiness checks can accept mount presence without proving
-  that the expected vault is available.
-- Windows mount checks currently establish only directory/drive existence.
+- Parla and SafeStore now use the same environment path precedence.
+- ZIP status rejects arbitrary files and unencrypted archives.
+- Interrupted ZIP cleanup requires recovery; a partial plaintext tree cannot
+  overwrite the complete committed archive on retry.
+- CryFS readiness requires the expected source, filesystem identity, and process.
+- Windows presence-only checks cannot authorize access; mutations remain disabled.
 
 Acceptance: regression cases for these failures pass; incorrect passwords,
 missing tools, conflicting owners, unexpected mounts, and lost access leave

@@ -24,6 +24,7 @@ namespace SafeStore {
         private Gtk.Button copy_button;
         private Gtk.TextBuffer log_buffer;
         private Adw.ToastOverlay toast_overlay;
+        private bool store_recorded = false;
         private bool backend_ready = false;
         private bool backend_check_active = false;
         private uint backend_check_generation = 0;
@@ -180,7 +181,7 @@ namespace SafeStore {
 
             var idle_row = new Adw.ActionRow ();
             idle_row.title = "Idle auto-lock";
-            idle_row.subtitle = "0 disables it; CryFS measures filesystem inactivity";
+            idle_row.subtitle = "Automatic locking requires Parla to stop account writers first";
             var adjustment = new Gtk.Adjustment (
                 settings.idle_minutes, 0, 1440, 5, 30, 0);
             idle_spin = new Gtk.SpinButton (adjustment, 5, 0);
@@ -280,7 +281,7 @@ namespace SafeStore {
                 refresh_controls ();
             });
             backend_combo.notify["selected"].connect (() => {
-                if (controller != null && controller.process_active) return;
+                if (store_recorded || (controller != null && controller.process_active)) return;
                 settings.backend = backend_combo.selected == 1 ? "zip" : "cryfs";
                 save_settings ();
                 sync_backend_fields ();
@@ -427,9 +428,9 @@ namespace SafeStore {
             return dialog;
         }
 
-        private void configure_store () throws Error {
+        private async void configure_store () throws Error {
             if (controller != null && controller.process_active) return;
-            controller = settings.open_store ();
+            controller = yield settings.open_store ();
             controller.output.connect (append_log);
             controller.state_changed.connect ((state, detail) => {
                 sync_controls (state, detail);
@@ -444,9 +445,10 @@ namespace SafeStore {
         private async void mount_vault (SecretValue secret, bool create) {
             try {
                 save_settings ();
-                configure_store ();
+                yield configure_store ();
                 if (create) yield controller.create_empty (secret);
                 else yield controller.unlock (secret);
+                store_recorded = true;
             } catch (Error error) {
                 append_log ("Error: " + error.message);
                 show_error (error.message);
@@ -457,16 +459,7 @@ namespace SafeStore {
         }
 
         private async void lock_vault () {
-            if (settings.backend == "zip") {
-                var dialog = password_dialog (
-                    "Lock ZIP vault",
-                    "The accounts will be archived before plaintext is removed. "
-                    + "Close Parla first so all database writes are complete.",
-                    false, true);
-                dialog.present (this);
-            } else {
-                yield lock_store (null);
-            }
+            yield lock_store (null);
         }
 
         private async void lock_store (SecretValue? secret) {
@@ -489,12 +482,15 @@ namespace SafeStore {
             backend_row.subtitle = "Checking…";
             refresh_controls ();
             try {
-                configure_store ();
+                yield configure_store ();
                 var current = controller;
                 BackendInfo info = yield current.probe ();
                 var status = yield current.inspect ();
                 if (generation != backend_check_generation) return;
-                backend_ready = info.available;
+                store_recorded = status.has_metadata;
+                backend_combo.selected = settings.backend == "zip" ? 1 : 0;
+                sync_backend_fields ();
+                backend_ready = info.available && !status.recovery_required;
                 backend_row.subtitle = info.status;
                 append_log ("Backend %s: %s".printf (info.id, info.status));
                 append_log ("Protection: " + info.protection);
@@ -575,10 +571,9 @@ namespace SafeStore {
             binary_row.sensitive = !busy && !active;
             zip_binary_row.sensitive = !busy && !active;
             unzip_binary_row.sensitive = !busy && !active;
-            backend_combo.sensitive = !busy && !active;
+            backend_combo.sensitive = !busy && !active && !store_recorded;
             shred_switch.sensitive = settings.backend == "zip" && !busy && !active;
-            idle_spin.sensitive = settings.backend != "zip"
-                && !busy && !active;
+            idle_spin.sensitive = false;
         }
 
         private void sync_backend_fields () {
@@ -591,7 +586,7 @@ namespace SafeStore {
             binary_row.visible = !zip;
             zip_binary_row.visible = zip;
             unzip_binary_row.visible = zip;
-            idle_spin.sensitive = !zip;
+            idle_spin.sensitive = false;
             backend_row.title = zip ? "ZIP archive backend (weaker)"
                                     : "CryFS backend";
         }

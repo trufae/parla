@@ -7,7 +7,7 @@ safestore_c_args = safestore_cc.get_supported_arguments([
   '-Wno-unused-value', '-Wno-unused-variable', '-Wno-unused-label',
   '-Wno-incompatible-pointer-types', '-Wno-discarded-qualifiers',
 ])
-safestore_core_deps = [dependency('glib-2.0'), dependency('gio-2.0')]
+safestore_core_deps = [dependency('glib-2.0', version: '>= 2.66'), dependency('gio-2.0')]
 safestore_system = host_machine.system()
 if safestore_system == 'windows'
   safestore_vala_args += '--define=WINDOWS'
@@ -40,6 +40,7 @@ else
 endif
 
 safestore_sources = files(
+  'metadata.vala', 'accounts_location.vala', 'zip_format.vala', 'lease.vapi', 'lease.c',
   'store.vala', 'settings.vala', 'backend.vala', 'path_policy.vala',
   'secret_memory.vapi', 'secret_value.vala', 'zip_backend.vala',
   'plaintext_eraser.vala', 'mount_check.vala', 'vault.vala',

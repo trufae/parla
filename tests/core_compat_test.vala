@@ -405,6 +405,12 @@ private void test_unread_calls () {
 }
 
 public int main (string[] args) {
+    if (args.length > 2 && args[1] == "--accounts-settings") {
+        var settings = new SettingsManager ();
+        settings.accounts_path = "/configured/accounts/";
+        assert (settings.effective_accounts_path () == args[2]);
+        return 0;
+    }
     if (args.length > 1 && args[1] == "--image-preview-ui")
         return run_image_preview_ui_test (args.length > 2 ? args[2] : null);
     if (args.length > 1 && args[1] == "--compose-scroll-ui")

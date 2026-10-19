@@ -1,3 +1,14 @@
+private void delete_fixture (File file) throws Error {
+    var info = file.query_info ("standard::type", FileQueryInfoFlags.NOFOLLOW_SYMLINKS);
+    if (info.get_file_type () == FileType.DIRECTORY) {
+        var children = file.enumerate_children ("standard::name", FileQueryInfoFlags.NOFOLLOW_SYMLINKS);
+        FileInfo? child;
+        while ((child = children.next_file ()) != null) delete_fixture (file.get_child (child.get_name ()));
+        children.close ();
+    }
+    file.delete ();
+}
+
 // Deliberately imports only the generated public VAPI and header.
 private async void exercise_api () throws Error {
     string root = DirUtils.make_tmp ("safestore-api-XXXXXX");
@@ -26,10 +37,11 @@ private async void exercise_api () throws Error {
     assert_false (status.recognized);
     assert_false (status.integrity_verified);
     assert_false (status.plaintext_exposed);
-    // A regular file is merely a ZIP candidate; never a verified vault.
+    // Arbitrary regular files are not encrypted stores.
     FileUtils.set_contents (storage, "this is not encrypted");
     status = yield store.inspect ();
-    assert_true (status.recognized);
+    assert_false (status.recognized);
+    assert_true (status.recovery_required);
     assert_false (status.integrity_verified);
     assert_true (FileUtils.unlink (storage) == 0);
 
@@ -119,7 +131,7 @@ private async void exercise_zip () throws Error {
         assert_true (FileUtils.unlink (Path.build_filename (accounts, ".safestore-locked")) == 0);
         assert_true (DirUtils.remove (accounts) == 0);
         assert_true (FileUtils.unlink (storage) == 0);
-        assert_true (DirUtils.remove (root) == 0);
+        delete_fixture (File.new_for_path (root));
     } finally { secret.clear (); }
 }
 

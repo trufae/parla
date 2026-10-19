@@ -6,6 +6,7 @@ namespace SafeStore {
         // directly to Store and does not instantiate this adapter.
         public string vault_path {
             owned get {
+                if (recorded_storage != null) return recorded_storage;
                 return backend == "zip"
                     ? AccountsPath.zip_path () : AccountsPath.vault_path ();
             }
@@ -15,9 +16,23 @@ namespace SafeStore {
         }
         public string backend { get; set; default = "cryfs"; }
 
-        public Store open_store () throws Error {
-            return new Store (mount_path, vault_path,
-                BackendKind.parse (backend), this);
+        private string? recorded_storage;
+        public async Store open_store (bool require_selected = false, string? binary_override = null) throws Error {
+            Store? existing = yield Store.open_existing (mount_path, this);
+            if (existing != null) {
+                if (require_selected && existing.backend.id () != backend) {
+                    throw new StoreError.NOT_SUPPORTED ("Changing an existing store's method requires migration");
+                }
+                backend = existing.backend.id ();
+                recorded_storage = existing.storage_path;
+            } else {
+                recorded_storage = null;
+            }
+            if (binary_override != null) {
+                if (backend == "zip") zip_binary = binary_override;
+                else cryfs_binary = binary_override;
+            }
+            return new Store (mount_path, vault_path, BackendKind.parse (backend), this);
         }
 
         public ToolSettings () {
@@ -55,14 +70,10 @@ namespace SafeStore {
             unzip_binary = read_string (keyfile, "unzip_binary", unzip_binary);
             shred_binary = read_string (
                 keyfile, "shred_binary", shred_binary);
-            backend = read_string (keyfile, "backend", backend);
-            if (backend != "cryfs" && backend != "zip") backend = "cryfs";
             secure_delete = read_boolean (
                 keyfile, "secure_delete", secure_delete);
-            idle_minutes = read_integer (
-                keyfile, "idle_minutes", idle_minutes);
-            if (idle_minutes < 0) idle_minutes = 0;
-            if (idle_minutes > 24 * 60) idle_minutes = 24 * 60;
+            // Backend-controlled idle unmounting bypasses writer coordination.
+            idle_minutes = 0;
         }
 
         public void save () {
@@ -71,10 +82,8 @@ namespace SafeStore {
             keyfile.set_string ("SafeStore", "zip_binary", zip_binary);
             keyfile.set_string ("SafeStore", "unzip_binary", unzip_binary);
             keyfile.set_string ("SafeStore", "shred_binary", shred_binary);
-            keyfile.set_string ("SafeStore", "backend", backend);
             keyfile.set_boolean (
                 "SafeStore", "secure_delete", secure_delete);
-            keyfile.set_integer ("SafeStore", "idle_minutes", idle_minutes);
 
             try {
                 string parent = Path.get_dirname (config_path ());
@@ -90,16 +99,6 @@ namespace SafeStore {
                                            string fallback) {
             try {
                 return keyfile.get_string ("SafeStore", key);
-            } catch (Error error) {
-                return fallback;
-            }
-        }
-
-        private static int read_integer (KeyFile keyfile,
-                                         string key,
-                                         int fallback) {
-            try {
-                return keyfile.get_integer ("SafeStore", key);
             } catch (Error error) {
                 return fallback;
             }

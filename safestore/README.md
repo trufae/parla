@@ -1,28 +1,28 @@
 # SafeStore
 
 SafeStore is an experimental Vala library for encrypted account storage.
-The library/build foundation is integrated into Parla; automatic protection
+The library and session lifecycle are integrated into the build; automatic protection
 and the Settings interface are still planned. See the
 [remaining milestones](../docs/safestore-plan.md).
 
 The optional standalone tools manage storage holding the Delta Chat accounts.
-CryFS is the recommended backend; an explicitly weaker ZIP backend is
-available for systems where a mountable encrypted filesystem is impractical.
-The standalone tools resolve `DC_ACCOUNTS_PATH` using this precedence:
+CryFS is the current filesystem adapter; legacy ZIP is an explicitly weaker
+compatibility option. Platform qualification is still required before release.
+Parla and the standalone tools share this `DC_ACCOUNTS_PATH` precedence:
 
 1. `$DC_ACCOUNTS_PATH`, when set and non-empty;
 2. otherwise the `accounts_path` key in Parla's `settings.ini`;
 3. otherwise Parla's default accounts directory (the same fallback chain
    Parla uses when launching `deltachat-rpc-server`).
 
-Parla will pass its resolved accounts path explicitly to the library; unifying
-the current frontend and RPC path resolvers is part of milestone 2. CryFS
+Parla passes explicit paths to the library. The shared `AccountsLocation`
+resolver takes explicit environment/configuration/default inputs. CryFS
 mounts its decrypted view there and stores ciphertext in `<accounts>.vault`.
 ZIP extracts plaintext there and stores its archive in `<accounts>.zip`.
 These standalone-tool locations follow the resolved accounts path; `safestore status` prints the selected
 backend, paths, availability, and state.
 
-It is split into three parts:
+The source is split into:
 
 - `lib/` — the GTK-free `libsafestore-1` static library, public header and VAPI.
   Parla and both standalone tools consume the same Meson dependency.
@@ -35,8 +35,8 @@ It is split into three parts:
 
 - Lists the supported backends, whether their required programs are available,
   their operating model and security limitations.
-- Saves an explicit backend selection (`cryfs` or `zip`); CryFS remains the
-  default and recommended choice.
+- Records each store's ID, method, locations, generation, and operation phase
+  beside the accounts folder. Existing stores select their recorded method.
 - Creates a new CryFS vault using XChaCha20-Poly1305.
 - Unlocks an existing vault after checking for `cryfs.config`.
 - Detects vault state from the platform mount table, distinguishing an
@@ -52,15 +52,17 @@ It is split into three parts:
   yet and always prompts.
 - Verifies that the mount actually appears instead of trusting console
   text, and locks with the strict `cryfs-unmount --immediate` path.
-- Supports CryFS idle unmounting.
+- Holds native account and ciphertext ownership locks throughout each session.
+- Monitors working-directory identity, mount source/identity, and process loss.
+- Rejects backend-controlled idle unmounting: callers must stop writers first.
 - Mounts the decrypted view with `noexec` by default; Vala callers can opt in
   with `allow_executable_files`, and the CLI exposes `--allow-exec`.
 - Rejects nested vault/mount paths and non-empty mount directories.
 - On Unix, requires the encrypted vault, plaintext mountpoint, and CryFS
   integrity-state directory to belong to the invoking user, rejects symlinks,
   and enforces mode `0700` before mounting.
-- Stores only non-secret backend/tool preferences and the idle-lock choice;
-  vault and accounts locations are always derived from the accounts path.
+- Stores non-secret tool preferences separately from per-store identity.
+- Refuses ambiguous legacy layouts and interrupted operations until recovery.
 - With the ZIP backend, writes and verifies a new encrypted archive before
   atomically replacing the previous archive and removing plaintext. Unlocking
   happens in a private staging directory before the accounts path is exposed.
@@ -75,25 +77,24 @@ It is split into three parts:
 
 ## Requirements
 
-Build requirements: Vala 0.56+, Meson/Ninja, GLib/GIO; GTK 4 and
+Build requirements: Vala 0.56+, Meson/Ninja, GLib/GIO 2.66+; GTK 4 and
 libadwaita 1.5+ for the GUI; libsecret (optional) for the Linux keyring.
 
 Runtime requirements:
 
-- **CryFS stable 1.x**, preferably 1.0.3, including `cryfs` and
-  `cryfs-unmount`. Distribution packages such as Ubuntu's 0.11.4 work for
-  experimentation (same CLI, XChaCha20 since 0.11.0), but releases should
-  pin and verify an exact 1.x version. CryFS 2.0 is an alpha with a
-  different CLI story and must not be used.
+- **CryFS stable 1.x**, with `cryfs` and `cryfs-unmount` reporting the same
+  release version. Older releases, prereleases, and missing/mismatched unmount
+  helpers are rejected. Exact release/runtime qualification is milestone 3.
 - Linux: FUSE.
 - macOS: macFUSE plus permission to load its system extension. Homebrew's
   core `cryfs` formula is Linux-only; use the
   [official CryFS tap](https://github.com/cryfs/homebrew-tap)
   (`brew install --cask macfuse && brew install cryfs/tap/cryfs`) or
   MacPorts (`sudo port install cryfs`).
-- Windows (experimental upstream): the CryFS 1.x Windows package, Dokany
-  2.2.0.1000, and the MSVC 2022 runtime. Stable CryFS 1.x mounts on an
-  unused drive letter such as `G:`, not an arbitrary directory.
+- Windows: the library and native ownership lock have Windows implementations,
+  but storage mutations remain unavailable until mount identity, private ACLs,
+  replacement durability, and backend operation are qualified in milestone 3.
+  An existing drive or directory never proves an encrypted mount.
 - ZIP backend on Unix: Info-ZIP-compatible `zip` and `unzip`, both discoverable
   in `PATH` (or configured explicitly), plus pseudo-terminal support. The ZIP
   backend is unavailable on Windows for now because SafeStore cannot provide
@@ -147,16 +148,18 @@ safestore check          # encrypted vault, decrypted mount, or neither?
 safestore create         # new vault, prompts for a password twice
 safestore mount          # unlock; prompts without echoing
 safestore --allow-exec mount   # permit direct execution inside the mount
-safestore umount         # lock again
+safestore umount         # verify an already-locked store; cannot close another owner
 safestore --backend zip create
-safestore --backend zip --shred umount
+safestore --backend zip --shred mount
 DC_ACCOUNTS_PATH=/elsewhere/accounts safestore mount   # alternate store
 ```
 
 Exit codes are script-friendly: `0` yes/success, `1` no/failure, `2` usage
 error; `check` additionally returns `3` when the accounts path is currently
-apparently decrypted/extracted. `check` is classification only, not proof of
-encryption, mount identity, or integrity.
+ordinary plaintext. Both `check` and `status` return `4` for recovery-required
+state. An active session in another process is conservatively classified as
+active or interrupted, never as safely locked. Classification is not an
+integrity check.
 
 Passwords are never accepted as command-line arguments. The sources are:
 
@@ -165,8 +168,8 @@ Passwords are never accepted as command-line arguments. The sources are:
 - `--keyring` to fetch the password from the OS secret store. On the first
   interactive unlock with `--keyring`, the password is saved there after a
   successful mount; `safestore forget` removes it again. Combined with the
-  keyring, `safestore mount` needs no interaction at all, which is a
-  convenience for standalone use. Parla will call the Vala API directly.
+  keyring, unlocking needs no password prompt. The CLI still holds the session
+  until Enter/EOF. Parla will call the Vala API directly.
 
 Password prompting is deliberately a frontend responsibility. The GTK-free
 library never opens a terminal, displays a dialog, or invokes the SafeStore CLI:
@@ -183,10 +186,12 @@ library never opens a terminal, displays a dialog, or invokes the SafeStore CLI:
   over the private pseudo-terminal. It never places it in argv or the
   environment.
 
-Unlike the GUI, the CLI lets CryFS daemonize itself, so mounts survive the CLI
-exiting. ZIP has no mount process: while unlocked, both its prior encrypted
-snapshot and a full plaintext accounts tree exist. ZIP `umount` rewrites the
-archive and therefore requests the password again.
+Both tools hold managed sessions. CLI `create`/`mount` stay alive until Enter
+or EOF, then lock before exiting. Stop all account writers before closing that
+input. A second CLI cannot take ownership or remotely close the first. Forced
+termination leaves an operation phase requiring recovery; it does not constitute
+a clean lock. ZIP retains the password in the session, so closure needs no
+second prompt. Backend idle unmount and detached mutation are unsupported.
 
 ## Public Vala API
 
@@ -208,34 +213,53 @@ the standalone adapter explicitly preserves its previous CryFS state location.
 | Public API | Current contract |
 | --- | --- |
 | `Store.list_backends()` / `probe()` | Async tool/version discovery. `BackendInfo` describes availability, limitations and supported `Operation` flags. Every current adapter is experimental. |
-| `Store.inspect()` | Async, read-only classification. `recognized` means a candidate was found; `integrity_verified` is always false in this milestone. Does not create or unlock anything. |
-| `Store.create_empty(secret)` | Explicit creation using the existing empty-store backend checks. Does not migrate existing accounts. |
-| `Store.unlock(secret)` | Async opening of existing storage. Never falls back to creating a missing store. |
-| `Store.lock(secret?)` | Async prototype lock. ZIP needs the password again. The caller must first stop and await all writers. |
+| `Store.open_existing(accounts, options)` | Reads per-store metadata and returns the recorded backend/location, or null for an unrecorded location. Never guesses another backend. |
+| `Store.inspect()` | Async, read-only classification with `AccessState`, store ID/generation, recovery state, and session ownership. ZIP recognition validates an encrypted SafeStore ZIP32 structure; CryFS recognition finds its configuration. Neither authenticates ciphertext; `integrity_verified` remains false. |
+| `Store.create_empty(secret)` | Creates only at an empty location, records its identity, and returns an owned `Session`. Does not migrate existing accounts. |
+| `Store.unlock(secret)` | Returns a `Session` after verifying access. Imports an unambiguous locked legacy store. Never creates missing ciphertext or overwrites conflicting plaintext. |
+| `Store.lock(secret?)` | Uses the session's retained secret; a different supplied password is rejected. The caller must first stop and await all writers. Releases ownership only after verified closure. Repeating a successful lock is harmless; abandoned sessions need recovery. |
+| `Session` | Store ID/generation, verified `accounts_path`, `active`, and `access_lost(reason)`. Loss invalidates the session; callers must stop file access immediately. |
 | `Store.state_changed` / `output` | Lifecycle state and backend diagnostics on the caller's main context. `UNKNOWN` is the initial state. Backend errors remain observable. |
 | `Store.removal_info()` | Availability and limitations of best-effort overwrite removal. |
-| `SecretValue` | Wipeable password handoff. Mutation calls copy it before their first suspension; callers may clear their input immediately after starting a call. The operation clears its private copy on completion or error. |
+| `SecretValue` | Wipeable password handoff. Mutation calls copy it before their first suspension; callers may clear their input immediately after starting a call. The operation clears its private copy on completion or error; a successful session retains a separate wipeable copy until closure or access loss. |
 | `CredentialStore(storage_path)` | Optional async `lookup`, `save`, and `forget` using the existing OS keyring adapters. Lookup returns a `SecretValue` the caller must clear. |
 
-For example, this performs only inspection:
+For an existing store:
 
 ```vala
-var store = new SafeStore.Store (
-    accounts_path, ciphertext_path, SafeStore.BackendKind.CRYFS);
-var status = yield store.inspect (cancellable);
-// Display status.detail; recognition is not integrity verification.
+var store = yield SafeStore.Store.open_existing (accounts_path);
+if (store == null) {
+    // Show first-time protection choices; never create implicitly.
+    return;
+}
+var status = yield store.inspect ();
+if (status.recovery_required) {
+    // Preserve every copy and present recovery details.
+    return;
+}
+var session = yield store.unlock (secret);
+secret.clear ();
+session.access_lost.connect ((reason) => {
+    // Immediately stop account IO and show the failure.
+});
+// Start the account server with session.accounts_path.
+// Later, stop every writer and await server exit before:
+yield store.lock ();
 ```
 
 Call a Store from one GLib main context. Blocking backend work runs off that
-context, and callbacks return to its thread-default context. Mutations are
-serialized **per instance**, with concurrent calls rejected as `StoreError.BUSY`.
-This is not yet an exclusive cross-process session. Keep the Store alive while
-unlocked and explicitly await locking; finalization does not perform async work.
+context, and callbacks return to its thread-default context. Concurrent lifecycle
+operations on an instance are rejected as `StoreError.BUSY`. Stable native lock
+files serialize distinct instances and processes for both the account location
+and ciphertext location. Keep the Store alive while unlocked and explicitly
+await locking; finalization cannot perform async closure. Ownership coordinates
+local cooperating processes, not independently synced copies on other machines.
 
-`MountMode.MANAGED` is the default and preserves foreground CryFS monitoring for
-applications. The CLI explicitly uses `DETACHED` so a mount survives CLI exit.
-ZIP has no filesystem process. `process_active` conservatively includes busy
-operations and observed exposed storage; it is not proof of mount ownership.
+`MountMode.MANAGED` is required for mutations; `DETACHED` is rejected. ZIP has
+no filesystem process. `process_active` conservatively includes busy operations,
+owned sessions, and observed exposed storage; it is not proof of usable access.
+`idle_minutes` must remain zero. Coordinated idle closure belongs to Parla's
+future lifecycle controller.
 
 `GLib.Cancellable` is supported by inspection, probing and lifecycle calls.
 Cancellation is honored before a mutation begins. Once an existing backend
@@ -247,10 +271,10 @@ Password buffers cannot guarantee that GTK, GLib, the OS and backend programs
 never make additional copies.
 
 `ENABLE`, `DISABLE`, `CHANGE_BACKEND`, `VERIFY`, `BACKUP`, `RESTORE`, and `RECOVER`
-are advertised as unsupported. There are no success-returning stubs. Persistent
-store IDs, exclusive sessions, transaction plans/results, progress and verified
-recovery are contracts for the following milestones, not claims made by this API.
-The 0.1 API remains experimental until those lifecycle guarantees are implemented.
+are advertised as unsupported. There are no success-returning stubs. Transaction
+plans/results, progress, recovery execution, and migrations remain future work.
+The 0.1 API remains experimental; Windows mutations and native platform runtime
+qualification are still pending.
 
 A standalone library-only build is:
 
@@ -294,11 +318,28 @@ copies the path for manual `DC_ACCOUNTS_PATH` experiments.
 
 ## Stored state
 
-Non-secret preferences (selected backend, tool paths, overwrite-removal
-choice, and CryFS idle-lock minutes; vault and accounts locations are derived,
-never stored) go to
-`$XDG_CONFIG_HOME/safestore/settings.ini` (or the platform's GLib
-equivalent). CryFS rollback/integrity state is kept under
+Versioned per-store metadata lives in `<accounts>.safestore/store.ini`, outside
+the working tree. It records a UUID, backend/format, accounts/ciphertext paths,
+generation and phase (`creating`, `opening`, `unlocked`, `locking`, `cleanup`,
+`locked`). Unix updates synchronize the file and parent directory before
+proceeding. Never delete this directory to bypass a recovery state.
+
+Stable ownership files are `<accounts>.safestore/owner.lock` and
+`<ciphertext>.safestore.lock`. They are never unlinked by the library. A missing
+owner after a crash does not make an `unlocked` or in-progress phase safe to use.
+ZIP records `cleanup` after committing the complete archive and before removing
+plaintext; retries cannot archive the remaining partial tree over that archive.
+Recovery execution is milestone 4; current operations preserve ambiguous copies
+and refuse to proceed. Keep metadata and CryFS integrity state with backups.
+
+For ordinary account directories the control directory must stay beside the
+accounts path. Windows drive mounts require an explicit `control_directory`
+outside the drive; mutations there still await platform qualification.
+
+Non-secret tool and removal preferences live in
+`$XDG_CONFIG_HOME/safestore/settings.ini` (or the platform GLib equivalent).
+The previous global backend and idle-unmount preferences no longer control
+stores. CryFS rollback/integrity state for standalone tools remains under
 `safestore/cryfs-state/` in the GLib user-data directory.
 
 The password is not saved to disk by SafeStore itself. With `--keyring` it
@@ -349,8 +390,11 @@ While unlocked, the full accounts tree is ordinary plaintext. The previous
 encrypted ZIP snapshot also remains, so storage is duplicated. On lock,
 SafeStore creates and password-verifies a temporary archive, synchronizes it,
 atomically replaces `<accounts>.zip`, and only then removes the plaintext.
-Extraction also uses private staging and rejects symbolic links and unexpected
-top-level entries.
+Extraction uses private staging and rejects symbolic links, unencrypted entries,
+conflicting headers, unsafe names and unexpected top-level entries. The adapter
+currently accepts ZIP32 only; ZIP64 fails closed before archive replacement.
+After archive commit the durable cleanup phase prevents retries from overwriting
+the complete snapshot with partly removed plaintext.
 
 Before ZIP locking, SafeStore attempts to acquire Delta Chat's `accounts.lock`
 with the same non-blocking file-lock mechanism used by the core. If Parla or
@@ -420,10 +464,9 @@ Remaining work before this is a supported Parla feature:
   volume APIs (a drive letter existing proves nothing today).
 - Pin and verify an exact CryFS 1.x version; decide bundled vs. system
   packaging, and reject unsupported versions instead of just showing them.
-- A single-instance owner/lock so two Parla instances cannot race for the
-  vault, plus the edge cases: RPC startup failure after mount, mount
-  disappearing while running, busy files at shutdown, short shutdown grace
-  periods.
+- Connect the library session/ownership and access-loss signals to Parla: RPC
+  startup failure, disappearing mounts, busy files at shutdown, and shutdown
+  grace periods must all pass through the application storage controller.
 - Provide byte-level progress and cancellation for large ZIP account stores.
 - Plaintext-footprint audit (Delta Chat WAL/blobs, thumbnails, search
   indexes, crash dumps) — move controllable caches into the mount.

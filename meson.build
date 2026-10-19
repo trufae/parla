@@ -561,6 +561,12 @@ core_compat_test = executable(
   install: false,
 )
 test('core-compat', core_compat_test)
+test('accounts-path-environment', core_compat_test,
+  args: ['--accounts-settings', '/environment/accounts'],
+  env: ['DC_ACCOUNTS_PATH= /environment/accounts/ '])
+test('accounts-path-configured', core_compat_test,
+  args: ['--accounts-settings', '/configured/accounts'],
+  env: ['DC_ACCOUNTS_PATH=  '])
 test('language', python, args: [
   files('tests/language_test.py'), parla, core_compat_test,
 ])
