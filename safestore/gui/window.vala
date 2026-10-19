@@ -2,8 +2,8 @@ namespace SafeStore {
 
     public class Window : Adw.ApplicationWindow {
 
-        private Settings settings;
-        private CryfsController controller;
+        private ToolSettings settings;
+        private Store? controller;
 
         private Adw.ActionRow vault_row;
         private Adw.ActionRow mount_row;
@@ -25,9 +25,8 @@ namespace SafeStore {
         private Gtk.TextBuffer log_buffer;
         private Adw.ToastOverlay toast_overlay;
         private bool backend_ready = false;
+        private bool backend_check_active = false;
         private uint backend_check_generation = 0;
-        private bool zip_unlocked = false;
-        private bool zip_operation_active = false;
 
         public Window (Adw.Application application) {
             Object (
@@ -37,13 +36,10 @@ namespace SafeStore {
                 default_height: 760
             );
 
-            settings = new Settings ();
-            controller = new CryfsController ();
-            zip_unlocked = settings.backend == "zip"
-                && ZipBackend.is_unlocked (settings);
+            settings = new ToolSettings ();
             build_ui ();
             connect_signals ();
-            sync_controls (controller.state, controller.detail);
+            refresh_controls ();
             check_backend.begin ();
         }
 
@@ -229,7 +225,7 @@ namespace SafeStore {
                 "Copy the value to use for DC_ACCOUNTS_PATH";
             copy_button.clicked.connect (() => {
                 get_clipboard ().set_text (
-                    PathPolicy.normalize (settings.mount_path));
+                    Filename.canonicalize (settings.mount_path));
                 show_toast ("Mounted accounts path copied");
             });
             utility_box.append (copy_button);
@@ -265,40 +261,36 @@ namespace SafeStore {
         }
 
         private void connect_signals () {
-            controller.output.connect ((line) => { append_log (line); });
-            controller.state_changed.connect ((state, detail) => {
-                sync_controls (state, detail);
-            });
             binary_row.changed.connect (() => {
                 backend_check_generation++;
                 backend_ready = false;
                 backend_row.subtitle = "Press refresh to check this executable";
-                sync_controls (controller.state, controller.detail);
+                refresh_controls ();
             });
             zip_binary_row.changed.connect (() => {
                 backend_check_generation++;
                 backend_ready = false;
                 backend_row.subtitle = "Press refresh to check the ZIP tools";
-                sync_controls (controller.state, controller.detail);
+                refresh_controls ();
             });
             unzip_binary_row.changed.connect (() => {
                 backend_check_generation++;
                 backend_ready = false;
                 backend_row.subtitle = "Press refresh to check the ZIP tools";
-                sync_controls (controller.state, controller.detail);
+                refresh_controls ();
             });
             backend_combo.notify["selected"].connect (() => {
-                if (controller.process_active || zip_unlocked
-                        || zip_operation_active) return;
+                if (controller != null && controller.process_active) return;
                 settings.backend = backend_combo.selected == 1 ? "zip" : "cryfs";
                 save_settings ();
                 sync_backend_fields ();
                 check_backend.begin ();
             });
             close_request.connect (() => {
-                if (controller.process_active || zip_unlocked
-                        || zip_operation_active) {
-                    show_toast ("Lock the vault before closing SafeStore");
+                if (backend_check_active || (controller != null && controller.process_active)) {
+                    show_toast (backend_check_active
+                        ? "Wait for the storage check to finish"
+                        : "Lock the vault before closing SafeStore");
                     return true;
                 }
                 return false;
@@ -429,32 +421,38 @@ namespace SafeStore {
                 var secret = new SecretValue (entered);
                 password.set_text ("");
                 if (confirmation != null) confirmation.set_text ("");
-                if (locking) lock_zip (secret);
-                else mount_vault (secret, create);
+                if (locking) lock_store.begin (secret);
+                else mount_vault.begin (secret, create);
             });
             return dialog;
         }
 
-        private void mount_vault (SecretValue secret, bool create) {
+        private void configure_store () throws Error {
+            if (controller != null && controller.process_active) return;
+            controller = settings.open_store ();
+            controller.output.connect (append_log);
+            controller.state_changed.connect ((state, detail) => {
+                sync_controls (state, detail);
+            });
+        }
+
+        private void refresh_controls () {
+            sync_controls (controller != null ? controller.state : StoreState.UNKNOWN,
+                controller != null ? controller.detail : "Storage has not been checked");
+        }
+
+        private async void mount_vault (SecretValue secret, bool create) {
             try {
                 save_settings ();
-                if (settings.backend == "zip") {
-                    start_zip_unlock (secret, create);
-                } else {
-                    controller.mount (
-                        settings.cryfs_binary,
-                        settings.vault_path,
-                        settings.mount_path,
-                        secret.peek (),
-                        settings.idle_minutes,
-                        create
-                    );
-                }
+                configure_store ();
+                if (create) yield controller.create_empty (secret);
+                else yield controller.unlock (secret);
             } catch (Error error) {
                 append_log ("Error: " + error.message);
                 show_error (error.message);
             } finally {
-                if (settings.backend != "zip") secret.clear ();
+                secret.clear ();
+                refresh_controls ();
             }
         }
 
@@ -464,109 +462,52 @@ namespace SafeStore {
                     "Lock ZIP vault",
                     "The accounts will be archived before plaintext is removed. "
                     + "Close Parla first so all database writes are complete.",
-                    false,
-                    true);
+                    false, true);
                 dialog.present (this);
-                return;
+            } else {
+                yield lock_store (null);
             }
+        }
+
+        private async void lock_store (SecretValue? secret) {
             try {
-                yield controller.unmount (
-                    settings.cryfs_binary,
-                    settings.mount_path
-                );
+                if (controller != null) yield controller.lock (secret);
             } catch (Error error) {
                 append_log ("Error: " + error.message);
                 show_error (error.message);
+            } finally {
+                if (secret != null) secret.clear ();
+                refresh_controls ();
             }
-        }
-
-        private void lock_zip (SecretValue secret) {
-            save_settings ();
-            zip_operation_active = true;
-            sync_controls (StoreState.STOPPING, "Archiving ZIP vault…");
-            new Thread<void*> ("safestore-zip-lock", () => {
-                string? failure = null;
-                try {
-                    ZipBackend.lock (settings, secret.peek ());
-                } catch (Error error) {
-                    failure = error.message;
-                }
-                secret.clear ();
-                Idle.add (() => {
-                    zip_operation_active = false;
-                    if (failure == null) {
-                        zip_unlocked = false;
-                        append_log (
-                            "ZIP archive replaced successfully; plaintext accounts removed.");
-                        if (settings.secure_delete) {
-                            append_log (
-                                "Plaintext files received best-effort overwrite removal.");
-                        }
-                        sync_controls (StoreState.LOCKED, "ZIP vault is locked");
-                    } else {
-                        append_log ("Error: " + failure);
-                        sync_controls (StoreState.ERROR,
-                            "ZIP lock failed; plaintext may still be present");
-                        show_error (failure);
-                    }
-                    return Source.REMOVE;
-                });
-                return null;
-            });
-        }
-
-        private void start_zip_unlock (SecretValue secret, bool create) {
-            zip_operation_active = true;
-            sync_controls (StoreState.STARTING,
-                create ? "Creating ZIP vault…" : "Extracting ZIP vault…");
-            new Thread<void*> ("safestore-zip-unlock", () => {
-                string? failure = null;
-                try {
-                    if (create) ZipBackend.create (settings, secret.peek ());
-                    else ZipBackend.unlock (settings, secret.peek ());
-                } catch (Error error) {
-                    failure = error.message;
-                }
-                secret.clear ();
-                Idle.add (() => {
-                    zip_operation_active = false;
-                    if (failure == null) {
-                        zip_unlocked = true;
-                        append_log (create
-                            ? "ZIP vault created; plaintext accounts are exposed while unlocked."
-                            : "ZIP vault extracted; plaintext accounts are exposed while unlocked.");
-                        sync_controls (StoreState.MOUNTED,
-                            "ZIP vault unlocked; plaintext is exposed");
-                    } else {
-                        append_log ("Error: " + failure);
-                        sync_controls (StoreState.ERROR,
-                            "ZIP operation failed; accounts remain locked");
-                        show_error (failure);
-                    }
-                    return Source.REMOVE;
-                });
-                return null;
-            });
         }
 
         private async void check_backend () {
             save_settings ();
             uint generation = ++backend_check_generation;
+            backend_check_active = true;
+            backend_ready = false;
             backend_row.subtitle = "Checking…";
+            refresh_controls ();
             try {
-                BackendInfo info = Backends.selected (settings);
+                configure_store ();
+                var current = controller;
+                BackendInfo info = yield current.probe ();
+                var status = yield current.inspect ();
                 if (generation != backend_check_generation) return;
                 backend_ready = info.available;
                 backend_row.subtitle = info.status;
                 append_log ("Backend %s: %s".printf (info.id, info.status));
                 append_log ("Protection: " + info.protection);
+                append_log (status.detail);
             } catch (Error error) {
                 if (generation != backend_check_generation) return;
                 backend_ready = false;
                 backend_row.subtitle = "Unavailable — " + error.message;
                 append_log ("Backend check failed: " + error.message);
+            } finally {
+                if (generation == backend_check_generation) backend_check_active = false;
             }
-            sync_controls (controller.state, controller.detail);
+            refresh_controls ();
         }
 
         private async void open_mount () {
@@ -590,21 +531,20 @@ namespace SafeStore {
         }
 
         private void sync_controls (StoreState state, string detail) {
-            if (zip_unlocked && state == StoreState.LOCKED) {
-                state = StoreState.MOUNTED;
-                detail = "ZIP vault unlocked; plaintext is exposed";
-            }
-            bool busy = state == StoreState.STARTING
+            bool busy = backend_check_active || state == StoreState.STARTING
                 || state == StoreState.STOPPING;
-            bool mounted = state == StoreState.MOUNTED || zip_unlocked;
-            bool active = controller.process_active || zip_unlocked
-                || zip_operation_active;
+            bool mounted = state == StoreState.MOUNTED;
+            bool active = controller != null && controller.process_active;
 
             state_spinner.spinning = busy;
             state_spinner.visible = busy;
             state_row.subtitle = detail;
 
             switch (state) {
+            case StoreState.UNKNOWN:
+                state_row.title = "Unchecked";
+                state_icon.icon_name = "dialog-question-symbolic";
+                break;
             case StoreState.LOCKED:
                 state_row.title = "Locked";
                 state_icon.icon_name = "changes-prevent-symbolic";

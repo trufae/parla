@@ -31,6 +31,7 @@ jobs:
             python3-venv \
             gettext \
             ninja-build \
+            zip unzip \
             valac \
             libglib2.0-dev \
             libgtk-4-dev \
@@ -56,6 +57,13 @@ jobs:
       - name: Run unit tests
         if: matrix.a11y == true
         run: meson test -C builddir --print-errorlogs
+
+      - name: Build and test standalone SafeStore
+        if: matrix.a11y == true
+        run: |
+          meson setup safestore-build safestore -Dgui=true -Dwerror=true
+          meson compile -C safestore-build
+          meson test -C safestore-build --print-errorlogs
 
   build-deb:
     runs-on: ubuntu-24.04
@@ -247,6 +255,13 @@ jobs:
       - name: Build
         run: make BUILDTYPE=release
 
+      - name: Build and test standalone SafeStore
+        run: |
+          source scripts/macos/env.sh
+          meson setup safestore-build safestore -Dgui=true -Dwerror=true
+          meson compile -C safestore-build
+          meson test -C safestore-build --print-errorlogs
+
       - name: Package ZIP
         id: zip
         env:
@@ -414,6 +429,12 @@ jobs:
 
       - name: Run unit tests
         run: meson test -C builddir-windows --print-errorlogs
+
+      - name: Build and test standalone SafeStore
+        run: |
+          meson setup safestore-build safestore -Dgui=true -Dwerror=true
+          meson compile -C safestore-build
+          meson test -C safestore-build --print-errorlogs
 
       - name: Upload Windows artifact
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

@@ -5,7 +5,7 @@ namespace SafeStore {
     // filesystem type is "fuse.cryfs" (Linux) or the macFUSE type (macOS).
     // Windows only exposes that the drive letter exists, so source and
     // fstype stay empty there.
-    public class MountInfo : Object {
+    internal class MountInfo : Object {
 
         public string source { get; construct; }
         public string fstype { get; construct; }
@@ -19,11 +19,7 @@ namespace SafeStore {
                 || source.has_prefix ("cryfs@");
         }
 
-        // The encrypted vault backing this mount, when CryFS reports it.
-        public string? vault_source () {
-            if (!source.has_prefix ("cryfs@")) return null;
-            return source.substring ("cryfs@".length);
-        }
+
     }
 
     internal class MountCheck : Object {
@@ -68,7 +64,7 @@ namespace SafeStore {
                 return new MountInfo (source, fstype);
             }
             return null;
-#else
+#elif DARWIN
             try {
                 string? stdout_text;
                 string? stderr_text;
@@ -96,6 +92,8 @@ namespace SafeStore {
             } catch (Error error) {
                 return null;
             }
+            return null;
+#else
             return null;
 #endif
         }

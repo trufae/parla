@@ -324,6 +324,13 @@ if android
   sources += files('src/platform_android.c')
 endif
 
+# Link the same public Vala dependency used by the standalone consumers.
+# Device targets compile the API but advertise no encryption backend support.
+safestore_desktop = not android and not get_option('sailfish') and host_machine.system() in ['linux', 'darwin', 'windows']
+safestore_install_devel = false
+subdir('safestore/lib')
+deps += safestore_dep
+
 parla = executable('parla',
   files('src/main.vala'), sources, config_file, appdata_vala, resources,
   dependencies: deps,
@@ -572,4 +579,10 @@ if node.found()
   ])
 endif
 
+endif
+
+if not android and not get_option('sailfish')
+  safestore_api_test = executable('safestore-api-test',
+    'safestore/tests/public_api_test.vala', dependencies: safestore_dep)
+  test('safestore-public-api', safestore_api_test)
 endif

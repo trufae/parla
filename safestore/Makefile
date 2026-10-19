@@ -3,28 +3,39 @@ PREFIX ?= /usr/local
 BUILD_DIR ?= builddir
 BUILDTYPE ?= debug
 MESON_OPTIONS ?=
+CLI ?= true
+GUI ?= false
+TESTS ?= true
+INSTALL_DEVEL ?= false
+FEATURE_OPTIONS = -Dcli=$(CLI) -Dgui=$(GUI) -Dtests=$(TESTS) -Dinstall_devel=$(INSTALL_DEVEL)
 UNAME_S := $(shell uname -s)
 RUN_ENV := $(if $(filter Darwin,$(UNAME_S)),. ../scripts/macos/env.sh &&,)
 
-.PHONY: all run test clean install uninstall
+.PHONY: all library run cli test clean install uninstall
 
 all:
 	$(RUN_ENV) if [ -f "$(BUILD_DIR)/build.ninja" ]; then \
 		meson setup --reconfigure "$(BUILD_DIR)" . \
-			--buildtype="$(BUILDTYPE)" --prefix="$(PREFIX)" $(MESON_OPTIONS); \
+			--buildtype="$(BUILDTYPE)" --prefix="$(PREFIX)" $(FEATURE_OPTIONS) $(MESON_OPTIONS); \
 	else \
 		meson setup "$(BUILD_DIR)" . \
-			--buildtype="$(BUILDTYPE)" --prefix="$(PREFIX)" $(MESON_OPTIONS); \
+			--buildtype="$(BUILDTYPE)" --prefix="$(PREFIX)" $(FEATURE_OPTIONS) $(MESON_OPTIONS); \
 	fi
 	$(RUN_ENV) meson compile -C "$(BUILD_DIR)"
 
-run: all
-	$(RUN_ENV) "./$(BUILD_DIR)/safestore-gui"
+library:
+	$(MAKE) all CLI=false GUI=false TESTS=false
 
-cli: all
-	$(RUN_ENV) "./$(BUILD_DIR)/safestore" --help
+run:
+	$(MAKE) all GUI=true
+	$(RUN_ENV) "$(abspath $(BUILD_DIR))/safestore-gui"
 
-test: all
+cli:
+	$(MAKE) all CLI=true
+	$(RUN_ENV) "$(abspath $(BUILD_DIR))/safestore" --help
+
+test:
+	$(MAKE) all TESTS=true
 	$(RUN_ENV) meson test -C "$(BUILD_DIR)" --print-errorlogs
 
 clean:
@@ -36,6 +47,4 @@ install: all
 	DESTDIR="$(DESTDIR)" meson install -C "$(BUILD_DIR)"
 
 uninstall:
-	rm -f "$(DESTDIR)$(PREFIX)/bin/safestore"
-	rm -f "$(DESTDIR)$(PREFIX)/bin/safestore-gui"
-	rm -f "$(DESTDIR)$(PREFIX)/share/applications/io.github.trufae.SafeStore.desktop"
+	$(RUN_ENV) DESTDIR="$(DESTDIR)" ninja -C "$(BUILD_DIR)" uninstall

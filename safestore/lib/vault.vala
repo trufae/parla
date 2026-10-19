@@ -1,6 +1,9 @@
 namespace SafeStore {
 
-    public errordomain VaultError {
+    public errordomain StoreError {
+        BUSY,
+        INVALID_ARGUMENT,
+        NOT_SUPPORTED,
         NOT_A_VAULT,
         ALREADY_MOUNTED,
         NOT_MOUNTED,
@@ -13,7 +16,7 @@ namespace SafeStore {
     // Synchronous, one-shot vault operations for command-line and scripted
     // use. Unlike CryfsController, mount() lets CryFS daemonize itself, so
     // the caller does not have to stay alive to keep the vault mounted.
-    public class Vault : Object {
+    internal class Vault : Object {
 
         public static bool is_encrypted (string vault_path) {
             string config = Path.build_filename (
@@ -37,7 +40,7 @@ namespace SafeStore {
                 found = Environment.find_program_in_path (binary);
             }
             if (found == null) {
-                throw new VaultError.BACKEND (
+                throw new StoreError.BACKEND (
                     "CryFS executable not found (%s); install CryFS or "
                     + "point --binary or $SAFESTORE_CRYFS at it", binary);
             }
@@ -56,7 +59,7 @@ namespace SafeStore {
             string text = (stdout_text ?? "").strip ();
             if (text.length == 0) text = (stderr_text ?? "").strip ();
             if (!process.get_successful ()) {
-                throw new VaultError.BACKEND (
+                throw new StoreError.BACKEND (
                     "%s", text.length > 0 ? text : "CryFS returned an error.");
             }
             return text;
@@ -68,7 +71,8 @@ namespace SafeStore {
                                   string password,
                                   bool create,
                                   int idle_minutes = 0,
-                                  bool allow_executable_files = false)
+                                  bool allow_executable_files = false,
+                                  string state_directory = "")
                                   throws Error {
             string cryfs = resolve_binary (binary);
             PathPolicy.validate_layout (vault_path, mount_path);
@@ -81,7 +85,7 @@ namespace SafeStore {
             string vault = PathPolicy.normalize (vault_path);
             string mount = PathPolicy.normalize (mount_path);
             if (MountCheck.is_active (mount)) {
-                throw new VaultError.ALREADY_MOUNTED (
+                throw new StoreError.ALREADY_MOUNTED (
                     "Something is already mounted at %s", mount);
             }
             PathPolicy.ensure_private_directory (vault);
@@ -114,7 +118,7 @@ namespace SafeStore {
                 | SubprocessFlags.STDOUT_PIPE
                 | SubprocessFlags.STDERR_PIPE
             );
-            CryfsBackend.apply_environment (launcher);
+            CryfsBackend.apply_environment (launcher, state_directory);
             var process = launcher.spawnv (argv);
 
             var stdin_pipe = process.get_stdin_pipe ();
@@ -134,16 +138,16 @@ namespace SafeStore {
                 string message = details.length > 0
                     ? reason + ": " + details : reason;
                 if (status == 11) {
-                    throw new VaultError.WRONG_PASSWORD ("%s", message);
+                    throw new StoreError.WRONG_PASSWORD ("%s", message);
                 }
-                throw new VaultError.MOUNT_FAILED ("%s", message);
+                throw new StoreError.MOUNT_FAILED ("%s", message);
             }
 
             for (int attempt = 0; attempt < 40; attempt++) {
                 if (MountCheck.is_active (mount)) return;
                 Thread.usleep (250000);
             }
-            throw new VaultError.MOUNT_FAILED (
+            throw new StoreError.MOUNT_FAILED (
                 "CryFS exited successfully, but no mount appeared at %s",
                 mount);
         }
@@ -154,7 +158,7 @@ namespace SafeStore {
                 CryfsBackend.unmount_binary_for (binary));
             string mount = PathPolicy.normalize (mount_path);
             if (!MountCheck.is_active (mount)) {
-                throw new VaultError.NOT_MOUNTED (
+                throw new StoreError.NOT_MOUNTED (
                     "Nothing is mounted at %s", mount);
             }
 
@@ -169,7 +173,7 @@ namespace SafeStore {
                 null, null, out stdout_text, out stderr_text);
             if (!process.get_successful ()) {
                 string reason = (stderr_text ?? "").strip ();
-                throw new VaultError.UNMOUNT_FAILED (
+                throw new StoreError.UNMOUNT_FAILED (
                     "%s",
                     reason.length > 0
                         ? reason
@@ -180,7 +184,7 @@ namespace SafeStore {
                 if (!MountCheck.is_active (mount)) return;
                 Thread.usleep (100000);
             }
-            throw new VaultError.UNMOUNT_FAILED (
+            throw new StoreError.UNMOUNT_FAILED (
                 "Unmount reported success, but %s is still mounted", mount);
         }
 

@@ -20,16 +20,18 @@ private void test_vault_beside_mount () {
     assert_true (accounts.length > 0);
     assert_true (Path.is_absolute (accounts));
     assert_true (SafeStore.AccountsPath.mount_path () == accounts);
+    assert_true (SafeStore.AccountsPath.zip_path () == accounts + ".zip");
     assert_true (
         SafeStore.AccountsPath.vault_path () == accounts + ".vault");
 }
 
 private void test_layout_policy_accepts_derived_paths () {
-    Environment.set_variable ("DC_ACCOUNTS_PATH", "/tmp/dc/accounts", true);
+    Environment.set_variable ("DC_ACCOUNTS_PATH",
+        Path.build_filename (Environment.get_tmp_dir (), "safestore-accounts"), true);
     try {
         SafeStore.PathPolicy.validate_layout (
             SafeStore.AccountsPath.vault_path (),
-            SafeStore.AccountsPath.mount_path ()
+            SafeStore.AccountsPath.mount_path (), false
         );
     } catch (Error error) {
         Test.fail_printf (
@@ -38,8 +40,7 @@ private void test_layout_policy_accepts_derived_paths () {
     Environment.unset_variable ("DC_ACCOUNTS_PATH");
 }
 
-public int main (string[] args) {
-    Test.init (ref args);
+void register_accounts_path_tests () {
     Test.add_func ("/accounts-path/environment-wins", test_environment_wins);
     Test.add_func ("/accounts-path/empty-environment-ignored",
                    test_empty_environment_ignored);
@@ -47,5 +48,4 @@ public int main (string[] args) {
                    test_vault_beside_mount);
     Test.add_func ("/accounts-path/layout-policy",
                    test_layout_policy_accepts_derived_paths);
-    return Test.run ();
 }

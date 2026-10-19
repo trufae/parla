@@ -17,7 +17,7 @@ namespace SafeStore {
     }
 
     /** Removes ZIP plaintext without ever following symbolic links. */
-    public class PlaintextEraser : Object {
+    internal class PlaintextEraser : Object {
 
         public static EraseInfo inspect (Settings settings) {
             bool available = Backends.executable_available (
@@ -41,7 +41,7 @@ namespace SafeStore {
 
         public static void require_available (Settings settings) throws Error {
             if (settings.secure_delete && !inspect (settings).shred_available) {
-                throw new VaultError.BACKEND (
+                throw new StoreError.BACKEND (
                     "Overwrite deletion was requested, but %s was not found",
                     settings.shred_binary);
             }

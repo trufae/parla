@@ -1,3 +1,9 @@
+private SafeStore.Settings test_settings () {
+    string accounts = Path.build_filename (Environment.get_tmp_dir (), "safestore-unit-accounts");
+    return new SafeStore.Settings (accounts, accounts + ".zip",
+        SafeStore.BackendKind.CRYFS, new SafeStore.StoreOptions ());
+}
+
 private const string PASSWORD = "a-long-disposable-password";
 
 private SafeStore.BackendInfo find_backend (SafeStore.Settings settings,
@@ -9,7 +15,7 @@ private SafeStore.BackendInfo find_backend (SafeStore.Settings settings,
 }
 
 private void test_backend_listing () {
-    var settings = new SafeStore.Settings ();
+    var settings = test_settings ();
     var cryfs = find_backend (settings, "cryfs");
     var zip = find_backend (settings, "zip");
     assert_true (cryfs.name.length > 0);
@@ -20,13 +26,13 @@ private void test_backend_listing () {
 }
 
 private void test_selection () {
-    var settings = new SafeStore.Settings ();
-    SafeStore.Backends.select (settings, SafeStore.BackendKind.ZIP);
+    var settings = test_settings ();
+    settings.backend = SafeStore.BackendKind.ZIP.id ();
     assert_true (settings.backend == "zip");
-    assert_true (settings.vault_path == SafeStore.AccountsPath.zip_path ());
+    assert_true (settings.vault_path.has_suffix (".zip"));
     try {
         assert_true (
-            SafeStore.EncryptedStore.info (settings).id == "zip");
+            SafeStore.Backends.selected (settings).id == "zip");
     } catch (Error error) {
         Test.fail_printf ("Could not inspect selected backend: %s",
                           error.message);
@@ -57,8 +63,8 @@ private void test_zip_roundtrip () {
     try {
         root = DirUtils.make_tmp ("safestore-zip-test-XXXXXX");
         string accounts = Path.build_filename (root, "accounts");
-        Environment.set_variable ("DC_ACCOUNTS_PATH", accounts, true);
-        var settings = new SafeStore.Settings ();
+        var settings = new SafeStore.Settings (accounts, accounts + ".zip",
+            SafeStore.BackendKind.ZIP, new SafeStore.StoreOptions ());
         settings.backend = "zip";
         settings.secure_delete = false;
         var info = find_backend (settings, "zip");
@@ -77,10 +83,10 @@ private void test_zip_roundtrip () {
 
         SafeStore.ZipBackend.lock (settings, PASSWORD);
         assert_true (FileUtils.test (
-            SafeStore.AccountsPath.zip_path (), FileTest.IS_REGULAR));
+            settings.vault_path, FileTest.IS_REGULAR));
         Posix.Stat archive_info;
         assert_true (Posix.lstat (
-            SafeStore.AccountsPath.zip_path (), out archive_info) == 0);
+            settings.vault_path, out archive_info) == 0);
         assert_true ((archive_info.st_mode & 0777) == 0600);
         assert_true (FileUtils.test (
             Path.build_filename (accounts, ".safestore-locked"),
@@ -114,12 +120,10 @@ private void test_zip_roundtrip () {
         assert_true (restored == "database\n");
 
         SafeStore.PlaintextEraser.erase_tree (accounts, settings);
-        FileUtils.unlink (SafeStore.AccountsPath.zip_path ());
+        FileUtils.unlink (settings.vault_path);
         assert_true (DirUtils.remove (root) == 0);
     } catch (Error error) {
         Test.fail_printf ("ZIP roundtrip failed: %s", error.message);
-    } finally {
-        Environment.unset_variable ("DC_ACCOUNTS_PATH");
     }
 #endif
 }
@@ -130,7 +134,7 @@ private void test_overwrite_removal () {
 #else
     string? root = null;
     try {
-        var settings = new SafeStore.Settings ();
+        var settings = test_settings ();
         settings.secure_delete = true;
         if (!SafeStore.PlaintextEraser.inspect (settings).shred_available) {
             Test.skip ("shred executable is unavailable");
@@ -160,12 +164,10 @@ private void test_overwrite_removal () {
 #endif
 }
 
-int main (string[] args) {
-    Test.init (ref args);
+void register_backend_tests () {
     Test.add_func ("/backends/listing", test_backend_listing);
     Test.add_func ("/backends/selection", test_selection);
     Test.add_func ("/backends/secret-value", test_secret_value);
     Test.add_func ("/backends/zip-roundtrip", test_zip_roundtrip);
     Test.add_func ("/backends/overwrite-removal", test_overwrite_removal);
-    return Test.run ();
 }

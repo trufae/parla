@@ -3,7 +3,7 @@
 #include <string.h>
 #include "pty_password.h"
 
-#ifndef G_OS_WIN32
+#if !defined(G_OS_WIN32) && !defined(SAFESTORE_NO_PTY)
 #include <errno.h>
 #include <fcntl.h>
 #include <poll.h>
@@ -37,7 +37,7 @@ safestore_secret_memory_new (const gchar *value)
     self->allocation_size = length + 1;
     self->value = g_malloc (self->allocation_size);
     memcpy (self->value, value, self->allocation_size);
-#ifndef G_OS_WIN32
+#if !defined(G_OS_WIN32) && !defined(SAFESTORE_NO_PTY)
     self->memory_locked = mlock (self->value, self->allocation_size) == 0;
 #endif
     return self;
@@ -75,7 +75,7 @@ safestore_secret_memory_clear (SafeStoreSecretMemory *self)
     for (gsize index = 0; index < self->allocation_size; index++) {
         cursor[index] = 0;
     }
-#ifndef G_OS_WIN32
+#if !defined(G_OS_WIN32) && !defined(SAFESTORE_NO_PTY)
     if (self->memory_locked) munlock (self->value, self->allocation_size);
 #endif
     g_free (self->value);
@@ -88,9 +88,9 @@ int
 safestore_acquire_accounts_guard (const gchar *lock_path,
                                   GError **error)
 {
-#ifdef G_OS_WIN32
+#if defined(G_OS_WIN32) || defined(SAFESTORE_NO_PTY)
     g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
-                         "ZIP account locking is unavailable on Windows");
+                         "ZIP account locking is unavailable on this platform");
     return -1;
 #else
     int descriptor = open (lock_path, O_RDWR | O_CLOEXEC);
@@ -118,7 +118,7 @@ safestore_acquire_accounts_guard (const gchar *lock_path,
 void
 safestore_release_accounts_guard (int descriptor)
 {
-#ifndef G_OS_WIN32
+#if !defined(G_OS_WIN32) && !defined(SAFESTORE_NO_PTY)
     if (descriptor >= 0) {
         flock (descriptor, LOCK_UN);
         close (descriptor);
@@ -140,9 +140,9 @@ safestore_run_pty_password (gchar **argv,
                             gchar **output,
                             GError **error)
 {
-#ifdef G_OS_WIN32
+#if defined(G_OS_WIN32) || defined(SAFESTORE_NO_PTY)
     g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
-                         "private ZIP password channel is unavailable on Windows");
+                         "private ZIP password channel is unavailable on this platform");
     return FALSE;
 #else
     int master = -1;

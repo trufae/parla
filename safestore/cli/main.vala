@@ -11,7 +11,7 @@ JSON-RPC server will use. CryFS stores "<accounts>.vault"; ZIP stores
 
 Commands:
   backends       List encryption backends, availability, and security model
-  check          Classify the accounts location: encrypted vault (exit 0),
+  check          Classify a storage candidate, without verifying integrity (exit 0),
                  unlocked plaintext view (exit 3), or neither (exit 1)
   status         Show the resolved paths and the vault and mount state
   create         Create and unlock the selected encrypted store
@@ -38,7 +38,9 @@ Passwords are never accepted on the command line and never written to disk
 in plain text; the optional keyring entry lives in the OS secret service.
 """;
 
-        private Settings settings;
+        private ToolSettings settings;
+        private Store store;
+        private CredentialStore credentials;
         private bool use_keyring = false;
         private bool password_stdin = false;
         private bool allow_executable_files = false;
@@ -47,11 +49,22 @@ in plain text; the optional keyring entry lives in the OS secret service.
         private string? binary_override = null;
 
         public static int main (string[] args) {
-            return new Cli ().run (args);
+            var loop = new MainLoop ();
+            int result = 1;
+            var cli = new Cli ();
+            Idle.add (() => {
+                cli.run.begin (args, (obj, res) => {
+                    result = cli.run.end (res);
+                    loop.quit ();
+                });
+                return Source.REMOVE;
+            });
+            loop.run ();
+            return result;
         }
 
-        private int run (string[] args) {
-            settings = new Settings ();
+        private async int run (string[] args) {
+            settings = new ToolSettings ();
 
             string[] rest = {};
             for (int i = 1; i < args.length; i++) {
@@ -84,7 +97,7 @@ in plain text; the optional keyring entry lives in the OS secret service.
                 case "--backend":
                     if (++i >= args.length) return usage_error ("--backend needs a name");
                     try {
-                        Backends.select (settings, BackendKind.parse (args[i]));
+                        settings.backend = BackendKind.parse (args[i]).id ();
                     } catch (Error error) {
                         return usage_error (error.message);
                     }
@@ -132,33 +145,38 @@ in plain text; the optional keyring entry lives in the OS secret service.
             }
 
             try {
+                settings.mount_mode = MountMode.DETACHED;
+                settings.allow_executable_files = allow_executable_files;
+                if (idle_minutes >= 0) settings.idle_minutes = idle_minutes;
+                store = settings.open_store ();
+                credentials = new CredentialStore (store.storage_path);
                 switch (command) {
                 case "backends":
                 case "list-backends":
-                    return cmd_backends ();
+                    return yield cmd_backends ();
                 case "check":
-                    return cmd_check ();
+                    return yield cmd_check ();
                 case "status":
-                    return cmd_status ();
+                    return yield cmd_status ();
                 case "create":
-                    return cmd_mount (true);
+                    return yield cmd_mount (true);
                 case "mount":
                 case "unlock":
-                    return cmd_mount (false);
+                    return yield cmd_mount (false);
                 case "umount":
                 case "unmount":
                 case "lock":
-                    return cmd_umount ();
+                    return yield cmd_umount ();
                 case "forget":
-                    return cmd_forget ();
+                    return yield cmd_forget ();
                 case "version":
-                    return cmd_version ();
+                    return yield cmd_version ();
                 default:
                     return usage_error ("Unknown command: " + command);
                 }
             } catch (Error error) {
                 stderr.printf ("safestore: %s\n", error.message);
-                if (error is VaultError.WRONG_PASSWORD && use_keyring) {
+                if (error is StoreError.WRONG_PASSWORD && use_keyring) {
                     stderr.printf (
                         "The stored keyring password may be outdated; "
                         + "run \"safestore forget\" and retry.\n");
@@ -176,113 +194,49 @@ in plain text; the optional keyring entry lives in the OS secret service.
             if (!quiet) stdout.printf ("%s\n", message);
         }
 
-        private int cmd_check () {
-            if (settings.backend == "zip") {
-                if (ZipBackend.is_encrypted (settings)) {
-                    bool unlocked = ZipBackend.is_unlocked (settings);
-                    report (unlocked
-                        ? "%s is a SafeStore ZIP vault with plaintext exposed at %s".printf (
-                            AccountsPath.zip_path (), settings.mount_path)
-                        : "%s is a locked SafeStore ZIP vault".printf (
-                            AccountsPath.zip_path ()));
-                    return unlocked ? 3 : 0;
-                }
-                report ("%s is not a SafeStore ZIP vault".printf (
-                    AccountsPath.zip_path ()));
-                return 1;
-            }
-            string vault = PathPolicy.normalize (settings.vault_path);
-            string mount = PathPolicy.normalize (settings.mount_path);
-            var info = Vault.mount_info (mount);
-            if (info != null && info.is_cryfs ()) {
-                string? source = info.vault_source ();
-                report ("%s is a decrypted CryFS vault%s".printf (
-                    mount,
-                    source != null
-                        ? " (encrypted at %s)".printf (source) : ""));
-                return 3;
-            }
-            if (Vault.is_encrypted (vault)) {
-                report ("%s is an encrypted CryFS vault".printf (vault));
-                return 0;
-            }
-            if (info != null) {
-                report ("%s is a mountpoint (%s), not a CryFS vault".printf (
-                    mount, info.fstype.length > 0 ? info.fstype : "unknown"));
-            } else {
-                report ("%s is not an encrypted vault".printf (vault));
-            }
-            return 1;
+        private async int cmd_check () throws Error {
+            var status = yield store.inspect ();
+            report (status.detail);
+            return status.plaintext_exposed ? 3 : (status.recognized ? 0 : 1);
         }
 
-        private int cmd_status () throws Error {
-            BackendInfo selected = Backends.selected (settings);
-            report ("backend: %s (%s)".printf (
-                selected.name, selected.available ? "available" : "unavailable"));
+        private async int cmd_status () throws Error {
+            BackendInfo selected = yield store.probe ();
+            var status = yield store.inspect ();
+            report ("backend: %s (%s)".printf (selected.name,
+                selected.available ? "available; experimental" : "unavailable"));
             report ("backend status: " + selected.status);
-            string vault = PathPolicy.normalize (settings.vault_path);
-            string mount = PathPolicy.normalize (settings.mount_path);
             report ("accounts: %s (from %s)".printf (
-                mount, AccountsPath.source ()));
-            bool encrypted = settings.backend == "zip"
-                ? ZipBackend.is_encrypted (settings) : Vault.is_encrypted (vault);
-            report ("vault: %s (%s)".printf (
-                vault, encrypted ? "encrypted vault" : "not a vault"));
-
-            if (settings.backend == "zip") {
-                bool locked = encrypted
-                    && !ZipBackend.is_unlocked (settings);
-                report ("plaintext: %s (%s)".printf (
-                    mount, locked ? "locked placeholder only"
-                        : (encrypted ? "extracted while unlocked"
-                                     : "not managed by a ZIP vault")));
-                EraseInfo erase = PlaintextEraser.inspect (settings);
-                report ("overwrite removal: %s%s".printf (
-                    erase.status,
-                    settings.secure_delete ? "; selected" : "; not selected"));
-                return encrypted ? 0 : 1;
-            }
-
-            var info = Vault.mount_info (mount);
-            if (info == null) {
-                report ("mount: %s (not mounted)".printf (mount));
-            } else if (info.is_cryfs ()) {
-                string? source = info.vault_source ();
-                report ("mount: %s (decrypted CryFS vault%s)".printf (
-                    mount,
-                    source != null ? ", encrypted at " + source : ""));
-                if (source != null && source != vault) {
-                    report ("warning: the mounted vault is not the "
-                        + "configured one");
-                }
-            } else {
-                report ("mount: %s (mounted, %s)".printf (
-                    mount, info.fstype.length > 0 ? info.fstype : "unknown"));
-            }
-            return encrypted ? 0 : 1;
+                store.accounts_path, AccountsPath.source ()));
+            report ("storage: " + store.storage_path);
+            report (status.detail);
+            if (settings.backend == "zip") report (store.removal_info ().status);
+            return status.recognized ? 0 : 1;
         }
 
-        private int cmd_mount (bool create) throws Error {
-            string vault = settings.vault_path;
-            string mount = settings.mount_path;
+        private async int cmd_mount (bool create) throws Error {
 
             // Fail on a missing backend before bothering the user for a
             // password.
-            BackendInfo backend = Backends.selected (settings);
+            BackendInfo backend = yield store.probe ();
             if (!backend.available) {
-                throw new VaultError.BACKEND ("%s", backend.status);
+                throw new StoreError.BACKEND ("%s", backend.status);
             }
 
             bool from_keyring = false;
             string? password = null;
             if (!create && use_keyring) {
-                if (!Keyring.available ()) {
+                if (!credentials.available) {
                     stderr.printf (
                         "safestore: built without keyring support; "
                         + "falling back to a password prompt.\n");
                 } else {
-                    password = Keyring.lookup (vault);
-                    from_keyring = password != null;
+                    var saved = yield credentials.lookup ();
+                    if (saved != null) {
+                        password = saved.peek ();
+                        saved.clear ();
+                        from_keyring = true;
+                    }
                 }
             }
             if (password == null) {
@@ -294,25 +248,14 @@ in plain text; the optional keyring entry lives in the OS secret service.
             password = "";
 
             try {
-                if (settings.backend == "zip") {
-                    if (create) EncryptedStore.create (settings, secret.peek ());
-                    else EncryptedStore.unlock (settings, secret.peek ());
-                } else {
-                    if (idle_minutes >= 0) settings.idle_minutes = idle_minutes;
-                    if (create) {
-                        EncryptedStore.create (
-                            settings, secret.peek (), allow_executable_files);
-                    } else {
-                        EncryptedStore.unlock (
-                            settings, secret.peek (), allow_executable_files);
-                    }
-                }
+                if (create) yield store.create_empty (secret);
+                else yield store.unlock (secret);
                 report ((create ? "Vault created and unlocked at %s"
                                 : "Vault unlocked at %s").printf (
-                    PathPolicy.normalize (mount)));
+                    store.accounts_path));
 
-                if (use_keyring && !from_keyring && Keyring.available ()) {
-                    Keyring.store (vault, secret.peek ());
+                if (use_keyring && !from_keyring && credentials.available) {
+                    yield credentials.save (secret);
                     report ("Password stored in the system keyring.");
                 }
             } finally {
@@ -321,11 +264,13 @@ in plain text; the optional keyring entry lives in the OS secret service.
             return 0;
         }
 
-        private int cmd_umount () throws Error {
-            string mount = settings.mount_path;
+        private async int cmd_umount () throws Error {
             if (settings.backend == "zip") {
-                string? password = use_keyring
-                    ? Keyring.lookup (settings.vault_path) : null;
+                string? password = null;
+                if (use_keyring) {
+                    var saved = yield credentials.lookup ();
+                    if (saved != null) { password = saved.peek (); saved.clear (); }
+                }
                 // ZIP locking rewrites and re-encrypts the archive, so an
                 // interactive password must be entered twice to avoid making
                 // a typo the new (and only) vault password.
@@ -334,21 +279,21 @@ in plain text; the optional keyring entry lives in the OS secret service.
                 var secret = new SecretValue (password);
                 password = "";
                 try {
-                    EncryptedStore.lock (settings, secret.peek ());
+                    yield store.lock (secret);
                 } finally {
                     secret.clear ();
                 }
                 report ("ZIP vault locked; plaintext accounts were removed.");
             } else {
-                EncryptedStore.lock (settings);
+                yield store.lock ();
                 report ("Vault locked; %s is no longer mounted.".printf (
-                    PathPolicy.normalize (mount)));
+                    store.accounts_path));
             }
             return 0;
         }
 
-        private int cmd_backends () {
-            foreach (BackendInfo info in Backends.list (settings)) {
+        private async int cmd_backends () throws Error {
+            foreach (BackendInfo info in (yield store.list_backends ())) {
                 report ("%s%s — %s".printf (
                     info.id,
                     info.id == settings.backend ? " (selected)" : "",
@@ -356,23 +301,21 @@ in plain text; the optional keyring entry lives in the OS secret service.
                 report ("  %s".printf (info.status));
                 report ("  Protection: %s".printf (info.protection));
                 report ("  Operation: %s".printf (info.operation));
-                report ("  Vault: %s".printf (info.vault_path));
             }
-            EraseInfo erase = PlaintextEraser.inspect (settings);
+            EraseInfo erase = store.removal_info ();
             report ("shred — %s".printf (erase.status));
             report ("  Warning: %s".printf (erase.warning));
             return 0;
         }
 
-        private int cmd_version () throws Error {
-            BackendInfo info = Backends.selected (settings);
+        private async int cmd_version () throws Error {
+            BackendInfo info = yield store.probe ();
             stdout.printf ("%s: %s\n", info.name, info.status);
             return info.available ? 0 : 1;
         }
 
-        private int cmd_forget () throws Error {
-            string vault = settings.vault_path;
-            if (Keyring.forget (vault)) {
+        private async int cmd_forget () throws Error {
+            if (yield credentials.forget ()) {
                 report ("Stored password removed from the keyring.");
                 return 0;
             }

@@ -1,34 +1,40 @@
 # SafeStore
 
-SafeStore manages encrypted-at-rest storage holding the Delta Chat accounts.
+SafeStore is an experimental Vala library for encrypted account storage.
+The library/build foundation is integrated into Parla; automatic protection
+and the Settings interface are still planned. See the
+[remaining milestones](../docs/safestore-plan.md).
+
+The optional standalone tools manage storage holding the Delta Chat accounts.
 CryFS is the recommended backend; an explicitly weaker ZIP backend is
 available for systems where a mountable encrypted filesystem is impractical.
-SafeStore works only on the `DC_ACCOUNTS_PATH` location, so the paths are fully
-predictable and shared with Parla:
+The standalone tools resolve `DC_ACCOUNTS_PATH` using this precedence:
 
 1. `$DC_ACCOUNTS_PATH`, when set and non-empty;
 2. otherwise the `accounts_path` key in Parla's `settings.ini`;
 3. otherwise Parla's default accounts directory (the same fallback chain
    Parla uses when launching `deltachat-rpc-server`).
 
-The resolved accounts path is exactly what the JSON-RPC server reads. CryFS
+Parla will pass its resolved accounts path explicitly to the library; unifying
+the current frontend and RPC path resolvers is part of milestone 2. CryFS
 mounts its decrypted view there and stores ciphertext in `<accounts>.vault`.
 ZIP extracts plaintext there and stores its archive in `<accounts>.zip`.
-Neither location is configurable; `safestore status` prints the selected
+These standalone-tool locations follow the resolved accounts path; `safestore status` prints the selected
 backend, paths, availability, and state.
 
 It is split into three parts:
 
-- `lib/` — a GTK-free core library (`libsafestore-core`) with the vault,
-  path-policy, mount-detection, and keyring logic. This is the intended
-  integration point for Parla; it is currently built and run separately.
+- `lib/` — the GTK-free `libsafestore-1` static library, public header and VAPI.
+  Parla and both standalone tools consume the same Meson dependency.
+- `frontend/` — account-path discovery and non-secret preferences for the
+  standalone tools. These are not part of the library.
 - `cli/` — the `safestore` command-line tool for scripted and automated use.
 - `gui/` — the `safestore-gui` GTK4/libadwaita application.
 
 ## What it does
 
 - Lists the supported backends, whether their required programs are available,
-  their storage paths, operating model, and security limitations.
+  their operating model and security limitations.
 - Saves an explicit backend selection (`cryfs` or `zip`); CryFS remains the
   default and recommended choice.
 - Creates a new CryFS vault using XChaCha20-Poly1305.
@@ -112,11 +118,14 @@ GUI (`safestore-gui`). The CLI is built alongside it as
 Other useful targets:
 
 ```sh
-make                 # build
+make                 # library, CLI and tests; no GTK dependency
+make library         # library only
+make GUI=true        # also build the experimental GUI
 make test            # build and run tests
 make clean           # clean compiled outputs
 make install         # install under PREFIX, default /usr/local
 make install PREFIX="$HOME/.local"
+make install INSTALL_DEVEL=true  # also install library/header/VAPI/pkg-config
 ```
 
 On macOS the Makefile reuses Parla's Homebrew GTK environment helper. On
@@ -128,8 +137,8 @@ must also contain `cryfs-unmount`.
 
 ## Command line
 
-The `safestore` tool covers the whole lifecycle without the GUI. Commands
-take no path arguments — everything follows the accounts path:
+The `safestore` tool exposes the prototype create/unlock/lock operations.
+Commands take no path arguments; everything follows the accounts path:
 
 ```sh
 safestore backends       # list backends, availability, and security model
@@ -146,7 +155,8 @@ DC_ACCOUNTS_PATH=/elsewhere/accounts safestore mount   # alternate store
 
 Exit codes are script-friendly: `0` yes/success, `1` no/failure, `2` usage
 error; `check` additionally returns `3` when the accounts path is currently
-decrypted/extracted and usable.
+apparently decrypted/extracted. `check` is classification only, not proof of
+encryption, mount identity, or integrity.
 
 Passwords are never accepted as command-line arguments. The sources are:
 
@@ -155,8 +165,8 @@ Passwords are never accepted as command-line arguments. The sources are:
 - `--keyring` to fetch the password from the OS secret store. On the first
   interactive unlock with `--keyring`, the password is saved there after a
   successful mount; `safestore forget` removes it again. Combined with the
-  keyring, `safestore mount` needs no interaction at all, which is the
-  intended path toward automatic unlocking from Parla.
+  keyring, `safestore mount` needs no interaction at all, which is a
+  convenience for standalone use. Parla will call the Vala API directly.
 
 Password prompting is deliberately a frontend responsibility. The GTK-free
 library never opens a terminal, displays a dialog, or invokes the SafeStore CLI:
@@ -178,25 +188,90 @@ exiting. ZIP has no mount process: while unlocked, both its prior encrypted
 snapshot and a full plaintext accounts tree exist. ZIP `umount` rewrites the
 archive and therefore requests the password again.
 
-## Library backend API
+## Public Vala API
 
-The GTK-free library exposes backend choice rather than requiring callers to
-know tool-specific paths:
+`lib/meson.build` defines `safestore_dep`, shared by Parla and the standalone
+wrapper. Consumers use the generated `safestore-1.vapi` and `safestore-1.h`;
+backend controllers, process arguments, mount parsers and erasure helpers are
+internal. No GTK dependency, JSON-RPC service, or SafeStore helper process is
+required by this interface. Backend executables still run under library control.
 
-- `Backends.list(settings)` returns a `BackendInfo` for every backend, including
-  its stable ID, availability/status, protection model, operating model, and
-  derived vault path.
-- `Backends.select(settings, kind)` changes the explicit selection;
-  `Settings.save()` persists it.
-- `EncryptedStore.info/exists/unlocked/create/unlock/lock` provide the
-  backend-neutral one-shot lifecycle used by the CLI and available to Parla.
-- `SecretValue` provides a short-lived, wipeable handoff container for GUI and
-  CLI frontends; it does not itself prompt the user.
-- `PlaintextEraser.inspect(settings)` reports whether overwrite removal is
-  available and its limitations.
+Construct `Store(accounts_path, storage_path, backend, options)` with absolute,
+non-overlapping paths. Construction validates the layout without creating it.
+The working accounts path and ciphertext location are independent. `StoreOptions`
+is copied, so changing a caller's options cannot redirect an in-flight operation.
+The core reads neither Parla settings nor `DC_ACCOUNTS_PATH`/`SAFESTORE_*` variables,
+and does not change the parent process environment. Bare executable names use
+normal executable search paths. `state_directory` defaults to `<storage>.state`;
+the standalone adapter explicitly preserves its previous CryFS state location.
 
-`CryfsController` remains available for GUI integrations that need to monitor
-the foreground FUSE process and receive detailed state changes.
+| Public API | Current contract |
+| --- | --- |
+| `Store.list_backends()` / `probe()` | Async tool/version discovery. `BackendInfo` describes availability, limitations and supported `Operation` flags. Every current adapter is experimental. |
+| `Store.inspect()` | Async, read-only classification. `recognized` means a candidate was found; `integrity_verified` is always false in this milestone. Does not create or unlock anything. |
+| `Store.create_empty(secret)` | Explicit creation using the existing empty-store backend checks. Does not migrate existing accounts. |
+| `Store.unlock(secret)` | Async opening of existing storage. Never falls back to creating a missing store. |
+| `Store.lock(secret?)` | Async prototype lock. ZIP needs the password again. The caller must first stop and await all writers. |
+| `Store.state_changed` / `output` | Lifecycle state and backend diagnostics on the caller's main context. `UNKNOWN` is the initial state. Backend errors remain observable. |
+| `Store.removal_info()` | Availability and limitations of best-effort overwrite removal. |
+| `SecretValue` | Wipeable password handoff. Mutation calls copy it before their first suspension; callers may clear their input immediately after starting a call. The operation clears its private copy on completion or error. |
+| `CredentialStore(storage_path)` | Optional async `lookup`, `save`, and `forget` using the existing OS keyring adapters. Lookup returns a `SecretValue` the caller must clear. |
+
+For example, this performs only inspection:
+
+```vala
+var store = new SafeStore.Store (
+    accounts_path, ciphertext_path, SafeStore.BackendKind.CRYFS);
+var status = yield store.inspect (cancellable);
+// Display status.detail; recognition is not integrity verification.
+```
+
+Call a Store from one GLib main context. Blocking backend work runs off that
+context, and callbacks return to its thread-default context. Mutations are
+serialized **per instance**, with concurrent calls rejected as `StoreError.BUSY`.
+This is not yet an exclusive cross-process session. Keep the Store alive while
+unlocked and explicitly await locking; finalization does not perform async work.
+
+`MountMode.MANAGED` is the default and preserves foreground CryFS monitoring for
+applications. The CLI explicitly uses `DETACHED` so a mount survives CLI exit.
+ZIP has no filesystem process. `process_active` conservatively includes busy
+operations and observed exposed storage; it is not proof of mount ownership.
+
+`GLib.Cancellable` is supported by inspection, probing and lifecycle calls.
+Cancellation is honored before a mutation begins. Once an existing backend
+starts mutating, the operation runs to completion and reports its actual result;
+it cannot yet offer transactional interruption or byte-level progress. Credential
+operations also run asynchronously but currently have no cancellation parameter.
+Errors use `StoreError`, `PathPolicyError`, and GLib I/O/process error domains.
+Password buffers cannot guarantee that GTK, GLib, the OS and backend programs
+never make additional copies.
+
+`ENABLE`, `DISABLE`, `CHANGE_BACKEND`, `VERIFY`, `BACKUP`, `RESTORE`, and `RECOVER`
+are advertised as unsupported. There are no success-returning stubs. Persistent
+store IDs, exclusive sessions, transaction plans/results, progress and verified
+recovery are contracts for the following milestones, not claims made by this API.
+The 0.1 API remains experimental until those lifecycle guarantees are implemented.
+
+A standalone library-only build is:
+
+```sh
+meson setup build-lib safestore -Dcli=false -Dgui=false -Dtests=false
+meson compile -C build-lib
+```
+
+Run that command from the Parla root. Add `-Dinstall_devel=true` to install the
+static library, public header, VAPI, `.deps` and `safestore-1.pc`. An installed
+consumer uses `dependency('safestore-1', static: true)` in Meson, or
+`valac --pkg safestore-1 consumer.vala`. For a nonstandard prefix, supply the
+installed VAPI directory with `--vapidir` and the pkg-config directory through
+`PKG_CONFIG_PATH`. No private header or source file is needed.
+
+The standalone build exposes `-Dcli`, `-Dgui`, `-Dtests`, and `-Dinstall_devel`.
+GUI defaults off; CLI and tests default on. Public consumer tests exercise the
+same generated dependency as Parla; separate white-box tests compile internal
+helpers solely to preserve their existing coverage. Linux, macOS and Windows CI
+compile both consumers. A successful build does not qualify an encryption
+backend for production on that OS; Windows ZIP remains unavailable.
 
 ## Using the GUI
 
@@ -362,6 +437,7 @@ Remaining work before this is a supported Parla feature:
 safestore/
 ├── data/               desktop launcher
 ├── lib/                core library: vault, keyring, path and mount logic
+├── frontend/           standalone preferences and account-path discovery
 ├── cli/                safestore command-line tool
 ├── gui/                safestore-gui GTK application
 ├── tests/              path/layout safety tests

@@ -1,6 +1,7 @@
 namespace SafeStore {
 
     public enum StoreState {
+        UNKNOWN,
         LOCKED,
         STARTING,
         MOUNTED,
@@ -8,7 +9,7 @@ namespace SafeStore {
         ERROR
     }
 
-    public class CryfsController : Object {
+    internal class CryfsController : Object {
 
         public signal void output (string line);
         public signal void state_changed (StoreState state, string detail);
@@ -23,31 +24,14 @@ namespace SafeStore {
         private uint process_generation = 0;
         private bool expected_exit = false;
 
-        public async string backend_version (string binary) throws Error {
-            string? stdout_text;
-            string? stderr_text;
-            var process = new Subprocess (
-                SubprocessFlags.STDOUT_PIPE | SubprocessFlags.STDERR_PIPE,
-                binary, "--version"
-            );
-            yield process.communicate_utf8_async (
-                null, null, out stdout_text, out stderr_text);
-            string text = (stdout_text ?? "").strip ();
-            if (text.length == 0) text = (stderr_text ?? "").strip ();
-            if (!process.get_successful ()) {
-                throw new IOError.FAILED (
-                    "%s", text.length > 0 ? text : "CryFS returned an error.");
-            }
-            return text;
-        }
-
         public void mount (string binary,
                            string vault_path,
                            string mount_path,
                            string password,
                            int idle_minutes,
                            bool create,
-                           bool allow_executable_files = false) throws Error {
+                           bool allow_executable_files = false,
+                                  string state_directory = "") throws Error {
             if (cryfs_process != null
                     || state == StoreState.STARTING
                     || state == StoreState.MOUNTED
@@ -108,7 +92,7 @@ namespace SafeStore {
                 | SubprocessFlags.STDERR_PIPE
             );
             try {
-                CryfsBackend.apply_environment (launcher);
+                CryfsBackend.apply_environment (launcher, state_directory);
             } catch (Error error) {
                 transition (
                     StoreState.ERROR,
@@ -314,10 +298,12 @@ namespace SafeStore {
 
         private static async void delay (uint milliseconds) {
             SourceFunc callback = delay.callback;
-            Timeout.add (milliseconds, () => {
+            var source = new TimeoutSource (milliseconds);
+            source.set_callback (() => {
                 callback ();
                 return Source.REMOVE;
             });
+            source.attach (MainContext.ref_thread_default ());
             yield;
         }
     }

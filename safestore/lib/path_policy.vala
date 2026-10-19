@@ -7,7 +7,7 @@ namespace SafeStore {
         NOT_A_VAULT
     }
 
-    public class PathPolicy : Object {
+    internal class PathPolicy : Object {
 
         private const int PRIVATE_MODE = 0700;
 
@@ -34,7 +34,8 @@ namespace SafeStore {
         }
 
         public static void validate_layout (string vault_path,
-                                            string mount_path)
+                                            string mount_path,
+                                            bool require_drive = true)
                                             throws PathPolicyError {
             string raw_vault = vault_path.strip ();
             string raw_mount = mount_path.strip ();
@@ -43,7 +44,8 @@ namespace SafeStore {
                     "Choose both the encrypted vault and mount folders.");
             }
             if (!Path.is_absolute (raw_vault)
-                    || !mount_is_absolute (raw_mount)) {
+                    || !(mount_is_absolute (raw_mount)
+                        || (!require_drive && Path.is_absolute (raw_mount)))) {
                 throw new PathPolicyError.INVALID (
                     "Vault and mount folders must use absolute paths.");
             }
@@ -51,7 +53,7 @@ namespace SafeStore {
             string vault = normalize (vault_path);
             string mount = normalize (mount_path);
 #if WINDOWS
-            if (!is_drive_mount (mount)) {
+            if (require_drive && !is_drive_mount (mount)) {
                 throw new PathPolicyError.INVALID (
                     "CryFS 1.x on Windows requires an unused drive letter, for example G:.");
             }

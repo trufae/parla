@@ -14,7 +14,7 @@ namespace SafeStore {
             case "cryfs": return CRYFS;
             case "zip": return ZIP;
             default:
-                throw new VaultError.BACKEND (
+                throw new StoreError.BACKEND (
                     "Unknown encryption backend: %s", value);
             }
         }
@@ -29,15 +29,29 @@ namespace SafeStore {
         public string status { get; construct; }
         public string protection { get; construct; }
         public string operation { get; construct; }
-        public string vault_path { get; construct; }
+        public bool experimental { get { return true; } }
+        public Operation supported_operations {
+            get {
+                return Operation.INSPECT | Operation.PROBE
+                    | (available ? Operation.CREATE_EMPTY | Operation.UNLOCK
+                        | Operation.LOCK : Operation.NONE);
+            }
+        }
+
+        public bool supports (Operation operation) {
+            return (supported_operations & operation) == operation;
+        }
 
         public BackendInfo (BackendKind kind,
                             string name,
                             bool available,
                             string status,
                             string protection,
-                            string operation,
-                            string vault_path) {
+                            string operation) {
+#if SAFESTORE_UNSUPPORTED
+            available = false;
+            status = "SafeStore operations are not supported on this platform";
+#endif
             Object (
                 kind: kind,
                 id: kind.id (),
@@ -45,14 +59,13 @@ namespace SafeStore {
                 available: available,
                 status: status,
                 protection: protection,
-                operation: operation,
-                vault_path: vault_path
+                operation: operation
             );
         }
     }
 
     /** Backend discovery is deliberately side-effect free. */
-    public class Backends : Object {
+    internal class Backends : Object {
 
         public static BackendInfo[] list (Settings settings) {
             BackendInfo[] result = {};
@@ -70,11 +83,6 @@ namespace SafeStore {
                                            BackendKind kind) {
             return kind == BackendKind.ZIP
                 ? inspect_zip (settings) : inspect_cryfs (settings);
-        }
-
-        public static void select (Settings settings,
-                                   BackendKind kind) {
-            settings.backend = kind.id ();
         }
 
         public static bool executable_available (string binary) {
@@ -110,8 +118,7 @@ namespace SafeStore {
                 "Strong encrypted filesystem: XChaCha20-Poly1305; hides "
                     + "file names, sizes, contents, and directory structure.",
                 "Mounts a decrypted filesystem while unlocked; ciphertext "
-                    + "remains in the vault directory.",
-                AccountsPath.vault_path ()
+                    + "remains in the vault directory."
             );
         }
 
@@ -143,42 +150,13 @@ namespace SafeStore {
                 "Weak legacy ZipCrypto. File names and archive metadata remain "
                     + "visible; use only as an explicit compatibility option.",
                 "Extracts a full plaintext copy while unlocked and rewrites the "
-                    + "archive when locking. Passwords use a private pseudo-terminal.",
-                AccountsPath.zip_path ()
+                    + "archive when locking. Passwords use a private pseudo-terminal."
             );
         }
     }
 
-    /**
-     * Backend-neutral one-shot API for CLI use and Parla integration.
-     * Password acquisition belongs to the calling frontend: this API never
-     * opens a terminal, displays a dialog, or invokes the SafeStore CLI.
-     * GUI callers may use CryfsController when they need foreground process
-     * monitoring, but backend selection and lifecycle semantics stay here.
-     */
-    public class EncryptedStore : Object {
-
-        public static BackendInfo[] list_backends (Settings settings) {
-            return Backends.list (settings);
-        }
-
-        public static BackendInfo info (Settings settings) throws Error {
-            return Backends.selected (settings);
-        }
-
-        public static bool exists (Settings settings) throws Error {
-            return BackendKind.parse (settings.backend) == BackendKind.ZIP
-                ? ZipBackend.is_encrypted (settings)
-                : Vault.is_encrypted (settings.vault_path);
-        }
-
-        public static bool unlocked (Settings settings) throws Error {
-            if (BackendKind.parse (settings.backend) == BackendKind.ZIP) {
-                return ZipBackend.is_unlocked (settings);
-            }
-            var mount = Vault.mount_info (settings.mount_path);
-            return mount != null && mount.is_cryfs ();
-        }
+    // Existing detached backend operations, used behind the public facade.
+    internal class EncryptedStore : Object {
 
         public static void create (Settings settings,
                                    string password,
@@ -195,7 +173,7 @@ namespace SafeStore {
                     password,
                     true,
                     settings.idle_minutes,
-                    allow_executable_files);
+                    allow_executable_files, settings.state_directory);
             }
         }
 
@@ -214,7 +192,7 @@ namespace SafeStore {
                     password,
                     false,
                     settings.idle_minutes,
-                    allow_executable_files);
+                    allow_executable_files, settings.state_directory);
             }
         }
 
@@ -223,7 +201,7 @@ namespace SafeStore {
             require_available (settings);
             if (BackendKind.parse (settings.backend) == BackendKind.ZIP) {
                 if (password == null || password.length == 0) {
-                    throw new VaultError.WRONG_PASSWORD (
+                    throw new StoreError.WRONG_PASSWORD (
                         "The ZIP backend needs a password when locking");
                 }
                 ZipBackend.lock (settings, password);
@@ -235,9 +213,9 @@ namespace SafeStore {
 
         private static void require_available (Settings settings)
                                                throws Error {
-            BackendInfo backend = info (settings);
+            BackendInfo backend = Backends.selected (settings);
             if (!backend.available) {
-                throw new VaultError.BACKEND ("%s", backend.status);
+                throw new StoreError.BACKEND ("%s", backend.status);
             }
         }
     }
@@ -284,21 +262,13 @@ namespace SafeStore {
             return Path.build_filename (directory, "cryfs-unmount");
         }
 
-        public static string state_dir () throws Error {
-            string dir = Path.build_filename (
-                Environment.get_user_data_dir (),
-                "safestore",
-                "cryfs-state"
-            );
-            PathPolicy.ensure_private_directory (dir);
-            return dir;
-        }
-
-        public static void apply_environment (SubprocessLauncher launcher)
+        public static void apply_environment (SubprocessLauncher launcher,
+                                              string state_directory)
                                               throws Error {
+            PathPolicy.ensure_private_directory (state_directory);
             launcher.setenv ("CRYFS_FRONTEND", "noninteractive", true);
             launcher.setenv ("CRYFS_NO_UPDATE_CHECK", "true", true);
-            launcher.setenv ("CRYFS_LOCAL_STATE_DIR", state_dir (), true);
+            launcher.setenv ("CRYFS_LOCAL_STATE_DIR", state_directory, true);
         }
     }
 }

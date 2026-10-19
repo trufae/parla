@@ -7,14 +7,14 @@ namespace SafeStore {
      * metadata and is not comparable to CryFS.  It exists for systems where a
      * mountable encrypted filesystem is unavailable.
      */
-    public class ZipBackend : Object {
+    internal class ZipBackend : Object {
 
         private const string MARKER_PREFIX = ".safestore-zip-marker-";
         private const string MARKER_CONTENT = "SafeStore ZIP backend v1\n";
         private const string LOCKED_NAME = ".safestore-locked";
 
         [CCode (cname = "safestore_run_pty_password",
-                cheader_filename = "lib/pty_password.h")]
+                cheader_filename = "pty_password.h")]
         private static extern bool run_with_password (
             [CCode (array_length = false, array_null_terminated = true)]
             string[] argv,
@@ -24,16 +24,16 @@ namespace SafeStore {
             out string output) throws Error;
 
         [CCode (cname = "safestore_acquire_accounts_guard",
-                cheader_filename = "lib/pty_password.h")]
+                cheader_filename = "pty_password.h")]
         private static extern int acquire_accounts_guard (
             string lock_path) throws Error;
 
         [CCode (cname = "safestore_release_accounts_guard",
-                cheader_filename = "lib/pty_password.h")]
+                cheader_filename = "pty_password.h")]
         private static extern void release_accounts_guard (int descriptor);
 
         public static bool password_channel_available () {
-#if WINDOWS
+#if WINDOWS || SAFESTORE_UNSUPPORTED
             return false;
 #else
             return true;
@@ -41,7 +41,7 @@ namespace SafeStore {
         }
 
         public static bool is_encrypted (Settings settings) {
-            string archive = AccountsPath.zip_path ();
+            string archive = settings.vault_path;
             return FileUtils.test (archive, FileTest.IS_REGULAR)
                 && !FileUtils.test (archive, FileTest.IS_SYMLINK);
         }
@@ -59,7 +59,7 @@ namespace SafeStore {
             BackendInfo info = Backends.inspect (
                 settings, BackendKind.ZIP);
             if (!info.available) {
-                throw new VaultError.BACKEND (
+                throw new StoreError.BACKEND (
                     "%s", info.status);
             }
             PlaintextEraser.require_available (settings);
@@ -68,7 +68,7 @@ namespace SafeStore {
         public static string probe_tools (Settings settings) throws Error {
             string zip_version = tool_version (settings.zip_binary);
             if (!zip_version.ascii_down ().contains ("encryption")) {
-                throw new VaultError.BACKEND (
+                throw new StoreError.BACKEND (
                     "zip was found, but it does not report encryption support");
             }
             tool_version (settings.unzip_binary);
@@ -93,7 +93,7 @@ namespace SafeStore {
             string combined = ((stdout_text ?? "") + "\n"
                 + (stderr_text ?? "")).strip ();
             if (!process.get_successful ()) {
-                throw new VaultError.BACKEND (
+                throw new StoreError.BACKEND (
                     "%s -v failed%s", binary,
                     combined.length > 0 ? ": " + combined : "");
             }
@@ -104,9 +104,9 @@ namespace SafeStore {
         public static void create (Settings settings,
                                    string password) throws Error {
             ensure_available (settings);
-            string archive = AccountsPath.zip_path ();
+            string archive = settings.vault_path;
             if (FileUtils.test (archive, FileTest.EXISTS)) {
-                throw new VaultError.ALREADY_MOUNTED (
+                throw new StoreError.ALREADY_MOUNTED (
                     "ZIP vault already exists at %s", archive);
             }
             prepare_destination (settings.mount_path);
@@ -117,9 +117,9 @@ namespace SafeStore {
         public static void unlock (Settings settings,
                                    string password) throws Error {
             ensure_available (settings);
-            string archive = AccountsPath.zip_path ();
+            string archive = settings.vault_path;
             if (!is_encrypted (settings)) {
-                throw new VaultError.NOT_A_VAULT (
+                throw new StoreError.NOT_A_VAULT (
                     "No ZIP vault was found at %s", archive);
             }
             ensure_locked_destination (settings.mount_path);
@@ -142,10 +142,10 @@ namespace SafeStore {
                 } catch (Error error) {
                     if (error.matches (
                             IOError.quark (), IOError.PERMISSION_DENIED)) {
-                        throw new VaultError.WRONG_PASSWORD (
+                        throw new StoreError.WRONG_PASSWORD (
                             "Could not decrypt ZIP vault: %s", error.message);
                     }
-                    throw new VaultError.BACKEND (
+                    throw new StoreError.BACKEND (
                         "Could not extract ZIP vault: %s", error.message);
                 }
 
@@ -198,7 +198,7 @@ namespace SafeStore {
             validate_entry_name (account_name);
             string marker_name = MARKER_PREFIX + Uuid.string_random ();
             string marker_path = Path.build_filename (parent, marker_name);
-            string archive = AccountsPath.zip_path ();
+            string archive = settings.vault_path;
             string temporary = archive + ".tmp-" + Uuid.string_random () + ".zip";
 
             try {
@@ -306,13 +306,13 @@ namespace SafeStore {
                         && payload == null) {
                     payload = path;
                 } else {
-                    throw new VaultError.NOT_A_VAULT (
+                    throw new StoreError.NOT_A_VAULT (
                         "ZIP vault contains an unexpected top-level entry");
                 }
             }
             children.close ();
             if (!marker_found || payload == null) {
-                throw new VaultError.NOT_A_VAULT (
+                throw new StoreError.NOT_A_VAULT (
                     "ZIP archive is not a SafeStore vault");
             }
             validate_no_symlinks (File.new_for_path (payload));
@@ -365,7 +365,7 @@ namespace SafeStore {
             process.communicate_utf8 (
                 null, null, out stdout_text, out stderr_text);
             if (!process.get_successful ()) {
-                throw new VaultError.NOT_A_VAULT (
+                throw new StoreError.NOT_A_VAULT (
                     "Could not inspect ZIP vault entries");
             }
 
@@ -374,18 +374,18 @@ namespace SafeStore {
             foreach (string raw_name in (stdout_text ?? "").split ("\n")) {
                 if (raw_name.length == 0) continue;
                 if (raw_name.has_prefix ("/") || raw_name.contains ("\\")) {
-                    throw new VaultError.NOT_A_VAULT (
+                    throw new StoreError.NOT_A_VAULT (
                         "ZIP vault contains an unsafe path");
                 }
                 string[] parts = raw_name.split ("/");
                 if (parts.length == 0 || parts[0].length == 0
                         || parts[0].contains (":")) {
-                    throw new VaultError.NOT_A_VAULT (
+                    throw new StoreError.NOT_A_VAULT (
                         "ZIP vault contains an unsafe path");
                 }
                 foreach (string part in parts) {
                     if (part == "." || part == "..") {
-                        throw new VaultError.NOT_A_VAULT (
+                        throw new StoreError.NOT_A_VAULT (
                             "ZIP vault contains a path traversal entry");
                     }
                     if (part.length > 0) validate_entry_name (part);
@@ -393,7 +393,7 @@ namespace SafeStore {
                 if (parts.length == 1
                         && parts[0].has_prefix (MARKER_PREFIX)) {
                     if (marker_found) {
-                        throw new VaultError.NOT_A_VAULT (
+                        throw new StoreError.NOT_A_VAULT (
                             "ZIP vault contains multiple format markers");
                     }
                     marker_found = true;
@@ -401,12 +401,12 @@ namespace SafeStore {
                 }
                 if (payload_root == null) payload_root = parts[0];
                 else if (payload_root != parts[0]) {
-                    throw new VaultError.NOT_A_VAULT (
+                    throw new StoreError.NOT_A_VAULT (
                         "ZIP vault contains multiple payload roots");
                 }
             }
             if (!marker_found || payload_root == null) {
-                throw new VaultError.NOT_A_VAULT (
+                throw new StoreError.NOT_A_VAULT (
                     "ZIP archive is not a SafeStore vault");
             }
         }
@@ -425,12 +425,12 @@ namespace SafeStore {
             string clean = PathPolicy.normalize (path);
             if (!FileUtils.test (clean, FileTest.IS_DIR)
                     || FileUtils.test (clean, FileTest.IS_SYMLINK)) {
-                throw new VaultError.NOT_MOUNTED (
+                throw new StoreError.NOT_MOUNTED (
                     "Plaintext accounts folder is not unlocked: %s", clean);
             }
             string sentinel = Path.build_filename (clean, LOCKED_NAME);
             if (FileUtils.test (sentinel, FileTest.EXISTS)) {
-                throw new VaultError.NOT_MOUNTED (
+                throw new StoreError.NOT_MOUNTED (
                     "ZIP vault is already locked");
             }
             PathPolicy.ensure_private_directory (clean);

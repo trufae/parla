@@ -1,0 +1,4 @@
+option('cli', type: 'boolean', value: true, description: 'Build the optional command-line tool')
+option('gui', type: 'boolean', value: false, description: 'Build the experimental GTK frontend')
+option('tests', type: 'boolean', value: true, description: 'Build library and frontend tests')
+option('install_devel', type: 'boolean', value: false, description: 'Install the static library, public header, VAPI and pkg-config file')

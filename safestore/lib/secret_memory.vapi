@@ -1,7 +1,7 @@
 namespace SafeStore {
     [Compact]
     [CCode (cname = "SafeStoreSecretMemory",
-            cheader_filename = "lib/pty_password.h",
+            cheader_filename = "pty_password.h",
             ref_function = "safestore_secret_memory_ref",
             unref_function = "safestore_secret_memory_unref")]
     internal class SecretMemory {

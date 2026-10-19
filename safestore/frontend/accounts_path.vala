@@ -14,7 +14,7 @@ namespace SafeStore {
      * RPC server reads — and the encrypted vault sits beside it as
      * "<accounts>.vault".
      */
-    public class AccountsPath : Object {
+    internal class AccountsPath : Object {
 
         public static string resolve () {
             string env = environment_path ();

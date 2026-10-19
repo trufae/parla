@@ -1,8 +1,8 @@
 private void test_sibling_layout () {
     try {
         SafeStore.PathPolicy.validate_layout (
-            "/tmp/safestore-vault",
-            "/tmp/safestore-mount"
+            Path.build_filename (Environment.get_tmp_dir (), "safestore-vault"),
+            Path.build_filename (Environment.get_tmp_dir (), "safestore-mount"), false
         );
     } catch (Error error) {
         Test.fail_printf ("Sibling layout should be valid: %s", error.message);
@@ -108,8 +108,7 @@ private void assert_layout_fails (string vault, string mount) {
     assert_true (failed);
 }
 
-int main (string[] args) {
-    Test.init (ref args);
+void register_path_policy_tests () {
     Test.add_func ("/path-policy/siblings", test_sibling_layout);
     Test.add_func ("/path-policy/same", test_same_layout);
     Test.add_func ("/path-policy/mount-inside-vault", test_mount_inside_vault);
@@ -129,5 +128,4 @@ int main (string[] args) {
         test_symlinked_nested_layout
     );
 #endif
-    return Test.run ();
 }

@@ -8,7 +8,7 @@ namespace SafeStore {
     // Secret Service through libsecret elsewhere when available. There is no
     // Windows Credential Manager backend yet; available() reports false and
     // callers must fall back to prompting.
-    public class Keyring : Object {
+    internal class Keyring : Object {
 
         private const string SERVICE = "io.github.trufae.SafeStore";
 
