@@ -778,10 +778,10 @@ namespace Dc {
             build_behavior_section (general_page);
             build_accessibility_section (general_page);
             build_links_group (general_page);
-            if (SafeStore.Backups.available) build_backups_section (general_page);
             if (!Platform.is_android ()) build_notifications_section (general_page);
 
             build_chatmail_core_section (advanced_page);
+            if (SafeStore.Backups.available) build_backups_section (advanced_page);
             build_network_section (advanced_page);
             build_webxdc_section (advanced_page);
             build_factory_reset_section (advanced_page);

@@ -221,7 +221,7 @@ explicit compatibility method and is not the recommended protection choice.
 
 ## Milestone 2.5 Deliver encrypted backup and restore first
 
-The first implementation is available in **Settings → General → Account Backups**:
+The first implementation is available in **Settings → Advanced → Account Backups**:
 full AES-256 ZIP creation, full archive verification, separate-folder restore,
 offline account-opening validation and an explicit durable switch retaining the
 old folder. SafeStore owns this through the public `Backups` API; Parla drains

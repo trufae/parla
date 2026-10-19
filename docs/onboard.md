@@ -38,7 +38,7 @@ Settings must be available before creating or importing the first profile,
 without requiring the standalone SafeStore tools. See the
 [implementation milestones](safestore-plan.md).
 
-Encrypted file backups are available in **Settings → General → Account Backups**.
+Encrypted file backups are available in **Settings → Advanced → Account Backups**.
 Users choose a password and save a full backup of all accounts, including to a
 USB drive. Check verifies every archived file; Restore creates a separate folder
 and offers an explicit switch after offline core validation, retaining the previous

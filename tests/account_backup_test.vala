@@ -126,6 +126,11 @@ private async void backup_ui_async (string server, string root) throws Error {
             row = label.get_ancestor (typeof (Adw.ActionRow)) as Adw.ActionRow;
         }
         assert_true (row != null);
+        var page = row.get_ancestor (typeof (Adw.PreferencesPage)) as Adw.PreferencesPage;
+        assert_true (page != null);
+        assert_cmpstr (page.title, CompareOperator.EQ, "Advanced");
+        preferences.visible_page = page;
+        yield nap (100);
         row.activated ();
         yield nap (100);
         var dialog = window.get_visible_dialog ();

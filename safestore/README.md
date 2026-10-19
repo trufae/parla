@@ -4,7 +4,7 @@ SafeStore is an experimental Vala library for encrypted account storage.
 Parla links it directly through its Vala API. Automatic protection of the working
 accounts folder is still planned; see the [remaining milestones](../docs/safestore-plan.md).
 
-**Settings → General → Account Backups** now provides **Create Encrypted Backup**,
+**Settings → Advanced → Account Backups** now provides **Create Encrypted Backup**,
 **Check Backup**, and **Restore Backup**. Save a full password-encrypted `.zip`
 anywhere on a local filesystem, including a USB drive. No separate program or
 command is needed. All account files and attachments are encrypted with WinZip
