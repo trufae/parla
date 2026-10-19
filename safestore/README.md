@@ -1,9 +1,58 @@
 # SafeStore
 
 SafeStore is an experimental Vala library for encrypted account storage.
-The library and session lifecycle are integrated into the build; automatic protection
-and the Settings interface are still planned. See the
-[remaining milestones](../docs/safestore-plan.md).
+Parla links it directly through its Vala API. Automatic protection of the working
+accounts folder is still planned; see the [remaining milestones](../docs/safestore-plan.md).
+
+**Settings → General → Account Backups** now provides **Create Encrypted Backup**,
+**Check Backup**, and **Restore Backup**. Save a full password-encrypted `.zip`
+anywhere on a local filesystem, including a USB drive. No separate program or
+command is needed. All account files and attachments are encrypted with WinZip
+AES-256 through libzip; this is independent of the legacy working-store ZIP adapter.
+Use a long, unique password and keep it safely: there is no password recovery.
+
+Creation pauses messaging, drains queued RPC requests, closes stdin, waits for
+successful core exit, and acquires native ownership locks before reading files.
+The archive is authenticated and every file hash verified before publication.
+Existing backups are never overwritten. Source data is kept unchanged. Checking
+an archive does not stop messaging. Restore creates a separate private plaintext
+folder; an explicit **Use Restored Accounts** action checks its layout, opens every
+account with the core offline, durably selects that folder, and reconnects Parla.
+The previous account folder is retained. Restore is available before the first account.
+
+Current limits: full backups only; a no-history account-access export remains a
+separate follow-up. This first integration covers ordinary accounts folders;
+backup while a managed SafeStore session holds its lease waits for the future
+session integration. An external `DC_ACCOUNTS_PATH` override prevents switching
+folders, but checking and restoring a separate copy still work. Unsupported core
+metadata is rejected without deleting the backup or restored files. A failed or
+cancelled extraction can leave a private incomplete plaintext folder; its path is
+reported. Archive checks establish byte integrity, not database semantic integrity
+or guaranteed future server access. Native Windows/macOS and removable-drive
+failure qualification remains required before a cross-platform release claim.
+
+The encrypted manifest stores original relative paths, directories, sizes, SHA-256
+hashes, a UTC creation date and format version 1. ZIP members use opaque names;
+ZIP metadata still reveals entry counts and compressed/uncompressed sizes. The
+reader limits the manifest to 32 MiB, inventory to 100,000 entries and default
+expanded data to 1 TiB; rejects traversal, links, case/Unicode collisions and
+Windows device names; and requires AES-256 on every entry. These ZIPs should be
+restored with Parla to reconstruct their paths.
+
+The GTK-free `SafeStore.Backups` API exposes async `create(accounts_path,
+destination, SecretValue, Cancellable?)`, `verify(path, SecretValue, Cancellable?)`
+and `restore(path, new_directory, SecretValue, Cancellable?)`. `BackupInfo` reports
+creation date, file count, bytes and the restored path. `progress(phase, completed,
+total)` runs on the operation's calling main context, as does completion. Use an
+instance on one main context at a time; concurrent operations return BUSY.
+Callers must stop and await **all** writers before `create`; native leases are an
+additional guard. Verification does not require access to the current store.
+Before restore, callers can use `validate_restore_destination(accounts_path,
+new_directory)` to reject a location inside the live store, including aliases.
+The maximum restore size can be configured before an operation. Cancellation is
+honored before publication; a published backup is never reported as cancelled.
+If directory synchronization fails after publication, the error identifies the
+saved backup and states that durable storage could not be confirmed.
 
 The optional standalone tools manage storage holding the Delta Chat accounts.
 CryFS is the current filesystem adapter; legacy ZIP is an explicitly weaker
@@ -77,7 +126,8 @@ The source is split into:
 
 ## Requirements
 
-Build requirements: Vala 0.56+, Meson/Ninja, GLib/GIO 2.66+; GTK 4 and
+Build requirements: Vala 0.56+, Meson/Ninja, GLib/GIO 2.66+, libzip 1.7+
+with AES encryption support on desktop platforms; GTK 4 and
 libadwaita 1.5+ for the GUI; libsecret (optional) for the Linux keyring.
 
 Runtime requirements:

@@ -1,4 +1,4 @@
 PACKAGE=parla
-DEPENDS=libgtk-4-1, libadwaita-1-0, libjson-glib-1.0-0, libwebkitgtk-6.0-4
+DEPENDS=libgtk-4-1, libadwaita-1-0, libjson-glib-1.0-0, libzip4t64 | libzip4, libwebkitgtk-6.0-4
 
 include ../CONFIG

@@ -6,6 +6,10 @@
  * WebKitGTK on GNOME, and isolated native shims on macOS and Windows. See
  * docs/webxdc.md for the security boundaries and the JS API. */
 namespace Dc.Webxdc {
+    public void close_all () {
+        if (windows == null) return;
+        foreach (var app in windows.get_values ()) { app.stop_realtime (); app.close_view (); }
+    }
 
     public const bool AVAILABLE = true;
 

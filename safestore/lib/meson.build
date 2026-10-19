@@ -11,6 +11,7 @@ safestore_core_deps = [dependency('glib-2.0', version: '>= 2.66'), dependency('g
 safestore_system = host_machine.system()
 if safestore_system == 'windows'
   safestore_vala_args += '--define=WINDOWS'
+  safestore_core_deps += safestore_cc.find_library('advapi32')
 else
   safestore_vala_args += ['--pkg', 'posix']
   if safestore_system == 'darwin'
@@ -21,6 +22,8 @@ else
 endif
 
 if safestore_desktop
+  safestore_zip = dependency('libzip', version: '>= 1.7')
+  safestore_c_args += '-DHAVE_BACKUP_ZIP'
   if safestore_system != 'windows'
     safestore_util = safestore_cc.find_library('util', required: false)
     if safestore_util.found()
@@ -39,7 +42,21 @@ else
   safestore_c_args += '-DSAFESTORE_NO_PTY'
 endif
 
+# Keep libzip behind a C target so Vala consumers need no libzip VAPI.
+safestore_archive_deps = [dependency('gio-2.0')]
+if safestore_desktop
+  safestore_archive_deps += safestore_zip
+endif
+if safestore_system == 'windows'
+  safestore_archive_deps += safestore_cc.find_library('advapi32')
+endif
+safestore_archive_lib = static_library('safestore-backup', 'backup_archive.c',
+  dependencies: safestore_archive_deps, c_args: safestore_c_args,
+  install: safestore_install_devel)
+safestore_core_deps += declare_dependency(link_with: safestore_archive_lib)
+
 safestore_sources = files(
+  'backups.vala', 'backup_archive.vapi',
   'metadata.vala', 'accounts_location.vala', 'zip_format.vala', 'lease.vapi', 'lease.c',
   'store.vala', 'settings.vala', 'backend.vala', 'path_policy.vala',
   'secret_memory.vapi', 'secret_value.vala', 'zip_backend.vala',

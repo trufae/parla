@@ -19,6 +19,8 @@ namespace Dc {
         private uint connection_generation = 0;
         private Cancellable? io_cancellable = null;
         private string last_stderr = "";
+        private bool closing = false;
+        private uint queued_writes = 0;
 
         public signal void disconnected (string reason);
 
@@ -45,6 +47,7 @@ namespace Dc {
 
         public async void start (string[] argv, string? cwd = null,
                                    string? accounts_path = null) throws Error {
+            if (closing) throw new IOError.BUSY (_("Account storage is being closed"));
             /* Retrying on this transport must first invalidate every callback
                belonging to the previous subprocess. */
             if (io_cancellable != null || process != null || reader != null ||
@@ -160,6 +163,64 @@ namespace Dc {
                 connection_generation, _("RPC client stopped"), false);
         }
 
+        /** Drain pending mutations, close stdin, and wait for the core to flush
+         * and exit. Failure never authorizes a filesystem snapshot. */
+        public async void stop_gracefully (Cancellable? cancel = null) throws Error {
+            if (closing) throw new IOError.BUSY (_("Account storage is being closed"));
+            if (io_cancellable == null) return;
+            closing = true;
+            is_connected = false;
+            uint generation = connection_generation;
+            int64 deadline = get_monotonic_time () + 30 * TimeSpan.SECOND;
+            var timeout = new Cancellable ();
+            uint timer = 0;
+            timer = Timeout.add_seconds (30, () => { timer = 0; timeout.cancel (); return Source.REMOVE; });
+            ulong cancel_id = cancel == null ? 0 : cancel.connect (() => { timeout.cancel (); });
+            try {
+                while (queued_writes > 0 || has_pending_mutations (generation)) {
+                    timeout.set_error_if_cancelled ();
+                    if (!generation_is_active (generation)) throw new IOError.CLOSED (_("Account process stopped unexpectedly"));
+                    yield nap (20);
+                }
+                var pipe = writer;
+                if (pipe == null) throw new IOError.CLOSED (_("Account process stopped unexpectedly"));
+                yield pipe.close_async (Priority.DEFAULT, timeout);
+#if WINDOWS
+                if (win_process == null) throw new IOError.CLOSED (_("Account process stopped unexpectedly"));
+                int status;
+                while ((status = Platform.process_wait (win_process, 0)) == -1) {
+                    timeout.set_error_if_cancelled ();
+                    yield nap (20);
+                }
+                if (status != 0) throw new IOError.FAILED (_("Account process did not shut down cleanly"));
+                Platform.process_free (win_process);
+                win_process = null;
+#else
+                var child = process;
+                if (child == null) throw new IOError.CLOSED (_("Account process stopped unexpectedly"));
+                yield child.wait_check_async (timeout);
+                process = null;
+#endif
+            } catch (IOError.CANCELLED e) {
+                if (get_monotonic_time () >= deadline && (cancel == null || !cancel.is_cancelled ()))
+                    throw new IOError.TIMED_OUT (_("The account process did not finish closing. No backup was created."));
+                throw e;
+            } finally {
+                if (cancel_id != 0) cancel.disconnect (cancel_id);
+                if (timer != 0) Source.remove (timer);
+                // Also releases event pollers. A failed shutdown aborts the backup.
+                finish_generation (generation, _("Account storage closed"), false);
+                closing = false;
+            }
+        }
+
+        private bool has_pending_mutations (uint generation) {
+            foreach (var call in pending.data) {
+                if (call.generation == generation && call.blocks_shutdown && call.resume_source != null) return true;
+            }
+            return false;
+        }
+
         private void finish_generation (uint generation, string reason,
                                         bool emit_disconnected) {
             if (!generation_is_active (generation)) return;
@@ -197,13 +258,14 @@ namespace Dc {
             uint generation = connection_generation;
             var connection_writer = writer;
             var cancellable = io_cancellable;
-            if (connection_writer == null || reader == null ||
+            if (closing || connection_writer == null || reader == null ||
                 cancellable == null || !generation_is_active (generation)) {
                 throw new IOError.NOT_CONNECTED (_("RPC client not connected"));
             }
 
             int id = next_id++;
             var pc = new PendingCall (id, generation);
+            pc.blocks_shutdown = method != "get_next_event";
             var resume_source = new IdleSource ();
             resume_source.set_callback (call.callback);
             pc.resume_source = resume_source;
@@ -280,7 +342,7 @@ namespace Dc {
                 reason = _("RPC read failed: ") + e.message;
             }
 
-            if (generation_is_active (generation)) {
+            if (generation_is_active (generation) && !closing) {
                 finish_generation (generation, reason, true);
             }
         }
@@ -320,8 +382,10 @@ namespace Dc {
             request.completion_source = completed;
             request.release_to_worker ();
             try {
+                queued_writes++;
                 write_pool.add (request);
             } catch (Error e) {
+                queued_writes--;
                 request.discard_completion ();
                 fail_write (request, _("RPC writer failed: ") + e.message);
             }
@@ -352,6 +416,7 @@ namespace Dc {
         }
 
         private void write_completed (PendingWrite request) {
+            queued_writes--;
             if (request.error_msg == null) return;
             if (generation_is_active (request.pending.generation)) {
                 finish_generation (request.pending.generation,
@@ -409,6 +474,7 @@ namespace Dc {
     }
 
     private class PendingCall {
+        public bool blocks_shutdown = true;
         public int id;
         public uint generation;
         public Source? resume_source = null;

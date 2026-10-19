@@ -37,6 +37,7 @@ namespace Dc {
         public bool restart_requested { get; private set; default = false; }
 
         public void request_restart () {
+            if (get_or_create_window ().backup_busy) return;
             restart_requested = true;
             get_or_create_window ().quit_application ();
         }

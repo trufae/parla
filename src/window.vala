@@ -11,6 +11,64 @@ namespace Dc {
     }
 
     public class Window : Adw.ApplicationWindow {
+        public bool backup_busy { get; private set; default = false; }
+        private bool connecting_rpc = false;
+
+        public void hold_backup_task () throws Error {
+            if (backup_busy || reconnecting_rpc || connecting_rpc) throw new IOError.BUSY (_("Account storage is busy"));
+            backup_busy = true;
+            application.hold ();
+        }
+
+        public void release_backup_task () {
+            backup_busy = false;
+            application.release ();
+        }
+
+        public async SafeStore.BackupInfo create_account_backup (SafeStore.Backups backups,
+                string destination, SafeStore.SecretValue password, Cancellable cancel) throws Error {
+            if (backup_busy || reconnecting_rpc || connecting_rpc) throw new IOError.BUSY (_("Account storage is busy"));
+            backup_busy = true;
+            application.hold ();
+            bool paused = false;
+            try {
+                cancel.set_error_if_cancelled ();
+                foreach (var view in views.get_values ()) yield view.prepare_for_backup ();
+                Webxdc.close_all ();
+                paused = true;
+                discard_all_views ();
+                yield rpc.stop_gracefully (cancel);
+                string path = settings.effective_accounts_path ();
+                AccountBackup.validate_layout (path);
+                return yield backups.create (path, destination, password, cancel);
+            } finally {
+                backup_busy = false;
+                if (paused) yield reconnect_rpc_server ();
+                application.release ();
+            }
+        }
+
+        public async void use_restored_accounts (string path) throws Error {
+            if (backup_busy || reconnecting_rpc || connecting_rpc) throw new IOError.BUSY (_("Account storage is busy"));
+            if ((Environment.get_variable ("DC_ACCOUNTS_PATH") ?? "") != "")
+                throw new IOError.NOT_SUPPORTED (_("DC_ACCOUNTS_PATH fixes the active folder for this installation. The restored copy is saved, but this setting prevents switching to it."));
+            backup_busy = true;
+            application.hold ();
+            bool paused = false;
+            try {
+                yield AccountBackup.validate_with_core (path, settings);
+                foreach (var view in views.get_values ()) yield view.prepare_for_backup ();
+                Webxdc.close_all ();
+                paused = true;
+                discard_all_views ();
+                yield rpc.stop_gracefully ();
+                settings.save_restored_accounts_path (path);
+            } finally {
+                backup_busy = false;
+                if (paused) yield reconnect_rpc_server ();
+                application.release ();
+            }
+        }
 
         /* Layout */
         private Adw.ToastOverlay toast_overlay;
@@ -384,6 +442,7 @@ namespace Dc {
         }
 
         private bool on_close_request () {
+            if (backup_busy) return true;
             if (quit_requested) return false;
 
 #if MACOS
@@ -422,6 +481,7 @@ namespace Dc {
         public void quit_application () { handle_primary_q (); }
 
         public void handle_primary_q () {
+            if (backup_busy) { show_toast (_("Wait for the backup operation to finish, or cancel it first")); return; }
             quit_requested = true;
             release_background_hold ();
             close_active_modal ();
@@ -1004,6 +1064,13 @@ namespace Dc {
         }
 
         private async void try_connect () {
+            if (backup_busy || connecting_rpc) return;
+            connecting_rpc = true;
+            try { yield connect_now (); }
+            finally { connecting_rpc = false; }
+        }
+
+        private async void connect_now () {
             rpc = ((Dc.Application) this.application).rpc;
             message_results.set_rpc (rpc);
 
@@ -1462,7 +1529,7 @@ namespace Dc {
         }
 
         public async void reconnect_rpc_server () {
-            if (reconnecting_rpc) return;
+            if (reconnecting_rpc || backup_busy) return;
             reconnecting_rpc = true;
 
             var app = (Dc.Application) this.application;
@@ -2810,6 +2877,7 @@ namespace Dc {
         }
 
         public async bool switch_account (int acct_id) {
+            if (backup_busy) return false;
             if (acct_id <= 0 || acct_id == rpc.account_id) return false;
 
             try {

@@ -405,6 +405,8 @@ private void test_unread_calls () {
 }
 
 public int main (string[] args) {
+    if (args.length == 4 && args[1] == "--backup-ui")
+        return run_backup_ui_test (args[2], args[3]);
     if (args.length > 2 && args[1] == "--accounts-settings") {
         var settings = new SettingsManager ();
         settings.accounts_path = "/configured/accounts/";
@@ -465,6 +467,7 @@ public int main (string[] args) {
     }
     test_executable = File.new_for_path (args[0]).get_path ();
     Test.init (ref args);
+    register_account_backup_tests ();
     Test.add_func ("/core-compat/presence", test_presence);
     Test.add_func ("/core-compat/message-identity", test_message_identity);
     Test.add_func ("/core-compat/video-attachments", test_video_attachments);

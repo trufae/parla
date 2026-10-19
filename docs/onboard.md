@@ -38,6 +38,14 @@ Settings must be available before creating or importing the first profile,
 without requiring the standalone SafeStore tools. See the
 [implementation milestones](safestore-plan.md).
 
+Encrypted file backups are available in **Settings → General → Account Backups**.
+Users choose a password and save a full backup of all accounts, including to a
+USB drive. Check verifies every archived file; Restore creates a separate folder
+and offers an explicit switch after offline core validation, retaining the previous
+folder. Restore is reachable before creating the first profile. A smaller export
+without message history remains a follow-up. See the [backup contract and current
+limits](../safestore/README.md).
+
 ## How Parla finds the engine
 
 In the default `Auto` mode, Parla resolves `deltachat-rpc-server` in this order,

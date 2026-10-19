@@ -77,6 +77,10 @@ namespace Dc {
             transport.stop ();
         }
 
+        public async void stop_gracefully (Cancellable? cancel = null) throws Error {
+            yield transport.stop_gracefully (cancel);
+        }
+
         public async Json.Node? call (string method, Json.Node params) throws Error {
             return yield transport.call (method, params);
         }

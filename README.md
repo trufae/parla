@@ -50,6 +50,7 @@ instructions are in [docs/website.md](docs/website.md).
 - **Webxdc mini-apps** &mdash; run and manage offline web apps shared in chats. This is experimental and available on supported Linux, macOS, and Windows builds; see [Webxdc apps](#webxdc-apps-experimental) for security and platform details.
 - **Choose the conversation layout** &mdash; use familiar bubbles, compact IRC-style lines, or workspace rows. The split view adapts to narrow and phone-sized windows, where the sidebar becomes a single-pane navigation view.
 - **Keyboard-first when you want it** &mdash; quickly switch chats, create conversations, search, navigate, and focus the composer without leaving the keyboard.
+- **Encrypted account backups** &mdash; create, check, and restore password-protected ZIP backups from Settings. Restore keeps the previous accounts folder. See [backup behavior and current limits](safestore/README.md).
 - **Desktop-aware** &mdash; configurable notifications, a tray icon for keeping Parla available in the background, and support for multiple accounts.
 - **Screen-reader support** &mdash; works with Orca on Linux; Windows and macOS builds ship GTK with the AccessKit backend so NVDA, JAWS and VoiceOver can read the interface. See [docs/accessibility.md](docs/accessibility.md).
 
@@ -147,7 +148,7 @@ To select multiple messages using the keyboard:
 
 ```sh
 # Install dependencies (Ubuntu; Webxdc is enabled by default)
-sudo apt install valac meson libgtk-4-dev libadwaita-1-dev libjson-glib-dev \
+sudo apt install valac meson libgtk-4-dev libadwaita-1-dev libjson-glib-dev libzip-dev \
   libwebkitgtk-6.0-dev
 
 # Install the RPC backend for source builds
@@ -164,9 +165,9 @@ switcher can resolve Parla's name and icon, especially on Wayland.
 <details>
 <summary>Other distros</summary>
 
-**Fedora:** `sudo dnf install vala meson gtk4-devel libadwaita-devel json-glib-devel`
+**Fedora:** `sudo dnf install vala meson gtk4-devel libadwaita-devel json-glib-devel libzip-devel`
 
-**Arch:** `sudo pacman -S vala meson gtk4 libadwaita json-glib`
+**Arch:** `sudo pacman -S vala meson gtk4 libadwaita json-glib libzip`
 
 **Flatpak:** `flatpak install io.github.trufae.Parla.flatpak`
 
@@ -187,7 +188,7 @@ Install the runtime alongside Parla; see
 <summary>macOS</summary>
 
 ```sh
-brew install meson ninja vala pkgconf gtk4 libadwaita json-glib librsvg webp-pixbuf-loader glib-networking adwaita-icon-theme
+brew install meson ninja vala pkgconf gtk4 libadwaita json-glib libzip librsvg webp-pixbuf-loader glib-networking adwaita-icon-theme
 
 # Install the RPC backend for source builds.
 pip install deltachat-rpc-server
@@ -212,6 +213,7 @@ Build inside an [MSYS2](https://www.msys2.org) UCRT64 shell:
 pacman -S zip mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-meson \
   mingw-w64-ucrt-x86_64-vala mingw-w64-ucrt-x86_64-gtk4 \
   mingw-w64-ucrt-x86_64-libadwaita mingw-w64-ucrt-x86_64-json-glib \
+  mingw-w64-ucrt-x86_64-libzip \
   mingw-w64-ucrt-x86_64-glib-networking mingw-w64-ucrt-x86_64-adwaita-icon-theme \
   mingw-w64-ucrt-x86_64-librsvg mingw-w64-ucrt-x86_64-webp-pixbuf-loader \
   mingw-w64-ucrt-x86_64-ntldd

@@ -11,7 +11,7 @@ export BREW_PREFIX
 export PATH="$BREW_PREFIX/bin:$BREW_PREFIX/sbin:$PATH"
 
 pkg_paths="$BREW_PREFIX/lib/pkgconfig:$BREW_PREFIX/share/pkgconfig"
-for formula in glib gtk4 libadwaita json-glib gdk-pixbuf pango cairo graphene librsvg glib-networking; do
+for formula in glib gtk4 libadwaita json-glib libzip gdk-pixbuf pango cairo graphene librsvg glib-networking; do
     opt="$BREW_PREFIX/opt/$formula"
     [ -d "$opt/lib/pkgconfig" ] && pkg_paths="$pkg_paths:$opt/lib/pkgconfig"
     [ -d "$opt/share/pkgconfig" ] && pkg_paths="$pkg_paths:$opt/share/pkgconfig"

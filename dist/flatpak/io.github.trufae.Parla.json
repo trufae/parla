@@ -56,6 +56,26 @@
             ]
         },
         {
+            "name": "libzip",
+            "buildsystem": "cmake-ninja",
+            "config-opts": [
+                "-DBUILD_TOOLS=OFF",
+                "-DBUILD_REGRESS=OFF",
+                "-DBUILD_EXAMPLES=OFF",
+                "-DBUILD_DOC=OFF",
+                "-DENABLE_OPENSSL=ON",
+                "-DENABLE_GNUTLS=OFF",
+                "-DENABLE_MBEDTLS=OFF"
+            ],
+            "sources": [
+                {
+                    "type": "archive",
+                    "url": "https://libzip.org/download/libzip-1.12.1.tar.xz",
+                    "sha256": "c40062022a1963c80573d48f6070792297cecd7c6bffe3aefcac0d8b9bee8913"
+                }
+            ]
+        },
+        {
             "name": "parla",
             "buildsystem": "meson",
             "sources": [

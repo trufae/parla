@@ -73,8 +73,13 @@ and [account removal](https://github.com/chatmail/core/blob/c41657d7fd2618234062
    the SafeStore Vala library. Per-store metadata, exclusive sessions, access-loss
    monitoring, and interrupted ZIP cleanup detection are implemented; RPC startup
    and Settings do not yet activate protection. Follow the remaining
-   [SafeStore milestones](safestore-plan.md): platform qualification, migration
-   and recovery, application integration, then release checks.
+   [SafeStore milestones](safestore-plan.md): Settings now exposes full AES-256
+   ZIP backup, archive checking, separate-folder restore and an explicit switch.
+   Linux disposable-core and Settings tests exercise these paths; native Windows,
+   macOS and removable-drive failure qualification is still required. Next are
+   platform qualification, migration and recovery, the rest of application
+   integration, and release checks. A smaller
+   no-history recovery export requires its own proven core import/export path.
    Wire unlock into startup before opening the account manager, and close the
    RPC process and file users before locking. Specify migration, cancellation,
    crash recovery and backup/restore behavior before exposing an encryption

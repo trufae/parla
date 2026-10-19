@@ -3,7 +3,7 @@ using Dc;
 private string test_executable;
 
 private int run_fake_server (string mode, string? environment_output = null) {
-    if (environment_output != null) {
+    if (environment_output != null && mode != "flush") {
         try {
             FileUtils.set_contents (environment_output,
                 Environment.get_variable ("LD_LIBRARY_PATH") ?? "");
@@ -21,6 +21,8 @@ private int run_fake_server (string mode, string? environment_output = null) {
             int64 id = request.get_int_member ("id");
             string method = request.get_string_member ("method");
 
+            if (mode == "flush" && method == "get_next_event") continue;
+            if (mode == "flush" && method == "save_draft") Thread.usleep (100000);
             var builder = new Json.Builder ();
             builder.begin_object ();
             builder.set_member_name ("jsonrpc");
@@ -51,7 +53,12 @@ private int run_fake_server (string mode, string? environment_output = null) {
             return 2;
         }
     }
-    return 0;
+    if (mode == "flush" && environment_output != null) {
+        Thread.usleep (200000);
+        try { FileUtils.set_contents (environment_output, "flushed on EOF"); }
+        catch (Error e) { return 3; }
+    }
+    return mode == "bad-exit" ? 7 : 0;
 }
 
 private string[] fake_server_argv (string mode) {
@@ -159,6 +166,48 @@ private async void stale_generation_async () throws Error {
     transport.stop ();
 }
 
+private async void graceful_shutdown_async () throws Error {
+    string root = DirUtils.make_tmp ("parla-graceful-test-XXXXXX");
+    string marker = Path.build_filename (root, "flushed");
+    var transport = new RpcTransport ();
+    int disconnects = 0;
+    transport.disconnected.connect (() => { disconnects++; });
+    yield transport.start ({test_executable, "--fake-rpc-server", "flush", marker});
+    bool saved = false;
+    transport.call.begin ("save_draft", Params.begin ().build (), (obj, result) => {
+        try { transport.call.end (result); saved = true; } catch (Error e) { Test.fail_printf ("%s", e.message); }
+    });
+    transport.call.begin ("get_next_event", Params.begin ().build (), (obj, result) => {
+        try { transport.call.end (result); } catch (Error e) { }
+    });
+    yield transport.stop_gracefully ();
+    assert_true (saved);
+    assert_false (transport.is_connected);
+    assert_cmpint (disconnects, CompareOperator.EQ, 0);
+    string contents;
+    FileUtils.get_contents (marker, out contents);
+    assert_cmpstr (contents, CompareOperator.EQ, "flushed on EOF");
+    yield transport.start (fake_server_argv ("bad-exit"));
+    try { yield transport.stop_gracefully (); assert_not_reached (); } catch (Error e) { }
+    yield transport.start (fake_server_argv ("stall"));
+    var cancel = new Cancellable ();
+    Timeout.add (100, () => { cancel.cancel (); return Source.REMOVE; });
+    try { yield transport.stop_gracefully (cancel); assert_not_reached (); } catch (IOError.CANCELLED e) { }
+    assert_false (transport.is_connected);
+    FileUtils.unlink (marker); DirUtils.remove (root);
+}
+
+private void test_graceful_shutdown () {
+    var loop = new MainLoop (); Error? failure = null;
+    graceful_shutdown_async.begin ((obj, result) => {
+        try { graceful_shutdown_async.end (result); } catch (Error e) { failure = e; }
+        loop.quit ();
+    });
+    loop.run ();
+    if (failure != null) Test.message ("%s", failure.message);
+    assert_true (failure == null);
+}
+
 private void test_nonblocking_write () {
     var loop = new MainLoop ();
     Error? failure = null;
@@ -257,6 +306,7 @@ public int main (string[] args) {
 
     test_executable = args[0];
     Test.init (ref args);
+    Test.add_func ("/rpc-transport/graceful-shutdown", test_graceful_shutdown);
     Test.add_func ("/rpc-transport/nonblocking-write", test_nonblocking_write);
     Test.add_func ("/rpc-transport/serialized-writes", test_serialized_writes);
     Test.add_func ("/rpc-transport/stale-generation", test_stale_generation);

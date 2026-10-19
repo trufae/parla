@@ -36,7 +36,7 @@ jobs:
             libglib2.0-dev \
             libgtk-4-dev \
             libadwaita-1-dev \
-            libjson-glib-dev \
+            libjson-glib-dev libzip-dev \
             libwebkitgtk-6.0-dev
           # Ubuntu's Meson 1.3 suppresses all warnings in Vala-generated C.
           # Match the warning checks used by the packaging jobs.
@@ -81,7 +81,7 @@ jobs:
             libglib2.0-dev \
             libgtk-4-dev \
             libadwaita-1-dev \
-            libjson-glib-dev \
+            libjson-glib-dev libzip-dev \
             libwebkitgtk-6.0-dev \
             make \
             dpkg-dev
@@ -145,7 +145,7 @@ jobs:
             libglib2.0-dev \
             libgtk-4-dev \
             libadwaita-1-dev \
-            libjson-glib-dev \
+            libjson-glib-dev libzip-dev \
             make \
             curl \
             python3
@@ -228,7 +228,7 @@ jobs:
             pkgconf \
             gtk4 \
             libadwaita \
-            json-glib \
+            json-glib libzip \
             librsvg \
             webp-pixbuf-loader \
             glib-networking \
@@ -394,6 +394,7 @@ jobs:
             mingw-w64-ucrt-x86_64-gtk4
             mingw-w64-ucrt-x86_64-libadwaita
             mingw-w64-ucrt-x86_64-json-glib
+            mingw-w64-ucrt-x86_64-libzip
             mingw-w64-ucrt-x86_64-glib-networking
             mingw-w64-ucrt-x86_64-adwaita-icon-theme
             mingw-w64-ucrt-x86_64-librsvg

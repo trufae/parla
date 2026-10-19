@@ -31,6 +31,8 @@ src/rpc_installer.vala
 src/rpc_transport.vala
 src/search_results_view.vala
 src/settings_dialog.vala
+src/account_backup.vala
+src/backup_dialog.vala
 src/sticker_manager_dialog.vala
 src/sticker_picker.vala
 src/sticker_store.vala

@@ -2625,6 +2625,19 @@ namespace Dc {
                 quote_msg_id, voice);
         }
 
+        public async void prepare_for_backup () throws Error {
+            if (!draft_rpc_available && compose_bar.has_unsent_content ())
+                throw new IOError.NOT_SUPPORTED (_("Save or send your draft before backing up with this Chatmail Core version"));
+            if (!draft_save_pending) return;
+            cancel_pending_draft_timer ();
+            var result = yield save_draft_snapshot (rpc, chat_id, pending_draft_text,
+                pending_draft_file_path, pending_draft_file_name,
+                pending_draft_quote_msg_id, pending_draft_voice);
+            if (result != DraftSaveResult.SAVED)
+                throw new IOError.FAILED (_("Could not save a draft. Your conversation has been kept open; try again before backing up."));
+            clear_pending_draft_snapshot ();
+        }
+
         private async void load_draft () {
             if (!draft_rpc_available || rpc.account_id <= 0) return;
             try {

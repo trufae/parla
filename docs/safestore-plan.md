@@ -7,9 +7,11 @@ unlocking and locking during its normal lifecycle. An optional SafeStore CLI
 uses the same library for diagnostics and recovery; normal operation does not
 depend on running that CLI or the standalone GUI.
 
-The first milestone is the library build and public API. Backend qualification,
-recoverable migrations, and Parla integration follow as separate changes. The
-initial library integration must not automatically alter existing account data.
+The library and lifecycle foundations are complete. A first implementation of
+encrypted backup and restore from Settings (milestone 2.5) now lets users save
+and test a recovery copy before experimenting with storage protection. Backend
+qualification, recoverable migrations, and the rest of the Settings integration
+follow. Backup does not require enabling encryption of the working accounts.
 
 ## Architecture and ownership
 
@@ -107,6 +109,7 @@ remain unpublished until their transaction guarantees can be implemented.
 | `ChangePlan` | Source generation, destination method/location, required space, recovery copy, and consequences of enable/migrate/disable/restore. Revalidated before execution. |
 | `OperationProgress` | Phase, completed/total bytes when known, and whether cancellation can currently be honored. |
 | `OperationResult` | Committed state, verification outcome, retained recovery copies, and remaining cleanup. Distinguishes a successful switch from complete cleanup. |
+| `BackupOptions` / `BackupInfo` | Explicit destination, full/recovery-only scope, format version, included accounts, size estimate, source generation, and exclusions. Recovery-only is unavailable until the core supports a qualified export/import path. |
 | `SecretValue` | Existing wipeable password container, with documented ownership and lifetime during asynchronous calls. |
 | `CredentialStore` | Optional remember, retrieve, and forget operations, keyed by store identity rather than only its current path. |
 
@@ -123,7 +126,7 @@ Expose these operations through typed asynchronous Vala methods:
 | `change_method` | Execute a verified copy to a new store, then commit the selected method. Changing an ID alone is not migration. |
 | `disable` | Migrate into verified ordinary storage while retaining a recoverable encrypted source until cleanup is explicitly handled. |
 | `verify` | Return a verification report at a stated depth. Distinguish format detection, successful decryption, file verification, and account/database validation. |
-| `backup` / `restore` | Produce and validate a recoverable backup using supported formats. Restore into a fresh destination before replacing the active store. |
+| `backup` / `inspect_backup` / `verify_backup` / `restore` | Create a portable password-encrypted ZIP, inspect its encrypted manifest after unlocking, and report archive versus account-level verification separately. Restore into a fresh destination before replacing the active store. Available independently of working-store protection. |
 | `inspect_recovery` / `recover` | Describe an interrupted transaction and resume or restore a validated state without guessing which directory is authoritative. |
 | `cleanup_recovery_copy` | Remove an identified obsolete copy only after rechecking that a verified replacement exists. Never silently delete it during ordinary inspection. |
 
@@ -216,6 +219,160 @@ missing tools, conflicting owners, unexpected mounts, and lost access leave
 the original data and recovery state intact. Legacy ZipCrypto remains an
 explicit compatibility method and is not the recommended protection choice.
 
+## Milestone 2.5 Deliver encrypted backup and restore first
+
+The first implementation is available in **Settings → General → Account Backups**:
+full AES-256 ZIP creation, full archive verification, separate-folder restore,
+offline account-opening validation and an explicit durable switch retaining the
+old folder. SafeStore owns this through the public `Backups` API; Parla drains
+pending RPC writes and awaits successful core exit before creating a snapshot.
+A native lease also rejects a concurrent core or SafeStore owner. Publication
+never replaces an existing backup. The encrypted versioned manifest includes
+paths, file sizes and SHA-256 hashes. See the [current API and limits](../safestore/README.md).
+
+Verified locally: Linux archive roundtrips and failure cases, shutdown flushing,
+a disposable two-account real-core roundtrip with a draft and attachment, the Settings restore flow before
+first account creation, and the application backup/reconnect/restore/switch path.
+Windows/macOS implementations and packaging are present; native runtime,
+removable-media/power-loss tests, independent archive review and deeper database
+integrity validation remain release gates. Owned encrypted-session integration,
+previewing backup/account inventory before extraction, and a structured resumable
+transaction report remain follow-ups. No-history export remains separate.
+
+The design requirements below remain the target for full milestone qualification;
+they must not be read as claims that every remaining item is already delivered.
+Keep the original milestone numbers so existing references remain meaningful.
+
+### Settings flow and backup scope
+
+Provide **Settings → Account Protection → Backups** with **Create Encrypted
+Backup**, **Check Backup**, and **Restore Backup**. These actions work with an
+ordinary accounts folder as well as an unlocked SafeStore session. Restore is
+also reachable before the first account is created. A locked encrypted source
+must be unlocked through Parla before producing this portable backup.
+
+Create Backup defaults to all accounts under the effective `DC_ACCOUNTS_PATH`.
+The UI shows the scope and estimated size, asks for a new backup password and
+confirmation, then opens the native Save dialog for a dated `.zip` file anywhere
+the user chooses, including a USB drive. The backup password is independent of
+the working-store password. No CLI, external archive application, or FUSE runtime
+is required. Password loss means the encrypted backup cannot be restored; state
+this beside the password fields without implying a recovery code exists.
+
+| Choice | Intended contents and promise |
+| --- | --- |
+| **Full backup** (default, implement first) | Every account's identity, credentials, keys, configuration, contacts, chats, locally stored messages, attachments and application data needed to restore it. Preserve manager metadata for the account set. Exclude only explicitly identified regenerable Parla caches and runtime lock files; account blobs and database WAL files are not generic cache. Messages or attachments absent locally cannot be promised in the backup. |
+| **Account access only — no message history** (follow-up) | A much smaller recovery package with the account identity, credentials/transports, keys and configuration/security state required to resume account access. No local message history, message attachments or regenerable caches. Specify and test what happens to contacts, verified relationships, groups and avatars before offering this choice. Never describe it as a full backup or promise that old history can be downloaded again. |
+
+Keep the second choice unavailable until its restore semantics are proven. It
+must not delay the full-backup feature. A cache-size estimate must distinguish
+regenerable UI data from irreplaceable account messages and attachments.
+
+### Existing support and format choice
+
+Parla currently exposes device transfer through `provide_backup`, `get_backup_qr`
+and `get_backup`; it has no file-export/import UI. The
+[core RPC API](https://js.jsonrpc.delta.chat/classes/RawClient.html#exportBackup)
+also exposes `export_backup`, `import_backup` and self-key export/import.
+The inspected core checkout, commit `7e070efc28f576a187226166434e3efe336f8829`,
+exports a full account database and its blobs as TAR. Its backup passphrase
+protects the database; blob files are appended separately to the TAR. Self-key
+export contains keys, not a complete account configuration. See
+[the inspected export implementation](https://github.com/chatmail/core/blob/7e070efc28f576a187226166434e3efe336f8829/src/imex.rs).
+No no-history export option was found in these API/implementation paths. Probe
+the actual core version/capabilities rather than assuming all installed engines
+have the same behavior.
+
+Use a distinct, versioned portable backup format with encryption covering the
+whole payload, including attachments and the manifest. Do not reuse SafeStore's
+weak ZipCrypto storage backend or rely on the core's database passphrase to
+protect the outer archive. Evaluate linked
+[libzip](https://libzip.org/) behind the Vala API: it supports Linux, Windows,
+macOS and ZIP64, with
+[AES-256 ZIP encryption](https://libzip.org/documentation/zip_file_set_encryption/).
+Qualify encryption, password handling and decoding on all three platforms;
+fail if the required encryption is unavailable, with no plaintext/ZipCrypto
+fallback. The backup adapter can be qualified independently of mounted-store
+backends and must not accidentally enable their currently disabled Windows
+mutations.
+
+Use generic outer entry names, keeping account names, paths and the file
+inventory inside the encrypted payload. The manifest records format/core
+versions, full versus recovery-only scope, accounts, exclusions, and content
+hashes. Total archive size and generic ZIP metadata remain visible. Restoration
+must be supported directly by Parla regardless of the OS archive utility's AES
+support. Test ZIP64 for large stores and preflight the destination filesystem's
+single-file limit (for example a FAT32 USB drive); explain size limitations
+before starting rather than silently making an incomplete backup.
+
+### Consistent creation and verifiable restoration
+
+1. Acquire account-store ownership, serialize against migration/lock, and stop
+   account writers through an application coordinator. For the initial exact
+   accounts-folder backup, gracefully stop and await the RPC process before
+   reading SQLite files and sidecars. Keep the source stable for the entire read.
+   A later core-assisted live export requires a separately tested consistency
+   contract across every account; copying a running database directory is not it.
+2. Stream the complete snapshot into encrypted output. Never put a plaintext
+   intermediate archive on the USB drive. Any necessary local staging must be
+   private, tracked and covered by cleanup/recovery, with its protection state
+   visible. Prefer streaming to avoid a second full plaintext copy.
+3. Create a fresh temporary encrypted file beside the requested destination.
+   Keep existing backups intact. Honor cancellation before publication, handle
+   full disks and drive removal, and never change or prune the source accounts.
+4. Close and synchronize output using qualified OS/filesystem primitives, then
+   reopen it with the password and verify authentication, completeness and
+   content hashes before publishing the final filename. Reopen the published
+   file as well; do not mark an interrupted or unverified file as a good backup.
+5. `Check Backup` verifies the archive without changing the live store. A deeper
+   restore test extracts into a private disposable location and checks account
+   enumeration, keys and database integrity with core networking disabled.
+   Report **archive verified** and **restore tested** as separate results.
+6. `Restore Backup` unlocks and inspects the file, shows its date, accounts and
+   scope, and restores to a fresh private destination. Reject unsafe paths,
+   symlinks, duplicate/colliding entries, excessive extraction sizes, missing
+   inventory entries and unsupported versions. Open the restored accounts
+   offline for validation; never restore over the active source tree.
+7. Offer an explicit switch to the validated restored store, retaining the
+   previous store and recording the switch recoverably. Rebind local paths and
+   ownership metadata; do not restore stale session locks or an `unlocked`
+   journal as a live session. This initial restore/switch path is required with
+   backup; milestone 4 will reuse and extend it for encryption migrations.
+
+SafeStore owns archive IO, encryption, manifests, verification and restore
+staging through the direct Vala API. Parla owns Settings, file/password dialogs,
+quiescing every writer and account-level validation. Backup of plain accounts
+must not create metadata claiming that working-store encryption is enabled.
+Backup availability is an independent capability; it must not depend on having
+a qualified CryFS/FUSE mount implementation installed.
+
+### Qualify the smaller recovery package separately
+
+Prefer an upstream-supported no-history export/import contract. Determine the
+minimum required state for each supported account type/core version, including
+all configured transports and any credentials that cannot be reconstructed from
+keys. Key export alone is insufficient. Do not implement this by deleting SQL
+rows, dropping arbitrary blob folders, or invoking normal message deletion on
+the user's accounts. Even pruning an isolated copy can leave broken references
+or queued deletion/synchronization actions; any fallback needs a versioned,
+core-aware transformation and dedicated restore tests.
+
+Use disposable relay and classic-email accounts to demonstrate restoration on a
+fresh installation: the identity/key fingerprints remain the same, necessary
+authentication is restored or clearly requested, and sending/receiving succeeds.
+Test verified contacts and group behavior explicitly. Account for revocable or
+expired provider credentials and distinguish local restore verification from
+an online connectivity test. Never contact servers while merely inspecting or
+test-restoring a user's backup.
+
+Acceptance: full backups of multiple accounts, attachments and database sidecars
+restore on Windows, Linux and macOS, independently of the source storage method.
+Test wrong passwords, tampering, truncation, full disks, unplugged media, process
+death, cancellation, ZIP64, destination limits and existing backup preservation.
+The source remains usable after every failed backup. Full backup creation,
+verification and restoration ship together; the recovery-only option is enabled
+only when its narrower account-recovery promise passes the separate tests.
+
 ## Milestone 3 Qualify platform implementations
 
 Keep the public API identical across platforms. Separate encryption format
@@ -259,6 +416,8 @@ changes must work between every advertised pair of available methods.
 ## Milestone 4 Implement migration and recovery transactions
 
 Use one transaction engine for enable, change method, disable, and restore.
+Extend the backup restore/switch machinery from milestone 2.5; keep its portable
+archive format independent of the active working-store encryption method.
 
 1. Hold exclusive ownership, stop writers, inspect source state, and check
    available space for the destination plus retained recovery data.
@@ -311,7 +470,8 @@ temporary-file locations and move sensitive ones into protected storage.
 External exports and copies need clear scope in the user-facing explanation.
 
 Expose Account Protection in Settings with enable, status/check, lock/unlock,
-method change, disable, backup/recovery, and remember-password controls. Keep
+method change, disable, backup/recovery, and remember-password controls. Retain
+the backup actions introduced in milestone 2.5 in this same section. Keep
 backend internals under details. Separate protection enabled from currently
 unlocked, and distinguish unverified status from a completed integrity check.
 Method changes and disabling display their preflight plan and retain the old

@@ -135,6 +135,10 @@ namespace Dc.Platform {
         win32_process_free (process);
     }
 
+    public int process_wait (void* process, uint timeout_ms) {
+        return win32_process_wait_sync (process, timeout_ms);
+    }
+
     public class RunResult {
         public int status;
         public string output = "";

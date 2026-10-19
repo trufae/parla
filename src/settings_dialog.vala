@@ -486,6 +486,35 @@ namespace Dc {
             save_accounts_path ("");
         }
 
+        // Switching after restore must not silently succeed if persistence fails.
+        public void save_restored_accounts_path (string path) throws Error {
+            var key = new KeyFile ();
+            try { key.load_from_file (get_config_path (), KeyFileFlags.NONE); }
+            catch (FileError.NOENT e) { }
+            key.set_string ("General", "accounts_path", path);
+            if (DirUtils.create_with_parents (Path.get_dirname (get_config_path ()), 0700) != 0)
+                throw new IOError.FAILED (_("Could not create the settings folder"));
+            try {
+                FileUtils.set_contents_full (get_config_path (), key.to_data (), -1,
+                    FileSetContentsFlags.CONSISTENT | FileSetContentsFlags.DURABLE, 0600);
+            } catch (Error e) {
+                // A flush error can follow publication. Follow the file that is
+                // actually selected so this process and the next start agree.
+                var observed = new KeyFile ();
+                bool published = false;
+                try {
+                    observed.load_from_file (get_config_path (), KeyFileFlags.NONE);
+                    published = observed.get_string ("General", "accounts_path") == path;
+                } catch (Error ignored) { }
+                if (published) {
+                    accounts_path = path;
+                    throw new IOError.FAILED (_("The restored folder was selected, but durable settings storage could not be confirmed: %s").printf (e.message));
+                }
+                throw e;
+            }
+            accounts_path = path;
+        }
+
         public void save_rpc_server_source (RpcServerSource v) {
             rpc_server_source = v;
             save_int ("rpc_server_source", (int) v);
@@ -749,12 +778,31 @@ namespace Dc {
             build_behavior_section (general_page);
             build_accessibility_section (general_page);
             build_links_group (general_page);
+            if (SafeStore.Backups.available) build_backups_section (general_page);
             if (!Platform.is_android ()) build_notifications_section (general_page);
 
             build_chatmail_core_section (advanced_page);
             build_network_section (advanced_page);
             build_webxdc_section (advanced_page);
             build_factory_reset_section (advanced_page);
+        }
+
+        private void build_backups_section (Adw.PreferencesPage page) {
+            var group = settings_group (page, _("Account Backups"));
+            group.description = _("Password-protected copies of all accounts, messages, and attachments. Save them to your computer or a USB drive.");
+            string[] labels = { _("Create Encrypted Backup…"), _("Check Backup…"), _("Restore Backup…") };
+            for (int i = 0; i < labels.length; i++) {
+                BackupAction action = (BackupAction) i;
+                var row = action_row (labels[i]);
+                row.activatable = true;
+                row.add_suffix (new Gtk.Image.from_icon_name ("go-next-symbolic"));
+                row.activated.connect (() => {
+                    var dialog = new BackupDialog (app_window, action);
+                    dialog.closed.connect (() => { close (); });
+                    dialog.present (this);
+                });
+                group.add (row);
+            }
         }
 
         private void build_appearance_section (Adw.PreferencesPage page) {

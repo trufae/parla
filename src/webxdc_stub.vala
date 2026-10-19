@@ -1,6 +1,7 @@
 /* No-op stand-in for webxdc.vala, compiled when -Dwebxdc=false so the rest
  * of the code links without WebKitGTK. */
 namespace Dc.Webxdc {
+    public void close_all () { }
 
     public const bool AVAILABLE = false;
 
