@@ -2,13 +2,14 @@ project('safestore', ['vala', 'c'], version: '0.1.0', meson_version: '>= 0.59.0'
 
 safestore_desktop = host_machine.system() in ['linux', 'darwin', 'windows']
 safestore_install_devel = get_option('install_devel')
+if host_machine.system() == 'windows'
+  add_project_arguments('--define=WINDOWS', language: 'vala')
+endif
 subdir('lib')
 
 frontend_sources = files('frontend/accounts_path.vala', 'frontend/settings.vala')
 frontend_args = []
-if host_machine.system() == 'windows'
-  frontend_args += '--define=WINDOWS'
-else
+if host_machine.system() != 'windows'
   frontend_args += ['--pkg', 'posix']
 endif
 
