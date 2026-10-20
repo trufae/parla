@@ -37,6 +37,7 @@ src/sticker_manager_dialog.vala
 src/sticker_picker.vala
 src/sticker_store.vala
 src/storage_quota.vala
+src/touch_text_menu.vala
 src/tray_icon.vala
 src/tray_macos.m
 src/video_player.vala
