@@ -1,4 +1,4 @@
-# Shared by the standalone wrapper and Parla. Keep platform flags local:
+# Shared by the standalone wrapper and Parla, which supply WINDOWS globally.
 # SafeStore uses DARWIN, while Parla uses MACOS.
 safestore_cc = meson.get_compiler('c')
 safestore_vala_args = []
@@ -10,7 +10,6 @@ safestore_c_args = safestore_cc.get_supported_arguments([
 safestore_core_deps = [dependency('glib-2.0', version: '>= 2.66'), dependency('gio-2.0')]
 safestore_system = host_machine.system()
 if safestore_system == 'windows'
-  safestore_vala_args += '--define=WINDOWS'
   safestore_core_deps += safestore_cc.find_library('advapi32')
 else
   safestore_vala_args += ['--pkg', 'posix']
