@@ -592,6 +592,7 @@ endif
 
 if not android and not get_option('sailfish')
   safestore_api_test = executable('safestore-api-test',
-    'safestore/tests/public_api_test.vala', dependencies: safestore_dep)
+    'safestore/tests/public_api_test.vala', dependencies: safestore_dep,
+    c_args: safestore_c_args)
   test('safestore-public-api', safestore_api_test)
 endif
