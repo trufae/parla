@@ -405,6 +405,10 @@ private void test_unread_calls () {
 }
 
 public int main (string[] args) {
+#if MACOS
+    if (args.length == 3 && args[1] == "--video-thumbnail-ui")
+        return run_video_thumbnail_ui_test (args[2]);
+#endif
     if (args.length == 4 && args[1] == "--backup-ui")
         return run_backup_ui_test (args[2], args[3]);
     if (args.length > 2 && args[1] == "--accounts-settings") {

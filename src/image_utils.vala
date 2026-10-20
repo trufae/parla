@@ -12,7 +12,11 @@ namespace Dc {
         private static extern async Gdk.Pixbuf? generate (string path,
                                                         Cancellable? cancellable = null);
 
-        public static async void load (string path, owned WeakRef picture_ref) {
+        public static async void load (string path, Gtk.Picture? target) {
+            // Keep the weak ref local: valac clears owned struct parameters
+            // both on return and when freeing the async task (double clear).
+            WeakRef picture_ref = WeakRef (target);
+            target = null; // Do not keep a removed preview alive across yield.
             if (cache == null) cache = new HashTable<string, Gdk.Texture> (
                 str_hash, str_equal);
             Gdk.Texture? texture = cache.lookup (path);

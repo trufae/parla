@@ -1234,7 +1234,7 @@ namespace Dc {
             if (msg.has_local_file) {
 #if MACOS
                 preview = new Gtk.Picture ();
-                VideoThumbnail.load.begin (msg.file_path, WeakRef (preview));
+                VideoThumbnail.load.begin (msg.file_path, preview);
 #else
                 var media = Gtk.MediaFile.for_filename (msg.file_path);
                 media.set_muted (true);
