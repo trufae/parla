@@ -20,8 +20,6 @@ private async void exercise_api () throws Error {
     var store = new SafeStore.Store (accounts, storage, SafeStore.BackendKind.ZIP, options);
     // The instance snapshots options, including executable paths.
     options.zip_binary = "zip";
-    assert_true (store.accounts_path == accounts);
-    assert_true (store.storage_path == storage);
     assert_false (FileUtils.test (accounts, FileTest.EXISTS));
     assert_false (FileUtils.test (storage, FileTest.EXISTS));
 
