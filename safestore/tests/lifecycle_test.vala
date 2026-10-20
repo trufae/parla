@@ -104,7 +104,7 @@ private async void test_sessions () throws Error {
     assert_true (session.secret.peek () == "");
     var saved = yield SafeStore.Store.open_existing (accounts);
     assert_nonnull (saved);
-    assert_true (saved.backend == SafeStore.BackendKind.ZIP && saved.storage_path == storage);
+    assert_true (saved.backend == SafeStore.BackendKind.ZIP && saved.storage_path == store.storage_path);
     status = yield saved.inspect ();
     assert_true (status.store_id == session.store_id && status.generation > session.generation);
     try { yield saved.unlock (wrong); assert_not_reached (); }
