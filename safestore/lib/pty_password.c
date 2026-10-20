@@ -198,12 +198,12 @@ safestore_run_pty_password (gchar **argv,
                                      "ZIP did not request a password");
                 break;
             }
-            continue;
         }
 
-        ssize_t count = read (master, buffer, sizeof buffer);
-        if (count > 0) {
-            g_string_append_len (text, buffer, count);
+        // A prompt can arrive before echo is disabled. Recheck it on timeout.
+        ssize_t count = polled > 0 ? read (master, buffer, sizeof buffer) : 0;
+        if (count > 0 || polled == 0) {
+            if (count > 0) g_string_append_len (text, buffer, count);
             gchar *lower = g_ascii_strdown (text->str, text->len);
             gboolean rejected = strstr (lower, "reenter:") != NULL
                 || strstr (lower, "incorrect password") != NULL;

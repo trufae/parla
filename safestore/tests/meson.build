@@ -10,3 +10,10 @@ test('unit', unit)
 public_api = executable('public-api-test', 'public_api_test.vala',
   dependencies: safestore_dep, c_args: safestore_c_args)
 test('public-api', public_api)
+
+if host_machine.system() != 'windows'
+  pty_password = executable('pty-password-test', 'pty_password_test.c', '../lib/pty_password.c',
+    dependencies: safestore_core_deps, include_directories: safestore_inc,
+    c_args: safestore_c_args)
+  test('pty-password', pty_password, timeout: 5)
+endif
