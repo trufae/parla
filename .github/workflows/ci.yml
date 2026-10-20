@@ -61,7 +61,7 @@ jobs:
 
       - name: Check Android text menu fallback
         if: matrix.a11y == true
-        run: xvfb-run -a env GTK_A11Y=none G_DEBUG=fatal-warnings builddir/core-compat-test --touch-text-menu-ui
+        run: dbus-run-session -- xvfb-run -a env GTK_A11Y=none G_DEBUG=fatal-warnings builddir/core-compat-test --touch-text-menu-ui
 
       - name: Build and test standalone SafeStore
         if: matrix.a11y == true
