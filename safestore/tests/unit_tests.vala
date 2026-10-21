@@ -5,6 +5,7 @@ int main (string[] args) {
     register_accounts_path_tests ();
     register_backend_tests ();
     register_backup_tests ();
+    register_aes_zip_tests ();
     register_lifecycle_tests (args[0]);
     return Test.run ();
 }

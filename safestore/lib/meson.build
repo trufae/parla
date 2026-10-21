@@ -55,7 +55,7 @@ safestore_archive_lib = static_library('safestore-backup', 'backup_archive.c',
 safestore_core_deps += declare_dependency(link_with: safestore_archive_lib)
 
 safestore_sources = files(
-  'backups.vala', 'backup_archive.vapi',
+  'backups.vala', 'archive_snapshot.vala', 'aes_zip_backend.vala', 'backup_archive.vapi',
   'metadata.vala', 'accounts_location.vala', 'zip_format.vala', 'lease.vapi', 'lease.c',
   'store.vala', 'settings.vala', 'backend.vala', 'path_policy.vala',
   'secret_memory.vapi', 'secret_value.vala', 'zip_backend.vala',

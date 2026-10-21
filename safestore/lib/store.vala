@@ -20,6 +20,7 @@ namespace SafeStore {
         public int idle_minutes { get; set; default = 0; }
         public bool allow_executable_files { get; set; default = false; }
         public MountMode mount_mode { get; set; default = MountMode.MANAGED; }
+        public uint64 maximum_archive_bytes { get; set; default = 1024ULL * 1024 * 1024 * 1024; }
     }
 
     public enum AccessState { ABSENT, PLAIN, LOCKED, UNLOCKED, RECOVERY_REQUIRED, UNKNOWN }
@@ -113,7 +114,7 @@ namespace SafeStore {
         public Store (string accounts_path, string storage_path, BackendKind backend,
                       StoreOptions? options = null) throws Error {
             var config = options ?? new StoreOptions ();
-            if (backend != BackendKind.CRYFS && backend != BackendKind.ZIP) {
+            if (backend != BackendKind.CRYFS && backend != BackendKind.ZIP && backend != BackendKind.ZIP_AES) {
                 throw new StoreError.INVALID_ARGUMENT ("Unknown backend");
             }
             if (config.idle_minutes != 0) {
@@ -182,7 +183,7 @@ namespace SafeStore {
         public EraseInfo removal_info () { return PlaintextEraser.inspect (settings); }
 
         private bool has_other_candidate () {
-            string[] candidates = { accounts_path + ".zip", accounts_path + ".vault" };
+            string[] candidates = { accounts_path + ".zip", accounts_path + ".aes.zip", accounts_path + ".vault" };
             foreach (string candidate in candidates) {
                 if (candidate != storage_path && (FileUtils.test (candidate, FileTest.EXISTS)
                         || FileUtils.test (candidate, FileTest.IS_SYMLINK))) return true;
@@ -192,6 +193,7 @@ namespace SafeStore {
 
         private void validate_format () throws Error {
             if (backend == BackendKind.ZIP) ZipFormat.validate (storage_path);
+            else if (backend == BackendKind.ZIP_AES) ArchiveSnapshot.inspect_store (storage_path);
             else if (!Vault.is_encrypted (storage_path)) throw new StoreError.NOT_A_VAULT ("No CryFS configuration was found");
         }
 
@@ -212,6 +214,8 @@ namespace SafeStore {
                 bool candidate = FileUtils.test (storage_path, FileTest.EXISTS)
                     || FileUtils.test (storage_path, FileTest.IS_SYMLINK);
                 if (candidate) { validate_format (); result.recognized = true; }
+                if (candidate && saved == null && backend == BackendKind.ZIP_AES)
+                    throw new StoreError.RECOVERY_REQUIRED ("AES ZIP store metadata is missing");
                 if (has_other_candidate ()) throw new StoreError.RECOVERY_REQUIRED ("Multiple storage candidates require recovery");
                 if (saved != null && saved.phase != "locked" && !(owned && saved.phase == "unlocked")) {
                     throw new StoreError.RECOVERY_REQUIRED ("Storage has an active or interrupted operation: %s", saved.phase);
@@ -342,7 +346,8 @@ namespace SafeStore {
                     BackendInfo info = yield probe (cancellable);
                     if (!info.supports (operation)) throw new StoreError.NOT_SUPPORTED ("%s", info.status);
                 }
-                if (!locking && (secret.peek ().length == 0 || secret.peek ().contains ("\n") || secret.peek ().contains ("\r"))) {
+                if (!locking && (secret.peek ().length == 0 || (backend != BackendKind.ZIP_AES
+                        && (secret.peek ().contains ("\n") || secret.peek ().contains ("\r"))))) {
                     throw new StoreError.WRONG_PASSWORD ("A nonempty password without line breaks is required");
                 }
                 if (backend == BackendKind.ZIP) {
@@ -369,6 +374,8 @@ namespace SafeStore {
                             }
                             PathPolicy.validate_mountpoint (accounts_path);
                         } else {
+                            if (metadata == null && backend == BackendKind.ZIP_AES)
+                                throw new StoreError.RECOVERY_REQUIRED ("AES ZIP store metadata is missing");
                             validate_format ();
                             ZipBackend.ensure_locked_destination (accounts_path);
                         }
@@ -391,6 +398,15 @@ namespace SafeStore {
                         if (operation == Operation.CREATE_EMPTY) ZipBackend.create (settings, secret.peek ());
                         else if (!locking) ZipBackend.unlock (settings, secret.peek (), ref rollback_safe);
                         else ZipBackend.lock (settings, secret.peek (), () => {
+                            metadata.generation++;
+                            save_phase ("cleanup");
+                        }, ref rollback_safe);
+                    });
+                } else if (backend == BackendKind.ZIP_AES) {
+                    yield run_worker (() => {
+                        if (operation == Operation.CREATE_EMPTY) AesZipBackend.create (settings, metadata, secret.peek ());
+                        else if (!locking) AesZipBackend.unlock (settings, metadata, secret.peek (), ref rollback_safe);
+                        else AesZipBackend.lock (settings, metadata, secret.peek (), () => {
                             metadata.generation++;
                             save_phase ("cleanup");
                         }, ref rollback_safe);

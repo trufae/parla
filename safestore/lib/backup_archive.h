@@ -20,5 +20,6 @@ gchar *safestore_archive_read_file (SafeStoreArchive *self, const gchar *name,
     const gchar *destination, guint64 expected_size, GError **error);
 gboolean safestore_backup_sync (const gchar *path, gboolean directory, GError **error);
 gboolean safestore_backup_publish (const gchar *source, const gchar *destination, GError **error);
+gboolean safestore_archive_replace (const gchar *source, const gchar *destination, GError **error);
 gboolean safestore_backup_mkdir (const gchar *path, GError **error);
 gchar *safestore_backup_resolve_directory (const gchar *path, GError **error);

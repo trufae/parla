@@ -74,11 +74,15 @@ private async void exercise_api () throws Error {
     assert_true (DirUtils.remove (root) == 0);
 }
 
-private async void exercise_zip () throws Error {
+private async void exercise_zip (SafeStore.BackendKind kind) throws Error {
     string root = DirUtils.make_tmp ("safestore-api-zip-XXXXXX");
     string accounts = Path.build_filename (root, "accounts");
     string storage = Path.build_filename (root, "store.zip");
-    var store = new SafeStore.Store (accounts, storage, SafeStore.BackendKind.ZIP);
+    var options = new SafeStore.StoreOptions ();
+    if (kind == SafeStore.BackendKind.ZIP_AES) {
+        options.zip_binary = options.unzip_binary = Path.build_filename (root, "no-external-tools");
+    }
+    var store = new SafeStore.Store (accounts, storage, kind, options);
     var info = yield store.probe ();
     if (!info.available) {
         Test.skip (info.status);
@@ -133,18 +137,18 @@ private async void exercise_zip () throws Error {
     } finally { secret.clear (); }
 }
 
-private async void exercise (bool zip) throws Error {
-    if (zip) yield exercise_zip ();
+private async void exercise (int backend) throws Error {
+    if (backend != 0) yield exercise_zip (backend == 1 ? SafeStore.BackendKind.ZIP : SafeStore.BackendKind.ZIP_AES);
     else yield exercise_api ();
 }
 
-private void run_test (bool zip) {
+private void run_test (int backend) {
     // Catch accidental use of the default context in worker completions.
     var context = new MainContext ();
     context.push_thread_default ();
     var loop = new MainLoop (context);
     Error? failure = null;
-    exercise.begin (zip, (obj, result) => {
+    exercise.begin (backend, (obj, result) => {
         assert_true (context.is_owner ());
         try { exercise.end (result); }
         catch (Error error) { failure = error; }
@@ -157,7 +161,8 @@ private void run_test (bool zip) {
 
 int main (string[] args) {
     Test.init (ref args);
-    Test.add_func ("/safestore/public-api", () => run_test (false));
-    Test.add_func ("/safestore/public-zip-roundtrip", () => run_test (true));
+    Test.add_func ("/safestore/public-api", () => run_test (0));
+    Test.add_func ("/safestore/public-zip-roundtrip", () => run_test (1));
+    Test.add_func ("/safestore/public-aes-zip-roundtrip", () => run_test (2));
     return Test.run ();
 }

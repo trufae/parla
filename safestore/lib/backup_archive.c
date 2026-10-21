@@ -312,6 +312,35 @@ gboolean safestore_backup_mkdir (const gchar *path, GError **error)
     return ok;
 }
 
+/* Working-store commits may replace the previous generation. Portable backups
+ * always use the separate no-replace publish operation above. Both paths must
+ * be on the same filesystem; never fall back to a non-atomic copy/delete. */
+gboolean safestore_archive_replace (const gchar *source, const gchar *destination, GError **error)
+{
+    if (!safestore_backup_sync (source, FALSE, error)) return FALSE;
+    gboolean ok;
+#ifdef G_OS_WIN32
+    gunichar2 *from = g_utf8_to_utf16 (source, -1, NULL, NULL, error);
+    if (!from) return FALSE;
+    gunichar2 *to = g_utf8_to_utf16 (destination, -1, NULL, NULL, error);
+    if (!to) { g_free (from); return FALSE; }
+    ok = MoveFileExW ((LPCWSTR) from, (LPCWSTR) to,
+        MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH);
+    g_free (from); g_free (to);
+#else
+    ok = g_rename (source, destination) == 0;
+#endif
+    if (!ok) {
+        g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_FAILED,
+            "Could not atomically replace the encrypted store");
+        return FALSE;
+    }
+    gchar *parent = g_path_get_dirname (destination);
+    ok = safestore_backup_sync (parent, TRUE, error);
+    g_free (parent);
+    return ok;
+}
+
 gchar *safestore_backup_resolve_directory (const gchar *path, GError **error)
 {
     gchar *result = NULL;

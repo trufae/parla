@@ -19,11 +19,16 @@ private void test_backend_listing () {
     var settings = test_settings ();
     var cryfs = find_backend (settings, "cryfs");
     var zip = find_backend (settings, "zip");
+    var aes = find_backend (settings, "zip-aes");
     assert_true (cryfs.name.length > 0);
     assert_true (cryfs.protection.contains ("XChaCha20"));
     assert_true (zip.name.contains ("ZIP"));
     assert_true (zip.protection.contains ("Weak"));
     assert_true (zip.operation.contains ("plaintext"));
+    assert_true (aes.protection.contains ("AES-256"));
+    assert_true (aes.operation.contains ("plaintext"));
+    assert_true (aes.kind == SafeStore.BackendKind.ZIP_AES);
+    assert_false (aes.supports (SafeStore.Operation.CHANGE_BACKEND));
 }
 
 private void test_selection () {

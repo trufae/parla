@@ -13,6 +13,15 @@ and test a recovery copy before experimenting with storage protection. Backend
 qualification, recoverable migrations, and the rest of the Settings integration
 follow. Backup does not require enabling encryption of the working accounts.
 
+The native AES-256 working-store backend is also implemented as `zip-aes`, using
+the same archive codec as portable backups with a separate authenticated store
+identity/generation manifest. It supports empty-store creation and managed
+unlock/lock, with no external ZIP or FUSE dependency. Legacy `zip` stores keep
+their format. This completes the first backend step of the encrypted-folder
+experiment; resumable recovery, Parla lifecycle/Settings integration, and native
+platform qualification remain pending. Windows store mutations remain gated.
+See the [current format and limits](../safestore/README.md#native-aes-256-working-stores).
+
 ## Architecture and ownership
 
 | Component | Responsibility |

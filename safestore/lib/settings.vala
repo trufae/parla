@@ -12,6 +12,7 @@ namespace SafeStore {
         public bool secure_delete;
         public bool allow_executable_files;
         public MountMode mount_mode;
+        public uint64 maximum_archive_bytes;
 
         public Settings (string accounts, string storage, BackendKind kind,
                          StoreOptions options) throws Error {
@@ -27,6 +28,7 @@ namespace SafeStore {
             secure_delete = options.secure_delete;
             allow_executable_files = options.allow_executable_files;
             mount_mode = options.mount_mode;
+            maximum_archive_bytes = options.maximum_archive_bytes;
         }
     }
 }

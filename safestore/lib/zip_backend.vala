@@ -371,7 +371,7 @@ namespace SafeStore {
             }
         }
 
-        private static void validate_plain_accounts (string path) throws Error {
+        public static void validate_plain_accounts (string path) throws Error {
             string clean = PathPolicy.normalize (path);
             if (!FileUtils.test (clean, FileTest.IS_DIR)
                     || FileUtils.test (clean, FileTest.IS_SYMLINK)) {
@@ -428,7 +428,7 @@ namespace SafeStore {
             }
         }
 
-        private static void remove_locked_destination (string path) throws Error {
+        public static void remove_locked_destination (string path) throws Error {
             string clean = PathPolicy.normalize (path);
             if (!FileUtils.test (clean, FileTest.EXISTS)) return;
             string sentinel = Path.build_filename (clean, LOCKED_NAME);
@@ -441,7 +441,7 @@ namespace SafeStore {
             }
         }
 
-        private static void create_locked_destination (string path) throws Error {
+        public static void create_locked_destination (string path) throws Error {
             PathPolicy.ensure_private_directory (path);
             string sentinel = Path.build_filename (path, LOCKED_NAME);
             FileUtils.set_contents (sentinel, LOCKED_CONTENT);

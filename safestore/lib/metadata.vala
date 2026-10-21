@@ -9,7 +9,8 @@ namespace SafeStore {
 
         public Metadata (Settings settings) {
             id = Uuid.string_random ();
-            backend = settings.backend == "zip" ? BackendKind.ZIP : BackendKind.CRYFS;
+            backend = settings.backend == "zip" ? BackendKind.ZIP
+                : settings.backend == "zip-aes" ? BackendKind.ZIP_AES : BackendKind.CRYFS;
             accounts = settings.mount_path;
             storage = settings.vault_path;
         }
@@ -34,7 +35,7 @@ namespace SafeStore {
                 result.storage = file.get_string ("Store", "storage");
                 result.generation = file.get_uint64 ("Store", "generation");
                 result.phase = file.get_string ("Store", "phase");
-                string expected = result.backend == BackendKind.ZIP ? "safestore-zip-v1" : "cryfs-1";
+                string expected = result.backend.format ();
                 if (!Uuid.string_is_valid (result.id)
                         || file.get_string ("Store", "format") != expected
                         || !(result.phase in new string[] {
@@ -56,7 +57,7 @@ namespace SafeStore {
             file.set_integer ("Store", "schema", 1);
             file.set_string ("Store", "id", id);
             file.set_string ("Store", "backend", backend.id ());
-            file.set_string ("Store", "format", backend == BackendKind.ZIP ? "safestore-zip-v1" : "cryfs-1");
+            file.set_string ("Store", "format", backend.format ());
             file.set_string ("Store", "accounts", accounts);
             file.set_string ("Store", "storage", storage);
             file.set_uint64 ("Store", "generation", generation);

@@ -7,7 +7,8 @@ namespace SafeStore {
 SafeStore always works on the Delta Chat accounts location: the plaintext
 path is $DC_ACCOUNTS_PATH when set, otherwise the accounts path the Parla
 JSON-RPC server will use. CryFS stores "<accounts>.vault"; ZIP stores
-"<accounts>.zip". Run "safestore status" to see the resolved paths.
+"<accounts>.zip"; AES ZIP stores "<accounts>.aes.zip".
+Run "safestore status" to see the resolved paths.
 
 Commands:
   backends       List encryption backends, availability, and security model
@@ -22,6 +23,7 @@ Commands:
 
 Options:
       --backend NAME      Select a method for a new store; existing stores keep theirs
+                          cryfs, zip-aes (native AES-256), zip (legacy ZipCrypto)
   -b, --binary PATH       Main executable for the selected backend
       --unzip-binary PATH unzip executable for the ZIP backend
       --shred              Best-effort overwrite of ZIP plaintext before removal
@@ -204,7 +206,7 @@ in plain text; the optional keyring entry lives in the OS secret service.
                 store.accounts_path, AccountsPath.source ()));
             report ("storage: " + store.storage_path);
             report (status.detail);
-            if (settings.backend == "zip") report (store.removal_info ().status);
+            if (settings.backend != "cryfs") report (store.removal_info ().status);
             return status.recovery_required ? 4 : (status.recognized ? 0 : 1);
         }
 

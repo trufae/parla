@@ -54,9 +54,52 @@ honored before publication; a published backup is never reported as cancelled.
 If directory synchronization fails after publication, the error identifies the
 saved backup and states that durable storage could not be confirmed.
 
+## Native AES-256 working stores
+
+`BackendKind.ZIP_AES` (`zip-aes`) provides experimental create-empty, unlock,
+and lock operations through the existing `Store`/`Session` API. It uses native
+libzip AES-256, sharing the portable backup inventory, hashing, and validation
+code. It requires neither `zip`/`unzip` nor FUSE. Parla's working-store Settings
+and startup/shutdown integration are still pending; portable backups remain
+available independently.
+
+The versioned `safestore-zip-aes-v1` format has an encrypted `store.ini` manifest
+containing the store ID, generation, original paths, sizes, and SHA-256 hashes.
+Data members have opaque numeric names. Every member is AES-256 encrypted and
+authenticated; entry counts, compressed sizes, and ZIP container metadata remain
+visible. The format is distinct from portable backups and legacy ZipCrypto
+vaults. Existing stores keep their recorded method; no implicit conversion occurs.
+
+Unlock authenticates the full archive before extracting into a private staging
+directory, then verifies the extracted contents before exposing the working
+folder. Lock checks the core's exclusive lease, writes and verifies a fresh
+archive, atomically publishes it, verifies the published archive, and only then
+removes plaintext. The encrypted manifest must match the recorded store ID and
+generation. Missing metadata requires recovery rather than a new store identity.
+
+An unlocked archive store is a full plaintext working copy. A crash can leave
+that copy or staging data on disk. The existing phase journal detects interrupted
+operations and refuses unsafe retries; resumable recovery and retained-generation
+migrations are the next step. Removing plaintext cannot erase SSD history or
+snapshots. All callers must stop writers and await core exit before locking.
+
+The codec supports ZIP64 and the same portable-path rules as backups: ordinary
+files/directories only, no ambiguous case/Unicode names, links, or special files.
+Limits are 100,000 inventory entries, a 32 MiB manifest, and 1 TiB of file contents
+by default; `StoreOptions.maximum_archive_bytes` configures the content limit.
+The runtime `accounts.lock` is excluded. Empty stores are supported before the
+first account is created.
+
+The native codec is portable across the three desktop builds. Windows **Store
+lifecycle operations remain disabled** until private paths and durable metadata
+transitions are qualified; backend discovery reports this explicitly. Native
+macOS/Windows runtime qualification and broader power-loss testing remain release
+gates. Linux tests cover roundtrips, format separation, ownership, wrong passwords,
+tampering, generation mismatch, failed snapshots, and interrupted cleanup.
+
 The optional standalone tools manage storage holding the Delta Chat accounts.
-CryFS is the current filesystem adapter; legacy ZIP is an explicitly weaker
-compatibility option. Platform qualification is still required before release.
+CryFS is the filesystem adapter; AES ZIP is the native archive adapter; legacy
+ZIP remains an explicitly weaker compatibility option.
 Parla and the standalone tools share this `DC_ACCOUNTS_PATH` precedence:
 
 1. `$DC_ACCOUNTS_PATH`, when set and non-empty;
@@ -67,7 +110,8 @@ Parla and the standalone tools share this `DC_ACCOUNTS_PATH` precedence:
 Parla passes explicit paths to the library. The shared `AccountsLocation`
 resolver takes explicit environment/configuration/default inputs. CryFS
 mounts its decrypted view there and stores ciphertext in `<accounts>.vault`.
-ZIP extracts plaintext there and stores its archive in `<accounts>.zip`.
+AES ZIP extracts plaintext there and stores its archive in `<accounts>.aes.zip`;
+legacy ZIP uses `<accounts>.zip`.
 These standalone-tool locations follow the resolved accounts path; `safestore status` prints the selected
 backend, paths, availability, and state.
 
@@ -112,10 +156,10 @@ The source is split into:
   and enforces mode `0700` before mounting.
 - Stores non-secret tool preferences separately from per-store identity.
 - Refuses ambiguous legacy layouts and interrupted operations until recovery.
-- With the ZIP backend, writes and verifies a new encrypted archive before
+- With either ZIP backend, writes and verifies a new encrypted archive before
   atomically replacing the previous archive and removing plaintext. Unlocking
   happens in a private staging directory before the accounts path is exposed.
-- Passes ZIP passwords through a private pseudo-terminal only after terminal
+- Passes legacy ZIP passwords through a private pseudo-terminal only after terminal
   echo is disabled. It never uses Info-ZIP's insecure `-P` argument.
 - Leaves a non-secret `.safestore-locked` placeholder at the accounts path so
   Delta Chat cannot silently create a fresh account manager while ZIP data is
@@ -145,7 +189,9 @@ Runtime requirements:
   but storage mutations remain unavailable until mount identity, private ACLs,
   replacement durability, and backend operation are qualified in milestone 3.
   An existing drive or directory never proves an encrypted mount.
-- ZIP backend on Unix: Info-ZIP-compatible `zip` and `unzip`, both discoverable
+- AES ZIP: libzip with AES-256 encryption and decryption support, linked at build
+  time. No external archive executable or filesystem runtime is needed.
+- Legacy ZIP backend on Unix: Info-ZIP-compatible `zip` and `unzip`, both discoverable
   in `PATH` (or configured explicitly), plus pseudo-terminal support. The ZIP
   backend is unavailable on Windows for now because SafeStore cannot provide
   its required private interactive password channel there.
@@ -199,6 +245,7 @@ safestore create         # new vault, prompts for a password twice
 safestore mount          # unlock; prompts without echoing
 safestore --allow-exec mount   # permit direct execution inside the mount
 safestore umount         # verify an already-locked store; cannot close another owner
+safestore --backend zip-aes create  # new native AES-256 store; no implicit migration
 safestore --backend zip create
 safestore --backend zip --shred mount
 DC_ACCOUNTS_PATH=/elsewhere/accounts safestore mount   # alternate store
@@ -232,7 +279,8 @@ library never opens a terminal, displays a dialog, or invokes the SafeStore CLI:
 - both hand the value to the library through `SecretValue`, whose mutable
   allocation is locked against swapping when supported and explicitly wiped
   after use;
-- the library then passes it to CryFS over a private stdin pipe or to Info-ZIP
+- the native AES backend passes it directly to libzip; external backends pass
+  it to CryFS over a private stdin pipe or to Info-ZIP
   over the private pseudo-terminal. It never places it in argv or the
   environment.
 
@@ -264,7 +312,7 @@ the standalone adapter explicitly preserves its previous CryFS state location.
 | --- | --- |
 | `Store.list_backends()` / `probe()` | Async tool/version discovery. `BackendInfo` describes availability, limitations and supported `Operation` flags. Every current adapter is experimental. |
 | `Store.open_existing(accounts, options)` | Reads per-store metadata and returns the recorded backend/location, or null for an unrecorded location. Never guesses another backend. |
-| `Store.inspect()` | Async, read-only classification with `AccessState`, store ID/generation, recovery state, and session ownership. ZIP recognition validates an encrypted SafeStore ZIP32 structure; CryFS recognition finds its configuration. Neither authenticates ciphertext; `integrity_verified` remains false. |
+| `Store.inspect()` | Async, read-only classification with `AccessState`, store ID/generation, recovery state, and session ownership. AES ZIP recognition checks the container layout and encryption methods; legacy ZIP recognition validates its ZIP32 structure; CryFS recognition finds its configuration. None authenticates ciphertext; `integrity_verified` remains false. |
 | `Store.create_empty(secret)` | Creates only at an empty location, records its identity, and returns an owned `Session`. Does not migrate existing accounts. |
 | `Store.unlock(secret)` | Returns a `Session` after verifying access. Imports an unambiguous locked legacy store. Never creates missing ciphertext or overwrites conflicting plaintext. |
 | `Store.lock(secret?)` | Uses the session's retained secret; a different supplied password is rejected. The caller must first stop and await all writers. Releases ownership only after verified closure. Repeating a successful lock is harmless; abandoned sessions need recovery. |
@@ -427,9 +475,9 @@ direct execution of programs from the vault, but does not prevent an
 interpreter from reading a script stored there. Callers must explicitly set
 `allow_executable_files` (or pass CLI option `--allow-exec`) to opt out.
 
-### ZIP compatibility backend
+### Legacy ZIP compatibility backend
 
-The ZIP backend uses the legacy ZipCrypto encryption implemented by the
+The `zip` backend uses the legacy ZipCrypto encryption implemented by the
 external `zip` program. It is substantially weaker than CryFS: file names,
 directory layout, sizes, timestamps, and other archive metadata are visible,
 and ZipCrypto is not modern authenticated encryption. A strong password does

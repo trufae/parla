@@ -112,14 +112,14 @@ namespace SafeStore {
             var backend_group = new Adw.PreferencesGroup ();
             backend_group.title = "Encryption backend";
             backend_group.description =
-                "CryFS is strongly preferred. ZIP is a weaker compatibility "
-                + "option that exposes file names and extracts plaintext while unlocked.";
+                "CryFS provides a mounted filesystem. AES-256 ZIP needs no filesystem runtime "
+                + "and extracts a plaintext working copy. Legacy ZIP is a weaker compatibility option.";
             backend_combo = new Adw.ComboRow ();
             backend_combo.title = "Backend";
             backend_combo.model = new Gtk.StringList ({
-                "CryFS (recommended)", "ZIP archive (weaker)"
+                "CryFS", "AES-256 ZIP archive", "Legacy ZIP (weaker)"
             });
-            backend_combo.selected = settings.backend == "zip" ? 1 : 0;
+            backend_combo.selected = settings.backend == "zip-aes" ? 1 : settings.backend == "zip" ? 2 : 0;
             backend_group.add (backend_combo);
             page.append (backend_group);
 
@@ -282,7 +282,7 @@ namespace SafeStore {
             });
             backend_combo.notify["selected"].connect (() => {
                 if (store_recorded || (controller != null && controller.process_active)) return;
-                settings.backend = backend_combo.selected == 1 ? "zip" : "cryfs";
+                settings.backend = backend_combo.selected == 1 ? "zip-aes" : backend_combo.selected == 2 ? "zip" : "cryfs";
                 save_settings ();
                 sync_backend_fields ();
                 check_backend.begin ();
@@ -488,7 +488,7 @@ namespace SafeStore {
                 var status = yield current.inspect ();
                 if (generation != backend_check_generation) return;
                 store_recorded = status.has_metadata;
-                backend_combo.selected = settings.backend == "zip" ? 1 : 0;
+                backend_combo.selected = settings.backend == "zip-aes" ? 1 : settings.backend == "zip" ? 2 : 0;
                 sync_backend_fields ();
                 backend_ready = info.available && !status.recovery_required;
                 backend_row.subtitle = info.status;
@@ -572,22 +572,24 @@ namespace SafeStore {
             zip_binary_row.sensitive = !busy && !active;
             unzip_binary_row.sensitive = !busy && !active;
             backend_combo.sensitive = !busy && !active && !store_recorded;
-            shred_switch.sensitive = settings.backend == "zip" && !busy && !active;
+            shred_switch.sensitive = settings.backend != "cryfs" && !busy && !active;
             idle_spin.sensitive = false;
         }
 
         private void sync_backend_fields () {
-            bool zip = settings.backend == "zip";
+            bool zip = settings.backend != "cryfs";
+            bool legacy = settings.backend == "zip";
             vault_row.subtitle = settings.vault_path;
             vault_row.title = zip ? "Encrypted ZIP archive"
                                   : "Encrypted vault folder";
             mount_row.title = zip ? "Plaintext accounts folder"
                                   : "Decrypted accounts folder";
             binary_row.visible = !zip;
-            zip_binary_row.visible = zip;
-            unzip_binary_row.visible = zip;
+            zip_binary_row.visible = legacy;
+            unzip_binary_row.visible = legacy;
             idle_spin.sensitive = false;
-            backend_row.title = zip ? "ZIP archive backend (weaker)"
+            backend_row.title = legacy ? "Legacy ZIP backend (weaker)"
+                : zip ? "AES-256 ZIP backend"
                                     : "CryFS backend";
         }
 

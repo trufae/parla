@@ -26,6 +26,8 @@ namespace SafeStore {
         public static bool sync (string path, bool directory) throws GLib.Error;
         [CCode (cname = "safestore_backup_publish")]
         public static bool publish (string source, string destination) throws GLib.Error;
+        [CCode (cname = "safestore_archive_replace")]
+        public static bool replace (string source, string destination) throws GLib.Error;
         [CCode (cname = "safestore_backup_mkdir")]
         public static bool make_private_directory (string path) throws GLib.Error;
         [CCode (cname = "safestore_backup_resolve_directory")]

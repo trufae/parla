@@ -3,19 +3,33 @@ namespace SafeStore {
     /** A stable backend identifier saved in settings and accepted by the CLI. */
     public enum BackendKind {
         CRYFS,
-        ZIP;
+        ZIP,
+        ZIP_AES;
 
         public string id () {
-            return this == ZIP ? "zip" : "cryfs";
+            switch (this) {
+            case ZIP: return "zip";
+            case ZIP_AES: return "zip-aes";
+            default: return "cryfs";
+            }
         }
 
         public static BackendKind parse (string value) throws Error {
             switch (value.ascii_down ()) {
             case "cryfs": return CRYFS;
             case "zip": return ZIP;
+            case "zip-aes": return ZIP_AES;
             default:
                 throw new StoreError.BACKEND (
                     "Unknown encryption backend: %s", value);
+            }
+        }
+
+        internal string format () {
+            switch (this) {
+            case ZIP: return "safestore-zip-v1";
+            case ZIP_AES: return "safestore-zip-aes-v1";
+            default: return "cryfs-1";
             }
         }
     }
@@ -70,6 +84,7 @@ namespace SafeStore {
         public static BackendInfo[] list (Settings settings) {
             BackendInfo[] result = {};
             result += inspect_cryfs (settings);
+            result += inspect_aes_zip ();
             result += inspect_zip (settings);
             return result;
         }
@@ -81,8 +96,24 @@ namespace SafeStore {
 
         public static BackendInfo inspect (Settings settings,
                                            BackendKind kind) {
-            return kind == BackendKind.ZIP
-                ? inspect_zip (settings) : inspect_cryfs (settings);
+            switch (kind) {
+            case BackendKind.ZIP: return inspect_zip (settings);
+            case BackendKind.ZIP_AES: return inspect_aes_zip ();
+            default: return inspect_cryfs (settings);
+            }
+        }
+
+        private static BackendInfo inspect_aes_zip () {
+            bool available = Archive.available ();
+            string status = available ? "Available: native libzip AES-256"
+                : "Unavailable: this build has no AES-256 archive support";
+#if WINDOWS
+            available = false;
+            status = "Unavailable: Windows store lifecycle transitions are not qualified";
+#endif
+            return new BackendInfo (BackendKind.ZIP_AES, "AES-256 ZIP archive", available, status,
+                "AES-256 encryption and authentication of file contents and the file-name manifest. Entry counts and compressed sizes remain visible.",
+                "Extracts a private plaintext working copy while unlocked and verifies a new archive before removing that copy when locking. No external ZIP tools or FUSE runtime are needed.");
         }
 
         public static bool executable_available (string binary) {

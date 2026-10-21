@@ -9,14 +9,21 @@ private void backup_test_cleanup (File file) throws Error {
     file.delete ();
 }
 
-private async void backup_real_core_async (string server) throws Error {
+private async void backup_real_core_async (string server, bool encrypted = false) throws Error {
     string root = DirUtils.make_tmp ("parla-core-backup-XXXXXX");
     string source = Path.build_filename (root, "accounts");
     string restored = Path.build_filename (root, "restored");
     string archive = Path.build_filename (root, "backup.zip");
     var rpc = new Dc.RpcClient ();
     var secret = new SafeStore.SecretValue ("disposable core backup password");
+    SafeStore.Store? store = null;
     try {
+        if (encrypted) {
+            store = new SafeStore.Store (source, source + ".aes.zip", SafeStore.BackendKind.ZIP_AES);
+            var backend = yield store.probe ();
+            if (!backend.available) { Test.skip (backend.status); return; }
+            yield store.create_empty (secret);
+        }
         yield rpc.start ({server}, root, source);
         int first = yield rpc.add_account ();
         int second = yield rpc.add_account ();
@@ -31,9 +38,16 @@ private async void backup_real_core_async (string server) throws Error {
         yield rpc.stop_gracefully ();
         int[] ids = Dc.AccountBackup.validate_layout (source);
         assert_cmpint (ids.length, CompareOperator.EQ, 2);
-        var backups = new SafeStore.Backups ();
-        yield backups.create (source, archive, secret);
-        yield backups.restore (archive, restored, secret);
+        if (encrypted) {
+            yield store.lock ();
+            store = yield SafeStore.Store.open_existing (source);
+            yield store.unlock (secret);
+            restored = source;
+        } else {
+            var backups = new SafeStore.Backups ();
+            yield backups.create (source, archive, secret);
+            yield backups.restore (archive, restored, secret);
+        }
         ids = Dc.AccountBackup.validate_layout (restored);
         assert_cmpint (ids.length, CompareOperator.EQ, 2);
         yield rpc.start ({server}, root, restored);
@@ -47,21 +61,22 @@ private async void backup_real_core_async (string server) throws Error {
         assert_cmpstr (attachment_contents, CompareOperator.EQ, "attachment preserved through core backup");
         assert_true (Filename.canonicalize (draft.file_path).has_prefix (restored + Path.DIR_SEPARATOR_S));
         yield rpc.stop_gracefully ();
-        // The independent original still opens with both account identities.
+        // The original (or the unlocked store) remains usable after reopening.
         yield rpc.start ({server}, root, source);
         assert_cmpstr (yield rpc.get_config ("addr", first), CompareOperator.EQ, "first@example.invalid");
         yield rpc.stop_gracefully ();
+        if (store != null) yield store.lock ();
     } finally {
         rpc.stop (); secret.clear ();
         try { backup_test_cleanup (File.new_for_path (root)); } catch (Error e) { Test.fail_printf ("%s", e.message); }
     }
 }
 
-private void test_backup_core () {
+private void test_backup_core (bool encrypted = false) {
     string? server = Environment.get_variable ("PARLA_TEST_CORE");
     if (server == null) { Test.skip ("Set PARLA_TEST_CORE to a local core binary for the offline roundtrip"); return; }
     var loop = new MainLoop (); Error? failure = null;
-    backup_real_core_async.begin (server, (obj, result) => {
+    backup_real_core_async.begin (server, encrypted, (obj, result) => {
         try { backup_real_core_async.end (result); } catch (Error e) { failure = e; }
         loop.quit ();
     });
@@ -92,7 +107,8 @@ private void test_backup_account_paths () {
 
 void register_account_backup_tests () {
     Test.add_func ("/backup/account-metadata", test_backup_account_paths);
-    Test.add_func ("/backup/real-core-roundtrip", test_backup_core);
+    Test.add_func ("/backup/real-core-roundtrip", () => test_backup_core ());
+    Test.add_func ("/storage/aes-real-core-roundtrip", () => test_backup_core (true));
 }
 
 private async void backup_ui_async (string server, string root) throws Error {

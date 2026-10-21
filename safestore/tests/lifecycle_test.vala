@@ -66,11 +66,11 @@ private void test_native_lease () {
     } catch (Error error) { Test.fail_printf ("Lease: %s", error.message); }
 }
 
-private async void test_sessions () throws Error {
+private async void test_sessions (SafeStore.BackendKind kind = SafeStore.BackendKind.ZIP) throws Error {
     string root = DirUtils.make_tmp ("safestore-session-XXXXXX");
     string accounts = Path.build_filename (root, "accounts");
     string storage = Path.build_filename (root, "store.zip");
-    var store = new SafeStore.Store (accounts, storage, SafeStore.BackendKind.ZIP);
+    var store = new SafeStore.Store (accounts, storage, kind);
     if (!(yield store.probe ()).available) { Test.skip ("ZIP runtime unavailable"); remove_test_tree (File.new_for_path (root)); return; }
     var secret = new SafeStore.SecretValue ("disposable lifecycle password");
     var session = yield store.create_empty (secret);
@@ -78,7 +78,7 @@ private async void test_sessions () throws Error {
     assert_true (Uuid.string_is_valid (session.store_id));
     var status = yield store.inspect ();
     assert_true (status.has_metadata && status.session_owned && !status.recovery_required);
-    var competitor = new SafeStore.Store (accounts, storage, SafeStore.BackendKind.ZIP);
+    var competitor = new SafeStore.Store (accounts, storage, kind);
     try { yield competitor.unlock (secret); assert_not_reached (); }
     catch (SafeStore.StoreError.BUSY error) { }
     var child = new Subprocess (SubprocessFlags.NONE, lifecycle_executable, "--probe-lease",
@@ -104,7 +104,7 @@ private async void test_sessions () throws Error {
     assert_true (session.secret.peek () == "");
     var saved = yield SafeStore.Store.open_existing (accounts);
     assert_nonnull (saved);
-    assert_true (saved.backend == SafeStore.BackendKind.ZIP && saved.storage_path == store.storage_path);
+    assert_true (saved.backend == kind && saved.storage_path == store.storage_path);
     status = yield saved.inspect ();
     assert_true (status.store_id == session.store_id && status.generation > session.generation);
     try { yield saved.unlock (wrong); assert_not_reached (); }
@@ -127,10 +127,10 @@ private async void test_sessions () throws Error {
     remove_test_tree (File.new_for_path (root));
 }
 
-private async void test_lost_directory () throws Error {
+private async void test_lost_directory (SafeStore.BackendKind kind = SafeStore.BackendKind.ZIP) throws Error {
     string root = DirUtils.make_tmp ("safestore-loss-XXXXXX");
     string accounts = Path.build_filename (root, "accounts");
-    var store = new SafeStore.Store (accounts, accounts + ".zip", SafeStore.BackendKind.ZIP);
+    var store = new SafeStore.Store (accounts, accounts + ".zip", kind);
     if (!(yield store.probe ()).available) { Test.skip ("ZIP runtime unavailable"); remove_test_tree (File.new_for_path (root)); return; }
     var secret = new SafeStore.SecretValue ("disposable lifecycle password");
     var session = yield store.create_empty (secret);
@@ -151,12 +151,12 @@ private async void test_lost_directory () throws Error {
     remove_test_tree (File.new_for_path (root));
 }
 
-private async void crash_during_cleanup (string root) throws Error {
+private async void crash_during_cleanup (string root, SafeStore.BackendKind kind) throws Error {
     string accounts = Path.build_filename (root, "accounts");
     var options = new SafeStore.StoreOptions ();
     options.secure_delete = true;
     options.shred_binary = Path.build_filename (root, "crash-shred");
-    var store = new SafeStore.Store (accounts, accounts + ".zip", SafeStore.BackendKind.ZIP, options);
+    var store = new SafeStore.Store (accounts, accounts + ".zip", kind, options);
     var secret = new SafeStore.SecretValue ("disposable lifecycle password");
     yield store.create_empty (secret);
     FileUtils.set_contents (Path.build_filename (accounts, "first"), "first complete account");
@@ -165,20 +165,20 @@ private async void crash_during_cleanup (string root) throws Error {
     assert_not_reached ();
 }
 
-private async void test_interrupted_cleanup () throws Error {
+private async void test_interrupted_cleanup (SafeStore.BackendKind kind = SafeStore.BackendKind.ZIP) throws Error {
 #if WINDOWS
     Test.skip ("ZIP is unavailable on Windows");
 #else
     string root = DirUtils.make_tmp ("safestore-crash-XXXXXX");
     string accounts = Path.build_filename (root, "accounts");
     string storage = accounts + ".zip";
-    var store = new SafeStore.Store (accounts, storage, SafeStore.BackendKind.ZIP);
+    var store = new SafeStore.Store (accounts, storage, kind);
     if (!(yield store.probe ()).available) { Test.skip ("ZIP runtime unavailable"); remove_test_tree (File.new_for_path (root)); return; }
     string tool = Path.build_filename (root, "crash-shred");
     // Only the disposable child that invokes this helper is killed.
     FileUtils.set_contents (tool, "#!/bin/sh\nkill -KILL \"$PPID\"\nexit 1\n");
     FileUtils.chmod (tool, 0700);
-    var child = new Subprocess (SubprocessFlags.NONE, lifecycle_executable, "--crash-cleanup", root);
+    var child = new Subprocess (SubprocessFlags.NONE, lifecycle_executable, "--crash-cleanup", root, kind.id ());
     yield child.wait_async ();
     assert_false (child.get_successful ());
     var metadata = SafeStore.Metadata.load (Path.get_dirname (store.metadata_path));
@@ -197,9 +197,10 @@ private async void test_interrupted_cleanup () throws Error {
     assert_true (archive_digest (storage) == before);
     // Validate the retained archive in a separate disposable destination.
     string recovered = Path.build_filename (root, "recovered");
-    var settings = new SafeStore.Settings (recovered, storage, SafeStore.BackendKind.ZIP, new SafeStore.StoreOptions ());
+    var settings = new SafeStore.Settings (recovered, storage, kind, new SafeStore.StoreOptions ());
     bool rollback_safe = false;
-    SafeStore.ZipBackend.unlock (settings, secret.peek (), ref rollback_safe);
+    if (kind == SafeStore.BackendKind.ZIP_AES) SafeStore.AesZipBackend.unlock (settings, metadata, secret.peek (), ref rollback_safe);
+    else SafeStore.ZipBackend.unlock (settings, secret.peek (), ref rollback_safe);
     string contents;
     FileUtils.get_contents (Path.build_filename (recovered, "first"), out contents);
     assert_true (contents == "first complete account");
@@ -214,7 +215,10 @@ private async void lifecycle_case (int index) throws Error {
     if (index == 0) yield test_sessions ();
     else if (index == 1) yield test_lost_directory ();
     else if (index == 2) yield test_interrupted_cleanup ();
-    else yield test_legacy_and_metadata ();
+    else if (index == 3) yield test_legacy_and_metadata ();
+    else if (index == 4) yield test_sessions (SafeStore.BackendKind.ZIP_AES);
+    else if (index == 5) yield test_lost_directory (SafeStore.BackendKind.ZIP_AES);
+    else yield test_interrupted_cleanup (SafeStore.BackendKind.ZIP_AES);
 }
 
 private async void test_legacy_and_metadata () throws Error {
@@ -348,7 +352,7 @@ int lifecycle_child (string[] args) {
     if (args[1] == "--crash-cleanup") {
         var loop = new MainLoop ();
         int result = 1;
-        crash_during_cleanup.begin (args[2], (obj, res) => {
+        crash_during_cleanup.begin (args[2], args.length > 3 && args[3] == "zip-aes" ? SafeStore.BackendKind.ZIP_AES : SafeStore.BackendKind.ZIP, (obj, res) => {
             try { crash_during_cleanup.end (res); }
             catch (Error error) { stderr.printf ("%s\n", error.message); result = 2; }
             loop.quit ();
@@ -368,6 +372,9 @@ void register_lifecycle_tests (string executable) {
     Test.add_func ("/lifecycle/access-loss", () => run_lifecycle_case (1));
     Test.add_func ("/lifecycle/interrupted-cleanup", () => run_lifecycle_case (2));
     Test.add_func ("/lifecycle/legacy-metadata", () => run_lifecycle_case (3));
+    Test.add_func ("/lifecycle/aes-sessions", () => run_lifecycle_case (4));
+    Test.add_func ("/lifecycle/aes-access-loss", () => run_lifecycle_case (5));
+    Test.add_func ("/lifecycle/aes-interrupted-cleanup", () => run_lifecycle_case (6));
     Test.add_func ("/lifecycle/zip-recognition", test_zip_recognition);
     Test.add_func ("/lifecycle/backend-requirements", test_backend_requirements);
 }

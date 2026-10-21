@@ -7,6 +7,7 @@ namespace SafeStore {
         public string vault_path {
             owned get {
                 if (recorded_storage != null) return recorded_storage;
+                if (backend == "zip-aes") return AccountsPath.mount_path () + ".aes.zip";
                 return backend == "zip"
                     ? AccountsPath.zip_path () : AccountsPath.vault_path ();
             }
@@ -29,6 +30,7 @@ namespace SafeStore {
                 recorded_storage = null;
             }
             if (binary_override != null) {
+                if (backend == "zip-aes") throw new StoreError.INVALID_ARGUMENT ("AES ZIP uses the native library, not an external executable");
                 if (backend == "zip") zip_binary = binary_override;
                 else cryfs_binary = binary_override;
             }
