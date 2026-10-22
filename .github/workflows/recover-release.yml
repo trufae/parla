@@ -16,6 +16,11 @@ on:
         description: Successful main CI run at the same commit with a debug APK
         required: true
         type: string
+      signed_run_id:
+        description: Optional completed recovery run with successful macOS signing to reuse
+        required: false
+        default: ''
+        type: string
 
 permissions:
   actions: read
@@ -38,6 +43,7 @@ jobs:
           RELEASE_TAG: ${{ inputs.release_tag }}
           SOURCE_RUN_ID: ${{ inputs.source_run_id }}
           ANDROID_RUN_ID: ${{ inputs.android_run_id }}
+          SIGNED_RUN_ID: ${{ inputs.signed_run_id }}
         run: |
           python3 - <<'PYTHON'
           import json
@@ -73,12 +79,31 @@ jobs:
                               'parla-x86_64-x86_64.flatpak', 'parla-aarch64-aarch64.flatpak'}
               if not required <= names:
                   raise SystemExit(f'Missing or expired artifacts: {required - names}')
+          signed_run = os.environ['SIGNED_RUN_ID']
+          if signed_run:
+              if not signed_run.isdecimal():
+                  raise SystemExit('Signed run ID must be numeric')
+              run = api(f'actions/runs/{signed_run}')
+              if not (run['head_repository']['full_name'] == repo
+                      and run['head_branch'] == 'main' and run['event'] == 'workflow_dispatch'
+                      and run['status'] == 'completed'
+                      and run['path'] == '.github/workflows/recover-release.yml'):
+                  raise SystemExit('Signed assets must come from a completed main recovery run')
+              jobs = api(f'actions/runs/{signed_run}/jobs?per_page=100')['jobs']
+              validated = next(j for j in jobs if j['name'] == 'validate' and j['conclusion'] == 'success')
+              if not any(j['name'] == 'macos-sign' and j['conclusion'] == 'success' for j in jobs):
+                  raise SystemExit('Source macOS signing did not succeed')
+              log = subprocess.check_output(['gh', 'run', 'view', signed_run, '--repo', repo,
+                                             '--job', str(validated['id']), '--log'], text=True)
+              if f'Reusing artifacts for existing tag {tag} at {sha}' not in log:
+                  raise SystemExit('Signed recovery assets were built for another tag or commit')
           with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
               output.write(f'sha={sha}\n')
           print(f'Reusing artifacts for existing tag {tag} at {sha}')
           PYTHON
 
   build-macos:
+    if: inputs.signed_run_id == ''
     needs: validate
     strategy:
       fail-fast: false
@@ -164,6 +189,7 @@ jobs:
           if-no-files-found: error
 
   macos-sign:
+    if: inputs.signed_run_id == ''
     needs:
       - validate
       - build-macos
@@ -237,6 +263,9 @@ jobs:
         run: security delete-keychain release.keychain
 
   release:
+    if: >-
+      !cancelled() && needs.validate.result == 'success' &&
+      (needs.macos-sign.result == 'success' || inputs.signed_run_id != '')
     needs: [validate, macos-sign]
     runs-on: ubuntu-24.04
     steps:
@@ -256,6 +285,8 @@ jobs:
         with:
           name: parla-macos-signed
           path: artifacts/parla-macos-signed
+          run-id: ${{ inputs.signed_run_id || github.run_id }}
+          github-token: ${{ github.token }}
 
       - name: Download matching Android debug preview
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
@@ -293,7 +324,7 @@ jobs:
         run: |
           shopt -s nullglob globstar
           debs=(artifacts/**/*.deb)
-          flatpaks=(artifacts/**/*.flatpak)
+          flatpaks=(artifacts/*/*.flatpak)
           appimages=(artifacts/**/*.AppImage)
           rpms=(artifacts/parla-sfos-*/*.rpm)
           # One DMG per entry in the build-macos matrix

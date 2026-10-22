@@ -526,7 +526,7 @@ jobs:
         run: |
           shopt -s nullglob globstar
           debs=(artifacts/**/*.deb)
-          flatpaks=(artifacts/**/*.flatpak)
+          flatpaks=(artifacts/*/*.flatpak)
           appimages=(artifacts/**/*.AppImage)
           rpms=(artifacts/parla-sfos-*/*.rpm)
           # One DMG per entry in the build-macos matrix
