@@ -66,6 +66,38 @@ private void test_native_lease () {
     } catch (Error error) { Test.fail_printf ("Lease: %s", error.message); }
 }
 
+// The 500 ms access monitor uses the same busy guard as foreground calls.
+// Slow hosts can complete a subprocess while that check is in flight. Retry
+// only BUSY on this test's own store; expected competitor failures stay strict.
+private async void wait_for_session_monitor () {
+    var source = new TimeoutSource (10);
+    source.set_callback (() => { wait_for_session_monitor.callback (); return Source.REMOVE; });
+    source.attach (MainContext.ref_thread_default ());
+    yield;
+}
+
+private async SafeStore.StoreStatus inspect_session (SafeStore.Store store) throws Error {
+    int64 deadline = get_monotonic_time () + 5 * TimeSpan.SECOND;
+    while (true) {
+        try { return yield store.inspect (); }
+        catch (SafeStore.StoreError.BUSY error) {
+            if (get_monotonic_time () >= deadline) throw error;
+            yield wait_for_session_monitor ();
+        }
+    }
+}
+
+private async void lock_session (SafeStore.Store store, SafeStore.SecretValue? secret = null) throws Error {
+    int64 deadline = get_monotonic_time () + 5 * TimeSpan.SECOND;
+    while (true) {
+        try { yield store.lock (secret); return; }
+        catch (SafeStore.StoreError.BUSY error) {
+            if (get_monotonic_time () >= deadline) throw error;
+            yield wait_for_session_monitor ();
+        }
+    }
+}
+
 private async void test_sessions (SafeStore.BackendKind kind = SafeStore.BackendKind.ZIP) throws Error {
     string root = DirUtils.make_tmp ("safestore-session-XXXXXX");
     string accounts = Path.build_filename (root, "accounts");
@@ -76,7 +108,7 @@ private async void test_sessions (SafeStore.BackendKind kind = SafeStore.Backend
     var session = yield store.create_empty (secret);
     assert_true (session.active);
     assert_true (Uuid.string_is_valid (session.store_id));
-    var status = yield store.inspect ();
+    var status = yield inspect_session (store);
     assert_true (status.has_metadata && status.session_owned && !status.recovery_required);
     var competitor = new SafeStore.Store (accounts, storage, kind);
     try { yield competitor.unlock (secret); assert_not_reached (); }
@@ -88,39 +120,39 @@ private async void test_sessions (SafeStore.BackendKind kind = SafeStore.Backend
     FileUtils.set_contents (Path.build_filename (accounts, "payload"), "complete account fixture");
     // No second password prompt is needed, and a changed password cannot replace it.
     var wrong = new SafeStore.SecretValue ("different password");
-    try { yield store.lock (wrong); assert_not_reached (); }
+    try { yield lock_session (store, wrong); assert_not_reached (); }
     catch (SafeStore.StoreError.INVALID_ARGUMENT error) { }
     // Delta Chat's additional guard must keep a failed lock retryable.
     SafeStore.Lease? writer = new SafeStore.Lease (Path.build_filename (accounts, "accounts.lock"));
     bool refused = false;
-    try { yield store.lock (); }
+    try { yield lock_session (store); }
     catch (Error error) { refused = true; }
     assert_true (refused && session.active);
-    status = yield store.inspect ();
+    status = yield inspect_session (store);
     assert_true (status.session_owned && !status.recovery_required);
     writer = null;
-    yield store.lock ();
+    yield lock_session (store);
     assert_false (session.active);
     assert_true (session.secret.peek () == "");
     var saved = yield SafeStore.Store.open_existing (accounts);
     assert_nonnull (saved);
     assert_true (saved.backend == kind && saved.storage_path == store.storage_path);
-    status = yield saved.inspect ();
+    status = yield inspect_session (saved);
     assert_true (status.store_id == session.store_id && status.generation > session.generation);
     try { yield saved.unlock (wrong); assert_not_reached (); }
     catch (SafeStore.StoreError.WRONG_PASSWORD error) { }
-    status = yield saved.inspect ();
+    status = yield inspect_session (saved);
     assert_false (status.recovery_required);
     yield saved.unlock (secret);
-    yield saved.lock ();
-    yield saved.lock (); // Idempotent, with ownership and state rechecked.
+    yield lock_session (saved);
+    yield lock_session (saved); // Idempotent, with ownership and state rechecked.
     // Another candidate must not be selected by changing a global preference.
     DirUtils.create (accounts + ".vault", 0700);
     string before = archive_digest (storage);
     try { yield saved.unlock (secret); assert_not_reached (); }
     catch (SafeStore.StoreError.RECOVERY_REQUIRED error) { }
     assert_true (archive_digest (storage) == before);
-    status = yield saved.inspect ();
+    status = yield inspect_session (saved);
     assert_true (status.recovery_required);
     secret.clear ();
     wrong.clear ();
@@ -142,10 +174,10 @@ private async void test_lost_directory (SafeStore.BackendKind kind = SafeStore.B
     assert_true (reported && !session.active);
     assert_true (FileUtils.test (accounts + "-preserved", FileTest.IS_DIR));
     string before = archive_digest (accounts + ".zip");
-    try { yield store.lock (); assert_not_reached (); }
+    try { yield lock_session (store); assert_not_reached (); }
     catch (SafeStore.StoreError.RECOVERY_REQUIRED error) { }
     assert_true (archive_digest (accounts + ".zip") == before);
-    var status = yield store.inspect ();
+    var status = yield inspect_session (store);
     assert_true (status.recovery_required);
     secret.clear ();
     remove_test_tree (File.new_for_path (root));
@@ -161,7 +193,7 @@ private async void crash_during_cleanup (string root, SafeStore.BackendKind kind
     yield store.create_empty (secret);
     FileUtils.set_contents (Path.build_filename (accounts, "first"), "first complete account");
     FileUtils.set_contents (Path.build_filename (accounts, "second"), "second complete account");
-    yield store.lock ();
+    yield lock_session (store);
     assert_not_reached ();
 }
 
@@ -187,10 +219,10 @@ private async void test_interrupted_cleanup (SafeStore.BackendKind kind = SafeSt
     // Model a partly deleted working tree left after the complete archive commit.
     FileUtils.unlink (Path.build_filename (accounts, "first"));
     string before = archive_digest (storage);
-    var status = yield store.inspect ();
+    var status = yield inspect_session (store);
     assert_true (status.recovery_required && status.plaintext_exposed);
     var secret = new SafeStore.SecretValue ("disposable lifecycle password");
-    try { yield store.lock (secret); assert_not_reached (); }
+    try { yield lock_session (store, secret); assert_not_reached (); }
     catch (SafeStore.StoreError.RECOVERY_REQUIRED error) { }
     try { yield store.unlock (secret); assert_not_reached (); }
     catch (SafeStore.StoreError.RECOVERY_REQUIRED error) { }
@@ -235,7 +267,7 @@ private async void test_legacy_and_metadata () throws Error {
     SafeStore.ZipBackend.lock (settings, PASSWORD, () => {}, ref rollback_safe);
     string digest = archive_digest (storage);
     FileUtils.set_contents (Path.build_filename (accounts, "conflict"), "preserve this plaintext");
-    var status = yield store.inspect ();
+    var status = yield inspect_session (store);
     assert_true (status.recovery_required);
     var secret = new SafeStore.SecretValue (PASSWORD);
     try { yield store.unlock (secret); assert_not_reached (); }
@@ -253,13 +285,13 @@ private async void test_legacy_and_metadata () throws Error {
     assert_true (archive_digest (storage) == digest);
     FileUtils.set_contents (marker, original);
     yield store.unlock (secret);
-    yield store.lock ();
+    yield lock_session (store);
     digest = archive_digest (storage);
     var metadata = new KeyFile ();
     metadata.load_from_file (store.metadata_path, KeyFileFlags.NONE);
     metadata.set_integer ("Store", "schema", 999);
     metadata.save_to_file (store.metadata_path);
-    status = yield store.inspect ();
+    status = yield inspect_session (store);
     assert_true (status.recovery_required);
     try { yield store.unlock (secret); assert_not_reached (); }
     catch (SafeStore.StoreError.NOT_SUPPORTED error) { }

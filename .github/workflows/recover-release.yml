@@ -95,6 +95,16 @@ jobs:
         with:
           ref: ${{ needs.validate.outputs.sha }}
 
+      - name: Apply post-tag lifecycle test synchronization
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TEST_FIX_SHA: ${{ github.sha }}
+        run: |
+          # Only the test harness changes; packaged application sources stay
+          # at the validated tag, as do all reused platform artifacts.
+          gh api --method GET "repos/$GITHUB_REPOSITORY/contents/safestore/tests/lifecycle_test.vala" \
+            -f ref="$TEST_FIX_SHA" --jq .content | base64 --decode > safestore/tests/lifecycle_test.vala
+
       - name: Install dependencies
         run: |
           brew install \
