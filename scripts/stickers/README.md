@@ -25,7 +25,8 @@ there separately. Other WIP downloads remain outside the starter collection.
 
 `package.py` reads the converted metadata's sticker list, retains emoji and
 animation, and names images in Parla's flat `Pack__emoji__checksum.gif` format.
-Each ZIP contains a `stickers/` folder, the user README and source attribution;
+Each ZIP contains a `stickers/` folder, the user README and the complete
+[artwork credits and license status](../../www/stickers/ATTRIBUTION.md);
 raw Telegram API responses and thumbnails are excluded. Rebuilds use fixed ZIP
 timestamps and ordering. The source downloads are local inputs, not required
 to build the app or website. For another input/output location, use
@@ -33,6 +34,15 @@ to build the app or website. For another input/output location, use
 Use `--starter-output /path/to/parla-starter-stickers.zip` to choose the combined
 archive's destination. Upload rebuilt starter archives to the external host
 when updating the published collection.
+
+Maintain `www/stickers/ATTRIBUTION.md` as the shared credit document for the
+website and all ZIPs. Preserve verified artist/animator names, public contact
+links, original `t.me/addstickers/` links, original copyright notices and exact
+license terms when available. Mark missing authors, contacts and permissions
+explicitly instead of guessing or applying Parla's software license. The current
+packs' conversion and redistribution permissions remain unverified; attribution
+does not establish permission. Record permission evidence before treating a pack
+as cleared for distribution.
 
 The remainder of this document is for downloading and converting more packs.
 

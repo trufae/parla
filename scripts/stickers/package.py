@@ -38,6 +38,7 @@ def main():
                         help="Starter ZIP for external hosting (kept outside the website)")
     args = parser.parse_args()
     readme = (ROOT / "www/stickers/README.md").read_bytes()
+    attribution = (ROOT / "www/stickers/ATTRIBUTION.md").read_bytes()
     packs = []
     combined = {}
     # Read and validate every input before creating any archives.
@@ -70,19 +71,14 @@ def main():
         combined.update(files)
 
     args.output.mkdir(parents=True, exist_ok=True)
-    attribution = ("# Sticker artwork\n\n"
-                   "Artwork belongs to its respective creators. These third-party packs\n"
-                   "are not covered by Parla's software license. Source links identify\n"
-                   "the downloaded sets; they are not a claim of authorship or a license grant.\n\n")
     manifest = []
     for slug, title, url, files in packs + [
             ("parla-starter-stickers", "Parla starter collection", "", combined)]:
         sources = [(title, url)] if url else [(p[1], p[2]) for p in packs]
-        credits = attribution + "".join(f"- {name}: {link}\n" for name, link in sources)
         path = args.output / f"{slug}.zip" if url else args.starter_output
         path.parent.mkdir(parents=True, exist_ok=True)
         write_zip(path, {**files, "README.md": readme,
-                         "ATTRIBUTION.md": credits.encode("utf-8")})
+                         "ATTRIBUTION.md": attribution})
         manifest.append({"file": path.name, "title": title, "stickers": len(files),
                          "bytes": path.stat().st_size,
                          "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),

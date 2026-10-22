@@ -27,6 +27,8 @@ not a popularity ranking. Packs marked 18+ are outside this starter collection.
    Copy the extracted `stickers` folder into it. If you already have stickers,
    **merge the folders**, keeping your existing files. On macOS, open both
    `stickers` folders and copy the files inside to avoid replacing a folder.
+   Keep `ATTRIBUTION.md` beside the installed `stickers` folder so the credits
+   and license status remain available.
 4. Start Parla, open a conversation, and open the sticker picker beside the
    message composer. The installed packs appear under their own names.
    Pick a sticker to send it.
@@ -77,7 +79,13 @@ Parla installation; install packs separately on your other devices.
 
 ## Artwork
 
-See `ATTRIBUTION.md` inside the ZIP for its original Telegram pack links.
-Artwork belongs to its respective creators and is separate from Parla's
-software license. The archives include the converted sticker images and
-instructions, without Telegram API responses or bot credentials.
+Read [artwork credits and license status](ATTRIBUTION.md), also included in every
+ZIP, for artist and animator credits, public creator profiles, original Telegram
+pack links, and unresolved copyright and license details. Creator emails are
+listed only when verified; missing contacts are marked explicitly.
+
+Artwork rights remain with their respective rights holders and are separate
+from Parla's software license. Conversion and redistribution permissions have
+not been verified for these packs; source links and credits do not grant them.
+The archives include the converted sticker images and instructions, without
+Telegram API responses or bot credentials.
