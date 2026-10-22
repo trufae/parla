@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Build the Android/Bionic RPC executable. Upstream's 2.63.0 Android asset
-# has 4 KB LOAD alignment; rebuild it for both 4 KB and 16 KB devices.
+# Build the pinned Android/Bionic RPC executable from source to ensure
+# LOAD alignment supports both 4 KB and 16 KB devices.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 source scripts/android/versions.env

@@ -21,6 +21,24 @@ For the end-to-end onboarding contract (one-click setup, the Parla-managed
 download fallback, and how to package Parla so it never self-downloads), see
 [`onboard.md`](onboard.md).
 
+## Updating the packaged core
+
+From the repository root, use the Python 3-backed helper to query or update
+the Android, Flatpak and Sailfish OS pins together:
+
+```sh
+./version-chatmail.sh                # show current pins and latest stable release
+./version-chatmail.sh --update       # update to the latest stable release
+./version-chatmail.sh --update 2.64.0 # update to a specific release
+```
+
+The updater resolves Android's source commit from the release tag and updates
+the Flatpak URLs, Sailfish version (including the RPM spec), and all Linux
+binary checksums from GitHub's published SHA-256 digests. It validates the
+release assets and file patterns before writing any changes. Review the diff
+and verify an Android arm64 build before releasing. Historical audit references
+in `CORE.md` retain the version that was audited.
+
 ## Runtime Resolution
 
 Parla does not scan Delta Chat Desktop internals. `Auto` mode uses, in order:

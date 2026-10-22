@@ -13,10 +13,9 @@ WebView wrapper, X server, or Termux dependency.
   and executed over the existing stdio RPC transport. The `.so` suffix is an
   Android packaging convention; it is a PIE executable, not a JNI library.
 - All native code must pass 16 KiB LOAD and RELRO checks, and the APK must pass
-  `zipalign -c -P 16 4`. The pinned upstream 2.63.0 Android server has only
-  4 KiB LOAD alignment, so `build-core.sh` downloads the pinned upstream source
-  and builds it using the NDK. Keep this until an upstream 16 KiB release can
-  be pinned and downloaded with a verified SHA-256.
+  `zipalign -c -P 16 4`. To ensure this alignment, `build-core.sh` downloads
+  the pinned upstream source and builds it using the NDK. Keep this until an
+  upstream 16 KiB release can be pinned and downloaded with a verified SHA-256.
 - Account databases, encryption keys, settings and caches use **private internal
   storage**, overriding GTK's external-storage defaults. Android backups are
   disabled; use Chatmail's device transfer/export to move accounts.
