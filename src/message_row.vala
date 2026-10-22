@@ -1434,6 +1434,7 @@ namespace Dc {
                             : _("Expand")));
                 toggle_btn.add_css_class ("flat");
                 toggle_btn.add_css_class ("message-full-text-button");
+                toggle_btn.set_cursor_from_name ("pointer");
                 toggle_btn.halign = Gtk.Align.START;
                 /* Don't grab focus on click: inside the ListView that scrolls
                    the button into view mid-press and eats the first click. */
@@ -1448,6 +1449,7 @@ namespace Dc {
                         _("View full message"));
                     view_btn.add_css_class ("flat");
                     view_btn.add_css_class ("message-full-text-button");
+                    view_btn.set_cursor_from_name ("pointer");
                     view_btn.hexpand = true;
                     view_btn.halign = Gtk.Align.END;
                     view_btn.focus_on_click = false;
