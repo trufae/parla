@@ -405,6 +405,8 @@ private void test_unread_calls () {
 }
 
 public int main (string[] args) {
+    if (args.length > 1 && args[1] == "--touch-text-menu-ui")
+        return run_touch_text_menu_ui_test ();
 #if MACOS
     if (args.length == 3 && args[1] == "--video-thumbnail-ui")
         return run_video_thumbnail_ui_test (args[2]);

@@ -332,6 +332,9 @@ namespace Dc {
         }
 
         construct {
+#if ANDROID
+            TouchTextMenu.install (this);
+#endif
             chat_store = new GLib.ListStore (typeof (ChatEntry));
             views = new HashTable<int, ConversationView> (direct_hash, direct_equal);
             settings = new SettingsManager ();

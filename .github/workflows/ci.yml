@@ -32,6 +32,7 @@ jobs:
             gettext \
             ninja-build \
             zip unzip \
+            xvfb \
             valac \
             libglib2.0-dev \
             libgtk-4-dev \
@@ -57,6 +58,10 @@ jobs:
       - name: Run unit tests
         if: matrix.a11y == true
         run: meson test -C builddir --print-errorlogs
+
+      - name: Check Android text menu fallback
+        if: matrix.a11y == true
+        run: dbus-run-session -- xvfb-run -a env GTK_A11Y=none G_DEBUG=fatal-warnings builddir/core-compat-test --touch-text-menu-ui
 
       - name: Build and test standalone SafeStore
         if: matrix.a11y == true

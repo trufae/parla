@@ -93,3 +93,16 @@ are disabled by the Android toolchain; those need Android-specific integration.
 Changing language closes the app; reopen it to apply the selection. GTK's
 Android file chooser handles document access, but attachment workflows still
 need device testing.
+
+Text fields use Parla's labeled touch menu on Android: long-press an entry or
+the message composer for Cut, Copy, Paste, and Select All. Paste attempts a
+clipboard read when tapped, even if GTK advertises no compatible text format.
+Password fields disable Cut/Copy; read-only fields disable Cut/Paste. This is
+an app-side fallback for missing GTK touch paste controls, not a replacement
+Android clipboard backend.
+
+When validating a build, copy an invite URL in another Android app, return to
+Parla, open **Use Invite Link**, long-press the empty field, and tap **Paste**.
+Verify **Add** becomes enabled and joining still requires confirmation. Repeat
+with text selected in an existing entry and with the message composer; test
+an empty clipboard, password fields, and returning after copying new text.
