@@ -351,8 +351,10 @@ jobs:
         continue-on-error: true
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with: &release-options
+          # The tag already exists and was verified above. Setting a historical
+          # target_commitish also asks GitHub to modify release workflow refs,
+          # which a contents-only GITHUB_TOKEN cannot do.
           tag_name: ${{ inputs.release_tag }}
-          target_commitish: ${{ needs.validate.outputs.sha }}
           body_path: release-notes.md
           fail_on_unmatched_files: true
           preserve_order: true
