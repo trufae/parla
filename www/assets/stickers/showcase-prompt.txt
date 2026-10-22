@@ -1,0 +1,15 @@
+Generated with the built-in image_gen tool. The delivered PNG is preserved as
+showcase.png; showcase.webp is its optimized website copy (cwebp -q 88).
+
+Compositing inputs from the local WIP collection, in order:
+1. scripts/stickers/CupidKitty/stickers/001.gif
+2. scripts/stickers/HotCherry/stickers/003.gif
+3. scripts/stickers/VampireQueen/stickers/001.gif
+4. scripts/stickers/Radare/stickers/001.webp
+5. scripts/stickers/CupidKitty/stickers/002.gif
+
+Prompt:
+Use case: compositing. Asset type: wide website editorial showcase for Parla's downloadable sticker collection, approximately 3:2 landscape.
+Primary request: create a catchy, beautifully arranged sticker collage using the EXACT provided stickers as cutout artwork. Input 1: Cupid Kitty laughing; input 2: Hot Cherry giving a thumbs-up; input 3: Marceline laughing; input 4: Radare logo; input 5: Cupid Kitty blowing a kiss. These are supporting compositing inputs. Preserve each sticker's original shapes, expressions, colors and lettering without redrawing.
+Scene/backdrop: pale warm ivory paper with soft mint and sky-blue rounded color fields that complement Parla's light desktop website. Scatter these five stickers with playful small rotations, generous breathing room, crisp contours and very subtle paper shadows. Make the orange cats and pink cherry prominent, with Marceline and the Radare mark providing variety. Flat, cheerful and inviting.
+Constraints: the artwork must visibly come from these input stickers; preserve recognizable identity and existing lettering; no invented stickers or added characters. Do not add text, titles, captions, watermarks or new logos. No hands, laptops or chat UI. Clean web illustration with an opaque background.

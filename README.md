@@ -45,7 +45,7 @@ instructions are in [docs/website.md](docs/website.md).
 
 ## Highlights
 
-- **Stickers that are yours to keep** &mdash; send stickers, collect received stickers, and organize them in local packs. Animated stickers can be paused or disabled when you want to save resources.
+- **Stickers that are yours to keep** &mdash; send stickers, collect received stickers, and organize them in local packs. [Download the starter packs](https://trufae.github.io/parla/#stickers) and follow the [installation guide](www/stickers/README.md). Animated stickers can be paused or disabled when you want to save resources.
 - **A useful media gallery** &mdash; each chat has a browsable gallery for images, stickers, files, audio, video, and shared Webxdc apps, with quick access back to the original message.
 - **Webxdc mini-apps** &mdash; run and manage offline web apps shared in chats. This is experimental and available on supported Linux, macOS, and Windows builds; see [Webxdc apps](#webxdc-apps-experimental) for security and platform details.
 - **Choose the conversation layout** &mdash; use familiar bubbles, compact IRC-style lines, or workspace rows. The split view adapts to narrow and phone-sized windows, where the sidebar becomes a single-pane navigation view.

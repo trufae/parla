@@ -295,6 +295,47 @@ dfn { font-style: normal; font-weight: 650; color: var(--ink); }
   .haiku-download .preview-badge { position: absolute; font-size: .64rem; }
   .hero-window figcaption { font-size: .55rem; }
 }
+.sticker-section { border-bottom: 1px solid var(--line); }
+.sticker-intro { display: grid; grid-template-columns: 1fr 1.1fr; gap: 48px; align-items: center; }
+.sticker-copy .section-lede { font-size: 1.1rem; }
+.sticker-actions { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; margin-block: 28px 14px; }
+.sticker-actions .button { gap: 14px; }
+.sticker-showcase img { width: 100%; border-radius: var(--radius); border: 1px solid var(--line); }
+.sticker-showcase figcaption { color: var(--muted); font-size: .72rem; margin-top: 12px; text-align: center; }
+.sticker-packs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 22px; margin-top: 48px; }
+.sticker-pack { min-width: 0; }
+.sticker-preview { display: flex; align-items: center; justify-content: center; height: 190px; border-radius: 20px; margin-bottom: 20px; }
+.sticker-preview img { max-width: 80%; max-height: 150px; width: auto; object-fit: contain; }
+.cherry-preview { background: #f9e2e7; }
+.kitty-preview { background: #f5e8d0; }
+.vampire-preview { background: #e7e6f5; }
+.radare-preview { background: #dcebe5; }
+.sticker-pack > p { color: var(--muted); font-size: .87rem; margin-top: 8px; }
+.sticker-pack > .fine-print { display: block; margin-top: 10px; }
+.sticker-pack .inline-link { margin-top: 12px; }
+.sticker-install { display: flex; align-items: center; gap: 35px; padding: 30px; margin-top: 42px; border-radius: 20px; background: #e8eef2; }
+.sticker-install > div:first-child { flex: 1; }
+.sticker-install p { margin-top: 12px; color: var(--muted); font-size: .9rem; }
+.sticker-install .fine-print { font-size: .8rem; }
+.sticker-help { display: flex; flex-direction: column; align-items: flex-start; gap: 16px; }
+.sticker-help a { font-size: .83rem; }
+@media (max-width: 1000px) {
+  .sticker-intro { gap: 28px; }
+  .sticker-packs { grid-template-columns: repeat(2, 1fr); gap: 30px 22px; }
+  .sticker-install { flex-direction: column; align-items: flex-start; }
+}
+@media (max-width: 760px) {
+  .sticker-intro { grid-template-columns: 1fr; gap: 30px; }
+  .sticker-showcase { max-width: 560px; }
+  .sticker-preview { height: 160px; }
+  .sticker-preview img { max-height: 130px; }
+  .sticker-pack h3 { font-size: 1.15rem; }
+  .sticker-pack .inline-link { font-size: .8rem; }
+  .sticker-install { padding: 24px; gap: 22px; }
+}
+@media (max-width: 390px) {
+  .sticker-packs { grid-template-columns: 1fr; }
+}
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   *, *::before, *::after { transition: none !important; }

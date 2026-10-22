@@ -11,9 +11,13 @@ ANIMATED_FPS ?= 30
 ANIMATED_SCALE ?= 1
 WEBM_CRF ?= 32
 
-.PHONY: all lottie2gif path install macos-deps convert clean
+.PHONY: all lottie2gif path install macos-deps convert packs clean
 
 all: lottie2gif
+
+# Uses already downloaded and converted WIP packs; no network or bot token.
+packs:
+	python3 package.py
 
 lottie2gif: $(LOTTIE2GIF)
 

@@ -62,6 +62,30 @@ Keep these copies current when replacing the source screenshots or logo.
 Use sanitized sample conversations when adding screenshots. The Haiku image
 documents a separate native client in development, not GTK feature parity.
 
+## Sticker downloads
+
+The `#stickers` section links to the starter ZIP hosted at
+<https://radare.org/parla-starter-stickers.zip>. All sticker ZIPs and generated
+download metadata are ignored by Git and kept outside the website source.
+Downloads work without JavaScript or a GitHub
+release. Each archive contains ready-to-copy
+files in Parla's flat sticker-store format, the installation README and source
+attribution. The starter collection contains Hot Cherry, Cupid Kitty, Marceline
+and Radare (85 stickers). Users can install all packs or copy only the files
+for their chosen pack. Source links do
+not imply that third-party artwork is covered by Parla's GPL license.
+
+To rebuild from the local converted WIP packs, run
+`make -C scripts/stickers packs`; see `scripts/stickers/README.md` for inputs.
+Generated files go to the ignored `scripts/stickers/packs/` directory.
+Keep the download counts and sizes in `index.html` in sync with that directory's
+`manifest.json`. Upload rebuilt starter ZIPs to the external host. The Pages
+artifact contains previews and instructions; it does not bundle sticker ZIPs.
+
+`www/assets/stickers/` holds exact sticker previews and the generated showcase
+collage. See `showcase-prompt.txt` for the built-in imagegen prompt and its five
+source images. Original artwork attribution is in the pack archives.
+
 The name section paraphrases dictionary entries and links directly to
 [the Catalan GDLC](https://www.diccionari.cat/GDLC/parla),
 [Treccani](https://www.treccani.it/vocabolario/parlare/) and

@@ -1,5 +1,41 @@
 # Sticker packs
 
+## Just want stickers for Parla?
+
+Download the [starter collection](https://radare.org/parla-starter-stickers.zip).
+The [installation README](../../www/stickers/README.md) explains how to pick a
+pack, merge it into Parla's sticker folder, and find it in the picker. These
+downloads are ready to use: no Telegram account, token or converter is needed.
+
+## Prepare the public downloads
+
+From the repository root, with the downloaded, converted `HotCherry/`,
+`CupidKitty/`, `VampireQueen/` and `Radare/` WIP directories available here:
+
+```sh
+make -C scripts/stickers packs
+```
+
+This writes the combined `parla-starter-stickers.zip`, four individual packs,
+`manifest.json` and `SHA256SUMS` to `scripts/stickers/packs/`. All generated
+downloads and metadata are ignored by Git and kept outside the website.
+The website links only to the externally hosted starter ZIP at
+<https://radare.org/parla-starter-stickers.zip>. Upload rebuilt starter archives
+there separately. Other WIP downloads remain outside the starter collection.
+
+`package.py` reads the converted metadata's sticker list, retains emoji and
+animation, and names images in Parla's flat `Pack__emoji__checksum.gif` format.
+Each ZIP contains a `stickers/` folder, the user README and source attribution;
+raw Telegram API responses and thumbnails are excluded. Rebuilds use fixed ZIP
+timestamps and ordering. The source downloads are local inputs, not required
+to build the app or website. For another input/output location, use
+`python3 scripts/stickers/package.py --source /path/to/packs --output /path/to/output`.
+Use `--starter-output /path/to/parla-starter-stickers.zip` to choose the combined
+archive's destination. Upload rebuilt starter archives to the external host
+when updating the published collection.
+
+The remainder of this document is for downloading and converting more packs.
+
 This directory contains scripts to download Telegram and Signal sticker packs
 into something standard and reusable for other apps.
 
