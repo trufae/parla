@@ -239,9 +239,9 @@ Parla is being localized with GNU gettext. See [docs/locales.md](docs/locales.md
 for how to run Parla in another language and how to contribute translations.
 
 Run `./version.sh` to print Parla's current version, or `./version.sh X.Y.Z`
-to update Meson, the newest AppStream release, and the RPM spec together.
-Edit the release notes and date in `data/io.github.trufae.Parla.appdata.xml`
-when preparing a release.
+to update Meson and the RPM spec, then open
+`data/io.github.trufae.Parla.appdata.xml` in `$EDITOR` (default: `vi`) to edit
+the release version, notes, and date.
 
 ## Webxdc apps (experimental)
 

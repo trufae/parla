@@ -42,6 +42,19 @@
     <name translate="no">pancake</name>
   </developer>
   <releases>
+    <release version="0.10.2" date="2026-10-22">
+      <description>
+        <ul>
+          <li>Fix macOS crash on video thumbnails</li>
+          <li>Fix composebar height in even lines</li>
+          <li>Account backups with AES</li>
+          <li>Several fixes for the Android port</li>
+          <li>Render animated GIFs</li>
+          <li>Preserve composer focus on pickers</li>
+          <li>Fix cursor pointer on download bubbles</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.10.0" date="2026-10-17">
       <description>
         <ul>
