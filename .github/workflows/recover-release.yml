@@ -1,0 +1,326 @@
+name: Recover release
+run-name: Recover release ${{ inputs.release_tag }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing release tag (never moved)
+        required: true
+        type: string
+      source_run_id:
+        description: Completed tag CI run supplying successful artifacts
+        required: true
+        type: string
+      android_run_id:
+        description: Successful main CI run at the same commit with a debug APK
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: write
+
+concurrency:
+  group: release-${{ inputs.release_tag }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    outputs:
+      sha: ${{ steps.source.outputs.sha }}
+    steps:
+      - name: Validate source runs against the existing tag
+        id: source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          SOURCE_RUN_ID: ${{ inputs.source_run_id }}
+          ANDROID_RUN_ID: ${{ inputs.android_run_id }}
+        run: |
+          python3 - <<'PYTHON'
+          import json
+          import os
+          import subprocess
+          from urllib.parse import quote
+
+          repo = os.environ['GITHUB_REPOSITORY']
+          tag = os.environ['RELEASE_TAG']
+          def api(path):
+              return json.loads(subprocess.check_output(['gh', 'api', f'repos/{repo}/{path}']))
+          # Explicit refs/tags prevents accidentally resolving a branch of the same name.
+          sha = api('commits/' + quote('refs/tags/' + tag, safe=''))['sha']
+          for key, branch in [('SOURCE_RUN_ID', tag), ('ANDROID_RUN_ID', 'main')]:
+              run_id = os.environ[key]
+              if not run_id.isdecimal():
+                  raise SystemExit('Run IDs must be numeric')
+              run = api(f'actions/runs/{run_id}')
+              if not (run['head_sha'] == sha and run['head_branch'] == branch
+                      and run['head_repository']['full_name'] == repo
+                      and run['event'] == 'push' and run['status'] == 'completed'
+                      and run['path'] == '.github/workflows/ci.yml'):
+                  raise SystemExit(f'{key} is not a completed CI push for {branch} at {sha}')
+              if key == 'ANDROID_RUN_ID' and run['conclusion'] != 'success':
+                  raise SystemExit('Android preview source must have passed CI')
+              artifacts = api(f'actions/runs/{run_id}/artifacts?per_page=100')['artifacts']
+              names = {a['name'] for a in artifacts if not a['expired']}
+              required = {'parla-android-arm64-build'}
+              if key == 'SOURCE_RUN_ID':
+                  required = {'parla-deb', 'parla-appimage-x86_64', 'parla-appimage-aarch64',
+                              'parla-sfos-aarch64', 'parla-windows-x86_64',
+                              'parla-macos-arm64-zip', 'parla-macos-arm64-legacy-zip',
+                              'parla-x86_64-x86_64.flatpak', 'parla-aarch64-aarch64.flatpak'}
+              if not required <= names:
+                  raise SystemExit(f'Missing or expired artifacts: {required - names}')
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write(f'sha={sha}\n')
+          print(f'Reusing artifacts for existing tag {tag} at {sha}')
+          PYTHON
+
+  build-macos:
+    needs: validate
+    strategy:
+      fail-fast: false
+      matrix:
+        # dmgname is the user-facing suffix of the released DMG:
+        # Parla-<version>-<dmgname>.dmg
+        include:
+          - arch: x86_64
+            runner: macos-26-intel
+            dmgname: macos-intel
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.validate.outputs.sha }}
+
+      - name: Install dependencies
+        run: |
+          brew install \
+            meson \
+            ninja \
+            vala \
+            pkgconf \
+            gtk4 \
+            libadwaita \
+            json-glib libzip \
+            librsvg \
+            webp-pixbuf-loader \
+            glib-networking \
+            adwaita-icon-theme
+
+      # VoiceOver only sees GTK through its AccessKit backend, which
+      # Homebrew's gtk4 does not enable, so the library is rebuilt
+      # with it (scripts/macos/gtk4-accesskit.sh). The cache keys on
+      # the installed gtk4 version, so the rebuild happens once per
+      # gtk4 release and runner flavor.
+      - name: Compute gtk4 rebuild cache key
+        id: gtk4
+        run: echo "version=$(brew list --versions gtk4 | awk '{ print $2; exit }')" >> "$GITHUB_OUTPUT"
+
+      - name: Cache AccessKit-enabled GTK libraries
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .cache/macos-a11y-libs
+          key: macos-gtk4-accesskit-${{ matrix.dmgname }}-${{ steps.gtk4.outputs.version }}
+
+      - name: Rebuild gtk4 with the AccessKit a11y backend
+        run: scripts/macos/gtk4-accesskit.sh
+
+      - name: Build
+        run: make BUILDTYPE=release
+
+      - name: Build and test standalone SafeStore
+        run: |
+          source scripts/macos/env.sh
+          meson setup safestore-build safestore -Dgui=true -Dwerror=true
+          meson compile -C safestore-build
+          # The tag retains the old 30-second test default. Apply the
+          # equivalent of the post-tag timeout fix without changing its source.
+          meson test -C safestore-build --timeout-multiplier 4 --print-errorlogs
+
+      - name: Package ZIP
+        id: zip
+        env:
+          ARCH: ${{ matrix.arch }}
+        run: scripts/macos/package-zip.sh
+
+      - name: Upload ZIP artifact
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: parla-${{ matrix.dmgname }}-zip
+          path: Parla-*.zip
+          if-no-files-found: error
+
+  macos-sign:
+    needs:
+      - validate
+      - build-macos
+    runs-on: macos-latest
+    environment: release
+    # Environment secrets for signing:
+    #   APPLE_DEVELOPER_CERTIFICATE_P12_BASE64:
+    #     Base64 of the p12 export (cert+private key), the certificate must be named
+    #     "Developer ID Application: DEVELOPER_NAME (TEAM_ID)"
+    #   APPLE_DEVELOPER_CERTIFICATE_PASSWORD: Random password used to encrypt the exported P12
+    # Environment secrets for notarization:
+    #   APPLE_DEVELOPER_ID: email of the developer
+    #   APPLE_TEAM_ID: Team ID (can be extracted from the certificate name too)
+    #   APPLE_APP_SPECIFIC_PASSWORD: https://support.apple.com/en-us/102654
+    steps:
+      - name: Install dependencies
+        run: brew install create-dmg
+
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.validate.outputs.sha }}
+
+      - name: Download successful ARM builds from the tag run
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: parla-macos-arm64*-zip
+          path: artifacts
+          run-id: ${{ inputs.source_run_id }}
+          github-token: ${{ github.token }}
+
+      - name: Download rebuilt Intel artifact
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: parla-macos-intel-zip
+          path: artifacts
+
+      - name: Install Apple Certificate
+        env:
+          CERTIFICATE_BASE64: ${{ secrets.APPLE_DEVELOPER_CERTIFICATE_P12_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.APPLE_DEVELOPER_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: "keychainpass-${{ github.run_id }}"
+        run: ./scripts/macos/ci-keychain.sh
+
+      - name: Sign and package the App Bundle
+        run: ./scripts/macos/ci-sign.sh
+
+      - name: Notarize DMG
+        env:
+          APPLE_ID: ${{ secrets.APPLE_DEVELOPER_ID }}
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APP_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+        run: ./scripts/macos/ci-notarize.sh
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: parla-macos-signed
+          path: ./*.dmg
+          if-no-files-found: error
+
+      - name: Remove keychain
+        if: always()
+        run: security delete-keychain release.keychain
+
+  release:
+    needs: [validate, macos-sign]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.validate.outputs.sha }}
+
+      - name: Download successful artifacts from the tag run
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          path: artifacts
+          run-id: ${{ inputs.source_run_id }}
+          github-token: ${{ github.token }}
+
+      - name: Download signed macOS artifacts
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: parla-macos-signed
+          path: artifacts/parla-macos-signed
+
+      - name: Download matching Android debug preview
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: parla-android-arm64-build
+          path: android-preview
+          run-id: ${{ inputs.android_run_id }}
+          github-token: ${{ github.token }}
+
+      - name: Label Android preview
+        run: |
+          version=$(python3 scripts/android/prepare.py --version)
+          mkdir -p artifacts/parla-android-arm64-release
+          cp "android-preview/Parla-$version-android-arm64-debug.apk" \
+            "artifacts/parla-android-arm64-release/BETA-PREVIEW-Parla-$version-android-arm64-debug.apk"
+
+      - name: Generate release notes
+        run: |
+          python3 scripts/release-notes.py > release-notes.md
+          cat dist/sailfishos/release-notes.md >> release-notes.md
+          if compgen -G 'artifacts/parla-android-arm64-release/*-debug.apk' > /dev/null; then
+            printf '\nAndroid is an experimental debug-signed preview with a separate app ID; it is not signed with a permanent production key.\n' >> release-notes.md
+          fi
+
+      - name: Confirm tag is unchanged
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          EXPECTED_SHA: ${{ needs.validate.outputs.sha }}
+        run: |
+          actual=$(gh api "repos/$GITHUB_REPOSITORY/commits/refs/tags/$RELEASE_TAG" --jq .sha)
+          test "$actual" = "$EXPECTED_SHA"
+
+      - name: Verify release artifacts
+        run: |
+          shopt -s nullglob globstar
+          debs=(artifacts/**/*.deb)
+          flatpaks=(artifacts/**/*.flatpak)
+          appimages=(artifacts/**/*.AppImage)
+          rpms=(artifacts/parla-sfos-*/*.rpm)
+          # One DMG per entry in the build-macos matrix
+          dmgs=(artifacts/parla-macos-signed/*.dmg)
+          zips=(artifacts/parla-windows-*/*.zip)
+          apks=(artifacts/parla-android-arm64-release/*.apk)
+          if (( ${#debs[@]} == 0 || ${#flatpaks[@]} != 2 || ${#appimages[@]} != 2 || ${#rpms[@]} == 0 || ${#dmgs[@]} != 3 || ${#zips[@]} == 0 || ${#apks[@]} != 1 )); then
+            find artifacts -maxdepth 4 -type f
+            echo "::error::Missing release artifact (.deb, .flatpak, .AppImage, SailfishOS .rpm, three .dmg files, .zip, or Android APK)"
+            exit 1
+          fi
+          declare -A dmg_names
+          for dmg in "${dmgs[@]}"; do
+            name=${dmg##*/}
+            if [[ -n "${dmg_names[$name]:-}" ]]; then
+              echo "::error::Duplicate DMG release name: $name"
+              exit 1
+            fi
+            dmg_names[$name]=1
+          done
+
+      - name: Publish release
+        id: publish
+        continue-on-error: true
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+        with: &release-options
+          tag_name: ${{ inputs.release_tag }}
+          target_commitish: ${{ needs.validate.outputs.sha }}
+          body_path: release-notes.md
+          fail_on_unmatched_files: true
+          preserve_order: true
+          files: |
+            artifacts/**/*.deb
+            artifacts/**/*.flatpak
+            artifacts/**/*.AppImage
+            artifacts/parla-sfos-*/*.rpm
+            artifacts/parla-macos-signed/*.dmg
+            artifacts/parla-windows-*/*.zip
+            artifacts/parla-android-arm64-release/*.apk
+
+      - name: Wait before retrying release upload
+        if: steps.publish.outcome == 'failure'
+        run: sleep 15
+
+      - name: Retry publishing release
+        if: steps.publish.outcome == 'failure'
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
+        with: *release-options

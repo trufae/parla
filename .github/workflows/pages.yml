@@ -12,7 +12,7 @@ on:
   # Releases created with GITHUB_TOKEN do not trigger other workflows.
   # A completed tag CI run refreshes the download links after publication.
   workflow_run:
-    workflows: [CI]
+    workflows: [CI, Recover release]
     types: [completed]
   workflow_dispatch:
 
@@ -30,7 +30,9 @@ jobs:
     if: >-
       github.event_name != 'workflow_run' ||
       (github.event.workflow_run.conclusion == 'success' &&
-       github.event.workflow_run.event == 'push' &&
+       (github.event.workflow_run.event == 'push' ||
+        (github.event.workflow_run.name == 'Recover release' &&
+         github.event.workflow_run.event == 'workflow_dispatch')) &&
        github.event.workflow_run.head_repository.full_name == github.repository)
     runs-on: ubuntu-latest
     steps:
