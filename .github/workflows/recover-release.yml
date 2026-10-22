@@ -202,9 +202,11 @@ jobs:
           path: artifacts/parla-macos-intel-zip
 
       - name: Verify all macOS inputs before signing
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
           for build in macos-arm64 macos-arm64-legacy macos-intel; do
-            test -f "artifacts/parla-$build-zip/Parla-${{ inputs.release_tag }}.zip"
+            test -f "artifacts/parla-$build-zip/Parla-$RELEASE_TAG.zip"
           done
 
       - name: Install Apple Certificate
