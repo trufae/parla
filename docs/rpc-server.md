@@ -27,9 +27,9 @@ From the repository root, use the Python 3-backed helper to query or update
 the Android, Flatpak and Sailfish OS pins together:
 
 ```sh
-./version-chatmail.sh                # show current pins and latest stable release
-./version-chatmail.sh --update       # update to the latest stable release
-./version-chatmail.sh --update 2.64.0 # update to a specific release
+./version-chatmail.sh        # show current pins and latest stable release
+./version-chatmail.sh latest # update to the latest stable release
+./version-chatmail.sh 2.64.0 # update to a specific release
 ```
 
 The updater resolves Android's source commit from the release tag and updates

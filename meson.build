@@ -1,7 +1,5 @@
-# To release update version field below and:
-# ------------------------------------------
-# $ vim data/io.github.trufae.Parla.appdata.xml
-# $ vim rpm/harbour-parla.spec
+# Set the release version with ./version.sh X.Y.Z, then edit release notes
+# and the date in data/io.github.trufae.Parla.appdata.xml.
 
 project('parla', ['vala', 'c'],
   version: '0.10.0',

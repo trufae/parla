@@ -45,12 +45,13 @@ def main():
         prog="version-chatmail.sh",
         description="Show packaged Chatmail Core versions and query the latest stable release.",
     )
-    action = parser.add_mutually_exclusive_group()
-    action.add_argument("--check", action="store_true", help="query without changing files (default)")
-    action.add_argument("--update", nargs="?", const="latest", metavar="VERSION",
-                        help="update all pins to VERSION (e.g. 2.64.0), or latest if omitted")
+    parser.add_argument("--check", action="store_true", help="query without changing files (default)")
+    parser.add_argument("version", nargs="?", metavar="VERSION",
+                        help="update all pins to VERSION (e.g. 2.64.0), or use latest")
     args = parser.parse_args()
-    requested = args.update or "latest"
+    if args.check and args.version is not None:
+        parser.error("--check cannot be combined with VERSION")
+    requested = args.version if args.version is not None else "latest"
     if requested != "latest" and not re.fullmatch(r"v?\d+\.\d+\.\d+", requested):
         parser.error("VERSION must be X.Y.Z, vX.Y.Z, or latest")
 
@@ -80,7 +81,7 @@ def main():
         raise ValueError("release tag does not match the requested version")
     version = tag[1:]
     print(f"{'Latest' if requested == 'latest' else 'Requested'} release: {version}", flush=True)
-    if args.update is None:
+    if args.version is None:
         return
 
     # Tags may be lightweight or annotated; Android needs the commit itself.

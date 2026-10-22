@@ -238,6 +238,11 @@ server and how to package it for Flatpak or distro packages.
 Parla is being localized with GNU gettext. See [docs/locales.md](docs/locales.md)
 for how to run Parla in another language and how to contribute translations.
 
+Run `./version.sh` to print Parla's current version, or `./version.sh X.Y.Z`
+to update Meson, the newest AppStream release, and the RPM spec together.
+Edit the release notes and date in `data/io.github.trufae.Parla.appdata.xml`
+when preparing a release.
+
 ## Webxdc apps (experimental)
 
 [Webxdc](https://webxdc.org/) apps are small offline web apps attached to
