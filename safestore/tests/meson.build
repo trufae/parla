@@ -5,7 +5,9 @@ unit = executable('unit-tests',
   'backend_test.vala', 'lifecycle_test.vala', 'backup_test.vala', 'aes_zip_test.vala', safestore_sources, frontend_sources[0],
   dependencies: safestore_core_deps, include_directories: safestore_inc,
   vala_args: safestore_vala_args + ['--define=SAFESTORE_TESTS'], c_args: safestore_c_args)
-test('unit', unit)
+# Archive encryption and lifecycle tests share one process. Intel macOS can
+# exceed Meson's default 30 seconds even when every individual test passes.
+test('unit', unit, timeout: 120)
 
 public_api = executable('public-api-test', 'public_api_test.vala',
   dependencies: safestore_dep, c_args: safestore_c_args)
