@@ -319,7 +319,7 @@ jobs:
           key: android-arm64-${{ runner.os }}-${{ hashFiles('scripts/android/**', 'dist/android/**') }}
       - name: Build APK
         env:
-          RELEASE_BUILD: ${{ startsWith(github.ref, 'refs/tags/') }}
+          RELEASE_BUILD: ${{ startsWith(github.ref, 'refs/tags/') && vars.ANDROID_RELEASE_SIGNING == 'true' }}
         run: |
           variant=debug
           if [[ "$RELEASE_BUILD" == true ]]; then variant=release; fi
@@ -354,20 +354,18 @@ jobs:
         with:
           name: parla-android-arm64-build
           path: dist/android
-      - name: Sign and verify release APK
+      - name: Prepare Android release asset
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          source scripts/android/versions.env
-          sdkmanager "build-tools;$ANDROID_BUILD_TOOLS"
-          scripts/android/sign.sh
+          scripts/android/release-asset.sh
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: parla-android-arm64-signed
-          path: dist/android/*-android-arm64.apk
+          name: parla-android-arm64-release
+          path: dist/android/release/*.apk
           if-no-files-found: error
 
   build-windows:
@@ -520,6 +518,9 @@ jobs:
         run: |
           python3 scripts/release-notes.py > release-notes.md
           cat dist/sailfishos/release-notes.md >> release-notes.md
+          if compgen -G 'artifacts/parla-android-arm64-release/*-debug.apk' > /dev/null; then
+            printf '\nAndroid is an experimental debug-signed preview with a separate app ID; it is not signed with a permanent production key.\n' >> release-notes.md
+          fi
 
       - name: Verify release artifacts
         run: |
@@ -531,10 +532,10 @@ jobs:
           # One DMG per entry in the build-macos matrix
           dmgs=(artifacts/parla-macos-signed/*.dmg)
           zips=(artifacts/parla-windows-*/*.zip)
-          apks=(artifacts/parla-android-arm64-signed/*.apk)
+          apks=(artifacts/parla-android-arm64-release/*.apk)
           if (( ${#debs[@]} == 0 || ${#flatpaks[@]} == 0 || ${#appimages[@]} == 0 || ${#rpms[@]} == 0 || ${#dmgs[@]} != 3 || ${#zips[@]} == 0 || ${#apks[@]} != 1 )); then
             find artifacts -maxdepth 4 -type f
-            echo "::error::Missing release artifact (.deb, .flatpak, .AppImage, SailfishOS .rpm, three .dmg files, .zip, or signed Android APK)"
+            echo "::error::Missing release artifact (.deb, .flatpak, .AppImage, SailfishOS .rpm, three .dmg files, .zip, or Android APK)"
             exit 1
           fi
           declare -A dmg_names
@@ -562,7 +563,7 @@ jobs:
             artifacts/parla-sfos-*/*.rpm
             artifacts/parla-macos-signed/*.dmg
             artifacts/parla-windows-*/*.zip
-            artifacts/parla-android-arm64-signed/*.apk
+            artifacts/parla-android-arm64-release/*.apk
 
       - name: Wait before retrying release upload
         if: steps.publish.outcome == 'failure'

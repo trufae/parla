@@ -51,12 +51,17 @@ all Android-generated sources and outputs, remove `.cache/android`,
 
 ## CI and releases
 
-PRs and main build an installable debug APK as the `parla-android-arm64-build`
-Actions artifact. Tags build an unsigned release APK, then a separate job in
-the existing `release` environment signs it. The normal release job requires
-one signed Android APK and attaches it alongside the desktop assets.
+PRs, main and tags build an installable debug APK as the
+`parla-android-arm64-build` Actions artifact by default. Releases label it
+`BETA-PREVIEW` and retain the `-debug.apk` suffix and separate debug app ID.
+This preview uses a development key, not a permanent production key; upgrading
+between previews from different CI runners may require uninstalling the old app.
+The normal release job attaches one APK alongside the desktop assets.
 
-Before the first tagged Android release, configure these **release environment
+For production Android signing, set the repository Actions variable
+`ANDROID_RELEASE_SIGNING=true`. Tags then build an unsigned release APK and
+a separate job in the existing `release` environment signs it. Before enabling
+that variable, configure these **release environment
 secrets** with a permanent keystore owned and backed up by the maintainer:
 
 - `ANDROID_KEYSTORE_BASE64`: base64-encoded keystore containing the private key.
@@ -64,8 +69,8 @@ secrets** with a permanent keystore owned and backed up by the maintainer:
 - `ANDROID_KEY_ALIAS`: signing key alias.
 - `ANDROID_KEY_PASSWORD`: signing key password.
 
-`sign.sh` accepts the same variables for local signing. A tagged release fails
-if signing is unconfigured; it never publishes a debug-signed production APK.
+`sign.sh` accepts the same variables for local signing. A production build fails
+if signing is unconfigured; it never substitutes a preview for a production APK.
 Signing secrets are only exposed to the signing job, after compilation, and are
 not used on PRs. The keystore is removed when that step exits.
 
