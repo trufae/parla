@@ -1125,7 +1125,7 @@ namespace Dc {
 
             var rpc_autocheck_row = action_row (
                 _("Check for Updates on Startup"),
-                _("Notify when a newer Chatmail Core version is available"));
+                _("Notify when a newer Parla or Chatmail Core version is available"));
             var autocheck_switch = row_switch (
                 rpc_autocheck_row,
                 app_window.settings.rpc_check_updates_on_startup);
@@ -1133,7 +1133,6 @@ namespace Dc {
                 app_window.settings.save_rpc_check_updates_on_startup (
                     autocheck_switch.active);
             });
-            rpc_autocheck_row.visible = !SettingsManager.rpc_server_path_is_fixed ();
             chatmail_group.add (rpc_autocheck_row);
 
             update_rpc_row ();

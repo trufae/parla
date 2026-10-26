@@ -118,6 +118,7 @@ namespace Dc {
         /* Floating connection-status banner (revealed when RPC is down) */
         private Gtk.Revealer connection_banner;
         private Gtk.Label connection_banner_label;
+        private Gtk.Button parla_update_button;
 
         /* Profile avatar */
         private Gtk.MenuButton account_menu_button;
@@ -390,6 +391,9 @@ namespace Dc {
             /* Defer until the main loop — the tray's D-Bus connection and the
                application property aren't ready during construct. */
             Idle.add (() => {
+                if (settings.rpc_check_updates_on_startup) {
+                    check_parla_update.begin ();
+                }
                 try_connect.begin ();
                 sync_tray ();
                 return Source.REMOVE;
@@ -1008,7 +1012,24 @@ namespace Dc {
             image_overlay.child = toast_overlay;
             image_overlay.add_overlay (image_viewer.widget);
             image_overlay.add_overlay (video_player.widget);
-            image_overlay.add_overlay (build_connection_banner ());
+            var status_banners = new Gtk.Box (Gtk.Orientation.VERTICAL, 8);
+            status_banners.halign = Gtk.Align.CENTER;
+            status_banners.valign = Gtk.Align.START;
+            status_banners.margin_top = 8;
+            status_banners.margin_start = 8;
+            status_banners.margin_end = 8;
+            status_banners.append (build_connection_banner ());
+            parla_update_button = new Gtk.Button ();
+            parla_update_button.add_css_class ("pill");
+            parla_update_button.add_css_class ("suggested-action");
+            parla_update_button.halign = Gtk.Align.CENTER;
+            parla_update_button.visible = false;
+            parla_update_button.tooltip_text = _("Open Parla on GitHub");
+            parla_update_button.clicked.connect (() => {
+                open_parla_download_page.begin ();
+            });
+            status_banners.append (parla_update_button);
+            image_overlay.add_overlay (status_banners);
 
             this.content = image_overlay;
 
@@ -1494,6 +1515,29 @@ namespace Dc {
             RemoveParamFilter.active = filter;
             debug ("tracking filter: %d rules from %s", filter.rule_count, url);
             return null;
+        }
+
+        /* Parla updates use the same startup preference as engine updates,
+           including when the engine is bundled or managed by the system. */
+        private async void check_parla_update () {
+            try {
+                string tag = yield RpcInstaller.fetch_latest_tag ("trufae/parla");
+                if (!settings.rpc_check_updates_on_startup ||
+                    !RpcInstaller.is_newer_version (tag, Parla.VERSION)) return;
+                parla_update_button.label = _("Parla %s available").printf (tag);
+                parla_update_button.visible = true;
+            } catch (Error e) {
+                /* Update checks are best-effort; stay quiet on failure. */
+            }
+        }
+
+        private async void open_parla_download_page () {
+            try {
+                yield (new Gtk.UriLauncher (
+                    "https://github.com/trufae/parla")).launch (this, null);
+            } catch (Error e) {
+                show_toast (_("Unable to open download page: ") + e.message);
+            }
         }
 
         /* Quietly check GitHub for a newer managed server and offer to update. */
@@ -4111,7 +4155,6 @@ namespace Dc {
             connection_banner.transition_duration = 200;
             connection_banner.halign = Gtk.Align.CENTER;
             connection_banner.valign = Gtk.Align.START;
-            connection_banner.margin_top = 8;
             connection_banner.can_target = false;   /* clicks pass through */
             return connection_banner;
         }

@@ -2,6 +2,19 @@ using Dc;
 
 private string test_executable;
 
+private void test_update_versions () {
+    assert (RpcInstaller.is_newer_version ("v0.10.0", "0.9.9"));
+    assert (RpcInstaller.is_newer_version ("v0.10.3", "0.10.2"));
+    assert (RpcInstaller.is_newer_version ("v1.0.0", "0.99.99"));
+    assert (!RpcInstaller.is_newer_version ("v0.10.2", "0.10.2"));
+    assert (!RpcInstaller.is_newer_version ("v0.10", "0.10.0"));
+    assert (!RpcInstaller.is_newer_version ("v0.9.9", "0.10.2"));
+    assert (!RpcInstaller.is_newer_version ("v0.10.1", "0.10.2-dev"));
+    assert (!RpcInstaller.is_newer_version ("nightly", "0.10.2"));
+    assert (!RpcInstaller.is_newer_version ("v0.10.3", "unknown"));
+    assert (!RpcInstaller.is_newer_version ("v0..11", "0.10.2"));
+}
+
 private async void nap (uint milliseconds) {
     Timeout.add (milliseconds, nap.callback);
     yield;
@@ -473,6 +486,7 @@ public int main (string[] args) {
     }
     test_executable = File.new_for_path (args[0]).get_path ();
     Test.init (ref args);
+    Test.add_func ("/updates/versions", test_update_versions);
     register_account_backup_tests ();
     Test.add_func ("/core-compat/presence", test_presence);
     Test.add_func ("/core-compat/message-identity", test_message_identity);

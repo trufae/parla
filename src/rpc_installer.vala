@@ -196,9 +196,10 @@ namespace Dc {
 #endif
         }
 
-        public static async string fetch_latest_tag () throws Error {
+        public static async string fetch_latest_tag (
+                string repository = "chatmail/core") throws Error {
             if (use_curl ()) {
-                return yield fetch_latest_tag_with_curl ();
+                return yield fetch_latest_tag_with_curl (repository);
             }
 
             var client = new SocketClient ();
@@ -212,7 +213,7 @@ namespace Dc {
             yield tls.handshake_async (Priority.DEFAULT, null);
 
             string request =
-                "HEAD /chatmail/core/releases/latest HTTP/1.1\r\n" +
+                "HEAD /%s/releases/latest HTTP/1.1\r\n".printf (repository) +
                 "Host: github.com\r\n" +
                 "User-Agent: Parla\r\n" +
                 "Accept: */*\r\n" +
@@ -327,7 +328,8 @@ namespace Dc {
             return msg.length > 0 ? msg : _("curl exited unsuccessfully");
         }
 
-        private static async string fetch_latest_tag_with_curl () throws Error {
+        private static async string fetch_latest_tag_with_curl (
+                string repository) throws Error {
             string? curl = curl_path ();
             if (curl == null) {
                 throw new IOError.NOT_SUPPORTED (_("curl is required to download"));
@@ -340,7 +342,7 @@ namespace Dc {
                 "--show-error",
                 "--max-time", "15",
                 "--user-agent", "Parla",
-                "https://github.com/chatmail/core/releases/latest",
+                "https://github.com/%s/releases/latest".printf (repository),
             };
 
             string? stdout_buf;
@@ -589,6 +591,24 @@ namespace Dc {
                 version = version.substring (0, version.length - 1);
             }
             return version.length > 0 ? version : null;
+        }
+
+        /** Compare numeric release components, so 0.10.0 is newer than 0.9.9. */
+        public static bool is_newer_version (string latest, string installed) {
+            string? latest_version = extract_version (latest);
+            string? installed_version = extract_version (installed);
+            if (latest_version == null || installed_version == null) return false;
+            string[] a = latest_version.split (".");
+            string[] b = installed_version.split (".");
+            int order = 0;
+            for (int i = 0; i < int.max (a.length, b.length); i++) {
+                uint64 av = 0;
+                uint64 bv = 0;
+                if (i < a.length && !uint64.try_parse (a[i], out av)) return false;
+                if (i < b.length && !uint64.try_parse (b[i], out bv)) return false;
+                if (order == 0 && av != bv) order = av > bv ? 1 : -1;
+            }
+            return order > 0;
         }
 
         private static string? extract_release_tag (string location) {
