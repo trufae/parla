@@ -1520,6 +1520,33 @@ namespace Dc {
             Signal.connect_object (text, "activate-link",
                 (Callback) on_label_activate_link,
                 text, (ConnectFlags) 0);
+
+            // Reuse GTK's link hit testing, then refresh the native cursor.
+            // A macOS enter event need not include an initial motion event,
+            // and the native cursor may reset while the active link stays put.
+            var controllers = text.observe_controllers ();
+            for (uint i = 0; i < controllers.get_n_items (); i++) {
+                var motion = controllers.get_item (i) as Gtk.EventControllerMotion;
+                if (motion == null) continue;
+                Signal.connect_object (motion, "enter",
+                    (Callback) on_label_link_enter, text, ConnectFlags.AFTER);
+                Signal.connect_object (motion, "motion",
+                    (Callback) on_label_link_motion, text, ConnectFlags.AFTER);
+            }
+        }
+
+        private static void on_label_link_enter (Gtk.EventControllerMotion motion,
+                                                  double x, double y,
+                                                  Gtk.Label text) {
+            motion.motion (x, y);
+        }
+
+        private static void on_label_link_motion (Gtk.EventControllerMotion motion,
+                                                   double x, double y,
+                                                   Gtk.Label text) {
+            var cursor = text.get_cursor ();
+            if (cursor != null && cursor.get_name () == "pointer")
+                text.set_cursor_from_name ("pointer");
         }
 
         private static bool on_label_activate_link (Gtk.Label sender,

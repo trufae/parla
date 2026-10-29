@@ -558,7 +558,7 @@ core_compat_test = executable(
         'tests/account_backup_test.vala',
         'tests/compose_scroll_ui_test.vala', 'tests/image_preview_ui_test.vala',
         'tests/video_thumbnail_ui_test.vala', 'tests/touch_text_menu_ui_test.vala',
-        'tests/attachment_drag_ui_test.vala'),
+        'tests/attachment_drag_ui_test.vala', 'tests/link_cursor_ui_test.vala'),
   sources, config_file, appdata_vala, resources,
   dependencies: deps,
   include_directories: src_inc,
