@@ -1,6 +1,59 @@
 using Dc;
 
 #if MACOS
+private async void check_video_preview_layout (string video) {
+    foreach (var style in new MessageStyle[] {
+            MessageStyle.BUBBLES, MessageStyle.IRC, MessageStyle.WORKSPACE }) {
+        MessageRow.style = style;
+        foreach (string state in new string[] { "Available", "InProgress", "Failure", "Done" }) {
+            foreach (bool portrait in new bool[] { false, true }) {
+                var msg = new Message ();
+                msg.id = 42;
+                msg.view_type = "Video";
+                msg.state = MessageState.OUT_DELIVERED;
+                msg.file_name = "video_2026-10-29_12-25-52.mp4";
+                msg.download_state = state;
+                if (state == "Done") msg.file_path = video;
+                if (portrait) {
+                    msg.dimensions_width = 1080;
+                    msg.dimensions_height = 1920;
+                }
+                // The caption/download controls can be wider than the preview.
+                msg.text = "A video attachment with a caption that fills the message bubble";
+                foreach (int width in new int[] { 800, 400 }) {
+                    var row = new MessageRow (msg);
+                    var picture = search_widget (row, typeof (Gtk.Picture)) as Gtk.Picture;
+                    assert (picture != null);
+                    var overlay = picture.get_parent () as Gtk.Overlay;
+                    var frame = overlay.get_parent () as ScaledPreviewFrame;
+                    assert (frame != null);
+                    var window = new Gtk.Window ();
+                    window.set_default_size (width, 400);
+                    window.child = row;
+                    window.present ();
+                    yield nap (50);
+                    stdout.printf ("Video layout: %s %s portrait=%s window=%d frame=%dx%d content=%dx%d\n",
+                        style.to_string (), state, portrait.to_string (), window.get_width (),
+                        frame.get_width (), frame.get_height (), picture.get_width (), picture.get_height ());
+                    assert (frame.get_width () <= window.get_width ());
+                    assert (frame.get_width () <= (portrait ? 112 : 260));
+                    assert (frame.get_height () <= (portrait ? 200 : 150));
+                    assert (picture.get_width () == frame.get_width ());
+                    assert (picture.get_height () == frame.get_height ());
+                    var badge = picture.get_next_sibling ();
+                    Graphene.Rect bounds;
+                    assert (badge.compute_bounds (frame, out bounds));
+                    assert ((bounds.origin.x + bounds.size.width / 2
+                        - frame.get_width () / 2.0).abs () <= 1);
+                    assert ((bounds.origin.y + bounds.size.height / 2
+                        - frame.get_height () / 2.0).abs () <= 1);
+                    window.destroy ();
+                }
+            }
+        }
+    }
+}
+
 /* Run core-compat-test --video-thumbnail-ui /path/to/short-video.mp4 on macOS.
    Uses the real AVFoundation worker and GTK pictures, including task cleanup. */
 private async void check_video_thumbnails (string video, string folder) {
@@ -46,6 +99,8 @@ private async void check_video_thumbnails (string video, string folder) {
         assert (cached.paintable == texture);
     }
 
+    yield check_video_preview_layout (video);
+
     // Reopen the video attachment in every chat style through the real caller.
     foreach (var style in new MessageStyle[] {
             MessageStyle.BUBBLES, MessageStyle.IRC, MessageStyle.WORKSPACE }) {
@@ -75,7 +130,7 @@ public int run_video_thumbnail_ui_test (string video) {
     });
     loop.run ();
     DirUtils.remove (folder);
-    stdout.printf ("Video thumbnails: failed, removed, uncached, cached, and all chat styles passed.\n");
+    stdout.printf ("Video thumbnails: loading, layout, and all chat styles passed.\n");
     return 0;
 }
 #endif

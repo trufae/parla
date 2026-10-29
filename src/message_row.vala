@@ -1180,7 +1180,6 @@ namespace Dc {
 
         private static Gtk.Widget build_video_preview (Message msg) {
             var overlay = new Gtk.Overlay ();
-            overlay.halign = Gtk.Align.START;
 
             overlay.child = build_video_paintable (msg);
 
@@ -1225,6 +1224,10 @@ namespace Dc {
                 height = int.max (1, (int) (msg.dimensions_height * scale));
             }
             var frame = new ScaledPreviewFrame (width, height, "message-video-frame");
+            // Captions and download controls may be wider than the video.
+            // Keep the frame bounded and let the overlay fill it completely.
+            frame.halign = Gtk.Align.START;
+            frame.valign = Gtk.Align.START;
             frame.child = overlay;
             return frame;
         }
