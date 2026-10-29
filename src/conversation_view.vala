@@ -566,7 +566,11 @@ namespace Dc {
             dc.propagation_phase = Gtk.PropagationPhase.CAPTURE;
             int dc_last_id = -1;
             int64 dc_last_time = 0;
+            int pending_attachment_activation = -1;
+            double attachment_press_x = 0;
+            double attachment_press_y = 0;
             track_signal (dc, dc.pressed.connect ((n, x, y) => {
+                pending_attachment_activation = -1;
                 var row = pick_message_row (x, y);
                 if (row == null) return;
                 if (selection_mode) {
@@ -626,9 +630,28 @@ namespace Dc {
                         should_activate_message_at_pointer (
                             msg, pointer_on_css (x, y, { "message-image",
                                                          "message-video-frame" }))) {
-                        on_message_activated (msg);
+                        // Opening on press would steal the pointer before an
+                        // attachment has a chance to start a file drag.
+                        pending_attachment_activation = msg.id;
+                        attachment_press_x = x;
+                        attachment_press_y = y;
                     }
                 }
+            }));
+            track_signal (dc, dc.released.connect ((n, x, y) => {
+                int id = pending_attachment_activation;
+                pending_attachment_activation = -1;
+                if (id < 0) return;
+                if (Gtk.drag_check_threshold (message_listview,
+                        (int) attachment_press_x, (int) attachment_press_y,
+                        (int) x, (int) y)) return;
+                var row = pick_message_row (x, y);
+                if (row == null || row.message_id != id) return;
+                var msg = find_message (message_store, id);
+                if (msg != null) on_message_activated (msg);
+            }));
+            track_signal (dc, dc.cancel.connect (() => {
+                pending_attachment_activation = -1;
             }));
             message_listview.add_controller (dc);
 

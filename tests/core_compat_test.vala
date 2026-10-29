@@ -418,6 +418,8 @@ private void test_unread_calls () {
 }
 
 public int main (string[] args) {
+    if (args.length > 1 && args[1] == "--attachment-drag-ui")
+        return run_attachment_drag_ui_test ();
     if (args.length > 1 && args[1] == "--touch-text-menu-ui")
         return run_touch_text_menu_ui_test ();
 #if MACOS

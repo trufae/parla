@@ -1,5 +1,37 @@
 namespace Dc {
 
+    /** Offer the actual file to other chats and desktop file managers. */
+    public class FileDragSource : Object {
+        public static void attach (Gtk.Widget widget, Message message) {
+            if (!message.has_local_file) return;
+
+            var source = new Gtk.DragSource ();
+            source.actions = Gdk.DragAction.COPY;
+            source.button = Gdk.BUTTON_PRIMARY;
+            source.prepare.connect ((x, y) => {
+                if (message.selection_visible || !message.has_local_file)
+                    return null;
+
+                var file = File.new_for_path (message.file_path);
+                var value = Value (typeof (Gdk.FileList));
+                value.set_boxed (new Gdk.FileList.from_array ({ file }));
+                // Keep a URI representation for external destinations as well
+                // as the typed file list used for drops within GTK.
+                return new Gdk.ContentProvider.union ({
+                    new Gdk.ContentProvider.for_value (value),
+                    new Gdk.ContentProvider.for_bytes ("text/uri-list",
+                        new Bytes ((file.get_uri () + "\r\n").data))
+                });
+            });
+            var icon = Gtk.IconTheme.get_for_display (widget.get_display ())
+                .lookup_icon ("mail-attachment-symbolic", null, 48,
+                    widget.get_scale_factor (), widget.get_direction (),
+                    Gtk.IconLookupFlags.PRELOAD);
+            source.set_icon (icon, 0, 0);
+            widget.add_controller (source);
+        }
+    }
+
     public class FileDropTarget : Object {
         private const string URI_LIST_MIME_TYPE = "text/uri-list";
 

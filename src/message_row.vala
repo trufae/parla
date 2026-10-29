@@ -795,7 +795,9 @@ namespace Dc {
                 return;
             }
             if (msg.is_video_file ()) {
-                box.append (build_video_preview (msg));
+                var video = build_video_preview (msg);
+                FileDragSource.attach (video, msg);
+                box.append (video);
                 return;
             }
             if (msg.is_audio_file ()) {
@@ -809,11 +811,13 @@ namespace Dc {
                available actions for the current build and settings. */
             if (msg.is_webxdc ()) {
                 var card = build_webxdc_card (msg);
+                FileDragSource.attach (card, msg);
                 card.halign = Gtk.Align.START;
                 box.append (card);
                 return;
             }
             var fi = build_file_indicator (msg);
+            FileDragSource.attach (fi, msg);
             if (irc) fi.halign = Gtk.Align.START;
             box.append (fi);
         }
@@ -917,8 +921,9 @@ namespace Dc {
             var image = msg.is_sticker_file ()
                 ? load_sticker (msg.file_path, msg.is_video_sticker_file ())
                 : load_picture (msg.file_path, 400, 400, 260, 0);
-            if (image == null) bubble.append (build_file_indicator (msg));
-            else bubble.append (image);
+            if (image == null) image = build_file_indicator (msg);
+            FileDragSource.attach (image, msg);
+            bubble.append (image);
         }
 
         private static void append_irc_images (Gtk.Box body, Message msg,
@@ -940,12 +945,14 @@ namespace Dc {
                 ? load_sticker (m.file_path, m.is_video_sticker_file ())
                 : load_picture (m.file_path, 260, 200, 0, 180);
             if (picture != null) {
+                FileDragSource.attach (picture, m);
                 picture.add_css_class ("message-image-irc");
                 picture.halign = Gtk.Align.START;
                 picture.valign = Gtk.Align.START;
                 strip.append (picture);
             } else {
                 var fi = new Gtk.Label (m.display_file_name ("image"));
+                FileDragSource.attach (fi, m);
                 fi.add_css_class ("dim-label");
                 strip.append (fi);
             }
