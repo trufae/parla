@@ -4,7 +4,7 @@
 project(
   'parla',
   ['vala', 'c'],
-version : '0.10.4',
+version : '0.10.6',
   meson_version : '>= 0.59.0',
   default_options : ['werror=true', 'cpp_std=c++17']
 )
