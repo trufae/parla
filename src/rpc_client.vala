@@ -820,9 +820,14 @@ namespace Dc {
         }
 
         public async void forward_messages (int[] msg_ids, int chat_id) throws Error {
+            yield forward_messages_for (account_id, msg_ids, chat_id);
+        }
+
+        public async void forward_messages_for (int acct_id, int[] msg_ids,
+                                               int chat_id) throws Error {
             yield call ("forward_messages",
                 Params.begin ()
-                    .add_int (account_id)
+                    .add_int (acct_id)
                     .add_int_array (msg_ids)
                     .add_int (chat_id)
                     .build ());

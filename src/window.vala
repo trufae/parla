@@ -1842,6 +1842,10 @@ namespace Dc {
                         Signal.connect_object (chat_row, "file-dropped",
                             (Callback) on_chat_row_file_dropped, this, (ConnectFlags) 0);
                         chat_row.file_drop_failed.connect (on_chat_row_file_drop_failed);
+                        Signal.connect_object (chat_row, "accept-message-drop",
+                            (Callback) on_chat_row_accept_message_drop, this, (ConnectFlags) 0);
+                        Signal.connect_object (chat_row, "message-dropped",
+                            (Callback) on_chat_row_message_dropped, this, (ConnectFlags) 0);
                     }
                     if (new_row) chat_listbox.append (row);
                     if (entry.id == desired_chat_id) {
@@ -1949,6 +1953,21 @@ namespace Dc {
 
         private static bool on_chat_row_accept_file_drop (ChatRow row, Window window) {
             return window.can_attach_file_to_chat (row.chat_id);
+        }
+
+        private static bool on_chat_row_accept_message_drop (ChatRow row,
+                MessageDrag message, Window window) {
+            var entry = find_chat_entry (window.chat_store, row.chat_id);
+            return message.account_id > 0 && message.message_id > 0
+                && entry != null && !entry.is_contact_request;
+        }
+
+        private static void on_chat_row_message_dropped (ChatRow row,
+                MessageDrag message, Window window) {
+            if (!on_chat_row_accept_message_drop (row, message, window)) return;
+            MessageActions.forward_to_chat.begin (window, window.rpc,
+                new int[] { message.message_id }, message.account_id,
+                window.rpc.account_id, row.chat_id);
         }
 
         private static void on_chat_row_file_dropped (ChatRow row, string path,

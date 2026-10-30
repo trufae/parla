@@ -1,8 +1,31 @@
 namespace Dc {
 
+    /** In-process identity, kept alongside the file export for forwarding. */
+    public class MessageDrag : Object {
+        public int account_id { get; construct; }
+        public int message_id { get; construct; }
+
+        public MessageDrag (int account_id, int message_id) {
+            Object (account_id: account_id, message_id: message_id);
+        }
+
+        public static MessageDrag? from_content (Gdk.ContentProvider content) {
+            if (!content.ref_formats ().contain_gtype (typeof (MessageDrag)))
+                return null;
+            try {
+                var value = Value (typeof (MessageDrag));
+                content.get_value (ref value);
+                return value.dup_object () as MessageDrag;
+            } catch (Error e) {
+                return null;
+            }
+        }
+    }
+
     /** Offer the actual file to other chats and desktop file managers. */
     public class FileDragSource : Object {
-        public static void attach (Gtk.Widget widget, Message message) {
+        public static void attach (Gtk.Widget widget, Message message,
+                                   int account_id = 0) {
             if (!message.has_local_file) return;
 
             var source = new Gtk.DragSource ();
@@ -17,11 +40,17 @@ namespace Dc {
                 value.set_boxed (new Gdk.FileList.from_array ({ file }));
                 // Keep a URI representation for external destinations as well
                 // as the typed file list used for drops within GTK.
-                return new Gdk.ContentProvider.union ({
+                Gdk.ContentProvider[] providers = {
                     new Gdk.ContentProvider.for_value (value),
                     new Gdk.ContentProvider.for_bytes ("text/uri-list",
                         new Bytes ((file.get_uri () + "\r\n").data))
-                });
+                };
+                if (account_id > 0 && message.id > 0) {
+                    var identity = Value (typeof (MessageDrag));
+                    identity.set_object (new MessageDrag (account_id, message.id));
+                    providers += new Gdk.ContentProvider.for_value (identity);
+                }
+                return new Gdk.ContentProvider.union (providers);
             });
             var icon = Gtk.IconTheme.get_for_display (widget.get_display ())
                 .lookup_icon ("mail-attachment-symbolic", null, 48,
@@ -37,15 +66,20 @@ namespace Dc {
 
         private unowned Gtk.Widget widget;
         private string active_css_class;
+        private bool forward_messages;
 
         public signal bool accept ();
         public signal void dropped (string path, string name);
         public signal void failed (string message);
+        public signal bool accept_message (MessageDrag message);
+        public signal void message_dropped (MessageDrag message);
 
         public FileDropTarget (Gtk.Widget widget,
-                               string active_css_class = "chat-drop-active") {
+                               string active_css_class = "chat-drop-active",
+                               bool forward_messages = false) {
             this.widget = widget;
             this.active_css_class = active_css_class;
+            this.forward_messages = forward_messages;
             install ();
         }
 
@@ -82,13 +116,17 @@ namespace Dc {
             var formats = new Gdk.ContentFormatsBuilder ();
             formats.add_gtype (typeof (GLib.File));
             formats.add_gtype (typeof (Gdk.FileList));
+            if (forward_messages) formats.add_gtype (typeof (MessageDrag));
             formats.add_mime_type (URI_LIST_MIME_TYPE);
             return formats.to_formats ();
         }
 
         private bool can_accept (Gdk.Drop drop) {
-            if (!accept () || preferred_action (drop) == (Gdk.DragAction) 0)
+            if (preferred_action (drop) == (Gdk.DragAction) 0)
                 return false;
+            var message = message_for (drop);
+            if (message != null) return accept_message (message);
+            if (!accept ()) return false;
 
             /* Finder can advertise useful pasteboard types before GTK can
                deserialize them, so macOS is accepted optimistically and
@@ -115,6 +153,12 @@ namespace Dc {
         private async void handle_drop (Gdk.Drop drop) {
             bool ok = false;
             try {
+                var message = message_for (drop);
+                if (message != null) {
+                    message_dropped (message);
+                    ok = true;
+                    return;
+                }
                 var file = yield read_file (drop);
                 if (file == null) {
                     failed (_("unsupported drop data"));
@@ -126,6 +170,12 @@ namespace Dc {
             } finally {
                 drop.finish (ok ? Gdk.DragAction.COPY : (Gdk.DragAction) 0);
             }
+        }
+
+        private MessageDrag? message_for (Gdk.Drop drop) {
+            if (!forward_messages) return null;
+            var drag = drop.get_drag ();
+            return drag == null ? null : MessageDrag.from_content (drag.get_content ());
         }
 
         private async bool emit_local_file (GLib.File file) throws Error {

@@ -642,11 +642,19 @@ parla_pasteboard_has_file_url (NSPasteboard *pasteboard)
 
 - (BOOL)canAcceptDraggingInfo:(id<NSDraggingInfo>)sender
 {
+	/* Let GTK handle its own drags, preserving the message identity and
+	 * destination highlight. The native fallback is for external files. */
+	if ([sender draggingSource] != nil) {
+		return NO;
+	}
 	return parla_pasteboard_has_file_url ([sender draggingPasteboard]);
 }
 
 - (BOOL)performDraggingInfo:(id<NSDraggingInfo>)sender
 {
+	if (![self canAcceptDraggingInfo:sender]) {
+		return NO;
+	}
 	NSString *path = [parla_paths_from_pasteboard ([sender draggingPasteboard]) firstObject];
 	if (path == nil || callback == NULL) {
 		return NO;

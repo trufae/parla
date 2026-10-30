@@ -301,7 +301,7 @@ namespace Dc {
             return picker;
         }
 
-        private static async void forward_to_chat (Window window, RpcClient rpc,
+        public static async void forward_to_chat (Window window, RpcClient rpc,
                                                     owned int[] msg_ids,
                                                     int src_acct, int dest_acct,
                                                     int chat_id) {
@@ -309,7 +309,7 @@ namespace Dc {
                 if (dest_acct == src_acct) {
                     /* Same account: use core's native forward so messages keep
                        their "Forwarded" flag. */
-                    yield rpc.forward_messages (msg_ids, chat_id);
+                    yield rpc.forward_messages_for (src_acct, msg_ids, chat_id);
                 } else {
                     /* Cross-account: core can't forward across accounts, so
                        copy each message's text + attachment and re-send it into

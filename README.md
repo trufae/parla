@@ -58,7 +58,7 @@ instructions are in [docs/website.md](docs/website.md).
 
 ### Messaging
 
-- **Rich compose bar** — multi-line text, file attachments via picker or drag-and-drop, paste images or files straight from the clipboard. Drag downloaded attachments out of a conversation onto another chat to prepare a message, or into Finder/Files to copy them.
+- **Rich compose bar** — multi-line text, file attachments via picker or drag-and-drop, paste images or files straight from the clipboard. Drag downloaded pictures or attachments onto a contact in the sidebar to forward them immediately, including their caption. Drop onto the composer to prepare an attachment, or into Finder/Files to copy it.
 - **Reply, edit, delete, forward** — full message actions via right-click; Delete for Me syncs to linked devices, while Delete for Everyone requests deletion of eligible sent messages from other participants too. Leave Group keeps the history; Leave and Delete removes it for your profile.
 - **Emoji reactions** — quick-pick 👍 ❤️ 😂 😮 😢 👎 shown as badges on the message.
 - **Pinned messages** — pin any message in a chat; a pinned-messages bar at the top of the conversation lets you jump back to them.

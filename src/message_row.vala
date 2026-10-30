@@ -796,7 +796,7 @@ namespace Dc {
             }
             if (msg.is_video_file ()) {
                 var video = build_video_preview (msg);
-                FileDragSource.attach (video, msg);
+                FileDragSource.attach (video, msg, account_id);
                 box.append (video);
                 return;
             }
@@ -811,13 +811,13 @@ namespace Dc {
                available actions for the current build and settings. */
             if (msg.is_webxdc ()) {
                 var card = build_webxdc_card (msg);
-                FileDragSource.attach (card, msg);
+                FileDragSource.attach (card, msg, account_id);
                 card.halign = Gtk.Align.START;
                 box.append (card);
                 return;
             }
             var fi = build_file_indicator (msg);
-            FileDragSource.attach (fi, msg);
+            FileDragSource.attach (fi, msg, account_id);
             if (irc) fi.halign = Gtk.Align.START;
             box.append (fi);
         }
@@ -917,17 +917,17 @@ namespace Dc {
             return avatar;
         }
 
-        private static void append_bubble_image (Gtk.Box bubble, Message msg) {
+        private void append_bubble_image (Gtk.Box bubble, Message msg) {
             var image = msg.is_sticker_file ()
                 ? load_sticker (msg.file_path, msg.is_video_sticker_file ())
                 : load_picture (msg.file_path, 400, 400, 260, 0);
             if (image == null) image = build_file_indicator (msg);
-            FileDragSource.attach (image, msg);
+            FileDragSource.attach (image, msg, account_id);
             bubble.append (image);
         }
 
-        private static void append_irc_images (Gtk.Box body, Message msg,
-                                               GLib.GenericArray<Message>? trailing_images) {
+        private void append_irc_images (Gtk.Box body, Message msg,
+                                        GLib.GenericArray<Message>? trailing_images) {
             var strip = new Gtk.Box (Gtk.Orientation.HORIZONTAL,
                 trailing_images != null && trailing_images.length > 0 ? 4 : 0);
             strip.halign = Gtk.Align.START;
@@ -940,19 +940,19 @@ namespace Dc {
             body.append (strip);
         }
 
-        private static void append_irc_image (Gtk.Box strip, Message m) {
+        private void append_irc_image (Gtk.Box strip, Message m) {
             var picture = m.is_sticker_file ()
                 ? load_sticker (m.file_path, m.is_video_sticker_file ())
                 : load_picture (m.file_path, 260, 200, 0, 180);
             if (picture != null) {
-                FileDragSource.attach (picture, m);
+                FileDragSource.attach (picture, m, account_id);
                 picture.add_css_class ("message-image-irc");
                 picture.halign = Gtk.Align.START;
                 picture.valign = Gtk.Align.START;
                 strip.append (picture);
             } else {
                 var fi = new Gtk.Label (m.display_file_name ("image"));
-                FileDragSource.attach (fi, m);
+                FileDragSource.attach (fi, m, account_id);
                 fi.add_css_class ("dim-label");
                 strip.append (fi);
             }

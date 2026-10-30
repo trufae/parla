@@ -564,7 +564,7 @@ namespace Dc {
             label.add_css_class ("message-audio-name");
             label.xalign = 0;
             label.valign = Gtk.Align.CENTER;
-            FileDragSource.attach (label, message);
+            FileDragSource.attach (label, message, account_id);
             row.append (label);
 
             if (Transcriber.available () && message.has_local_file) {
