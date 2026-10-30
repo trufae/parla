@@ -6,7 +6,8 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 
 root = Path(__file__).resolve().parents[2]
-version = re.search(r"version:\s*'([^']+)'", (root / 'meson.build').read_text())[1]
+# Match the project version, allowing Meson's whitespace around the colon.
+version = re.search(r"^\s*version\s*:\s*'([^']+)'", (root / 'meson.build').read_text(), re.MULTILINE)[1]
 if '--version' in sys.argv:
     print(version)
     sys.exit()
