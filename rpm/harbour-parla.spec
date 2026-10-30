@@ -1,7 +1,7 @@
 # Parla consumes the shared Sailfish GNOME runtime/devel packages.
 # Only the app and the pinned Delta Chat JSON-RPC engine are bundled here.
 %global vendor_prefix %{_datadir}/%{name}
-%global dcrpc_version 2.64.0
+%global dcrpc_version 2.66.0
 
 %ifarch aarch64
 %global dcrpc_arch aarch64

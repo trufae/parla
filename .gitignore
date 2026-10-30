@@ -1,4 +1,5 @@
 *.zip
+.pmai
 scripts/stickers/packs/
 www/stickers/manifest.json
 www/stickers/SHA256SUMS
@@ -37,3 +38,4 @@ builddir-gtk4-accesskit/
 .buildconfig
 subprojects/
 dist/android/*.apk
+b/
