@@ -75,7 +75,7 @@ jobs:
               if key == 'SOURCE_RUN_ID':
                   required = {'parla-deb', 'parla-appimage-x86_64', 'parla-appimage-aarch64',
                               'parla-sfos-aarch64', 'parla-windows-x86_64',
-                              'parla-macos-arm64-zip', 'parla-macos-arm64-legacy-zip',
+                              'parla-macos-arm64-zip',
                               'parla-x86_64-x86_64.flatpak', 'parla-aarch64-aarch64.flatpak'}
               if not required <= names:
                   raise SystemExit(f'Missing or expired artifacts: {required - names}')
@@ -213,11 +213,11 @@ jobs:
         with:
           ref: ${{ needs.validate.outputs.sha }}
 
-      - name: Download successful ARM builds from the tag run
+      - name: Download successful ARM build from the tag run
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          pattern: parla-macos-arm64*-zip
-          path: artifacts
+          name: parla-macos-arm64-zip
+          path: artifacts/parla-macos-arm64-zip
           run-id: ${{ inputs.source_run_id }}
           github-token: ${{ github.token }}
 
@@ -231,7 +231,7 @@ jobs:
         env:
           RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
-          for build in macos-arm64 macos-arm64-legacy macos-intel; do
+          for build in macos-arm64 macos-intel; do
             test -f "artifacts/parla-$build-zip/Parla-$RELEASE_TAG.zip"
           done
 
@@ -331,9 +331,9 @@ jobs:
           dmgs=(artifacts/parla-macos-signed/*.dmg)
           zips=(artifacts/parla-windows-*/*.zip)
           apks=(artifacts/parla-android-arm64-release/*.apk)
-          if (( ${#debs[@]} == 0 || ${#flatpaks[@]} != 2 || ${#appimages[@]} != 2 || ${#rpms[@]} == 0 || ${#dmgs[@]} != 3 || ${#zips[@]} == 0 || ${#apks[@]} != 1 )); then
+          if (( ${#debs[@]} == 0 || ${#flatpaks[@]} != 2 || ${#appimages[@]} != 2 || ${#rpms[@]} == 0 || ${#dmgs[@]} != 2 || ${#zips[@]} == 0 || ${#apks[@]} != 1 )); then
             find artifacts -maxdepth 4 -type f
-            echo "::error::Missing release artifact (.deb, .flatpak, .AppImage, SailfishOS .rpm, three .dmg files, .zip, or Android APK)"
+            echo "::error::Missing release artifact (.deb, .flatpak, .AppImage, SailfishOS .rpm, two .dmg files, .zip, or Android APK)"
             exit 1
           fi
           declare -A dmg_names

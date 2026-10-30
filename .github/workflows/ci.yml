@@ -217,9 +217,6 @@ jobs:
           - arch: x86_64
             runner: macos-26-intel
             dmgname: macos-intel
-          - arch: arm64
-            runner: macos-14
-            dmgname: macos-arm64-legacy
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -533,9 +530,9 @@ jobs:
           dmgs=(artifacts/parla-macos-signed/*.dmg)
           zips=(artifacts/parla-windows-*/*.zip)
           apks=(artifacts/parla-android-arm64-release/*.apk)
-          if (( ${#debs[@]} == 0 || ${#flatpaks[@]} == 0 || ${#appimages[@]} == 0 || ${#rpms[@]} == 0 || ${#dmgs[@]} != 3 || ${#zips[@]} == 0 || ${#apks[@]} != 1 )); then
+          if (( ${#debs[@]} == 0 || ${#flatpaks[@]} == 0 || ${#appimages[@]} == 0 || ${#rpms[@]} == 0 || ${#dmgs[@]} != 2 || ${#zips[@]} == 0 || ${#apks[@]} != 1 )); then
             find artifacts -maxdepth 4 -type f
-            echo "::error::Missing release artifact (.deb, .flatpak, .AppImage, SailfishOS .rpm, three .dmg files, .zip, or Android APK)"
+            echo "::error::Missing release artifact (.deb, .flatpak, .AppImage, SailfishOS .rpm, two .dmg files, .zip, or Android APK)"
             exit 1
           fi
           declare -A dmg_names
