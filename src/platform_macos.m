@@ -683,9 +683,35 @@ parla_handler_for_view (id view)
 	return objc_getAssociatedObject (view, &parla_drop_handler_key);
 }
 
+/* Registering the content view makes it the drag destination, hiding GTK's
+ * own handlers on the NSWindow. Hand drags we decline back to the window. */
+static id
+parla_gtk_drag_destination (id self, SEL selector)
+{
+	NSWindow *window = [(NSView *) self window];
+	return [window respondsToSelector:selector] ? window : nil;
+}
+
+static void
+parla_forward_drag_notice (id self, SEL selector, id<NSDraggingInfo> sender)
+{
+	ParlaMacosFileDropHandler *handler = parla_handler_for_view (self);
+	if (handler != nil && [handler canAcceptDraggingInfo:sender]) {
+		return;
+	}
+	id target = parla_gtk_drag_destination (self, selector);
+	if (target != nil) {
+		((void (*)(id, SEL, id)) objc_msgSend) (target, selector, sender);
+	}
+}
+
 static NSDragOperation
 parla_call_super_drag_operation (id self, SEL selector, id<NSDraggingInfo> sender)
 {
+	id target = parla_gtk_drag_destination (self, selector);
+	if (target != nil) {
+		return ((NSDragOperation (*)(id, SEL, id)) objc_msgSend) (target, selector, sender);
+	}
 	Class superclass = class_getSuperclass (object_getClass (self));
 	if (superclass == Nil || class_getInstanceMethod (superclass, selector) == NULL) {
 		return NSDragOperationNone;
@@ -702,6 +728,10 @@ parla_call_super_drag_operation (id self, SEL selector, id<NSDraggingInfo> sende
 static BOOL
 parla_call_super_bool (id self, SEL selector, id<NSDraggingInfo> sender)
 {
+	id target = parla_gtk_drag_destination (self, selector);
+	if (target != nil) {
+		return ((BOOL (*)(id, SEL, id)) objc_msgSend) (target, selector, sender);
+	}
 	Class superclass = class_getSuperclass (object_getClass (self));
 	if (superclass == Nil || class_getInstanceMethod (superclass, selector) == NULL) {
 		return NO;
@@ -780,6 +810,12 @@ parla_install_drop_subclass (NSView *view)
 	                 (IMP) parla_prepare_for_drag_operation, "c@:@");
 	class_addMethod (subclass, @selector (performDragOperation:),
 	                 (IMP) parla_perform_drag_operation, "c@:@");
+	class_addMethod (subclass, @selector (draggingExited:),
+	                 (IMP) parla_forward_drag_notice, "v@:@");
+	class_addMethod (subclass, @selector (concludeDragOperation:),
+	                 (IMP) parla_forward_drag_notice, "v@:@");
+	class_addMethod (subclass, @selector (draggingEnded:),
+	                 (IMP) parla_forward_drag_notice, "v@:@");
 	objc_registerClassPair (subclass);
 
 	object_setClass (view, subclass);
