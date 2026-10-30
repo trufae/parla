@@ -26,3 +26,8 @@ docker run --rm --privileged \
     rpm -qp --requires RPMS/harbour-parla-*.rpm
     du -h RPMS/harbour-parla-*.rpm
     ' -- "$release" "$arch"
+
+version=$(./version.sh)
+for rpm in RPMS/harbour-parla-*."$arch".rpm; do
+    mv "$rpm" "RPMS/parla-$arch-$version.rpm"
+done

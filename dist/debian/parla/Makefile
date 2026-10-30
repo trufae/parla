@@ -2,7 +2,7 @@ PACKAGE_DIR=$(shell pwd)
 include ./CONFIG
 
 ROOT_DIR=$(PACKAGE_DIR)/../../..
-VERSION=$(shell grep "version:" $(ROOT_DIR)/meson.build | head -1 | sed "s/.*version: '//;s/'.*//")
+VERSION=$(shell "$(ROOT_DIR)/version.sh")
 PREFIX=/usr
 
 all:

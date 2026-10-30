@@ -11,11 +11,11 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 BUILD_DIR="${BUILD_DIR:-$ROOT/builddir-windows}"
 BUILDTYPE="${BUILDTYPE:-release}"
-VERSION="${VERSION:-$(awk -F"'" '/version:/ { print $2; exit }' "$ROOT/meson.build")}"
+VERSION="${VERSION:-$("$ROOT/version.sh")}"
 ARCH="${MSYSTEM_CARCH:-x86_64}"
 PREFIX="${MINGW_PREFIX:-/ucrt64}"
 DIST="$ROOT/dist/windows/parla"
-ZIP="$ROOT/dist/windows/parla-$VERSION-windows-$ARCH.zip"
+ZIP="$ROOT/dist/windows/parla-$ARCH-$VERSION.zip"
 WITH_WEBXDC="${WITH_WEBXDC:-1}"
 
 meson_options=(-Dwerror=true -Dwebxdc=true)

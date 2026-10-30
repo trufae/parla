@@ -1,4 +1,4 @@
-# Android arm64 (experimental)
+# Android arm64
 
 Parla uses GTK's native Android backend through
 [Pixiewood](https://github.com/sp1ritCS/gtk-android-builder), the same packager
@@ -52,10 +52,10 @@ all Android-generated sources and outputs, remove `.cache/android`,
 ## CI and releases
 
 PRs, main and tags build an installable debug APK as the
-`parla-android-arm64-build` Actions artifact by default. Releases label it
-`BETA-PREVIEW` and retain the `-debug.apk` suffix and separate debug app ID.
-This preview uses a development key, not a permanent production key; upgrading
-between previews from different CI runners may require uninstalling the old app.
+`parla-android-arm64-build` Actions artifact by default. Releases attach it as
+`parla-arm64-<version>.apk`. Debug builds retain their separate debug app ID
+and use a development key; upgrading between builds from different CI runners
+may require uninstalling the old app.
 The normal release job attaches one APK alongside the desktop assets.
 
 For production Android signing, set the repository Actions variable
@@ -70,7 +70,7 @@ secrets** with a permanent keystore owned and backed up by the maintainer:
 - `ANDROID_KEY_PASSWORD`: signing key password.
 
 `sign.sh` accepts the same variables for local signing. A production build fails
-if signing is unconfigured; it never substitutes a preview for a production APK.
+if signing is unconfigured; it never substitutes a debug build for a production APK.
 Signing secrets are only exposed to the signing job, after compilation, and are
 not used on PRs. The keystore is removed when that step exits.
 

@@ -9,7 +9,7 @@ make appimage
 The build writes:
 
 - `dist/appimage/AppDir`
-- `dist/appimage/out/Parla-<version>-<arch>.AppImage`
+- `dist/appimage/out/parla-<arch>-<version>.AppImage`
 - downloaded packaging tools under `dist/appimage/tools`
 
 The RPC backend is not bundled by default. Set `PARLA_APPIMAGE_RPC_SERVER` only

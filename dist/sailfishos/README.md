@@ -1,7 +1,8 @@
 # Parla on Sailfish OS
 
 Experimental native package for Sailfish OS 5.1.0.11 / aarch64, built as
-`harbour-parla` RPMs by the `build-sfos` CI job.
+`harbour-parla` RPMs by the `build-sfos` CI job. Release assets are named
+`parla-aarch64-<version>.rpm`; the installed package name stays `harbour-parla`.
 
 ## Shared libraries
 
@@ -37,7 +38,7 @@ Verify the runtime against that release's `SHA256SUMS`, then install both:
 
 ```sh
 sha256sum --ignore-missing -c SHA256SUMS
-devel-su pkcon install-local ./sailfish-gnome-0.1.0-1.sfos5.1.0.11.aarch64.rpm ./harbour-parla-*.aarch64.rpm
+devel-su pkcon install-local ./sailfish-gnome-0.1.0-1.sfos5.1.0.11.aarch64.rpm ./parla-aarch64-*.rpm
 ```
 
 `pkcon` resolves the remaining system dependencies from the Jolla repositories.

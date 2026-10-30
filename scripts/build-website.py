@@ -18,14 +18,14 @@ RELEASES = {
     "haiku": "https://github.com/trufae/parla-haiku/releases/latest",
 }
 ASSETS = {
-    "appimage-x64": ("parla", r"Parla-.*-x86_64\.AppImage"),
-    "appimage-arm64": ("parla", r"Parla-.*-aarch64\.AppImage"),
-    "flatpak-x64": ("parla", r"parla-x86_64\.flatpak"),
-    "flatpak-arm64": ("parla", r"parla-aarch64\.flatpak"),
-    "deb-x64": ("parla", r"parla_.*_amd64\.deb"),
-    "windows-x64": ("parla", r"parla-.*-windows-x86_64\.zip"),
-    "macos-arm64": ("parla", r"Parla-.*-macos-arm64\.dmg"),
-    "macos-intel": ("parla", r"Parla-.*-macos-intel\.dmg"),
+    "appimage-x64": ("parla", r"parla-x86_64-[0-9].*\.AppImage"),
+    "appimage-arm64": ("parla", r"parla-aarch64-[0-9].*\.AppImage"),
+    "flatpak-x64": ("parla", r"parla-x86_64-[0-9].*\.flatpak"),
+    "flatpak-arm64": ("parla", r"parla-aarch64-[0-9].*\.flatpak"),
+    "deb-x64": ("parla", r"parla-amd64-[0-9].*\.deb"),
+    "windows-x64": ("parla", r"parla-x86_64-[0-9].*\.zip"),
+    "macos-arm64": ("parla", r"parla-arm64-[0-9].*\.dmg"),
+    "macos-intel": ("parla", r"parla-x86_64-[0-9].*\.dmg"),
     "haiku-x64": ("haiku", r"parla-.*-x86_64\.hpkg"),
     "haiku-x86": ("haiku", r"parla_x86-.*-x86_gcc2\.hpkg"),
 }

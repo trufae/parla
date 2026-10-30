@@ -4,11 +4,11 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 . "$ROOT/scripts/macos/env.sh"
 
-VERSION="${VERSION:-$(awk -F"'" '/version:/ { print $2; exit }' "$ROOT/meson.build")}"
+VERSION="${VERSION:-$("$ROOT/version.sh")}"
 ARCH="${ARCH:-$(uname -m)}"
 APP_DIR="${APP_DIR:-$ROOT/dist/macos/Parla.app}"
 ZIP_DIR="${ZIP_DIR:-$ROOT/dist/macos}"
-ZIP="$ROOT/Parla-${VERSION}.zip"
+ZIP="$ROOT/parla-$ARCH-$VERSION.zip"
 
 mkdir -p "$ZIP_DIR"
 make -C "$ROOT" all BUILD_DIR="${BUILD_DIR:-$ROOT/builddir}" BUILDTYPE="${BUILDTYPE:-release}"

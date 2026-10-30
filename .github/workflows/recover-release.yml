@@ -68,15 +68,19 @@ jobs:
                       and run['path'] == '.github/workflows/ci.yml'):
                   raise SystemExit(f'{key} is not a completed CI push for {branch} at {sha}')
               if key == 'ANDROID_RUN_ID' and run['conclusion'] != 'success':
-                  raise SystemExit('Android preview source must have passed CI')
+                  raise SystemExit('Android source must have passed CI')
               artifacts = api(f'actions/runs/{run_id}/artifacts?per_page=100')['artifacts']
               names = {a['name'] for a in artifacts if not a['expired']}
               required = {'parla-android-arm64-build'}
               if key == 'SOURCE_RUN_ID':
                   required = {'parla-deb', 'parla-appimage-x86_64', 'parla-appimage-aarch64',
                               'parla-sfos-aarch64', 'parla-windows-x86_64',
-                              'parla-macos-arm64-zip',
-                              'parla-x86_64-x86_64.flatpak', 'parla-aarch64-aarch64.flatpak'}
+                              'parla-macos-arm64-zip'}
+                  for arch in ('x86_64', 'aarch64'):
+                      candidates = {f'parla-{arch}-{arch}.flatpak',
+                                    f'parla-{arch}-{tag.removeprefix("v")}-{arch}.flatpak'}
+                      if not candidates & names:
+                          raise SystemExit(f'Missing or expired {arch} Flatpak artifact')
               if not required <= names:
                   raise SystemExit(f'Missing or expired artifacts: {required - names}')
           signed_run = os.environ['SIGNED_RUN_ID']
@@ -108,8 +112,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # dmgname is the user-facing suffix of the released DMG:
-        # Parla-<version>-<dmgname>.dmg
+        # dmgname identifies the unsigned bundle artifact for signing.
         include:
           - arch: x86_64
             runner: macos-26-intel
@@ -185,7 +188,9 @@ jobs:
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: parla-${{ matrix.dmgname }}-zip
-          path: Parla-*.zip
+          path: |
+            Parla-*.zip
+            parla-*.zip
           if-no-files-found: error
 
   macos-sign:
@@ -232,7 +237,11 @@ jobs:
           RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
           for build in macos-arm64 macos-intel; do
-            test -f "artifacts/parla-$build-zip/Parla-$RELEASE_TAG.zip"
+            arch=${build#macos-}
+            if [[ "$arch" == intel ]]; then arch=x86_64; fi
+            version=${RELEASE_TAG#v}
+            test -f "artifacts/parla-$build-zip/Parla-$RELEASE_TAG.zip" ||
+              test -f "artifacts/parla-$build-zip/parla-$arch-$version.zip"
           done
 
       - name: Install Apple Certificate
@@ -288,28 +297,57 @@ jobs:
           run-id: ${{ inputs.signed_run_id || github.run_id }}
           github-token: ${{ github.token }}
 
-      - name: Download matching Android debug preview
+      - name: Download matching Android build
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: parla-android-arm64-build
-          path: android-preview
+          path: android-build
           run-id: ${{ inputs.android_run_id }}
           github-token: ${{ github.token }}
 
-      - name: Label Android preview
+      - name: Prepare Android release asset
         run: |
           version=$(python3 scripts/android/prepare.py --version)
           mkdir -p artifacts/parla-android-arm64-release
-          cp "android-preview/Parla-$version-android-arm64-debug.apk" \
-            "artifacts/parla-android-arm64-release/BETA-PREVIEW-Parla-$version-android-arm64-debug.apk"
+          cp "android-build/Parla-$version-android-arm64-debug.apk" \
+            "artifacts/parla-android-arm64-release/parla-arm64-$version.apk"
 
       - name: Generate release notes
         run: |
           python3 scripts/release-notes.py > release-notes.md
           cat dist/sailfishos/release-notes.md >> release-notes.md
-          if compgen -G 'artifacts/parla-android-arm64-release/*-debug.apk' > /dev/null; then
-            printf '\nAndroid is an experimental debug-signed preview with a separate app ID; it is not signed with a permanent production key.\n' >> release-notes.md
-          fi
+          printf '\nThe Android APK uses a development signing key and a separate debug app ID. Updating from a build signed by another CI runner may require reinstalling.\n' >> release-notes.md
+
+      - name: Normalize recovered asset names
+        run: |
+          # Reused artifacts were packaged by the historical tag's scripts.
+          python3 - <<'PYTHON'
+          from pathlib import Path
+          import subprocess
+
+          version = subprocess.check_output(['./version.sh'], text=True).strip()
+          root = Path('artifacts')
+          for pattern, arch, extension in [
+              ('parla-deb/*.deb', 'amd64', 'deb'),
+              ('*/*x86_64*.flatpak', 'x86_64', 'flatpak'),
+              ('*/*aarch64*.flatpak', 'aarch64', 'flatpak'),
+              ('parla-appimage-x86_64/*.AppImage', 'x86_64', 'AppImage'),
+              ('parla-appimage-aarch64/*.AppImage', 'aarch64', 'AppImage'),
+              ('parla-sfos-aarch64/*.rpm', 'aarch64', 'rpm'),
+              ('parla-macos-signed/*-macos-arm64.dmg', 'arm64', 'dmg'),
+              ('parla-macos-signed/*-macos-intel.dmg', 'x86_64', 'dmg'),
+              ('parla-macos-signed/parla-arm64-[0-9]*.dmg', 'arm64', 'dmg'),
+              ('parla-macos-signed/parla-x86_64-[0-9]*.dmg', 'x86_64', 'dmg'),
+              ('parla-windows-x86_64/*.zip', 'x86_64', 'zip'),
+          ]:
+              for asset in root.glob(pattern):
+                  target = asset.with_name(f'parla-{arch}-{version}.{extension}')
+                  if asset == target:
+                      continue
+                  if target.exists():
+                      raise SystemExit(f'Duplicate release asset: {target}')
+                  asset.rename(target)
+          PYTHON
 
       - name: Confirm tag is unchanged
         env:

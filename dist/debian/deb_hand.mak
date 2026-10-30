@@ -87,7 +87,7 @@ ${PACKAGE_DIR}/build: ${PACKAGE_DIR}/debian-binary ${PACKAGE_DIR}/control \
 		tar cpJvf $@/data.tar.xz ./*
 
 # Note: Order of files within ar archive is important!
-${PACKAGE_DIR}/${PACKAGE}_${VERSION}_${ARCH}.deb: ${PACKAGE_DIR}/build
+${PACKAGE_DIR}/${PACKAGE}-${ARCH}-${VERSION}.deb: ${PACKAGE_DIR}/build
 	${AR} -rc $@ $</debian-binary $</control.tar.xz $</data.tar.xz
 
 .PHONY: data
@@ -108,7 +108,7 @@ mrproper: clean
 	rm -rf root
 
 .PHONY: deb
-deb: ${PACKAGE_DIR}/${PACKAGE}_${VERSION}_${ARCH}.deb
+deb: ${PACKAGE_DIR}/${PACKAGE}-${ARCH}-${VERSION}.deb
 
 clobber::
 	rm -rf ${PACKAGE_DIR}/debian_binary ${PACKAGE_DIR}/control \

@@ -11,6 +11,7 @@ if [ -z "$IDENTITY" ]; then
 fi
 
 ENTITLEMENTS="scripts/macos/release.entitlements"
+VERSION=$(./version.sh)
 
 sign_binary() {
     codesign --force --options runtime --timestamp --sign "$IDENTITY" "$1"
@@ -28,13 +29,12 @@ for folder in "${folders[@]}"; do
 
     echo "[${build}] Extracting build..."
     disk="disks/${build}/"
-    zips=("${folder}"/Parla*.zip)
+    zips=("${folder}"/parla-*.zip)
     if [ "${#zips[@]}" -ne 1 ]; then
         echo "Error: expected exactly one zip in ${folder}, found ${#zips[@]}"
         exit 1
     fi
     zip=${zips[0]}
-    zipname=$(basename "${zip}" .zip)
     mkdir -p "${disk}"
     ditto -x -k "${zip}" "${disk}"
 
@@ -70,7 +70,12 @@ for folder in "${folders[@]}"; do
         --entitlements "${ENTITLEMENTS}" --sign "$IDENTITY" "${app}"
     codesign --verify --strict --verbose=2 "${app}"
 
-    dmg="${zipname}-${build}.dmg"
+    case "$build" in
+        macos-arm64) arch=arm64 ;;
+        macos-intel) arch=x86_64 ;;
+        *) echo "Error: unknown macOS build: $build"; exit 1 ;;
+    esac
+    dmg="parla-$arch-$VERSION.dmg"
     echo "[${build}] Packaging into ${dmg}..."
     create-dmg \
         --volname "Parla" \

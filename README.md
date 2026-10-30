@@ -196,7 +196,7 @@ pip install deltachat-rpc-server
 
 make run   # builds and runs dist/macos/Parla.app
 make app   # creates dist/macos/Parla.app
-make macos # creates Parla-<version>-<arch>.zip
+make macos # creates parla-<arch>-<version>.zip
 ```
 
 `make app` bundles Homebrew GTK/libadwaita libraries. The RPC backend is not

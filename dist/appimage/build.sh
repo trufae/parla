@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-VERSION="$(awk -F"'" '/version:/ { print $2; exit }' "$ROOT/meson.build")"
+VERSION="$("$ROOT/version.sh")"
 ARCH="${ARCH:-$(uname -m)}"
 case "$ARCH" in
     arm64) ARCH=aarch64 ;;
@@ -13,7 +13,7 @@ DIST_DIR="$ROOT/dist/appimage"
 TOOLS_DIR="${TOOLS_DIR:-$DIST_DIR/tools}"
 APPDIR="${APPDIR:-$DIST_DIR/AppDir}"
 OUT_DIR="${OUT_DIR:-$DIST_DIR/out}"
-APPIMAGE_NAME="${APPIMAGE_NAME:-Parla-$VERSION-$ARCH.AppImage}"
+APPIMAGE_NAME="${APPIMAGE_NAME:-parla-$ARCH-$VERSION.AppImage}"
 LINUXDEPLOY="${LINUXDEPLOY:-$TOOLS_DIR/linuxdeploy-$ARCH.AppImage}"
 APPIMAGETOOL="${APPIMAGETOOL:-$TOOLS_DIR/appimagetool-$ARCH.AppImage}"
 GTK_PLUGIN="${GTK_PLUGIN:-$TOOLS_DIR/linuxdeploy-plugin-gtk.sh}"
