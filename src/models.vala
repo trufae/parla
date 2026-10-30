@@ -294,9 +294,42 @@ namespace Dc {
     }
 
     /** Unparent a manually-parented popover once it closes, from an idle:
-        tearing it down inside its own closed handler upsets GTK. */
+        tearing it down inside its own closed handler upsets GTK. Call after
+        set_parent and before popup so the focus can be restored. */
     public static void unparent_on_close (Gtk.Popover popover) {
+        restore_focus_on_close (popover);
         popover.closed.connect (on_popover_closed);
+    }
+
+    /* After closing, GTK hands the focus to the popover's parent: for the
+       message list that focuses (and highlights) a row instead of returning
+       to the composer. Put back whatever had it before the popover opened.
+       HIGH_IDLE runs after GTK's fallback but before the redraw and before
+       PopoverButton.selected, so menu actions can still move the focus. */
+    private static void restore_focus_on_close (Gtk.Popover popover) {
+        var root = popover.get_root ();
+        var previous = root != null ? root.get_focus () : null;
+        if (previous == null) return;
+        WeakRef previous_ref = WeakRef (previous);
+        popover.closed.connect ((closed) => {
+            WeakRef popover_ref = WeakRef (closed);
+            Idle.add_full (Priority.HIGH_IDLE, () => {
+                var p = popover_ref.get () as Gtk.Popover;
+                var target = previous_ref.get () as Gtk.Widget;
+                if (p == null || target == null) return Source.REMOVE;
+                var r = p.get_root ();
+                var parent = p.get_parent ();
+                if (r == null || target.get_root () != r) return Source.REMOVE;
+                var focus = r.get_focus ();
+                /* Only undo GTK's fallback into the parent, not a move
+                   elsewhere such as an opened dialog. */
+                if (focus != target && (focus == null || focus == parent
+                        || focus.is_ancestor (p)
+                        || (parent != null && focus.is_ancestor (parent))))
+                    target.grab_focus ();
+                return Source.REMOVE;
+            });
+        });
     }
 
     private static void on_popover_closed (Gtk.Popover popover) {
