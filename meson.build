@@ -1,10 +1,12 @@
 # Set the release version with ./version.sh X.Y.Z, then edit release notes
 # and the date in data/io.github.trufae.Parla.appdata.xml.
 
-project('parla', ['vala', 'c'],
-  version: '0.10.2',
-  meson_version: '>= 0.59.0',
-  default_options: ['werror=true', 'cpp_std=c++17'],
+project(
+  'parla',
+  ['vala', 'c'],
+version : '0.10.4',
+  meson_version : '>= 0.59.0',
+  default_options : ['werror=true', 'cpp_std=c++17']
 )
 
 android = host_machine.system() == 'android'

@@ -42,6 +42,16 @@
     <name translate="no">pancake</name>
   </developer>
   <releases>
+    <release version="0.10.4" date="2026-10-30">
+      <description>
+        <ul>
+          <li>Drag and drop for sharing files and pictures</li>
+          <li>Check for Parla updates in Github</li>
+          <li>Find hand cursor on links</li>
+          <li>Fix video preview proportions in bubble</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.10.2" date="2026-10-22">
       <description>
         <ul>
