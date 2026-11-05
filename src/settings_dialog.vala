@@ -730,6 +730,25 @@ namespace Dc {
         }
     }
 
+    /* AdwViewStack (libadwaita <= 1.10) never makes a page's child report its
+       AdwViewStackPage as accessible parent, so every page also lists the
+       children of the pages after it. AccessKit, GTK's macOS VoiceOver
+       bridge, aborts on that duplicate as soon as any accessibility client
+       reads the window. Call after adding @child to an AdwViewStack.
+       shortcut: drop once libadwaita links the page in add_internal(). */
+    public void link_view_stack_child (Gtk.Widget child) {
+        var stack = child.get_parent () as Adw.ViewStack;
+        if (stack != null)
+            set_accessible_parent (child, stack.get_page (child), null);
+    }
+
+    /* GTK 4.10 API, missing from the gtk4.vapi of older Vala 0.56 releases. */
+    [CCode (cname = "gtk_accessible_set_accessible_parent",
+            cheader_filename = "gtk/gtk.h")]
+    private extern void set_accessible_parent (Gtk.Accessible self,
+                                               Gtk.Accessible? parent,
+                                               Gtk.Accessible? next_sibling);
+
     public class SettingsDialog : Adw.PreferencesDialog {
 
         private unowned Window app_window;
@@ -767,11 +786,13 @@ namespace Dc {
             general_page.title = _("General");
             general_page.icon_name = "preferences-system-symbolic";
             this.add (general_page);
+            link_view_stack_child (general_page);
 
             var advanced_page = new Adw.PreferencesPage ();
             advanced_page.title = _("Advanced");
             advanced_page.icon_name = "preferences-other-symbolic";
             this.add (advanced_page);
+            link_view_stack_child (advanced_page);
 
             build_language_section (general_page);
             build_appearance_section (general_page);
