@@ -204,6 +204,7 @@ namespace Dc {
                 build_tab_page (tab);
                 var page = view_stack.add_titled (tab.stack, tab.key,
                                                   tab.title);
+                link_view_stack_child (tab.stack);
                 page.icon_name = tab.icon_name;
                 tab.store.items_changed.connect (() => {
                     update_tab_badge (tab);
