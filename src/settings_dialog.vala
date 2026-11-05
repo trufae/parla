@@ -735,7 +735,8 @@ namespace Dc {
        children of the pages after it. AccessKit, GTK's macOS VoiceOver
        bridge, aborts on that duplicate as soon as any accessibility client
        reads the window. Call after adding @child to an AdwViewStack.
-       shortcut: drop once libadwaita links the page in add_internal(). */
+       shortcut: drop once libadwaita links the page in add_internal(),
+       https://gitlab.gnome.org/GNOME/libadwaita/-/work_items/1178 */
     public void link_view_stack_child (Gtk.Widget child) {
         var stack = child.get_parent () as Adw.ViewStack;
         if (stack != null)
