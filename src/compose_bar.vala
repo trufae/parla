@@ -13,7 +13,7 @@ namespace Dc {
         /* Strip known tracking parameters from URLs in pasted text. */
         public bool clean_pasted_links { get; set; default = false; }
 
-        /* Ask for Open Graph previews of pasted links (see LinkPreview);
+        /* Ask for Open Graph previews of pasted links (see Link);
            the owner fetches them and hands the images back through
            add_link_preview(). */
         public bool link_previews { get; set; default = true; }
@@ -1220,7 +1220,7 @@ namespace Dc {
 
         private void synchronize_link_previews (string text) {
             if (!link_previews || !can_accept_attachment ()) return;
-            string[] urls = LinkPreview.pick_urls (text);
+            string[] urls = Link.urls_in_text (text, Link.MAX_PREVIEWS, true);
             if (same_urls (previewed_urls, urls)) return;
 
             /* A URL edit makes every outstanding response suspect. Request
@@ -1850,7 +1850,7 @@ namespace Dc {
             try {
                 var text = yield clipboard.read_text_async (null);
                 if (text == null || text.length == 0 || !text_view.editable) return;
-                if (clean_pasted_links) text = LinkCleaner.clean_text (text);
+                if (clean_pasted_links) text = Link.clean_text (text);
 
                 var buffer = text_view.buffer;
                 buffer.begin_user_action ();

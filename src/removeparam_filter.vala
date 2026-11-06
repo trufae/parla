@@ -5,7 +5,7 @@ namespace Dc {
      * filter lists (for example the AdGuard URL Tracking filter,
      * https://filters.adtidy.org/extension/ublock/filters/17.txt).
      *
-     * A parsed list replaces LinkCleaner's built-in rules for pasted
+     * A parsed list replaces Link's built-in rules for pasted
      * links: every rule whose URL pattern matches the link decides which
      * query parameters are dropped. Supported syntax:
      *
@@ -24,7 +24,7 @@ namespace Dc {
      */
     public class RemoveParamFilter : Object {
 
-        /** The list applied by LinkCleaner; null keeps the built-in rules. */
+        /** The list applied by Link; null keeps the built-in rules. */
         public static RemoveParamFilter? active = null;
 
         public string title { get; private set; default = ""; }

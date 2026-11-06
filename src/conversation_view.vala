@@ -61,7 +61,6 @@ namespace Dc {
         private unowned Window window;
         private unowned RpcClient rpc;
         private unowned SettingsManager settings;
-        private LinkPreviewFetcher? link_preview_fetcher = null;
         private ChatKind chat_kind = ChatKind.UNKNOWN;
         private bool chat_kind_loaded = false;
 
@@ -2514,8 +2513,6 @@ namespace Dc {
            in the composer as its own image attachment as soon as it is
            ready, or is dropped if the composer moved on meanwhile. */
         private void on_link_previews_requested (string[] urls, uint generation) {
-            if (link_preview_fetcher == null)
-                link_preview_fetcher = new LinkPreviewFetcher (rpc);
             foreach (string url in urls)
                 fetch_link_preview (url, generation);
         }
@@ -2523,13 +2520,13 @@ namespace Dc {
         /* Keep each URL in its own async call frame so its completion cannot
            accidentally be associated with another concurrent preview. */
         private void fetch_link_preview (string url, uint generation) {
-            link_preview_fetcher.fetch.begin (url, settings.clean_pasted_links,
+            Link.thumbnail.begin (rpc, url, settings.clean_pasted_links,
                 (obj, res) => {
-                    var r = link_preview_fetcher.fetch.end (res);
-                    if (r == null) return;
-                    if (!compose_bar.add_link_preview (generation, url, r.image_path,
-                            r.file_name, r.title, r.description))
-                        GLib.FileUtils.unlink (r.image_path);
+                    var preview = Link.thumbnail.end (res);
+                    if (preview == null) return;
+                    if (!compose_bar.add_link_preview (generation, url, preview.image_path,
+                            preview.file_name, preview.title, preview.description))
+                        GLib.FileUtils.unlink (preview.image_path);
                 });
         }
 

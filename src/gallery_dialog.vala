@@ -679,7 +679,7 @@ namespace Dc {
                     if (msg.is_info) continue;
                     string t = msg.text ?? "";
                     if (t.index_of ("://") < 0
-                        || LinkCleaner.find_urls (t).length == 0) continue;
+                        || Link.urls_in_text (t).length == 0) continue;
                     batch += msg;
                     continue;
                 }
@@ -1095,7 +1095,7 @@ namespace Dc {
                     subtitle_label.label = meta;
                     break;
                 case "links":
-                    var links = LinkCleaner.find_urls (m.text ?? "");
+                    var links = Link.urls_in_text (m.text ?? "");
                     string link = links.length > 0 ? links[0] : "";
                     title_label.label = links.length > 1
                         ? _("%s (+%d more)").printf (link, links.length - 1)
@@ -1195,7 +1195,7 @@ namespace Dc {
                 app_window.prompt_webxdc_app.begin (this, rpc, m);
                 break;
             case "links":
-                var links = LinkCleaner.find_urls (m.text ?? "");
+                var links = Link.urls_in_text (m.text ?? "");
                 if (links.length > 0) open_link (links[0]);
                 break;
             }
@@ -1288,7 +1288,7 @@ namespace Dc {
 
             var cur = current_tab ();
             if (cur != null && cur.key == "links") {
-                var links = LinkCleaner.find_urls (m.text ?? "");
+                var links = Link.urls_in_text (m.text ?? "");
                 if (links.length > 0) {
                     string link0 = links[0];
                     var open_btn = new PopoverButton (popover, _("Open Link"));
