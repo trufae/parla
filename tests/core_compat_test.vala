@@ -418,6 +418,10 @@ private void test_unread_calls () {
 }
 
 public int main (string[] args) {
+    if (args.length > 1 && args[1] == "--chat-navigation-ui")
+        return run_chat_navigation_ui_test ();
+    if (args.length > 1 && args[1] == "--chat-navigation-window-ui")
+        return run_chat_navigation_window_test ();
     if (args.length > 1 && args[1] == "--forward-drop-ui")
         return run_forward_drop_ui_test ();
     if (args.length > 1 && args[1] == "--link-cursor-ui")

@@ -72,7 +72,7 @@ namespace Dc {
 
         /* Layout */
         private Adw.ToastOverlay toast_overlay;
-        private Adw.OverlaySplitView split_view;
+        private ChatSplitView split_view;
         private Adw.HeaderBar sidebar_header;
         private Adw.HeaderBar content_header;
         private Gtk.Label content_title_label;
@@ -214,8 +214,6 @@ namespace Dc {
 
         private const double FULL_SIDEBAR_MIN_WIDTH = 260;
         private const double FULL_SIDEBAR_MAX_WIDTH = 340;
-        private const double COLLAPSED_SIDEBAR_MIN_WIDTH = 220;
-        private const double COLLAPSED_SIDEBAR_MAX_WIDTH = 10000;
         private const double COMPACT_SIDEBAR_WIDTH = 48;
         private const uint FONT_UPDATE_INTERVAL_MS = 16;
         private const uint MAX_CACHED_CONVERSATION_VIEWS = 3;
@@ -903,6 +901,8 @@ namespace Dc {
             content_box.valign = Gtk.Align.FILL;
 
             content_header = new Adw.HeaderBar ();
+            // The sidebar toggle is also the back button in the phone layout.
+            content_header.show_back_button = false;
             configure_phone_header (content_header);
             content_title_label = new Gtk.Label (_("Select a chat"));
             content_title_label.add_css_class ("heading");
@@ -918,8 +918,7 @@ namespace Dc {
             content_title_box.append (content_mute_icon);
             content_header.title_widget = content_title_box;
 
-            /* Sidebar visibility button. On collapsed/mobile widths this
-               opens the sidebar as the full-width overlay instead of compact. */
+            /* Sidebar visibility button; goes back to chats on narrow widths. */
             sidebar_toggle_btn = new Gtk.Button.from_icon_name ("sidebar-show-symbolic");
             sidebar_toggle_btn.add_css_class ("flat");
             sidebar_toggle_btn.clicked.connect (() => { toggle_sidebar_button (); });
@@ -962,19 +961,15 @@ namespace Dc {
             content_box.append (content_stack);
 
             /* ---- Split view ---- */
-            split_view = new Adw.OverlaySplitView ();
-            split_view.sidebar = sidebar_box;
-            split_view.content = content_box;
-            split_view.max_sidebar_width = FULL_SIDEBAR_MAX_WIDTH;
-            split_view.min_sidebar_width = FULL_SIDEBAR_MIN_WIDTH;
-            split_view.sidebar_width_fraction = 0.32;
-            split_view.enable_show_gesture = true;
-            split_view.enable_hide_gesture = true;
+            split_view = new ChatSplitView (sidebar_box, content_box);
+            split_view.desktop.max_sidebar_width = FULL_SIDEBAR_MAX_WIDTH;
+            split_view.desktop.min_sidebar_width = FULL_SIDEBAR_MIN_WIDTH;
+            split_view.desktop.sidebar_width_fraction = 0.32;
 
             toast_overlay = new Adw.ToastOverlay ();
             toast_overlay.child = split_view;
 
-            /* Auto-collapse on narrow widths — sidebar slides over content */
+            /* Use native page navigation on narrow widths. */
             string collapse_condition = Platform.is_sailfish ()
                 ? "max-width: 720px" : "max-width: 600px";
             var breakpoint = new Adw.Breakpoint (
@@ -982,20 +977,16 @@ namespace Dc {
             breakpoint.add_setter (split_view, "collapsed", true);
             this.add_breakpoint (breakpoint);
 
-            /* min-sidebar-width is a hard minimum for the whole split view
-               even while collapsed and hidden, so below ~280px it would force
-               the window minimum to 260px and GTK would warn-loop at 100%
-               CPU. Let the sidebar narrow along with the window instead. */
-            var narrow_bp = new Adw.Breakpoint (
-                Adw.BreakpointCondition.parse ("max-width: 280px"));
-            narrow_bp.add_setter (split_view, "min-sidebar-width", 220.0);
-            this.add_breakpoint (narrow_bp);
-
             /* When the window widens out of the collapsed breakpoint, re-apply
                the persisted mode so a chat-selected-while-narrow doesn't leave
                the sidebar stuck hidden. */
             split_view.notify["collapsed"].connect (() => {
                 apply_sidebar_mode (!split_view.collapsed && !showing_profile_setup);
+                if (split_view.collapsed)
+                    split_view.show_sidebar = current_chat_id == 0 && !showing_profile_setup;
+            });
+            split_view.notify["show-sidebar"].connect (() => {
+                set_sidebar_toggle_tooltip (!split_view.show_sidebar);
             });
 
             /* The sidebar always starts visible: hiding it (Ctrl+S) is a
@@ -1700,7 +1691,7 @@ namespace Dc {
 
         private void update_archived_toggle () {
             if (archived_toggle_btn == null) return;
-            bool compact = settings.sidebar_mode == SidebarMode.COMPACT;
+            bool compact = !split_view.collapsed && settings.sidebar_mode == SidebarMode.COMPACT;
             archived_toggle_btn.visible = search_entry.text.strip () == ""
                 && (showing_archived || archived_count > 0);
             if (showing_archived) {
@@ -1834,7 +1825,7 @@ namespace Dc {
                     if (new_day || old_entry == null || !old_entry.same_display (entry)) {
                         var chat_row = new ChatRow (entry);
                         row.child = chat_row;
-                        chat_row.set_compact (settings.sidebar_mode == SidebarMode.COMPACT);
+                        chat_row.set_compact (!split_view.collapsed && settings.sidebar_mode == SidebarMode.COMPACT);
                         // Use the signal sender without retaining it in its
                         // own closure: replaced rows must release their avatars.
                         Signal.connect_object (chat_row, "accept-file-drop",
@@ -3573,12 +3564,7 @@ namespace Dc {
         }
 
         private void toggle_collapsed_sidebar () {
-            if (split_view.show_sidebar) {
-                split_view.show_sidebar = false;
-                return;
-            }
-            settings.save_sidebar_mode (SidebarMode.FULL);
-            apply_sidebar_mode (true);
+            split_view.show_sidebar = !split_view.show_sidebar;
         }
 
         private void toggle_sidebar_visibility () {
@@ -3616,13 +3602,15 @@ namespace Dc {
 
         private void apply_sidebar_mode (bool update_visibility) {
             var mode = settings.sidebar_mode;
-            sidebar_toggle_btn.icon_name = "sidebar-show-symbolic";
+            if (split_view.collapsed && mode == SidebarMode.COMPACT) mode = SidebarMode.FULL;
+            sidebar_toggle_btn.icon_name = split_view.collapsed
+                ? "go-previous-symbolic" : "sidebar-show-symbolic";
             if (mode == SidebarMode.COMPACT) {
                 if (update_visibility) split_view.show_sidebar = true;
-                split_view.sidebar_width_unit = Adw.LengthUnit.PX;
-                split_view.min_sidebar_width = COMPACT_SIDEBAR_WIDTH;
-                split_view.max_sidebar_width = COMPACT_SIDEBAR_WIDTH;
-                split_view.sidebar_width_fraction = 0.0;
+                split_view.desktop.sidebar_width_unit = Adw.LengthUnit.PX;
+                split_view.desktop.min_sidebar_width = COMPACT_SIDEBAR_WIDTH;
+                split_view.desktop.max_sidebar_width = COMPACT_SIDEBAR_WIDTH;
+                split_view.desktop.sidebar_width_fraction = 0.0;
                 sidebar_box.add_css_class ("sidebar-compact");
                 search_entry.visible = false;
                 search_entry.text = "";
@@ -3635,14 +3623,10 @@ namespace Dc {
                    in whether the sidebar starts shown and the toggle's verb. */
                 bool hidden = mode == SidebarMode.HIDDEN;
                 if (update_visibility) split_view.show_sidebar = !hidden;
-                split_view.sidebar_width_unit = Adw.LengthUnit.SP;
-                split_view.min_sidebar_width = split_view.collapsed
-                    ? COLLAPSED_SIDEBAR_MIN_WIDTH
-                    : FULL_SIDEBAR_MIN_WIDTH;
-                split_view.max_sidebar_width = split_view.collapsed
-                    ? COLLAPSED_SIDEBAR_MAX_WIDTH
-                    : FULL_SIDEBAR_MAX_WIDTH;
-                split_view.sidebar_width_fraction = 0.32;
+                split_view.desktop.sidebar_width_unit = Adw.LengthUnit.SP;
+                split_view.desktop.min_sidebar_width = FULL_SIDEBAR_MIN_WIDTH;
+                split_view.desktop.max_sidebar_width = FULL_SIDEBAR_MAX_WIDTH;
+                split_view.desktop.sidebar_width_fraction = 0.32;
                 sidebar_box.remove_css_class ("sidebar-compact");
                 search_entry.visible = true;
                 sidebar_menu_button.visible = true;
@@ -3657,7 +3641,8 @@ namespace Dc {
 
         private void set_sidebar_toggle_tooltip (bool hidden) {
             sidebar_toggle_btn.tooltip_text =
-                (hidden ? _("Show Sidebar (%s)") : _("Hide Sidebar (%s)")).printf (
+                (split_view.collapsed ? _("Back to Chats (%s)")
+                    : hidden ? _("Show Sidebar (%s)") : _("Hide Sidebar (%s)")).printf (
                     Platform.primary_shortcut_text ("S"));
         }
 

@@ -9,6 +9,7 @@ src/backup_dialog.vala
 src/chat_actions.vala
 src/chat_info_dialog.vala
 src/chat_row.vala
+src/chat_split_view.vala
 src/classic_email_dialog.vala
 src/compose_bar.vala
 src/contact_picker_dialog.vala

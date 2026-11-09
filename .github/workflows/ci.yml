@@ -63,6 +63,12 @@ jobs:
         if: matrix.a11y == true
         run: dbus-run-session -- xvfb-run -a env GTK_A11Y=none G_DEBUG=fatal-warnings builddir/core-compat-test --touch-text-menu-ui
 
+      - name: Check narrow chat navigation
+        if: matrix.a11y == true
+        run: |
+          dbus-run-session -- xvfb-run -a env GTK_A11Y=none G_DEBUG=fatal-warnings builddir/core-compat-test --chat-navigation-ui
+          dbus-run-session -- xvfb-run -a env G_DEBUG=fatal-warnings python3 tests/chat_lifetime_test.py builddir/core-compat-test --navigation
+
       - name: Build and test standalone SafeStore
         if: matrix.a11y == true
         run: |

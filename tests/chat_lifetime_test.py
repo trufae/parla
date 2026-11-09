@@ -59,7 +59,7 @@ def fake_core():
         elif method == "get_config":
             result = "Lifetime profile" if params[1] == "displayname" else None
         elif method not in ("select_account", "start_io_for_all_accounts", "batch_set_config",
-                             "get_draft", "marknoticed_chat", "markseen_msgs",
+                             "get_draft", "misc_set_draft", "marknoticed_chat", "markseen_msgs",
                              "get_first_unread_message_of_chat"):
             raise AssertionError(f"Unexpected RPC: {method}")
         print(json.dumps(dict(jsonrpc="2.0", id=request["id"], result=result)), flush=True)
@@ -87,6 +87,8 @@ def check_ui(args):
         for name in ("CONFIG", "DATA", "CACHE", "STATE"):
             env[f"XDG_{name}_HOME"] = str(root / name.lower())
         mode = "--chat-switch-lifetime-ui" if args.switching else "--chat-lifetime-ui"
+        if args.navigation:
+            mode = "--chat-navigation-window-ui"
         command = [str(Path(args.binary).resolve()), mode, str(args.refreshes)]
         if args.heaptrack:
             command = ["heaptrack", "--record-only", "-o", args.heaptrack] + command
@@ -103,4 +105,6 @@ if __name__ == "__main__":
                             help="number of sidebar refreshes or chat switches")
         parser.add_argument("--heaptrack", metavar="OUTPUT")
         parser.add_argument("--switching", action="store_true")
+        parser.add_argument("--navigation", action="store_true",
+                            help="check narrow-window chat navigation and desktop restoration")
         check_ui(parser.parse_args())

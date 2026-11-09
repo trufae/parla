@@ -73,7 +73,7 @@ instructions are in [docs/website.md](docs/website.md).
 
 ### Chats
 
-- **Adaptive split-view** sidebar + conversation, collapsing to a single pane on narrow windows with a back button.
+- **Adaptive split-view** sidebar + conversation, collapsing to a single pane on narrow windows with a back button. Swipe right anywhere in the conversation, or use a two-finger touchpad swipe, to return to chats (including Phosh and Android).
 - **Chat list** with avatars, unread dots and badges, last-message preview, smart timestamps (time / weekday / date), pinned indicator and muted styling.
 - **Pin, mute, delete** chats from the sidebar context menu; view chat info (members, avatar, type) in a dedicated dialog.
 - **Contact requests** surfaced with their own badge.
