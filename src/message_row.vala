@@ -1295,17 +1295,15 @@ namespace Dc {
                 extra_class = "message-tick-failed";
                 tooltip = _("Sending failed");
             } else if (msg.is_read) {
-                var icon = new Gtk.Image.from_icon_name ("parla-message-read-symbolic");
-                icon.pixel_size = 16;
-                indicator = icon;
+                indicator = build_status_icon ("parla-message-read-symbolic");
                 extra_class = "message-tick-read";
                 tooltip = _("Read");
             } else if (msg.is_delivered) {
-                indicator = new Gtk.Label ("✓");
+                indicator = build_status_icon ("parla-message-delivered-symbolic");
                 extra_class = "message-tick";
                 tooltip = _("Delivered");
             } else if (msg.is_pending) {
-                indicator = new Gtk.Label ("⧖");
+                indicator = build_status_icon ("parla-message-sending-symbolic");
                 extra_class = "message-tick";
                 tooltip = _("Sending…");
             } else {
@@ -1316,6 +1314,12 @@ namespace Dc {
             indicator.add_css_class (extra_class);
             indicator.tooltip_text = tooltip;
             return indicator;
+        }
+
+        private static Gtk.Image build_status_icon (string icon_name) {
+            var icon = new Gtk.Image.from_icon_name (icon_name);
+            icon.pixel_size = 16;
+            return icon;
         }
 
         private static Gtk.Label build_pin_indicator (Message msg) {

@@ -10,6 +10,8 @@
     <file>scalable/actions/notifications-disabled-symbolic.svg</file>
     <file>scalable/actions/archive-symbolic.svg</file>
     <file>scalable/actions/parla-timer-symbolic.svg</file>
+    <file>scalable/status/parla-message-sending-symbolic.svg</file>
+    <file>scalable/status/parla-message-delivered-symbolic.svg</file>
     <file>scalable/status/parla-message-read-symbolic.svg</file>
   </gresource>
 </gresources>
