@@ -1081,7 +1081,6 @@ namespace Dc {
                 font-size: small;
                 opacity: 0.60;
                 margin-left: 2px;
-                letter-spacing: -3px;
             }
             .message-tick-read {
                 font-size: small;
