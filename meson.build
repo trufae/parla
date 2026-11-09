@@ -572,6 +572,11 @@ core_compat_test = executable(
   install: false,
 )
 test('core-compat', core_compat_test)
+if host_machine.system() == 'darwin'
+  test('compose-line-keys', core_compat_test,
+    args: ['--compose-line-keys-ui'],
+    env: ['GTK_A11Y=none', 'G_DEBUG=fatal-warnings'])
+endif
 test('accounts-path-environment', core_compat_test,
   args: ['--accounts-settings', '/environment/accounts'],
   env: ['DC_ACCOUNTS_PATH= /environment/accounts/ '])

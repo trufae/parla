@@ -148,31 +148,62 @@ private bool press_compose_key (Gtk.TextView entry, uint key, Gdk.ModifierType m
     return false;
 }
 
-private int compose_cursor (Gtk.TextView entry) {
-    Gtk.TextIter iter;
-    entry.buffer.get_iter_at_mark (out iter, entry.buffer.get_insert ());
-    return iter.get_offset ();
+private void check_compose_cursor (Gtk.TextView entry, int cursor, int anchor) {
+    Gtk.TextIter insert, bound;
+    entry.buffer.get_iter_at_mark (out insert, entry.buffer.get_insert ());
+    entry.buffer.get_iter_at_mark (out bound, entry.buffer.get_selection_bound ());
+    assert (insert.get_offset () == cursor);
+    assert (bound.get_offset () == anchor);
+    assert (entry.buffer.has_selection == (cursor != anchor));
 }
 
 /* macOS only: core-compat-test --compose-line-keys-ui. Control+A / Control+E
    move to the paragraph start / end like Cocoa instead of selecting all. */
 public int run_compose_line_keys_ui_test () {
-    Adw.init ();
     if (!Platform.is_macos ()) return 0;
+    Adw.init ();
     var compose = new ComposeBar ();
     var entry = (Gtk.TextView) search_widget (compose, typeof (Gtk.TextView));
-    entry.buffer.text = "first line\nsecond line";
+    string text = "first line\nsecond line\nlast line";
+    entry.buffer.text = text;
     Gtk.TextIter iter;
     entry.buffer.get_iter_at_offset (out iter, 15);
     entry.buffer.place_cursor (iter);
     var ctrl = Gdk.ModifierType.CONTROL_MASK;
+    var shift = ctrl | Gdk.ModifierType.SHIFT_MASK;
 
     assert (press_compose_key (entry, Gdk.Key.e, ctrl));
-    assert (compose_cursor (entry) == 22 && !entry.buffer.has_selection);
+    check_compose_cursor (entry, 22, 22);
+    // Repeating a key at the boundary must stay in the same paragraph.
+    assert (press_compose_key (entry, Gdk.Key.e, ctrl));
+    check_compose_cursor (entry, 22, 22);
     assert (press_compose_key (entry, Gdk.Key.a, ctrl));
-    assert (compose_cursor (entry) == 11 && !entry.buffer.has_selection);
-    assert (press_compose_key (entry, Gdk.Key.E, ctrl | Gdk.ModifierType.SHIFT_MASK));
-    assert (compose_cursor (entry) == 22 && entry.buffer.has_selection);
+    check_compose_cursor (entry, 11, 11);
+    assert (press_compose_key (entry, Gdk.Key.a, ctrl));
+    check_compose_cursor (entry, 11, 11);
+
+    entry.buffer.place_cursor (iter);
+    assert (press_compose_key (entry, Gdk.Key.E, shift));
+    check_compose_cursor (entry, 22, 15);
+    assert (press_compose_key (entry, Gdk.Key.A, shift));
+    check_compose_cursor (entry, 11, 15);
+    // Without Shift, movement clears the existing selection.
+    assert (press_compose_key (entry, Gdk.Key.e, ctrl));
+    check_compose_cursor (entry, 22, 22);
+    // Caps Lock must not change the Control+A binding.
+    assert (press_compose_key (entry, Gdk.Key.A, ctrl | Gdk.ModifierType.LOCK_MASK));
+    check_compose_cursor (entry, 11, 11);
+
+    // Leave typing and Command/Option shortcuts to GTK.
+    foreach (var mods in new Gdk.ModifierType[] {
+            0, Gdk.ModifierType.SHIFT_MASK, Gdk.ModifierType.META_MASK,
+            ctrl | Gdk.ModifierType.META_MASK, ctrl | Gdk.ModifierType.ALT_MASK }) {
+        assert (!press_compose_key (entry, Gdk.Key.a, mods));
+        assert (!press_compose_key (entry, Gdk.Key.e, mods));
+        check_compose_cursor (entry, 11, 11);
+    }
+    assert (entry.buffer.text == text);
+    compose.close ();
     stdout.printf ("Compose Control+A/E line keys passed.\n");
     return 0;
 }

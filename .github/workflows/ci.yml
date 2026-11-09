@@ -273,6 +273,11 @@ jobs:
       - name: Build
         run: make BUILDTYPE=release
 
+      - name: Check macOS composer Control+A/E shortcuts
+        run: |
+          source scripts/macos/env.sh
+          meson test -C builddir --print-errorlogs compose-line-keys
+
       - name: Build and test standalone SafeStore
         run: |
           source scripts/macos/env.sh
