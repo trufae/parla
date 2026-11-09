@@ -1285,36 +1285,37 @@ namespace Dc {
             return file_box;
         }
 
-        private static Gtk.Label? build_tick_indicator (Message msg) {
-            string glyph;
+        private static Gtk.Widget? build_tick_indicator (Message msg) {
+            Gtk.Widget indicator;
             string extra_class;
-            string? tooltip = null;
+            string tooltip;
 
             if (msg.is_failed) {
-                glyph = "⚠";
+                indicator = new Gtk.Label ("⚠");
                 extra_class = "message-tick-failed";
                 tooltip = _("Sending failed");
             } else if (msg.is_read) {
-                glyph = "✓✓";
+                var icon = new Gtk.Image.from_icon_name ("parla-message-read-symbolic");
+                icon.pixel_size = 16;
+                indicator = icon;
                 extra_class = "message-tick-read";
                 tooltip = _("Read");
             } else if (msg.is_delivered) {
-                glyph = "✓";
+                indicator = new Gtk.Label ("✓");
                 extra_class = "message-tick";
                 tooltip = _("Delivered");
             } else if (msg.is_pending) {
-                glyph = "⧖";
+                indicator = new Gtk.Label ("⧖");
                 extra_class = "message-tick";
                 tooltip = _("Sending…");
             } else {
                 return null;
             }
 
-            var lbl = new Gtk.Label (glyph);
-            lbl.add_css_class ("message-time");
-            lbl.add_css_class (extra_class);
-            if (tooltip != null) lbl.tooltip_text = tooltip;
-            return lbl;
+            indicator.add_css_class ("message-time");
+            indicator.add_css_class (extra_class);
+            indicator.tooltip_text = tooltip;
+            return indicator;
         }
 
         private static Gtk.Label build_pin_indicator (Message msg) {

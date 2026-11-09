@@ -1,7 +1,8 @@
 # Bundled icons
 
 - `scalable/apps/`: Parla's own application, tray and welcome icons.
-- `scalable/actions/{sticker,notifications-disabled,archive}-symbolic.svg`:
+- `scalable/actions/{sticker,notifications-disabled,archive,parla-timer}-symbolic.svg`
+  and `scalable/status/parla-message-read-symbolic.svg`:
   Parla-specific symbolic icons.
 - Every other `*-symbolic.svg` is copied verbatim from the
   [adwaita-icon-theme](https://gitlab.gnome.org/GNOME/adwaita-icon-theme),
