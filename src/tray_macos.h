@@ -28,6 +28,8 @@ void parla_macos_tray_init (ParlaMacosTrayAction window_toggle,
 gboolean parla_macos_tray_show (void);
 void parla_macos_tray_hide (void);
 
+void parla_macos_window_set_alpha (GtkWindow *window, double alpha);
+
 /* Hide/show only the native window; the GTK window must stay mapped to
  * preserve its accessibility context. The caller tracks hidden state. */
 void parla_macos_window_set_visible (GtkWindow *window, gboolean visible);

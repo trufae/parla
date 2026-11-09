@@ -344,6 +344,20 @@ namespace Dc {
 #if ANDROID
             TouchTextMenu.install (this);
 #endif
+#if MACOS
+            /* AppKit shows the window before GTK has drawn into it, and the
+               first frame takes a moment, so the window flashed see-through
+               at launch. Keep it invisible until that frame is painted. */
+            ((Gtk.Widget) this).realize.connect_after (() => {
+                MacosTray.set_native_window_alpha (this, 0);
+                var clock = get_frame_clock ();
+                ulong painted = 0;
+                painted = clock.after_paint.connect (() => {
+                    clock.disconnect (painted);
+                    MacosTray.set_native_window_alpha (this, 1);
+                });
+            });
+#endif
             chat_store = new GLib.ListStore (typeof (ChatEntry));
             views = new HashTable<int, ConversationView> (direct_hash, direct_equal);
             settings = new SettingsManager ();
