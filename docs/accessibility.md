@@ -23,6 +23,17 @@ The same option applies to touch and mouse holds on every display; Parla
 does not change behavior based on touchscreen detection. Right-click menus
 remain available when long-press is disabled.
 
+Dragging message text with a finger scrolls the conversation instead of
+selecting text, including in the full-message reader. Mouse dragging and
+keyboard text selection remain available, as do link taps and the message
+long-press menu. This behavior is independent of screen-reader support.
+
+`python3 tests/touch_scroll_test.py builddir/core-compat-test` exercises touch
+scrolling, mouse/keyboard selection, link taps and long presses in all three
+message styles. It requires `gtk4-broadwayd` and `python3-websocket`. CI runs
+it with `GTK_A11Y=none` and `GTK_A11Y=test` in both `a11y` build modes;
+Broadway supports GTK's test accessibility backend, but not AT-SPI.
+
 Code that adds a context menu uses `ContextMenuGestures (widget, settings)`
 and connects its `requested (x, y, long_press)` signal once for both input
 methods. Coordinates are relative to `widget`; return `true` after opening

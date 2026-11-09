@@ -1506,7 +1506,7 @@ namespace Dc {
             text.wrap = !enlarged;
             text.wrap_mode = Pango.WrapMode.WORD_CHAR;
             text.halign = Gtk.Align.START; text.xalign = 0;
-            text.selectable = true;
+            make_label_selectable (text);
             if (emoji_count == 1) text.add_css_class ("message-big-emoji");
             else if (emoji_count == 2) text.add_css_class ("message-medium-emoji");
             if (max_width_chars > 0) text.max_width_chars = max_width_chars;

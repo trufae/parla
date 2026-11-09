@@ -29,6 +29,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             python3-venv \
+            python3-websocket \
             gettext \
             ninja-build \
             zip unzip \
@@ -36,6 +37,7 @@ jobs:
             valac \
             libglib2.0-dev \
             libgtk-4-dev \
+            libgtk-4-bin \
             libadwaita-1-dev \
             libjson-glib-dev libzip-dev \
             libwebkitgtk-6.0-dev
@@ -62,6 +64,11 @@ jobs:
       - name: Check Android text menu fallback
         if: matrix.a11y == true
         run: dbus-run-session -- xvfb-run -a env GTK_A11Y=none G_DEBUG=fatal-warnings builddir/core-compat-test --touch-text-menu-ui
+
+      - name: Check touch scrolling with and without accessibility
+        run: |
+          GTK_A11Y=none G_DEBUG=fatal-warnings /usr/bin/python3 tests/touch_scroll_test.py builddir/core-compat-test
+          GTK_A11Y=test G_DEBUG=fatal-warnings /usr/bin/python3 tests/touch_scroll_test.py builddir/core-compat-test
 
       - name: Check narrow chat navigation
         if: matrix.a11y == true

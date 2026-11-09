@@ -115,7 +115,7 @@ namespace Dc {
             reader.hexpand = true;
             reader.wrap = true;
             reader.wrap_mode = Pango.WrapMode.WORD_CHAR;
-            reader.selectable = true;
+            make_label_selectable (reader);
             reader.margin_start = 32;
             reader.margin_end = 32;
             reader.margin_top = 24;
