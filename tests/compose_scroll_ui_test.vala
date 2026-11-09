@@ -138,3 +138,41 @@ public int run_compose_scroll_ui_test () {
     loop.run ();
     return 0;
 }
+
+private bool press_compose_key (Gtk.TextView entry, uint key, Gdk.ModifierType mods) {
+    var controllers = entry.observe_controllers ();
+    for (uint i = 0; i < controllers.get_n_items (); i++) {
+        var k = controllers.get_item (i) as Gtk.EventControllerKey;
+        if (k != null && k.key_pressed (key, 0, mods)) return true;
+    }
+    return false;
+}
+
+private int compose_cursor (Gtk.TextView entry) {
+    Gtk.TextIter iter;
+    entry.buffer.get_iter_at_mark (out iter, entry.buffer.get_insert ());
+    return iter.get_offset ();
+}
+
+/* macOS only: core-compat-test --compose-line-keys-ui. Control+A / Control+E
+   move to the paragraph start / end like Cocoa instead of selecting all. */
+public int run_compose_line_keys_ui_test () {
+    Adw.init ();
+    if (!Platform.is_macos ()) return 0;
+    var compose = new ComposeBar ();
+    var entry = (Gtk.TextView) search_widget (compose, typeof (Gtk.TextView));
+    entry.buffer.text = "first line\nsecond line";
+    Gtk.TextIter iter;
+    entry.buffer.get_iter_at_offset (out iter, 15);
+    entry.buffer.place_cursor (iter);
+    var ctrl = Gdk.ModifierType.CONTROL_MASK;
+
+    assert (press_compose_key (entry, Gdk.Key.e, ctrl));
+    assert (compose_cursor (entry) == 22 && !entry.buffer.has_selection);
+    assert (press_compose_key (entry, Gdk.Key.a, ctrl));
+    assert (compose_cursor (entry) == 11 && !entry.buffer.has_selection);
+    assert (press_compose_key (entry, Gdk.Key.E, ctrl | Gdk.ModifierType.SHIFT_MASK));
+    assert (compose_cursor (entry) == 22 && entry.buffer.has_selection);
+    stdout.printf ("Compose Control+A/E line keys passed.\n");
+    return 0;
+}

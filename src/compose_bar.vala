@@ -1667,6 +1667,21 @@ namespace Dc {
                     text_view.delete_from_cursor (Gtk.DeleteType.PARAGRAPH_ENDS, -1);
                     return true;
                 }
+                /* Cocoa's Control+A / Control+E move to the paragraph start / end
+                   (Shift extends the selection). GTK binds Control+A to
+                   select-all and Control+E to nothing, so map them here. */
+                if ((state & (Gdk.ModifierType.CONTROL_MASK
+                              | Gdk.ModifierType.META_MASK
+                              | Gdk.ModifierType.ALT_MASK))
+                    == Gdk.ModifierType.CONTROL_MASK) {
+                    uint key = Gdk.keyval_to_lower (keyval);
+                    if (key == Gdk.Key.a || key == Gdk.Key.e) {
+                        bool extend = (state & Gdk.ModifierType.SHIFT_MASK) != 0;
+                        text_view.move_cursor (Gtk.MovementStep.PARAGRAPH_ENDS,
+                                               key == Gdk.Key.a ? -1 : 1, extend);
+                        return true;
+                    }
+                }
             }
 
             /* The emoji picker is opened by typing a second colon ("::"),
