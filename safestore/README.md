@@ -8,7 +8,8 @@ accounts folder is still planned; see the [remaining milestones](../docs/safesto
 **Check Backup**, and **Restore Backup**. Save a full password-encrypted `.zip`
 anywhere on a local filesystem, including a USB drive. No separate program or
 command is needed. All account files and attachments are encrypted with WinZip
-AES-256 through libzip; this is independent of the legacy working-store ZIP adapter.
+AES-256 through an optional libzip runtime; this is independent of the legacy
+working-store ZIP adapter. Missing AES support is reported when the feature is used.
 Use a long, unique password and keep it safely: there is no password recovery.
 
 Creation pauses messaging, drains queued RPC requests, closes stdin, waits for
@@ -170,9 +171,10 @@ The source is split into:
 
 ## Requirements
 
-Build requirements: Vala 0.56+, Meson/Ninja, GLib/GIO 2.66+, libzip 1.7+
-with AES encryption support on desktop platforms; GTK 4 and
+Build requirements: Vala 0.56+, Meson/Ninja, GLib/GIO 2.66+; GTK 4 and
 libadwaita 1.5+ for the GUI; libsecret (optional) for the Linux keyring.
+The optional libzip 1.7+ development headers enable AES backups on desktop
+platforms; the resulting executable does not link against libzip.
 
 Runtime requirements:
 
@@ -189,8 +191,9 @@ Runtime requirements:
   but storage mutations remain unavailable until mount identity, private ACLs,
   replacement durability, and backend operation are qualified in milestone 3.
   An existing drive or directory never proves an encrypted mount.
-- AES ZIP: libzip with AES-256 encryption and decryption support, linked at build
-  time. No external archive executable or filesystem runtime is needed.
+- AES ZIP: libzip with AES-256 encryption and decryption support, loaded on demand.
+  Install the runtime library and restart Parla if it is missing. Builds made
+  without its headers must be rebuilt to enable this adapter.
 - Legacy ZIP backend on Unix: Info-ZIP-compatible `zip` and `unzip`, both discoverable
   in `PATH` (or configured explicitly), plus pseudo-terminal support. The ZIP
   backend is unavailable on Windows for now because SafeStore cannot provide

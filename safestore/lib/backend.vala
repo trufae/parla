@@ -105,8 +105,8 @@ namespace SafeStore {
 
         private static BackendInfo inspect_aes_zip () {
             bool available = Archive.available ();
-            string status = available ? "Available: native libzip AES-256"
-                : "Unavailable: this build has no AES-256 archive support";
+            string status = available ? "Available: libzip AES-256"
+                : "Unavailable: install libzip with AES support and use a build with AES backups enabled";
 #if WINDOWS
             available = false;
             status = "Unavailable: Windows store lifecycle transitions are not qualified";

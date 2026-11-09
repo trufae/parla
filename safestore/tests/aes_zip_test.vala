@@ -1,6 +1,7 @@
 // The shared native codec is exercised on every desktop platform, including
 // Windows where the higher-level Store lifecycle remains gated.
 private void test_aes_snapshot () {
+    if (!SafeStore.Backups.available) { Test.skip ("AES backups unavailable"); return; }
     string? root = null;
     try {
         root = DirUtils.make_tmp ("safestore-aes-codec-XXXXXX");

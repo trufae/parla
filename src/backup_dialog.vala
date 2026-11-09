@@ -116,6 +116,7 @@ namespace Dc {
 
         private async void execute () {
             if (running) return;
+            if (!SafeStore.Backups.available) { status.label = _("Encrypted backups require libzip with AES support and a Parla build with backups enabled."); return; }
             if (archive_path == null) { status.label = _("Choose a backup file first"); return; }
             if (password.text.length == 0) { status.label = _("Enter the backup password"); return; }
             if (action == BackupAction.CREATE && password.text != confirmation.text) { status.label = _("The passwords do not match"); return; }

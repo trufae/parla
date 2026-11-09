@@ -34,7 +34,7 @@ namespace SafeStore {
 
         private void enter (SecretValue password, Cancellable? cancel) throws Error {
             if (busy) throw new IOError.BUSY ("A backup operation is already running");
-            if (!available) throw new IOError.NOT_SUPPORTED ("AES-256 backups are unavailable in this build");
+            if (!available) throw new IOError.NOT_SUPPORTED ("AES-256 backups require libzip with AES support and a build with AES backups enabled");
             if (password.peek ().length == 0) throw new IOError.INVALID_ARGUMENT ("Enter a backup password");
             if (cancel != null) cancel.set_error_if_cancelled ();
             context = MainContext.ref_thread_default ();

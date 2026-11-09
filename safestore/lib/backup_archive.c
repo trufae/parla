@@ -17,7 +17,52 @@
 #endif
 #endif
 #ifdef HAVE_BACKUP_ZIP
+#include <gmodule.h>
 #include <zip.h>
+
+#define ZIP_FUNCTIONS(F) \
+    F(zip_open) F(zip_close) F(zip_discard) F(zip_get_error) F(zip_strerror) \
+    F(zip_error_code_zip) F(zip_error_init_with_code) F(zip_error_strerror) F(zip_error_fini) \
+    F(zip_encryption_method_supported) F(zip_register_cancel_callback_with_state) \
+    F(zip_file_add) F(zip_file_set_encryption) F(zip_set_file_compression) \
+    F(zip_source_file) F(zip_source_buffer) F(zip_source_free) \
+    F(zip_get_num_entries) F(zip_get_name) F(zip_stat) \
+    F(zip_fopen_encrypted) F(zip_fread) F(zip_fclose)
+
+#define ZIP_DECLARE(name) __typeof__ (&name) name;
+static struct { ZIP_FUNCTIONS (ZIP_DECLARE) } api;
+#undef ZIP_DECLARE
+
+static gboolean load_zip (void)
+{
+    const gchar *names[] = {
+#ifdef G_OS_WIN32
+        "libzip.dll", "zip.dll", "libzip-5.dll", "libzip-4.dll"
+#elif defined(__APPLE__)
+        "libzip.5.dylib", "libzip.4.dylib", "libzip.dylib",
+        "/opt/homebrew/lib/libzip.dylib", "/usr/local/lib/libzip.dylib",
+        SAFESTORE_ZIP_DIRECTORY "/libzip.dylib"
+#else
+        "libzip.so.5", "libzip.so.4", "libzip.so"
+#endif
+    };
+    for (guint i = 0; i < G_N_ELEMENTS (names); i++) {
+        GModule *module = g_module_open (names[i], G_MODULE_BIND_LOCAL);
+        if (!module) continue;
+        gboolean loaded = TRUE;
+#define ZIP_LOAD(name) loaded = g_module_symbol (module, #name, (gpointer *) &api.name) && loaded;
+        ZIP_FUNCTIONS (ZIP_LOAD)
+#undef ZIP_LOAD
+        if (loaded && api.zip_encryption_method_supported (ZIP_EM_AES_256, 1)
+                && api.zip_encryption_method_supported (ZIP_EM_AES_256, 0)) {
+            g_module_make_resident (module);
+            g_module_close (module);
+            return TRUE;
+        }
+        g_module_close (module);
+    }
+    return FALSE;
+}
 
 struct _SafeStoreArchive {
     zip_t *zip;
@@ -28,10 +73,10 @@ struct _SafeStoreArchive {
 static gboolean zip_failure (SafeStoreArchive *self, GError **error)
 {
     if (self->cancel && g_cancellable_set_error_if_cancelled (self->cancel, error)) return FALSE;
-    int code = zip_error_code_zip (zip_get_error (self->zip));
+    int code = api.zip_error_code_zip (api.zip_get_error (self->zip));
     g_set_error (error, G_IO_ERROR,
         code == ZIP_ER_WRONGPASSWD ? G_IO_ERROR_PERMISSION_DENIED : G_IO_ERROR_INVALID_DATA,
-        "Encrypted backup: %s", zip_strerror (self->zip));
+        "Encrypted backup: %s", api.zip_strerror (self->zip));
     return FALSE;
 }
 
@@ -44,31 +89,32 @@ static int cancelled (zip_t *zip, void *data)
 
 gboolean safestore_archive_available (void)
 {
-    return zip_encryption_method_supported (ZIP_EM_AES_256, 1)
-        && zip_encryption_method_supported (ZIP_EM_AES_256, 0);
+    static gsize available;
+    if (g_once_init_enter (&available)) g_once_init_leave (&available, load_zip () ? 2 : 1);
+    return available == 2;
 }
 
 SafeStoreArchive *safestore_archive_new (const gchar *path, gboolean create,
     const gchar *password, GCancellable *cancel, GError **error)
 {
     if (!safestore_archive_available ()) {
-        g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED, "AES-256 backup support is unavailable");
+        g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED, "AES-256 backups require the optional libzip runtime with AES support");
         return NULL;
     }
     int code;
-    zip_t *zip = zip_open (path, create ? ZIP_CREATE | ZIP_EXCL : ZIP_RDONLY | ZIP_CHECKCONS, &code);
+    zip_t *zip = api.zip_open (path, create ? ZIP_CREATE | ZIP_EXCL : ZIP_RDONLY | ZIP_CHECKCONS, &code);
     if (!zip) {
         zip_error_t ze;
-        zip_error_init_with_code (&ze, code);
-        g_set_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_DATA, "Could not open backup: %s", zip_error_strerror (&ze));
-        zip_error_fini (&ze);
+        api.zip_error_init_with_code (&ze, code);
+        g_set_error (error, G_IO_ERROR, G_IO_ERROR_INVALID_DATA, "Could not open backup: %s", api.zip_error_strerror (&ze));
+        api.zip_error_fini (&ze);
         return NULL;
     }
     SafeStoreArchive *self = g_new0 (SafeStoreArchive, 1);
     self->zip = zip;
     self->password = safestore_secret_memory_new (password);
     self->cancel = cancel ? g_object_ref (cancel) : NULL;
-    if (create && zip_register_cancel_callback_with_state (zip, cancelled, NULL, self) < 0) {
+    if (create && api.zip_register_cancel_callback_with_state (zip, cancelled, NULL, self) < 0) {
         zip_failure (self, error);
         safestore_archive_free (self);
         return NULL;
@@ -79,7 +125,7 @@ SafeStoreArchive *safestore_archive_new (const gchar *path, gboolean create,
 void safestore_archive_free (SafeStoreArchive *self)
 {
     if (!self) return;
-    if (self->zip) zip_discard (self->zip);
+    if (self->zip) api.zip_discard (self->zip);
     safestore_secret_memory_unref (self->password);
     g_clear_object (&self->cancel);
     g_free (self);
@@ -88,14 +134,14 @@ void safestore_archive_free (SafeStoreArchive *self)
 static gboolean add_source (SafeStoreArchive *self, const gchar *name, zip_source_t *source, GError **error)
 {
     if (!source) return zip_failure (self, error);
-    zip_int64_t index = zip_file_add (self->zip, name, source, ZIP_FL_ENC_UTF_8);
+    zip_int64_t index = api.zip_file_add (self->zip, name, source, ZIP_FL_ENC_UTF_8);
     if (index < 0) {
-        zip_source_free (source);
+        api.zip_source_free (source);
         return zip_failure (self, error);
     }
-    if (zip_file_set_encryption (self->zip, index, ZIP_EM_AES_256,
+    if (api.zip_file_set_encryption (self->zip, index, ZIP_EM_AES_256,
             safestore_secret_memory_peek (self->password)) < 0
-            || zip_set_file_compression (self->zip, index, ZIP_CM_DEFLATE, 6) < 0)
+            || api.zip_set_file_compression (self->zip, index, ZIP_CM_DEFLATE, 6) < 0)
         return zip_failure (self, error);
     return TRUE;
 }
@@ -103,30 +149,30 @@ static gboolean add_source (SafeStoreArchive *self, const gchar *name, zip_sourc
 gboolean safestore_archive_add_file (SafeStoreArchive *self, const gchar *name,
     const gchar *path, GError **error)
 {
-    return add_source (self, name, zip_source_file (self->zip, path, 0, -1), error);
+    return add_source (self, name, api.zip_source_file (self->zip, path, 0, -1), error);
 }
 
 gboolean safestore_archive_add_text (SafeStoreArchive *self, const gchar *name,
     const gchar *text, GError **error)
 {
     gchar *copy = g_strdup (text);
-    zip_source_t *source = zip_source_buffer (self->zip, copy, strlen (copy), 1);
+    zip_source_t *source = api.zip_source_buffer (self->zip, copy, strlen (copy), 1);
     if (!source) g_free (copy);
     return add_source (self, name, source, error);
 }
 
 gboolean safestore_archive_finish (SafeStoreArchive *self, GError **error)
 {
-    if (zip_close (self->zip) < 0) return zip_failure (self, error);
+    if (api.zip_close (self->zip) < 0) return zip_failure (self, error);
     self->zip = NULL;
     return TRUE;
 }
 
-gint64 safestore_archive_count (SafeStoreArchive *self) { return zip_get_num_entries (self->zip, 0); }
+gint64 safestore_archive_count (SafeStoreArchive *self) { return api.zip_get_num_entries (self->zip, 0); }
 
 gchar *safestore_archive_name (SafeStoreArchive *self, guint64 index, GError **error)
 {
-    const gchar *name = zip_get_name (self->zip, index, ZIP_FL_ENC_STRICT);
+    const gchar *name = api.zip_get_name (self->zip, index, ZIP_FL_ENC_STRICT);
     if (!name) { zip_failure (self, error); return NULL; }
     return g_strdup (name);
 }
@@ -134,7 +180,7 @@ gchar *safestore_archive_name (SafeStoreArchive *self, guint64 index, GError **e
 guint64 safestore_archive_size (SafeStoreArchive *self, const gchar *name, GError **error)
 {
     zip_stat_t stat;
-    if (zip_stat (self->zip, name, ZIP_FL_ENC_UTF_8, &stat) < 0) { zip_failure (self, error); return 0; }
+    if (api.zip_stat (self->zip, name, ZIP_FL_ENC_UTF_8, &stat) < 0) { zip_failure (self, error); return 0; }
     if (!(stat.valid & ZIP_STAT_ENCRYPTION_METHOD) || stat.encryption_method != ZIP_EM_AES_256
             || !(stat.valid & ZIP_STAT_SIZE)) {
         g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_INVALID_DATA, "Every backup entry must use AES-256 encryption");
@@ -148,14 +194,14 @@ guint64 safestore_archive_size (SafeStoreArchive *self, const gchar *name, GErro
 static gboolean read_entry (SafeStoreArchive *self, const gchar *name, guint64 expected,
     GOutputStream *output, GChecksum *hash, GError **error)
 {
-    zip_file_t *file = zip_fopen_encrypted (self->zip, name, 0, safestore_secret_memory_peek (self->password));
+    zip_file_t *file = api.zip_fopen_encrypted (self->zip, name, 0, safestore_secret_memory_peek (self->password));
     if (!file) return zip_failure (self, error);
     guint8 buffer[65536];
     guint64 total = 0;
     gboolean ok = FALSE;
     for (;;) {
         if (self->cancel && g_cancellable_set_error_if_cancelled (self->cancel, error)) break;
-        zip_int64_t count = zip_fread (file, buffer, sizeof buffer);
+        zip_int64_t count = api.zip_fread (file, buffer, sizeof buffer);
         if (count < 0) {
             g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_INVALID_DATA, "Backup authentication or decompression failed");
             break;
@@ -173,7 +219,7 @@ static gboolean read_entry (SafeStoreArchive *self, const gchar *name, guint64 e
         if (hash) g_checksum_update (hash, buffer, count);
         if (output && !g_output_stream_write_all (output, buffer, count, NULL, self->cancel, error)) break;
     }
-    if (zip_fclose (file) < 0 && ok) {
+    if (api.zip_fclose (file) < 0 && ok) {
         g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_INVALID_DATA, "Backup entry could not be verified");
         ok = FALSE;
     }
@@ -189,12 +235,11 @@ gchar *safestore_archive_read_text (SafeStoreArchive *self, const gchar *name,
         g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_INVALID_DATA, "Backup manifest is too large");
         return NULL;
     }
-    GOutputStream *out = g_memory_output_stream_new_resizable ();
+    g_autoptr(GOutputStream) out = g_memory_output_stream_new_resizable ();
     gboolean ok = read_entry (self, name, size, out, NULL, error);
     if (ok) ok = g_output_stream_write_all (out, "", 1, NULL, NULL, error);
     g_output_stream_close (out, NULL, NULL);
     gchar *text = ok ? g_memory_output_stream_steal_data (G_MEMORY_OUTPUT_STREAM (out)) : NULL;
-    g_object_unref (out);
     if (text && (strlen (text) != size || !g_utf8_validate (text, -1, NULL))) {
         g_free (text);
         g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_INVALID_DATA, "Invalid backup manifest text");
@@ -212,22 +257,16 @@ gchar *safestore_archive_read_file (SafeStoreArchive *self, const gchar *name,
         g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_INVALID_DATA, "Backup sizes do not match");
         return NULL;
     }
-    GFileOutputStream *out = NULL;
+    g_autoptr(GFileOutputStream) out = NULL;
     if (destination) {
-        GFile *target = g_file_new_for_path (destination);
+        g_autoptr(GFile) target = g_file_new_for_path (destination);
         out = g_file_create (target, G_FILE_CREATE_PRIVATE, self->cancel, error);
-        g_object_unref (target);
         if (!out) return NULL;
     }
-    GChecksum *hash = g_checksum_new (G_CHECKSUM_SHA256);
+    g_autoptr(GChecksum) hash = g_checksum_new (G_CHECKSUM_SHA256);
     gboolean ok = read_entry (self, name, size, out ? G_OUTPUT_STREAM (out) : NULL, hash, error);
-    if (out) {
-        if (ok) ok = g_output_stream_close (G_OUTPUT_STREAM (out), self->cancel, error);
-        g_object_unref (out);
-    }
-    gchar *result = ok ? g_strdup (g_checksum_get_string (hash)) : NULL;
-    g_checksum_free (hash);
-    return result;
+    if (out && ok) ok = g_output_stream_close (G_OUTPUT_STREAM (out), self->cancel, error);
+    return ok ? g_strdup (g_checksum_get_string (hash)) : NULL;
 }
 #else
 struct _SafeStoreArchive { int unused; };

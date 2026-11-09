@@ -4,7 +4,7 @@ namespace SafeStore {
     // or publication policy. Legacy ZipCrypto is never read or rewritten here.
     internal class AesZipBackend : Object {
         private static void require_available (Settings settings) throws Error {
-            if (!Archive.available ()) throw new StoreError.NOT_SUPPORTED ("Native AES-256 archive support is unavailable");
+            if (!Archive.available ()) throw new StoreError.NOT_SUPPORTED ("AES-256 stores require libzip with AES support and a build with AES backups enabled");
             PlaintextEraser.require_available (settings);
         }
 

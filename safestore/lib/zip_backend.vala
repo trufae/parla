@@ -24,15 +24,6 @@ namespace SafeStore {
             bool confirm,
             out string output) throws Error;
 
-        [CCode (cname = "safestore_acquire_accounts_guard",
-                cheader_filename = "pty_password.h")]
-        private static extern int acquire_accounts_guard (
-            string lock_path) throws Error;
-
-        [CCode (cname = "safestore_release_accounts_guard",
-                cheader_filename = "pty_password.h")]
-        private static extern void release_accounts_guard (int descriptor);
-
         public static bool password_channel_available () {
 #if WINDOWS || SAFESTORE_UNSUPPORTED
             return false;
@@ -124,7 +115,8 @@ namespace SafeStore {
             bool exposed = false;
 
             string parent = Path.get_dirname (settings.mount_path);
-            string staging = unique_directory (parent, ".safestore-unlock-");
+            string staging = Path.build_filename (parent, ".safestore-unlock-" + Uuid.string_random ());
+            Archive.make_private_directory (staging);
             try {
                 string[] argv = {
                     settings.unzip_binary,
@@ -177,19 +169,16 @@ namespace SafeStore {
             validate_plain_accounts (settings.mount_path);
             PlaintextEraser.validate_tree (
                 settings.mount_path, settings);
-            int guard = acquire_accounts_guard (Path.build_filename (
-                settings.mount_path, "accounts.lock"));
-            try {
-                rollback_safe = false;
-                write_archive (settings, password);
-                committed ();
-                PlaintextEraser.erase_tree (settings.mount_path, settings);
-                create_locked_destination (settings.mount_path);
-                PathPolicy.sync_directory (settings.mount_path);
-                PathPolicy.sync_directory (Path.get_dirname (settings.mount_path));
-            } finally {
-                release_accounts_guard (guard);
-            }
+            string lock_path = Path.build_filename (settings.mount_path, "accounts.lock");
+            Lease? guard = FileUtils.test (lock_path, FileTest.EXISTS) ? new Lease (lock_path) : null;
+            rollback_safe = false;
+            write_archive (settings, password);
+            committed ();
+            PlaintextEraser.erase_tree (settings.mount_path, settings);
+            create_locked_destination (settings.mount_path);
+            PathPolicy.sync_directory (settings.mount_path);
+            PathPolicy.sync_directory (Path.get_dirname (settings.mount_path));
+            guard = null;
         }
 
         private static void write_archive (Settings settings,
@@ -234,7 +223,7 @@ namespace SafeStore {
                 }
 #endif
                 ZipFormat.validate (temporary);
-                durable_replace (temporary, archive);
+                Archive.replace (temporary, archive);
             } finally {
                 if (FileUtils.test (marker_path, FileTest.EXISTS)) {
                     FileUtils.unlink (marker_path);
@@ -257,38 +246,6 @@ namespace SafeStore {
             string process_output;
             run_with_password (
                 argv, cwd, password, false, out process_output);
-        }
-
-        private static void durable_replace (string source,
-                                             string destination) throws Error {
-#if WINDOWS
-            File.new_for_path (source).move (
-                File.new_for_path (destination),
-                FileCopyFlags.OVERWRITE);
-#else
-            int descriptor = Posix.open (
-                source, Posix.O_RDONLY | Posix.O_CLOEXEC);
-            if (descriptor < 0 || Posix.fsync (descriptor) != 0) {
-                if (descriptor >= 0) Posix.close (descriptor);
-                throw new IOError.FAILED (
-                    "Could not synchronize the new ZIP archive");
-            }
-            Posix.close (descriptor);
-            if (FileUtils.rename (source, destination) != 0) {
-                throw new IOError.FAILED (
-                    "Could not atomically replace the ZIP vault");
-            }
-            string parent = Path.get_dirname (destination);
-            descriptor = Posix.open (
-                parent,
-                Posix.O_RDONLY | Posix.O_DIRECTORY | Posix.O_CLOEXEC);
-            if (descriptor < 0 || Posix.fsync (descriptor) != 0) {
-                if (descriptor >= 0) Posix.close (descriptor);
-                throw new IOError.FAILED (
-                    "ZIP vault was replaced, but its directory could not be synchronized");
-            }
-            Posix.close (descriptor);
-#endif
         }
 
         private static string validate_extraction (string staging)
@@ -450,15 +407,5 @@ namespace SafeStore {
 #endif
         }
 
-        private static string unique_directory (string parent,
-                                                string prefix) throws Error {
-            for (int attempt = 0; attempt < 20; attempt++) {
-                string path = Path.build_filename (
-                    parent, prefix + Uuid.string_random ());
-                if (DirUtils.create (path, 0700) == 0) return path;
-            }
-            throw new IOError.FAILED (
-                "Could not create a private staging folder beside the accounts path");
-        }
     }
 }

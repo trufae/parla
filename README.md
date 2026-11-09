@@ -148,7 +148,7 @@ To select multiple messages using the keyboard:
 
 ```sh
 # Install dependencies (Ubuntu; Webxdc is enabled by default)
-sudo apt install valac meson libgtk-4-dev libadwaita-1-dev libjson-glib-dev libzip-dev \
+sudo apt install valac meson libgtk-4-dev libadwaita-1-dev libjson-glib-dev \
   libwebkitgtk-6.0-dev
 
 # Install the RPC backend for source builds
@@ -162,12 +162,17 @@ make run
 On GNOME, install the desktop entry with `sudo make install` so the app
 switcher can resolve Parla's name and icon, especially on Wayland.
 
+AES-256 backups optionally use libzip 1.7+: install its development package
+before building to enable the adapter, and its runtime library to use backups.
+Parla builds and starts without it. Ordinary `zip`/`unzip` only support the
+separate legacy ZipCrypto store format.
+
 <details>
 <summary>Other distros</summary>
 
-**Fedora:** `sudo dnf install vala meson gtk4-devel libadwaita-devel json-glib-devel libzip-devel`
+**Fedora:** `sudo dnf install vala meson gtk4-devel libadwaita-devel json-glib-devel`
 
-**Arch:** `sudo pacman -S vala meson gtk4 libadwaita json-glib libzip`
+**Arch:** `sudo pacman -S vala meson gtk4 libadwaita json-glib`
 
 **Flatpak:** `flatpak install io.github.trufae.Parla.flatpak`
 
@@ -188,7 +193,7 @@ Install the runtime alongside Parla; see
 <summary>macOS</summary>
 
 ```sh
-brew install meson ninja vala pkgconf gtk4 libadwaita json-glib libzip librsvg webp-pixbuf-loader glib-networking adwaita-icon-theme
+brew install meson ninja vala pkgconf gtk4 libadwaita json-glib librsvg webp-pixbuf-loader glib-networking adwaita-icon-theme
 
 # Install the RPC backend for source builds.
 pip install deltachat-rpc-server
@@ -213,7 +218,6 @@ Build inside an [MSYS2](https://www.msys2.org) UCRT64 shell:
 pacman -S zip mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-meson \
   mingw-w64-ucrt-x86_64-vala mingw-w64-ucrt-x86_64-gtk4 \
   mingw-w64-ucrt-x86_64-libadwaita mingw-w64-ucrt-x86_64-json-glib \
-  mingw-w64-ucrt-x86_64-libzip \
   mingw-w64-ucrt-x86_64-glib-networking mingw-w64-ucrt-x86_64-adwaita-icon-theme \
   mingw-w64-ucrt-x86_64-librsvg mingw-w64-ucrt-x86_64-webp-pixbuf-loader \
   mingw-w64-ucrt-x86_64-ntldd

@@ -73,6 +73,7 @@ private async void backup_real_core_async (string server, bool encrypted = false
 }
 
 private void test_backup_core (bool encrypted = false) {
+    if (!SafeStore.Backups.available) { Test.skip ("AES backups unavailable"); return; }
     string? server = Environment.get_variable ("PARLA_TEST_CORE");
     if (server == null) { Test.skip ("Set PARLA_TEST_CORE to a local core binary for the offline roundtrip"); return; }
     var loop = new MainLoop (); Error? failure = null;

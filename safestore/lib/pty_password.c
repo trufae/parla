@@ -5,10 +5,8 @@
 
 #if !defined(G_OS_WIN32) && !defined(SAFESTORE_NO_PTY)
 #include <errno.h>
-#include <fcntl.h>
 #include <poll.h>
 #include <signal.h>
-#include <sys/file.h>
 #include <sys/mman.h>
 #include <termios.h>
 #include <sys/types.h>
@@ -82,48 +80,6 @@ safestore_secret_memory_clear (SafeStoreSecretMemory *self)
     self->value = NULL;
     self->allocation_size = 0;
     self->memory_locked = FALSE;
-}
-
-int
-safestore_acquire_accounts_guard (const gchar *lock_path,
-                                  GError **error)
-{
-#if defined(G_OS_WIN32) || defined(SAFESTORE_NO_PTY)
-    g_set_error_literal (error, G_IO_ERROR, G_IO_ERROR_NOT_SUPPORTED,
-                         "ZIP account locking is unavailable on this platform");
-    return -1;
-#else
-    int descriptor = open (lock_path, O_RDWR | O_CLOEXEC);
-    if (descriptor < 0 && errno == ENOENT) return -1;
-    if (descriptor < 0) {
-        g_set_error (error, G_IO_ERROR, g_io_error_from_errno (errno),
-                     "could not open Delta Chat account lock: %s",
-                     g_strerror (errno));
-        return -1;
-    }
-    if (flock (descriptor, LOCK_EX | LOCK_NB) != 0) {
-        int saved_errno = errno;
-        close (descriptor);
-        g_set_error_literal (
-            error, G_IO_ERROR, G_IO_ERROR_BUSY,
-            saved_errno == EWOULDBLOCK || saved_errno == EAGAIN
-                ? "Delta Chat is still using the accounts; close Parla before locking"
-                : "could not lock the Delta Chat accounts");
-        return -1;
-    }
-    return descriptor;
-#endif
-}
-
-void
-safestore_release_accounts_guard (int descriptor)
-{
-#if !defined(G_OS_WIN32) && !defined(SAFESTORE_NO_PTY)
-    if (descriptor >= 0) {
-        flock (descriptor, LOCK_UN);
-        close (descriptor);
-    }
-#endif
 }
 
 /*

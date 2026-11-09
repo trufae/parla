@@ -10,7 +10,11 @@ private void backup_remove_fixture (File file) throws Error {
 }
 
 private async void backup_roundtrip () throws Error {
-    assert_true (SafeStore.Backups.available);
+    if (!SafeStore.Backups.available) {
+        try { yield new SafeStore.Backups ().verify ("/missing.zip", new SafeStore.SecretValue ("test")); assert_not_reached (); }
+        catch (IOError.NOT_SUPPORTED error) { assert_true (error.message.contains ("libzip")); }
+        return;
+    }
     string root = DirUtils.make_tmp ("safestore-backup-test-XXXXXX");
     string source = Path.build_filename (root, "accounts");
     string zip = Path.build_filename (root, "backup.zip");
@@ -122,6 +126,7 @@ private async void backup_roundtrip () throws Error {
 }
 
 private async void backup_bad_manifest () throws Error {
+    if (!SafeStore.Backups.available) { Test.skip ("AES backups unavailable"); return; }
     string root = DirUtils.make_tmp ("safestore-backup-malformed-XXXXXX");
     var secret = new SafeStore.SecretValue ("test password");
     var service = new SafeStore.Backups ();

@@ -21,8 +21,6 @@ else
 endif
 
 if safestore_desktop
-  safestore_zip = dependency('libzip', version: '>= 1.7')
-  safestore_c_args += '-DHAVE_BACKUP_ZIP'
   if safestore_system != 'windows'
     safestore_util = safestore_cc.find_library('util', required: false)
     if safestore_util.found()
@@ -41,10 +39,17 @@ else
   safestore_c_args += '-DSAFESTORE_NO_PTY'
 endif
 
-# Keep libzip behind a C target so Vala consumers need no libzip VAPI.
+# Optional headers only: the archive adapter loads libzip at runtime.
 safestore_archive_deps = [dependency('gio-2.0')]
 if safestore_desktop
-  safestore_archive_deps += safestore_zip
+  safestore_zip = dependency('libzip', version: '>= 1.7', required: false, method: 'pkg-config')
+  if safestore_zip.found()
+    safestore_c_args += ['-DHAVE_BACKUP_ZIP', '-I' + safestore_zip.get_variable(pkgconfig: 'includedir')]
+    if safestore_system == 'darwin'
+      safestore_c_args += '-DSAFESTORE_ZIP_DIRECTORY="' + safestore_zip.get_variable(pkgconfig: 'libdir') + '"'
+    endif
+    safestore_archive_deps += dependency('gmodule-2.0')
+  endif
 endif
 if safestore_system == 'windows'
   safestore_archive_deps += safestore_cc.find_library('advapi32')
