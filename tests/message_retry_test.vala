@@ -7,6 +7,10 @@ public int run_fake_retry_server () {
     string hold = "";
     string fail = "";
     string? held_reply = null;
+    int64 event_request = 0;
+    int64 chat_timer = 90;
+    bool show_chats = false;
+    var expiry_info = object_from_json ("""{"ephemeralTimer":{"kind":"disabled"},"ephemeralTimestamp":null}""");
     string? line;
     while ((line = stdin.read_line ()) != null) {
         var request = object_from_json (line);
@@ -15,7 +19,8 @@ public int run_fake_retry_server () {
         var result = new Json.Node (Json.NodeType.NULL);
         string? failure = null;
         if (method == "get_message" || method == "resend_messages"
-                || method == "search_messages" || method == "message_ids_to_search_results")
+                || method == "search_messages" || method == "message_ids_to_search_results"
+                || method == "set_chat_ephemeral_timer" || method == "get_message_info_object")
             calls.add_object_element (request);
         if (method == fail) {
             fail = "";
@@ -23,8 +28,10 @@ public int run_fake_retry_server () {
         } else {
             switch (method) {
             case "get_system_info":
-            case "get_chatlist_items_by_entries":
                 result.init_object (new Json.Object ());
+                break;
+            case "get_chatlist_items_by_entries":
+                result.init_object (show_chats ? object_from_json ("""{"10":{"id":10,"name":"Timer chat","chatType":"Group"},"11":{"id":11,"name":"Other chat","chatType":"Group"}}""") : new Json.Object ());
                 break;
             case "get_all_accounts":
                 var accounts = new Json.Array ();
@@ -36,15 +43,52 @@ public int run_fake_retry_server () {
             case "is_configured": result.init_boolean (true); break;
             case "get_connectivity": result.init_int (1000); break;
             case "get_chatlist_entries":
+                var entries = new Json.Array ();
+                if (show_chats && args.get_int_element (1) != 1) {
+                    entries.add_int_element (10);
+                    entries.add_int_element (11);
+                }
+                result.init_array (entries);
+                break;
             case "get_fresh_msgs":
             case "list_transports":
+            case "get_message_ids":
+            case "get_pinned_messages":
                 result.init_array (new Json.Array ());
                 break;
-            case "get_next_event": continue;
+            case "get_next_event":
+                event_request = request.get_int_member ("id");
+                continue;
+            case "get_full_chat_by_id":
+                var chat = object_from_json ("""{"name":"Timer chat","chatType":"Group","isEncrypted":true,"canSend":true,"contactIds":[]}""");
+                chat.set_int_member ("ephemeralTimer", args.get_int_element (1) == 10 ? chat_timer : 0);
+                result.init_object (chat);
+                break;
+            case "get_messages": result.init_object (new Json.Object ()); break;
+            case "set_chat_ephemeral_timer":
+                chat_timer = args.get_int_element (2);
+                break;
+            case "get_message_info_object": result.init_object (expiry_info); break;
+            case "test_info": expiry_info = args.get_object_element (0); break;
+            case "test_chats": show_chats = true; break;
+            case "test_timer":
+                assert (event_request != 0);
+                int acct_id = (int) args.get_int_element (0);
+                int chat_id = (int) args.get_int_element (1);
+                int64 timer = args.get_int_element (2);
+                if (acct_id == 1 && chat_id == 10) chat_timer = timer;
+                stdout.printf ("{\"jsonrpc\":\"2.0\",\"id\":%s,\"result\":{\"contextId\":%d,\"event\":{\"kind\":\"ChatEphemeralTimerModified\",\"chatId\":%d,\"timer\":%s}}}\n",
+                    event_request.to_string (), acct_id, chat_id, timer.to_string ());
+                event_request = 0;
+                break;
             case "get_config":
             case "select_account":
             case "start_io_for_all_accounts":
             case "batch_set_config":
+            case "get_draft":
+            case "get_first_unread_message_of_chat":
+            case "marknoticed_chat":
+            case "markseen_msgs":
                 break;
             case "test_message":
                 var msg = args.get_object_element (0);

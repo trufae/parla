@@ -33,6 +33,7 @@ namespace Dc {
                                                        int msg_id, int contact_id,
                                                        string reaction);
         public signal void chat_messages_changed (int acct_id, int chat_id);
+        public signal void chat_ephemeral_timer_changed (int acct_id, int chat_id, int64 timer);
         public signal void account_unread_changed (int acct_id);
         public signal void contacts_changed (int acct_id);
         public signal void transports_changed (int acct_id);
@@ -63,6 +64,12 @@ namespace Dc {
                     if (event == null) continue;
 
                     string kind = event.get_string_member ("kind");
+
+                    if (kind == "ChatEphemeralTimerModified") {
+                        chat_ephemeral_timer_changed (ctx,
+                            (int) json_int (event, "chatId"), json_int (event, "timer"));
+                        continue;
+                    }
 
                     if (kind == "ConnectivityChanged") {
                         if (ctx == rpc.account_id) refresh_connectivity ();

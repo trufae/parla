@@ -17,6 +17,16 @@ namespace Dc {
         private unowned Window app_window;
         private RpcClient rpc;
         private int chat_id;
+        private int account_id;
+        private bool dialog_closed = false;
+        private Gtk.DropDown timer_combo;
+        private Adw.ActionRow timer_row;
+        private const int[] TIMER_VALUES = { 0, 60, 300, 1800, 3600, 21600, 86400, 604800, 2419200 };
+        private int64 current_timer = 0;
+        private uint timer_revision = 0;
+        private bool updating_timer = false;
+        private bool saving_timer = false;
+        private bool can_set_timer = false;
         private bool is_group = false;
         private Gtk.ListBox? members_list = null;
         private Gtk.Box content;
@@ -77,6 +87,7 @@ namespace Dc {
             this.app_window = window;
             this.rpc = rpc;
             this.chat_id = chat_id;
+            this.account_id = rpc.account_id;
             this.title = _("Chat Details");
             this.content_width = 360;
             this.content_height = 500;
@@ -135,14 +146,62 @@ namespace Dc {
                 if (viewer.visible) viewer.hide ();
             });
 
+            ulong timer_handler = app_window.chat_ephemeral_timer_changed.connect (
+                (acct, chat, timer) => {
+                    if (acct != account_id || chat != chat_id) return;
+                    timer_revision++;
+                    current_timer = timer;
+                    refresh_timer ();
+                });
+            closed.connect (() => {
+                dialog_closed = true;
+                app_window.disconnect (timer_handler);
+            });
             load_info.begin (spinner);
+        }
+
+        private void refresh_timer () {
+            if (dialog_closed || timer_combo == null) return;
+            updating_timer = true;
+            var labels = new Gtk.StringList (null);
+            uint selected = TIMER_VALUES.length;
+            for (uint i = 0; i < TIMER_VALUES.length; i++) {
+                labels.append (ephemeral_duration (TIMER_VALUES[i]));
+                if (TIMER_VALUES[i] == current_timer) selected = i;
+            }
+            if (selected == TIMER_VALUES.length)
+                labels.append (ephemeral_duration (current_timer));
+            timer_combo.model = labels;
+            timer_combo.selected = selected;
+            timer_row.sensitive = can_set_timer && !saving_timer;
+            updating_timer = false;
+        }
+
+        private async void save_timer (int timer) {
+            if (dialog_closed) return;
+            saving_timer = true;
+            timer_row.sensitive = false;
+            uint revision = timer_revision;
+            try {
+                yield rpc.set_chat_ephemeral_timer_for (account_id, chat_id, timer);
+                // An event received while saving is newer than this request.
+                if (!dialog_closed && revision == timer_revision)
+                    app_window.chat_ephemeral_timer_changed (account_id, chat_id, timer);
+            } catch (Error e) {
+                if (!dialog_closed)
+                    show_error (this, _("Could not change disappearing messages: ") + e.message);
+            } finally {
+                saving_timer = false;
+                refresh_timer ();
+            }
         }
 
         private async void load_info (Gtk.Spinner spinner) {
             try {
                 var chat = yield rpc.get_full_chat_by_id_for (
-                    rpc.account_id, chat_id);
-                if (chat == null) return;
+                    account_id, chat_id);
+                if (chat == null || dialog_closed) return;
+                if (timer_revision == 0) current_timer = json_int (chat, "ephemeralTimer");
 
                 spinner.visible = false;
 
@@ -247,29 +306,22 @@ namespace Dc {
                     content.append (invite_list);
                 }
 
-                int ephemeral_timer = (int) json_int (chat, "ephemeralTimer");
-
-                int[] timer_values = { 0, 60, 300, 1800, 3600, 21600, 86400, 604800, 2419200 };
-                string[] timer_labels = {
-                    _("Off"), _("1 minute"), _("5 minutes"), _("30 minutes"),
-                    _("1 hour"), _("6 hours"), _("1 day"), _("1 week"), _("4 weeks")
-                };
-                int active_idx = 0;
-                for (int i = 0; i < timer_values.length; i++) {
-                    if (timer_values[i] == ephemeral_timer) {
-                        active_idx = i;
-                    }
-                }
-                var ephem_row = dropdown_row (_("Disappearing messages"),
-                    timer_labels, active_idx, (idx) => {
-                    if (idx < timer_values.length) {
-                        rpc.set_chat_ephemeral_timer.begin (
-                            chat_id, timer_values[(int) idx]);
-                    }
-                });
-                ephem_row.sensitive = encrypted && json_bool (chat, "canSend")
+                timer_row = new Adw.ActionRow ();
+                timer_row.title = _("Disappearing messages");
+                timer_row.subtitle = _("Applies to new messages for everyone in this chat");
+                timer_combo = new Gtk.DropDown (null, null);
+                timer_combo.valign = Gtk.Align.CENTER;
+                timer_row.add_suffix (timer_combo);
+                timer_row.activatable_widget = timer_combo;
+                can_set_timer = encrypted && json_bool (chat, "canSend")
                     && chat_type != "Mailinglist" && chat_type != "InBroadcast";
-                ephem_row.subtitle = _("Applies to new messages for everyone in this chat");
+                refresh_timer ();
+                timer_combo.notify["selected"].connect (() => {
+                    uint idx = timer_combo.selected;
+                    if (!updating_timer && !saving_timer && can_set_timer
+                            && idx < TIMER_VALUES.length && TIMER_VALUES[idx] != current_timer)
+                        save_timer.begin (TIMER_VALUES[idx]);
+                });
 
                 /* Mute selector. Core only reports the boolean isMuted, not
                    the remaining time, so a timed mute shows as "Forever"
@@ -290,7 +342,6 @@ namespace Dc {
                 });
 
                 var ephem_list = boxed_list ();
-                int account_id = rpc.account_id;
                 add_action_row (ephem_list, _("Open Chat"), _("Open this conversation"),
                     "mail-message-new-symbolic", () => {
                     var dialogs = app_window.get_dialogs ();
@@ -310,7 +361,7 @@ namespace Dc {
                     dialog.present (this);
                 });
                 ephem_list.append (mute_row);
-                ephem_list.append (ephem_row);
+                ephem_list.append (timer_row);
                 content.append (ephem_list);
 
                 content.append (new Gtk.Separator (Gtk.Orientation.HORIZONTAL));

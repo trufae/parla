@@ -393,6 +393,12 @@ namespace Dc {
                 Params.begin ().add_int (acct_id).add_int (chat_id).build ());
         }
 
+        public async Json.Object? get_message_info_object_for (int acct_id,
+                                                               int msg_id) throws Error {
+            return yield call_object ("get_message_info_object",
+                Params.begin ().add_int (acct_id).add_int (msg_id).build ());
+        }
+
         public async Json.Array? get_message_ids_for (int acct_id,
                                                        int chat_id,
                                                        bool info_only = false) throws Error {
@@ -906,9 +912,14 @@ namespace Dc {
         }
 
         public async void set_chat_ephemeral_timer (int chat_id, int timer) throws Error {
+            yield set_chat_ephemeral_timer_for (account_id, chat_id, timer);
+        }
+
+        public async void set_chat_ephemeral_timer_for (int acct_id,
+                                                        int chat_id, int timer) throws Error {
             yield call ("set_chat_ephemeral_timer",
                 Params.begin ()
-                    .add_int (account_id)
+                    .add_int (acct_id)
                     .add_int (chat_id)
                     .add_int (timer)
                     .build ());

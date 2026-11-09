@@ -12,7 +12,7 @@ import sys
 import tempfile
 
 
-def check_ui(binary):
+def check_ui(binary, mode="--retry-ui"):
     binary = str(Path(binary).resolve())
     with tempfile.TemporaryDirectory(prefix="parla-retry-ui-") as folder:
         root = Path(folder)
@@ -25,7 +25,7 @@ def check_ui(binary):
         for name in ("CONFIG", "DATA", "CACHE", "STATE"):
             env[f"XDG_{name}_HOME"] = str(root / name.lower())
         try:
-            subprocess.run([binary, "--retry-ui"], env=env, check=True, timeout=30)
+            subprocess.run([binary, mode], env=env, check=True, timeout=30)
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
             if log.exists():
                 print(log.read_text(), file=sys.stderr)
@@ -33,4 +33,4 @@ def check_ui(binary):
 
 
 if __name__ == "__main__":
-    check_ui(sys.argv[1])
+    check_ui(sys.argv[1], sys.argv[2] if len(sys.argv) > 2 else "--retry-ui")

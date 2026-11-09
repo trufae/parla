@@ -9,5 +9,6 @@
     <file>scalable/actions/sticker-symbolic.svg</file>
     <file>scalable/actions/notifications-disabled-symbolic.svg</file>
     <file>scalable/actions/archive-symbolic.svg</file>
+    <file>scalable/actions/parla-timer-symbolic.svg</file>
   </gresource>
 </gresources>

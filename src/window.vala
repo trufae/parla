@@ -77,6 +77,10 @@ namespace Dc {
         private Adw.HeaderBar content_header;
         private Gtk.Label content_title_label;
         private Gtk.Image content_mute_icon;
+        private Gtk.Button content_timer_button;
+        private uint header_timer_revision = 0;
+        public signal void chat_ephemeral_timer_changed (int acct_id, int chat_id, int64 timer);
+        public signal void message_info_changed (int acct_id, int chat_id);
         private Gtk.SearchEntry search_entry;
         private SearchResultsView message_results;
         private uint search_open_generation = 0;
@@ -156,6 +160,10 @@ namespace Dc {
             get { return _current_chat_id; }
             private set {
                 _current_chat_id = value;
+                if (value == 0 && content_timer_button != null) {
+                    header_timer_revision++;
+                    show_header_timer (0);
+                }
                 if (events != null) events.active_chat_id = value;
                 update_conversation_header_actions ();
                 sync_webxdc_chat_visibility ();
@@ -248,6 +256,8 @@ namespace Dc {
         }
 
         private void reset_chat_ui () {
+            header_timer_revision++;
+            show_header_timer (0);
             chats_load_generation++;
             sidebar_title.subtitle = "";
             sidebar_header.tooltip_text = null;
@@ -916,6 +926,16 @@ namespace Dc {
             var content_title_box = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 6);
             content_title_box.append (content_title_label);
             content_title_box.append (content_mute_icon);
+            content_timer_button = new Gtk.Button.from_icon_name ("parla-timer-symbolic");
+            content_timer_button.add_css_class ("flat");
+            content_timer_button.visible = false;
+            content_timer_button.clicked.connect (() => { show_chat_info (current_chat_id); });
+            content_title_box.append (content_timer_button);
+            chat_ephemeral_timer_changed.connect ((acct, chat, timer) => {
+                if (rpc == null || acct != rpc.account_id || chat != current_chat_id) return;
+                header_timer_revision++;
+                show_header_timer (timer);
+            });
             content_header.title_widget = content_title_box;
 
             /* Sidebar visibility button; goes back to chats on narrow widths. */
@@ -1186,6 +1206,9 @@ namespace Dc {
             });
             events.chat_messages_changed.connect ((acct_id, chat_id) => {
                 on_chat_messages_changed (acct_id, chat_id);
+            });
+            events.chat_ephemeral_timer_changed.connect ((acct_id, chat_id, timer) => {
+                chat_ephemeral_timer_changed (acct_id, chat_id, timer);
             });
             events.account_unread_changed.connect ((acct_id) => {
                 schedule_unread_update ();
@@ -2104,6 +2127,9 @@ namespace Dc {
                 chat_id, entry != null ? entry.kind : ChatKind.UNKNOWN);
             current_chat_id = chat_id;
 
+            show_header_timer (0);
+            load_header_timer.begin ();
+
             if (entry != null) {
                 content_title_label.label = entry.name;
             }
@@ -2532,7 +2558,29 @@ namespace Dc {
             request_reload_chats ();
         }
 
+        private void show_header_timer (int64 timer) {
+            content_timer_button.visible = timer > 0;
+            string label = _("Disappearing messages: %s").printf (ephemeral_duration (timer));
+            content_timer_button.tooltip_text = label;
+            content_timer_button.update_property (Gtk.AccessibleProperty.LABEL, label, -1);
+        }
+
+        private async void load_header_timer () {
+            uint revision = ++header_timer_revision;
+            int acct_id = rpc.account_id;
+            int chat_id = current_chat_id;
+            try {
+                var chat = yield rpc.get_full_chat_by_id_for (acct_id, chat_id);
+                if (revision != header_timer_revision || acct_id != rpc.account_id
+                        || chat_id != current_chat_id || chat == null) return;
+                show_header_timer (json_int (chat, "ephemeralTimer"));
+            } catch (Error e) {
+                // The indicator remains hidden until Core supplies a timer.
+            }
+        }
+
         private void on_chat_messages_changed (int acct_id, int chat_id) {
+            message_info_changed (acct_id, chat_id);
             if (acct_id != rpc.account_id) return;
 
             if (chat_id > 0) {

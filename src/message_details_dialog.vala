@@ -3,7 +3,7 @@ namespace Dc {
     public class MessageDetailsDialog : Adw.Dialog {
 
         private unowned Window window;
-        private unowned RpcClient rpc;
+        private RpcClient rpc;
         private MessageActions actions;
         private Message msg;
         private MentionRoster? reaction_roster;
@@ -17,6 +17,11 @@ namespace Dc {
         private Gtk.Button retry_btn;
         private bool retry_running = false;
         private bool dialog_closed = false;
+        private int account_id;
+        private Adw.ActionRow timer_row;
+        private Adw.ActionRow expiry_row;
+        private bool expiry_loading = false;
+        private bool expiry_pending = false;
 
         public MessageDetailsDialog (Window window, RpcClient rpc,
                                      MessageActions actions, Message msg,
@@ -25,6 +30,7 @@ namespace Dc {
             this.rpc = rpc;
             this.actions = actions;
             this.msg = msg;
+            this.account_id = rpc.account_id;
             this.reaction_roster = reaction_roster;
             this.title = _("Message Details");
             this.content_width = 480;
@@ -78,7 +84,46 @@ namespace Dc {
             toasts.child = box;
             this.child = toasts;
             install_escape_close (this);
-            closed.connect (() => { dialog_closed = true; });
+            ulong info_handler = window.message_info_changed.connect ((acct, chat) => {
+                if (acct == account_id && (chat == 0 || chat == msg.chat_id))
+                    load_expiry.begin ();
+            });
+            closed.connect (() => {
+                dialog_closed = true;
+                window.disconnect (info_handler);
+            });
+            load_expiry.begin ();
+        }
+
+        private async void load_expiry () {
+            if (dialog_closed) return;
+            expiry_pending = true;
+            if (expiry_loading) return;
+            expiry_loading = true;
+            do {
+                expiry_pending = false;
+                try {
+                    var info = yield rpc.get_message_info_object_for (account_id, msg.id);
+                    if (dialog_closed) break;
+                    if (expiry_pending) continue;
+                    var timer = info != null ? json_obj (info, "ephemeralTimer") : null;
+                    bool enabled = timer != null && json_str (timer, "kind") == "enabled";
+                    timer_row.visible = expiry_row.visible = enabled;
+                    if (enabled) {
+                        timer_row.subtitle = ephemeral_duration (json_int (timer, "duration"));
+                        int64 expires = json_int (info, "ephemeralTimestamp");
+                        var date = expires > 0 ? new DateTime.from_unix_local (expires) : null;
+                        expiry_row.subtitle = expires <= 0 ? _("Timer not started")
+                            : date != null ? date.format ("%Y-%m-%d %H:%M:%S %Z") : _("Unknown");
+                    }
+                } catch (Error e) {
+                    // Older engines may not provide this metadata. Do not
+                    // infer expiry from the chat's timer or the sent date.
+                    if (!dialog_closed && expiry_row.visible)
+                        expiry_row.subtitle = _("Expiry information unavailable");
+                }
+            } while (expiry_pending && !dialog_closed);
+            expiry_loading = false;
         }
 
         private Gtk.Widget build_sender_button () {
@@ -204,6 +249,11 @@ namespace Dc {
             list.append (info_row (_("Message ID"), msg.id.to_string ()));
             list.append (info_row (_("Chat ID"), msg.chat_id.to_string ()));
             list.append (info_row (_("Sent"), format_full_timestamp (msg.timestamp)));
+            timer_row = info_row (_("Disappearing messages"), "");
+            expiry_row = info_row (_("Expires"), "");
+            timer_row.visible = expiry_row.visible = false;
+            list.append (timer_row);
+            list.append (expiry_row);
             list.append (info_row (_("Direction"), msg.is_outgoing ? _("Outgoing") : _("Incoming")));
             delivery_row = info_row (_("Delivery"), delivery_state ());
             list.append (delivery_row);
