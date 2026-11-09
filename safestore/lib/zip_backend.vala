@@ -170,6 +170,7 @@ namespace SafeStore {
             PlaintextEraser.validate_tree (
                 settings.mount_path, settings);
             string lock_path = Path.build_filename (settings.mount_path, "accounts.lock");
+            // Lease has no copy function, so a ternary would make valac duplicate it.
             Lease? guard = null;
             if (FileUtils.test (lock_path, FileTest.EXISTS)) {
                 guard = new Lease (lock_path);
