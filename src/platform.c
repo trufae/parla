@@ -259,6 +259,11 @@ parla_macos_install_file_drop_handler (GtkWidget                  *widget,
 	(void) user_data;
 }
 
+void
+parla_macos_fix_window_drag (void)
+{
+}
+
 /* Keep GstPlay optional at link time. GTK installations commonly provide it,
  * but Parla can still fall back to GtkMediaFile or a system player when they
  * do not. GstPlay's API has been stable since its 1.20 introduction. */

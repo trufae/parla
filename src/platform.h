@@ -20,6 +20,7 @@ void parla_setup_macos_bundle_environment (void);
 void parla_macos_install_file_drop_handler (GtkWidget                  *widget,
                                             ParlaMacosFileDropCallback  callback,
                                             gpointer                    user_data);
+void parla_macos_fix_window_drag (void);
 
 #ifdef __APPLE__
 #include <gio/gio.h>
