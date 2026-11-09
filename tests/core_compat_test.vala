@@ -450,6 +450,8 @@ public int main (string[] args) {
         return run_image_preview_ui_test (args.length > 2 ? args[2] : null);
     if (args.length > 1 && args[1] == "--compose-scroll-ui")
         return run_compose_scroll_ui_test ();
+    if (args.length > 1 && args[1] == "--compose-line-keys-ui")
+        return run_compose_line_keys_ui_test ();
     if (args.length > 1 && args[1] == "--language-settings")
         return run_language_settings_test ();
     if (args.length > 1 && args[1] == "--audio-player-ui")
