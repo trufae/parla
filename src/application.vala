@@ -437,6 +437,7 @@ namespace Dc {
 
         protected override void startup () {
             base.startup ();
+            Platform.fix_macos_window_drag ();
             configure_sailfish_display ();
             load_css ();
             /* Apply the saved accent override before any window/widget is

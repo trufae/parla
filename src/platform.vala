@@ -29,6 +29,9 @@ namespace Dc.Platform {
     [CCode (cheader_filename = "platform.h", cname = "parla_setup_macos_bundle_environment")]
     private extern void platform_setup_macos_bundle_environment ();
 
+    [CCode (cheader_filename = "platform.h", cname = "parla_macos_fix_window_drag")]
+    private extern void platform_macos_fix_window_drag ();
+
     [CCode (cheader_filename = "platform.h", cname = "parla_macos_install_file_drop_handler")]
     private extern void platform_macos_install_file_drop_handler (
         Gtk.Widget widget,
@@ -261,6 +264,11 @@ namespace Dc.Platform {
 
     public void setup_macos_bundle_environment () {
         platform_setup_macos_bundle_environment ();
+    }
+
+    /* Makes dragging the header bar move the window reliably on macOS. */
+    public void fix_macos_window_drag () {
+        if (is_macos ()) platform_macos_fix_window_drag ();
     }
 
     public void install_macos_file_drop_handler (Gtk.Widget widget,

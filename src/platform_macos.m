@@ -872,6 +872,140 @@ parla_macos_install_file_drop_handler (GtkWidget                  *widget,
 	[handler release];
 }
 
+/* Moves the window when the header bar is dragged on macOS. GDK starts that
+ * move through -performWindowDragWithEvent: once GTK's drag gesture passes
+ * its threshold, and AppKit often doesn't start it, so the window stays put
+ * or lags behind the pointer. When a left press lands on an empty part of a
+ * GtkWindowHandle, Parla moves the window itself, using GDK's own manual
+ * move state: while inManualMove is set, GDK hands the mouse-dragged events
+ * to -sendEvent: instead of GTK, and passes the final mouse-up on to GTK. */
+static void (*parla_gdk_send_event) (id, SEL, NSEvent *);
+static ptrdiff_t parla_in_manual_move_offset;
+static NSWindow *parla_moving_window;
+static NSPoint parla_move_start_mouse;
+static NSPoint parla_move_start_origin;
+
+static gboolean
+parla_widget_takes_press (GtkWidget *widget)
+{
+	return GTK_IS_BUTTON (widget)
+		|| GTK_IS_EDITABLE (widget)
+		|| GTK_IS_SWITCH (widget)
+		|| GTK_IS_RANGE (widget)
+		|| GTK_IS_DROP_DOWN (widget)
+		|| GTK_IS_WINDOW_CONTROLS (widget)
+		|| gtk_widget_get_focusable (widget);
+}
+
+static gboolean
+parla_is_window_drag_area (NSWindow *window, NSEvent *event)
+{
+	GdkSurface *surface = ((GdkSurface * (*) (id, SEL)) objc_msgSend) (
+		window, @selector (gdkSurface));
+	if (surface == NULL) return FALSE;
+	GtkNative *native = gtk_native_get_for_surface (surface);
+	if (native == NULL) return FALSE;
+
+	double sx, sy;
+	gtk_native_get_surface_transform (native, &sx, &sy);
+	NSPoint point = [event locationInWindow];
+	double height = NSHeight ([[window contentView] frame]);
+	GtkWidget *widget = gtk_widget_pick (GTK_WIDGET (native),
+	                                     point.x - sx, height - point.y - sy,
+	                                     GTK_PICK_DEFAULT);
+	for (; widget != NULL; widget = gtk_widget_get_parent (widget)) {
+		if (GTK_IS_WINDOW_HANDLE (widget)) return TRUE;
+		if (parla_widget_takes_press (widget)) return FALSE;
+	}
+	return FALSE;
+}
+
+static void
+parla_move_window_to_pointer (NSWindow *window)
+{
+	NSPoint mouse = [NSEvent mouseLocation];
+	NSRect frame = [window frame];
+	frame.origin.x = parla_move_start_origin.x + mouse.x - parla_move_start_mouse.x;
+	frame.origin.y = parla_move_start_origin.y + mouse.y - parla_move_start_mouse.y;
+
+	/* Keep the title bar below the menu bar of the screen under the
+	 * pointer, as AppKit does. */
+	for (NSScreen *screen in [NSScreen screens]) {
+		if (NSMouseInRect (mouse, [screen frame], NO)) {
+			frame = [window constrainFrameRect:frame toScreen:screen];
+			break;
+		}
+	}
+	[window setFrameOrigin:frame.origin];
+}
+
+static void
+parla_send_event (id self, SEL selector, NSEvent *event)
+{
+	NSWindow *window = (NSWindow *) self;
+	BOOL *in_manual_move = (BOOL *) ((char *) self + parla_in_manual_move_offset);
+
+	switch ([event type]) {
+	case NSEventTypeLeftMouseDown:
+		parla_moving_window = nil;
+		parla_gdk_send_event (self, selector, event);
+		if ([event clickCount] == 1
+		    && ([event modifierFlags] & NSEventModifierFlagControl) == 0
+		    && !*in_manual_move
+		    && parla_is_window_drag_area (window, event)) {
+			parla_moving_window = window;
+			parla_move_start_mouse = [NSEvent mouseLocation];
+			parla_move_start_origin = [window frame].origin;
+		}
+		return;
+
+	case NSEventTypeLeftMouseDragged:
+		if (window == parla_moving_window) {
+			/* Only now, so plain clicks and double-clicks reach GTK
+			 * untouched. */
+			*in_manual_move = YES;
+			parla_move_window_to_pointer (window);
+			return;
+		}
+		break;
+
+	case NSEventTypeLeftMouseUp:
+		/* GDK passes this on to GTK and clears inManualMove. */
+		parla_moving_window = nil;
+		break;
+
+	default:
+		break;
+	}
+
+	parla_gdk_send_event (self, selector, event);
+}
+
+void
+parla_macos_fix_window_drag (void)
+{
+	static gboolean installed = FALSE;
+	if (installed) return;
+	installed = TRUE;
+
+	Class cls = objc_getClass ("GdkMacosWindow");
+	Method send = cls != Nil
+		? class_getInstanceMethod (cls, @selector (sendEvent:))
+		: NULL;
+	Ivar in_manual_move = cls != Nil
+		? class_getInstanceVariable (cls, "inManualMove")
+		: NULL;
+	/* If GDK's internals change, keep its own behaviour. */
+	if (send == NULL || in_manual_move == NULL
+	    || strcmp (ivar_getTypeEncoding (in_manual_move), @encode (BOOL)) != 0
+	    || ![cls instancesRespondToSelector:@selector (gdkSurface)]) {
+		return;
+	}
+	parla_in_manual_move_offset = ivar_getOffset (in_manual_move);
+	parla_gdk_send_event = (void (*) (id, SEL, NSEvent *))
+		method_setImplementation (send, (IMP) parla_send_event);
+}
+
 static void
 parla_video_thumbnail_worker (GTask *task, gpointer source,
                               gpointer task_data, GCancellable *cancellable)
