@@ -55,28 +55,6 @@
             ]
         },
         {
-            "name": "libzip",
-            "buildsystem": "cmake-ninja",
-            "config-opts": [
-                "-DBUILD_DOC=OFF",
-                "-DBUILD_EXAMPLES=OFF",
-                "-DBUILD_REGRESS=OFF",
-                "-DBUILD_TOOLS=OFF"
-            ],
-            "sources": [
-                {
-                    "type": "archive",
-                    "url": "https://libzip.org/download/libzip-1.12.1.tar.xz",
-                    "sha256": "c40062022a1963c80573d48f6070792297cecd7c6bffe3aefcac0d8b9bee8913",
-                    "x-checker-data": {
-                        "type": "anitya",
-                        "project-id": 10649,
-                        "url-template": "https://libzip.org/download/libzip-$version.tar.xz"
-                    }
-                }
-            ]
-        },
-        {
             "name": "parla",
             "buildsystem": "meson",
             "sources": [
