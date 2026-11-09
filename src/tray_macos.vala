@@ -36,6 +36,10 @@ namespace Dc {
         public static extern void set_native_window_visible (Gtk.Window window,
                                                               bool visible);
         [CCode (cheader_filename = "tray_macos.h",
+                cname = "parla_macos_window_set_alpha")]
+        public static extern void set_native_window_alpha (Gtk.Window window,
+                                                            double alpha);
+        [CCode (cheader_filename = "tray_macos.h",
                 cname = "parla_macos_tray_set_window_visible")]
         private static extern void tray_set_window_visible (bool visible);
         [CCode (cheader_filename = "tray_macos.h",

@@ -344,6 +344,18 @@ parla_macos_window_set_visible (GtkWindow *window, gboolean visible)
 }
 
 void
+parla_macos_window_set_alpha (GtkWindow *window, double alpha)
+{
+	GdkSurface *surface = gtk_native_get_surface (GTK_NATIVE (window));
+	if (!GDK_IS_MACOS_SURFACE (surface)) {
+		return;
+	}
+	NSWindow *native = (NSWindow *) gdk_macos_surface_get_native_window (
+		GDK_MACOS_SURFACE (surface));
+	[native setAlphaValue:alpha];
+}
+
+void
 parla_macos_tray_set_window_visible (gboolean visible)
 {
 	tray.window_visible = visible ? YES : NO;
