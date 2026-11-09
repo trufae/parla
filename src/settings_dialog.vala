@@ -76,6 +76,7 @@ namespace Dc {
         public int double_click_action { get; set; default = 0; }
         public MarkdownMode markdown_mode { get; set; default = MarkdownMode.ENABLED; }
         public CodeTheme code_theme { get; set; default = CodeTheme.ADAPTIVE; }
+        public bool a11y_enabled { get; private set; default = true; }
         public bool long_press_context_menu { get; set; default = false; }
         public bool shift_enter_sends { get; set; default = false; }
         public bool clean_pasted_links { get; set; default = false; }
@@ -202,6 +203,7 @@ namespace Dc {
             code_theme = (CodeTheme) kf_enum (kf, "code_theme",
                 (int) CodeTheme.ADAPTIVE, (int) CodeTheme.NONE);
             SyntaxHighlight.theme = code_theme;
+            a11y_enabled = kf_bool (kf, "a11y_enabled", true);
             long_press_context_menu = kf_bool (kf, "long_press_context_menu",
                 Platform.is_android () || is_phosh_session ());
             shift_enter_sends = kf_bool (kf, "shift_enter_sends", false);
@@ -292,6 +294,20 @@ namespace Dc {
         public void save_language (string code) {
             language = Localization.normalize_language (code);
             save_string ("language", language);
+        }
+
+        /* GTK chooses its accessibility backend before the window loads
+           the rest of the settings. Leave the platform default enabled. */
+        public static bool load_a11y_enabled () {
+            var kf = new KeyFile ();
+            try { kf.load_from_file (get_config_path (), KeyFileFlags.NONE); }
+            catch (Error e) { return true; }
+            return kf_bool (kf, "a11y_enabled", true);
+        }
+
+        public void save_a11y_enabled (bool enabled) {
+            a11y_enabled = enabled;
+            save_bool ("a11y_enabled", enabled);
         }
 
         private static bool kf_bool (KeyFile kf, string k, bool d) {
@@ -806,6 +822,7 @@ namespace Dc {
             if (SafeStore.Backups.available) build_backups_section (advanced_page);
             build_network_section (advanced_page);
             build_webxdc_section (advanced_page);
+            build_screen_reader_section (advanced_page);
             build_factory_reset_section (advanced_page);
         }
 
@@ -1008,6 +1025,34 @@ namespace Dc {
                 _("Hold a finger or the primary mouse button to open context menus. Enabled by default on Phosh."),
                 app_window.settings.long_press_context_menu,
                 app_window.settings.save_long_press_context_menu);
+        }
+
+        private void build_screen_reader_section (Adw.PreferencesPage page) {
+            var group = settings_group (page, _("Accessibility"));
+            var row = action_row (_("Screen Reader Support"));
+#if SAILFISHOS || !A11Y
+            row.subtitle = _("Accessibility support is disabled in this build");
+            row_switch (row, false);
+            row.sensitive = false;
+#else
+            row.subtitle = _("Allow screen readers and other assistive tools to access Parla. Requires a restart.");
+            var sw = row_switch (row, app_window.settings.a11y_enabled);
+            sw.notify["active"].connect (() => {
+                app_window.settings.save_a11y_enabled (sw.active);
+#if ANDROID
+                var toast = new Adw.Toast (_("Close Parla, then reopen it to apply accessibility changes"));
+                toast.button_label = _("Close");
+#else
+                var toast = new Adw.Toast (_("Restart Parla to apply accessibility changes"));
+                toast.button_label = _("Restart");
+#endif
+                toast.button_clicked.connect (() => {
+                    ((Dc.Application) app_window.application).request_restart ();
+                });
+                add_toast ((owned) toast);
+            });
+#endif
+            group.add (row);
         }
 
         private void build_behavior_section (Adw.PreferencesPage page) {

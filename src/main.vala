@@ -21,6 +21,10 @@ int main (string[] args) {
        no-a11y backend before Adw.Application can initialize GTK; otherwise
        every launch waits for D-Bus and prints a misleading warning. */
     Environment.set_variable ("GTK_A11Y", "none", true);
+#else
+    if (!Dc.SettingsManager.load_a11y_enabled ()) {
+        Environment.set_variable ("GTK_A11Y", "none", true);
+    }
 #endif
     Dc.Platform.setup_macos_bundle_environment ();
 

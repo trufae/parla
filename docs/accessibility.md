@@ -127,6 +127,19 @@ exists, no install needed).
 4. `GTK_A11Y=help parla.exe` from a console lists the compiled-in
    backends; "accesskit" must appear for any of the above to work.
 
+## Runtime switch
+
+Settings → Advanced → Accessibility → **Screen Reader Support** controls
+GTK's accessibility backend. It is enabled by default. Turn it off and
+restart Parla to disable AT-SPI/AccessKit; the restart notice includes a
+Restart button (Close on Android, where Parla must be reopened manually).
+The choice is saved as `a11y_enabled` in `[General]` in `settings.ini` and
+read before GTK starts. Turning it back on restores GTK's default backend
+selection, including any `GTK_A11Y` override supplied at launch.
+
+Keyboard shortcuts and long-press context menus remain available. Builds
+with accessibility disabled, including Sailfish OS, show an inactive switch.
+
 ## Build-time switch
 
 Accessibility is a Meson option, `a11y`, enabled by default. Passing
