@@ -3,7 +3,7 @@
 # Usage: dist/sailfishos/fetch-sources.sh [aarch64|armv7hl|i486 ...]
 set -eu
 cd "$(dirname "$0")/../../rpm"
-DCRPC_VERSION=2.68.0
+DCRPC_VERSION=2.69.0
 
 fetch() {
     url=$1
@@ -23,15 +23,15 @@ for arch in "$@"; do
     case "$arch" in
     aarch64)
         dcarch=aarch64
-        dcsha=c424a42de601f2a60aa05e4c2cfee4c02ed9c88e19e623973d0460c14fe64252
+        dcsha=206beb5ff18ed1cb2929f822dee95fed4d1793a1bbdffecb1925793d8fd4b978
         ;;
     armv7hl)
         dcarch=armv7l
-        dcsha=bc53b69747bcb53a54ad5a3d14f469f7e7d5a7f3977ab2f8588f3fa6e765fcee
+        dcsha=fd388e10dce4d6d2bc68c3b1bc5d9a42cd72e403d36c787a81e60f96d84cdfb4
         ;;
     i486)
         dcarch=i686
-        dcsha=5c67f522b45ca1397d84b734ca8c047c54def00f1650f08b7042734afa75a2ed
+        dcsha=63566028e82fe6b9ff22d15b756949c560e0329e36c74c9c2060afe175d7b441
         ;;
     *)
         echo "unknown Sailfish OS arch: $arch" >&2

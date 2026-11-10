@@ -22,8 +22,8 @@
             "sources": [
                 {
                     "type": "file",
-                    "url": "https://github.com/chatmail/core/releases/download/v2.68.0/deltachat-rpc-server-x86_64-linux",
-                    "sha256": "bf1b10a1656d10b69325b2a8efadc329c9ecea5190ee4e5350d996bd7c65e7ec",
+                    "url": "https://github.com/chatmail/core/releases/download/v2.69.0/deltachat-rpc-server-x86_64-linux",
+                    "sha256": "db1a2c08375c9c2e73c8d6009cc99094e642722a41d06370cdb4dc680247eaa0",
                     "dest-filename": "deltachat-rpc-server",
                     "only-arches": [
                         "x86_64"
@@ -38,8 +38,8 @@
                 },
                 {
                     "type": "file",
-                    "url": "https://github.com/chatmail/core/releases/download/v2.68.0/deltachat-rpc-server-aarch64-linux",
-                    "sha256": "c424a42de601f2a60aa05e4c2cfee4c02ed9c88e19e623973d0460c14fe64252",
+                    "url": "https://github.com/chatmail/core/releases/download/v2.69.0/deltachat-rpc-server-aarch64-linux",
+                    "sha256": "206beb5ff18ed1cb2929f822dee95fed4d1793a1bbdffecb1925793d8fd4b978",
                     "dest-filename": "deltachat-rpc-server",
                     "only-arches": [
                         "aarch64"
