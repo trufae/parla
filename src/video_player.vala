@@ -11,6 +11,8 @@ namespace Dc {
 
         private unowned Window? window = null;
         private Gtk.Video video;
+        private Gtk.Label error_label;
+        private ulong error_handler = 0;
         private string? current_path = null;
         private string? current_name = null;
 
@@ -39,6 +41,17 @@ namespace Dc {
             overlay.can_focus = true;
             overlay.visible = false;
 
+            error_label = new Gtk.Label (null);
+            error_label.add_css_class ("osd");
+            error_label.wrap = true;
+            error_label.max_width_chars = 60;
+            error_label.halign = Gtk.Align.CENTER;
+            error_label.valign = Gtk.Align.CENTER;
+            error_label.margin_start = 24;
+            error_label.margin_end = 24;
+            error_label.visible = false;
+            overlay.add_overlay (error_label);
+
             var close_btn = new Gtk.Button ();
             close_btn.icon_name = "window-close-symbolic";
             close_btn.add_css_class ("circular");
@@ -60,19 +73,47 @@ namespace Dc {
         }
 
         public void show (string path, string? name) {
+            hide ();
             current_path = path;
             current_name = name;
+#if MACOS
+            video.set_media_stream (native_video_stream (path));
+#else
             video.set_filename (path);
+#endif
+            video.visible = true;
             widget.visible = true;
             widget.grab_focus ();
             var ms = video.get_media_stream ();
-            if (ms != null) ms.play ();
+            if (ms != null) {
+                error_handler = ms.notify["error"].connect (show_error);
+                show_error ();
+                ms.set_playing (true);
+            }
+        }
+
+#if MACOS
+        [CCode (cheader_filename = "platform.h", cname = "parla_video_stream_new")]
+        private static extern Gtk.MediaStream native_video_stream (string path);
+#endif
+
+        private void show_error () {
+            var ms = video.get_media_stream ();
+            if (ms == null || ms.error == null) return;
+            error_label.label = _("Could not play video") + "\n" + ms.error.message;
+            error_label.visible = true;
+            video.visible = false;
         }
 
         public void hide () {
             var ms = video.get_media_stream ();
-            if (ms != null) ms.pause ();
+            if (ms != null) {
+                if (error_handler != 0) ms.disconnect (error_handler);
+                ms.pause ();
+            }
+            error_handler = 0;
             video.set_media_stream (null);
+            error_label.visible = false;
             widget.visible = false;
             current_path = null;
             current_name = null;
@@ -93,8 +134,7 @@ namespace Dc {
             case Gdk.Key.space:
                 var ms = video.get_media_stream ();
                 if (ms != null) {
-                    if (ms.playing) ms.pause ();
-                    else ms.play ();
+                    ms.set_playing (!ms.playing);
                 }
                 return true;
             }

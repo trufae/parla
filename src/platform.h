@@ -30,6 +30,8 @@ void parla_video_thumbnail_async (const gchar *path,
                                   GAsyncReadyCallback callback,
                                   gpointer user_data);
 GdkPixbuf *parla_video_thumbnail_finish (GAsyncResult *result);
+typedef struct _GtkMediaStream GtkMediaStream;
+GtkMediaStream *parla_video_stream_new (const gchar *path);
 #endif
 
 /*

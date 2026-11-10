@@ -43,6 +43,7 @@ src/touch_text_menu.vala
 src/tray_icon.vala
 src/tray_macos.m
 src/video_player.vala
+src/video_macos.m
 src/webxdc.vala
 src/webxdc_bar.vala
 src/webxdc_manager_dialog.vala

@@ -221,10 +221,11 @@ if host_machine.system() == 'darwin'
   add_project_arguments(['--define=MACOS'], language: 'vala')
   sources += files(
     'src/platform_macos.m',
+    'src/video_macos.m',
     'src/tray_macos.m',
     'src/tray_macos.vala',
   )
-  deps += dependency('appleframeworks', modules: ['Cocoa', 'AVFoundation', 'CoreMedia'])
+  deps += dependency('appleframeworks', modules: ['Cocoa', 'AVFoundation', 'CoreMedia', 'CoreVideo'])
 else
   sources += files('src/tray_icon.vala')
 endif
@@ -564,7 +565,8 @@ core_compat_test = executable(
         'tests/audio_player_ui_test.vala', 'tests/language_test.vala',
         'tests/account_backup_test.vala',
         'tests/compose_scroll_ui_test.vala', 'tests/image_preview_ui_test.vala',
-        'tests/video_thumbnail_ui_test.vala', 'tests/touch_text_menu_ui_test.vala',
+        'tests/video_thumbnail_ui_test.vala', 'tests/video_player_ui_test.vala',
+        'tests/touch_text_menu_ui_test.vala',
         'tests/attachment_drag_ui_test.vala', 'tests/link_cursor_ui_test.vala'),
   sources, config_file, appdata_vala, resources,
   dependencies: deps,

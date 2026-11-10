@@ -435,6 +435,8 @@ public int main (string[] args) {
     if (args.length > 1 && args[1] == "--touch-text-menu-ui")
         return run_touch_text_menu_ui_test ();
 #if MACOS
+    if (args.length == 5 && args[1] == "--video-player-ui")
+        return run_video_player_ui_test (args[2], int.parse (args[3]), int.parse (args[4]));
     if (args.length == 3 && args[1] == "--video-thumbnail-ui")
         return run_video_thumbnail_ui_test (args[2]);
 #endif
