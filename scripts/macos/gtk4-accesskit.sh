@@ -12,10 +12,10 @@
 # This script builds accesskit-c (the version GTK's meson.build asks
 # for) and the same GTK release Homebrew installed, from the upstream
 # tarballs with the Homebrew formula's macOS meson arguments plus
-# -Daccesskit=enabled, then replaces libgtk-4 in both the Homebrew
-# prefix and the gtk4 keg — the keg copy matters because libadwaita
-# and the gtk modules reference GTK through the keg's opt path. Only
-# the dylibs are replaced: headers and pkg-config files are identical
+# -Daccesskit=enabled, then replaces libgtk-4 in the gtk4 keg and links
+# it from the Homebrew prefix. libadwaita and the gtk modules reference
+# GTK through the keg's opt path, so both paths must load the same file.
+# Only the dylibs are replaced: headers and pkg-config files are identical
 # for the same release, so the app build itself is untouched.
 #
 # The installed libraries are staged into A11Y_CACHE_DIR so CI can
@@ -30,6 +30,7 @@ WORK="${WORK_DIR:-$ROOT/builddir-gtk4-accesskit}"
 ACCESSKIT_C_GIT="https://github.com/AccessKit/accesskit-c"
 
 GTK_LIB="$BREW_PREFIX/lib/libgtk-4.1.dylib"
+GTK_KEG="$(brew --prefix gtk4)"
 
 # The witness is the load commands: a GTK with the backend links the
 # accesskit dylib. Never scan strings for this — a stock GTK contains
@@ -39,12 +40,11 @@ gtk_has_accesskit() {
     otool -L "$1" 2>/dev/null | grep -qi accesskit
 }
 
-if gtk_has_accesskit "$GTK_LIB"; then
+if gtk_has_accesskit "$GTK_LIB" && [ "$GTK_LIB" -ef "$GTK_KEG/lib/libgtk-4.1.dylib" ]; then
     echo "gtk4-accesskit: installed GTK already carries the AccessKit backend, nothing to do"
     exit 0
 fi
 
-GTK_KEG="$(brew --prefix gtk4)"
 gtk_ver="$(brew list --versions gtk4 | awk '{ print $2; exit }')"
 if [ -z "$gtk_ver" ]; then
     echo "error: Homebrew gtk4 is not installed" >&2
@@ -60,14 +60,14 @@ deploy_stage() {
     # metadata (mtime via utimensat, mode via fchmodat) fails with
     # EPERM and kills rsync with exit 23 even though every file lands
     # fine. Copy files and symlinks, touch no existing directory.
-    rsync -rlt --omit-dir-times "$stage/" "$BREW_PREFIX/"
-    # Keep the keg copy identical: libadwaita and the gtk modules load
-    # GTK through the keg's opt path, and a second, backend-less GTK
-    # there would race ours for the one slot in the app bundle.
+    rsync -rlt --omit-dir-times --exclude='/lib/libgtk-4*.dylib' "$stage/" "$BREW_PREFIX/"
+    # Keep just one GTK file: even identical copies at the prefix and
+    # keg paths can both be loaded by dyld, registering GTK types twice.
     for f in "$stage"/lib/libgtk-4*.dylib; do
         base="$(basename "$f")"
         rm -f "$GTK_KEG/lib/$base"
         cp -a "$f" "$GTK_KEG/lib/$base"
+        ln -sfn "$GTK_KEG/lib/$base" "$BREW_PREFIX/lib/$base"
     done
 }
 

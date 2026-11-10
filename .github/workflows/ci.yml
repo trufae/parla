@@ -268,7 +268,9 @@ jobs:
           key: macos-gtk4-accesskit-${{ matrix.dmgname }}-${{ steps.gtk4.outputs.version }}
 
       - name: Rebuild gtk4 with the AccessKit a11y backend
-        run: scripts/macos/gtk4-accesskit.sh
+        run: |
+          python3 tests/macos_gtk4_accesskit_test.py
+          scripts/macos/gtk4-accesskit.sh
 
       - name: Build
         run: make BUILDTYPE=release
