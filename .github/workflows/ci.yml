@@ -424,6 +424,14 @@ jobs:
             mingw-w64-ucrt-x86_64-webp-pixbuf-loader
             mingw-w64-ucrt-x86_64-ntldd
 
+      - name: Use runner temporary directory
+        run: |
+          tmpdir="$(cygpath -m "$RUNNER_TEMP")/parla-tmp"
+          mkdir -p "$tmpdir"
+          # MSYS2 resets TMP and TEMP before sourcing profile.d.
+          printf 'export TMPDIR=%q TMP=%q TEMP=%q\n' \
+            "$tmpdir" "$tmpdir" "$tmpdir" > /etc/profile.d/parla-tmp.sh
+
       # Windows screen readers only see GTK through its AccessKit
       # backend, which MSYS2's gtk4 does not enable, so the package is
       # rebuilt with it (scripts/windows/gtk4-accesskit.sh). The cache
