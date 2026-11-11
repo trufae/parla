@@ -42,6 +42,22 @@
     <name translate="no">pancake</name>
   </developer>
   <releases>
+      <release version="0.10.8" date="2026-11-11">
+      <description>
+        <ul>
+          <li>Nicer double check ticks</li>
+          <li>Use ziptools instead of libzip</li>
+          <li>Fix touch scrolling over message text</li>
+          <li>Advanced option to disable a11y features</li>
+          <li>Improve disapearing message timers</li>
+          <li>Swipe right to go back on narrow windows</li>
+          <li>Workaround AccessKit crash on macOS</li>
+          <li>Fix video playback in macOS</li>
+          <li>Fix Control+[A|E] in macOS</li>
+          <li>ChatmailCore 2.69.0</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.10.6" date="2026-10-31">
       <description>
         <ul>
