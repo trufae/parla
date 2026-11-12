@@ -1,5 +1,36 @@
 namespace Dc {
 
+    public class LocalStorageUsage : Object {
+        public bool available { get; private set; }
+        public int64 total_bytes { get; private set; }
+        public int64 downloaded_bytes { get; private set; }
+        public int64 profile_bytes { get { return total_bytes - downloaded_bytes; } }
+
+        public LocalStorageUsage (int64 account_bytes, int64 downloaded_bytes) {
+            available = account_bytes >= 0;
+            this.downloaded_bytes = int64.max (0, downloaded_bytes);
+            // Core's account size already includes the blob directory. The
+            // scans are not atomic, so allow for files arriving between them.
+            total_bytes = int64.max (account_bytes, this.downloaded_bytes);
+        }
+
+        public double downloaded_fraction () {
+            return available && total_bytes > 0
+                ? (double) downloaded_bytes / (double) total_bytes : 0.0;
+        }
+
+        public string summary_text () {
+            if (!available) {
+                return _("%s downloaded message files · local profile total unavailable").printf (
+                    StorageQuota.format_mb (downloaded_bytes));
+            }
+            return _("%s profile and other data · %s downloaded message files · %s total").printf (
+                StorageQuota.format_mb (profile_bytes),
+                StorageQuota.format_mb (downloaded_bytes),
+                StorageQuota.format_mb (total_bytes));
+        }
+    }
+
     public class StorageQuota : Object {
         public bool available { get; set; default = false; }
         public int64 used_bytes { get; set; default = 0; }

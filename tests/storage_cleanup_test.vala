@@ -4,6 +4,7 @@ using Dc;
 public int run_fake_storage_server () {
     var calls = new Json.Array ();
     bool fail = false;
+    bool missing_total = false;
     int count = 205;
     string? line;
     while ((line = stdin.read_line ()) != null) {
@@ -12,7 +13,8 @@ public int run_fake_storage_server () {
         var args = request.get_array_member ("params");
         var result = new Json.Node (Json.NodeType.NULL);
         if (!method.has_prefix ("test_")) calls.add_object_element (request);
-        if (fail && method == "get_messages" && args.get_array_element (1).get_int_element (0) == 201) {
+        if ((fail && method == "get_messages" && args.get_array_element (1).get_int_element (0) == 201)
+                || (missing_total && method == "get_account_file_size")) {
             stdout.printf ("{\"jsonrpc\":\"2.0\",\"id\":%s,\"error\":{\"code\":-32000,\"message\":\"Scan failed\"}}\n",
                 request.get_int_member ("id").to_string ());
             stdout.flush ();
@@ -23,23 +25,29 @@ public int run_fake_storage_server () {
         case "get_system_info": result.init_object (new Json.Object ()); break;
         case "test_calls": result.init_array (calls); break;
         case "test_fail": fail = true; break;
+        case "test_missing_total": missing_total = true; break;
         case "test_new_message": count++; break;
         case "get_account_file_size": result.init_int (10 * 1024 * 1024); break;
         case "get_blob_dir": break;
         case "get_connectivity_html": result.init_string ("Quota: 5 MiB of 20 MiB used"); break;
         case "get_chatlist_entries":
             var chats = new Json.Array ();
-            if (args.get_element (1).is_null () || (args.get_int_element (1) & 1) == 0)
-                chats.add_int_element (100);
+            chats.add_int_element (args.get_element (1).is_null ()
+                || (args.get_int_element (1) & 1) == 0 ? 100 : 101);
             result.init_array (chats);
             break;
         case "get_chatlist_items_by_entries":
-            result.init_object (object_from_json ("""{"100":{"name":"Storage test chat"}}"""));
+            result.init_object (object_from_json ("""{"100":{"name":"Storage test chat"},"101":{"name":"Archived storage chat"}}"""));
             break;
         case "get_message_ids":
-            assert (args.get_int_element (0) == 1 && args.get_int_element (1) == 100);
+            assert (args.get_int_element (0) == 1);
             var ids = new Json.Array ();
-            for (int i = 1; i <= count; i++) ids.add_int_element (i);
+            if (args.get_int_element (1) == 100) {
+                for (int i = 1; i <= count; i++) ids.add_int_element (i);
+            } else {
+                assert (args.get_int_element (1) == 101);
+                ids.add_int_element (300);
+            }
             result.init_array (ids);
             break;
         case "get_messages":
@@ -51,6 +59,9 @@ public int run_fake_storage_server () {
                 int id = (int) batch.get_int_element (i);
                 var msg = object_from_json ("""{"kind":"message","chatId":100,"timestamp":1000,"fileBytes":1024}""");
                 msg.set_int_member ("id", id);
+                if (id == 300) msg.set_int_member ("chatId", 101);
+                string? file = Environment.get_variable ("PARLA_TEST_STORAGE_FILE");
+                if (file != null) msg.set_string_member ("file", file);
                 if (id == 2) msg.set_int_member ("timestamp", new DateTime.now_utc ().to_unix ());
                 if (id == 3) msg.set_int_member ("receivedTimestamp", new DateTime.now_utc ().to_unix ());
                 if (id == 4) msg.remove_member ("timestamp");
@@ -104,6 +115,15 @@ public void test_storage_cleanup () {
     loop.run ();
 }
 
+private Gtk.ProgressBar? storage_local_bar (Gtk.Widget root) {
+    if (root.has_css_class ("storage-local-bar")) return root as Gtk.ProgressBar;
+    for (var child = root.get_first_child (); child != null; child = child.get_next_sibling ()) {
+        var found = storage_local_bar (child);
+        if (found != null) return found;
+    }
+    return null;
+}
+
 private async void check_storage_cleanup_ui (Adw.Window window) {
     var rpc = new RpcClient ();
     try {
@@ -112,6 +132,14 @@ private async void check_storage_cleanup_ui (Adw.Window window) {
         var details = new StorageDetailsDialog (rpc, 1);
         details.present (window);
         yield nap (300);
+        var local_bar = storage_local_bar (details.child);
+        for (int i = 0; i < 100 && local_bar.text == "Scanning local files…"; i++) yield nap (25);
+        stdout.printf ("Local storage: %s (%f) — %s\n", local_bar.text, local_bar.fraction, local_bar.tooltip_text);
+        assert (local_bar != null && local_bar.fraction == 0.4);
+        assert (local_bar.text == "Downloaded message files: 40%");
+        assert (retry_widget (details.child, "6.0 MB profile and other data · 4.0 MB downloaded message files · 10.0 MB total") != null);
+        assert (retry_widget (details.child, "Archived storage chat") != null);
+        audio_screenshot (window, "storage-details.png");
         var clear = retry_widget (details.child, "Clear Chat…") as Gtk.Button;
         assert (clear != null && clear.is_sensitive ());
         clear.clicked ();
@@ -121,6 +149,7 @@ private async void check_storage_cleanup_ui (Adw.Window window) {
         var keep = ephemeral_widget (options.extra_child, typeof (Gtk.CheckButton)) as Gtk.CheckButton;
         var days = ephemeral_widget (options.extra_child, typeof (Gtk.SpinButton)) as Gtk.SpinButton;
         assert (keep.active && days.value == 30);
+        audio_screenshot (window, "storage-cleanup.png");
         days.value = 36500;
         options.response ("review");
         yield nap (200);
@@ -162,12 +191,29 @@ private async void check_storage_cleanup_ui (Adw.Window window) {
         }
         assert (deletions == 1);
         details.close ();
+        yield nap (100);
+        yield rpc.call ("test_missing_total", Params.begin ().build ());
+        details = new StorageDetailsDialog (rpc, 1);
+        details.present (window);
+        yield nap (300);
+        local_bar = storage_local_bar (details.child);
+        assert (!local_bar.sensitive && local_bar.fraction == 0);
+        assert (local_bar.text == "Local storage total unavailable");
+        assert (retry_widget (details.child, "4.0 MB downloaded message files · local profile total unavailable") != null);
+        details.close ();
     } catch (Error e) { error ("Storage UI: %s", e.message); }
     rpc.stop ();
     window.destroy ();
 }
 
 public int run_storage_cleanup_ui_test () {
+    string folder;
+    try {
+        folder = DirUtils.make_tmp ("parla-storage-test-XXXXXX");
+        var file = Path.build_filename (folder, "shared-attachment");
+        FileUtils.set_contents (file, string.nfill (4 * 1024 * 1024, 'a'));
+        Environment.set_variable ("PARLA_TEST_STORAGE_FILE", file, true);
+    } catch (Error e) { error ("Storage fixture: %s", e.message); }
     Adw.init ();
     Gtk.Settings.get_default ().gtk_enable_animations = false;
     var window = new Adw.Window ();
@@ -176,5 +222,8 @@ public int run_storage_cleanup_ui_test () {
     var loop = new MainLoop ();
     check_storage_cleanup_ui.begin (window, () => { loop.quit (); });
     loop.run ();
+    FileUtils.unlink (Path.build_filename (folder, "shared-attachment"));
+    DirUtils.remove (folder);
+    Environment.unset_variable ("PARLA_TEST_STORAGE_FILE");
     return 0;
 }

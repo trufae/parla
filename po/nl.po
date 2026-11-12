@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: parla\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-12 11:59+0100\n"
+"POT-Creation-Date: 2026-11-12 12:01+0100\n"
 "PO-Revision-Date: 2026-10-19 19:30+0200\n"
 "Last-Translator: Heimen Stoffels <vistausss@fastmail.com>\n"
 "Language-Team: \n"
@@ -112,7 +112,7 @@ msgstr "Met deze code kan geen profiel worden aangemaakt"
 #: src/conversation_view.vala:1063 src/full_message_dialog.vala:83
 #: src/gallery_dialog.vala:277 src/gallery_dialog.vala:1479 src/models.vala:107
 #: src/models.vala:122 src/models.vala:160 src/models.vala:246
-#: src/profile_dialog.vala:976 src/settings_dialog.vala:999
+#: src/profile_dialog.vala:1008 src/settings_dialog.vala:999
 #: src/settings_dialog.vala:1004 src/sticker_manager_dialog.vala:127
 #: src/window.vala:2299 src/window.vala:3430
 msgid "Cancel"
@@ -415,7 +415,7 @@ msgid "Use Restored Accounts"
 msgstr "Herstelde accounts gebruiken"
 
 #: src/backup_dialog.vala:70 src/backup_dialog.vala:112
-#: src/profile_dialog.vala:58 src/profile_dialog.vala:994
+#: src/profile_dialog.vala:58 src/profile_dialog.vala:1026
 #: src/settings_dialog.vala:1000 src/settings_dialog.vala:1044
 msgid "Close"
 msgstr "Sluiten"
@@ -629,7 +629,7 @@ msgstr "Direct gesprek"
 msgid " · End-to-end encrypted"
 msgstr " · eind-tot-eind versleuteld"
 
-#: src/chat_info_dialog.vala:300 src/profile_dialog.vala:1043
+#: src/chat_info_dialog.vala:300 src/profile_dialog.vala:1075
 msgid "Invite Link"
 msgstr "Uitnodigingslink"
 
@@ -701,7 +701,7 @@ msgid "Hide this chat and new messages; keep the history"
 msgstr "Verberg dit gesprek en nieuwe berichten, maar bewaar de geschiedenis"
 
 #: src/chat_info_dialog.vala:435 src/chat_row.vala:321
-#: src/profile_dialog.vala:925
+#: src/profile_dialog.vala:957
 msgid "Clear Chat…"
 msgstr "Gesprek wissen…"
 
@@ -873,7 +873,7 @@ msgid "No sent messages can be deleted for everyone"
 msgstr "Reeds verstuurde berichten kunnen niet worden gewist"
 
 #: src/chat_info_dialog.vala:759 src/chat_row.vala:453
-#: src/profile_dialog.vala:992
+#: src/profile_dialog.vala:1024
 msgid "No messages to clear"
 msgstr "Er zijn geen te wissen berichten"
 
@@ -1076,7 +1076,7 @@ msgstr "Het gesprek is verlaten en gewist"
 msgid "Chat cleared for this profile"
 msgstr "Het gesprek is gewist"
 
-#: src/chat_row.vala:515 src/profile_dialog.vala:1005
+#: src/chat_row.vala:515 src/profile_dialog.vala:1037
 msgid "Clear failed: "
 msgstr "Het wissen is mislukt: "
 
@@ -1804,7 +1804,7 @@ msgstr "Het bestand kan niet worden geopend: "
 msgid "Open Link"
 msgstr "Link openen"
 
-#: src/gallery_dialog.vala:1298 src/profile_dialog.vala:1061
+#: src/gallery_dialog.vala:1298 src/profile_dialog.vala:1093
 msgid "Copy Link"
 msgstr "Linkadres kopiëren"
 
@@ -2504,7 +2504,7 @@ msgstr ""
 msgid "Delete Sent Messages for Everyone?"
 msgstr "Wil je verstuurde berichten voor iedereen verwijderen?"
 
-#: src/models.vala:208 src/profile_dialog.vala:958
+#: src/models.vala:208 src/profile_dialog.vala:990
 msgid "Clear Chat?"
 msgstr "Gesprek wissen?"
 
@@ -2730,7 +2730,7 @@ msgstr "De aac-encodering is mislukt"
 msgid "Profile"
 msgstr "Profiel"
 
-#: src/profile_dialog.vala:108 src/profile_dialog.vala:1043
+#: src/profile_dialog.vala:108 src/profile_dialog.vala:1075
 msgid "Invite Code"
 msgstr "Uitnodigingscode"
 
@@ -2885,7 +2885,7 @@ msgstr "Bezig met ophalen van serverlimieten…"
 msgid "Refresh storage and connectivity"
 msgstr "Opslag en verbinding herladen"
 
-#: src/profile_dialog.vala:415 src/profile_dialog.vala:658
+#: src/profile_dialog.vala:415 src/profile_dialog.vala:660
 msgid "Storage Details"
 msgstr "Opslaginformatie"
 
@@ -2965,97 +2965,110 @@ msgstr "Profiel verwijderen"
 msgid "Select Avatar"
 msgstr "Kies een profielfoto"
 
-#: src/profile_dialog.vala:666
+#: src/profile_dialog.vala:668
 msgid "Rescan storage usage"
 msgstr "Opslaginformatie herladen"
 
-#: src/profile_dialog.vala:673
+#: src/profile_dialog.vala:675
 msgid "Server Quota"
 msgstr "Serverlimieten"
 
-#: src/profile_dialog.vala:679
+#: src/profile_dialog.vala:681
 msgid "Loading quota…"
 msgstr "Bezig met laden van limieten…"
 
-#: src/profile_dialog.vala:682
+#: src/profile_dialog.vala:684
 msgid "Local Copies"
 msgstr "Lokale kopieën"
 
-#: src/profile_dialog.vala:684 src/profile_dialog.vala:719
+#: src/profile_dialog.vala:692 src/profile_dialog.vala:731
+#: src/profile_dialog.vala:733
 msgid "Scanning local files…"
 msgstr "Bezig met doorzoeken van lokale bestanden…"
 
-#: src/profile_dialog.vala:689
+#: src/profile_dialog.vala:701
 msgid "Chats by Storage Size"
 msgstr "Gesprekken per opslagomvang"
 
-#: src/profile_dialog.vala:691
+#: src/profile_dialog.vala:703
 msgid "Preparing scan…"
 msgstr "Bezig met voorbereiden…"
 
-#: src/profile_dialog.vala:718
+#: src/profile_dialog.vala:730
 msgid "Scanning chats…"
 msgstr "Bezig met doorzoeken…"
 
-#: src/profile_dialog.vala:740
+#: src/profile_dialog.vala:751
 msgid "Server quota unavailable: "
 msgstr "De serverlimieten zijn niet beschikbaar: "
 
-#: src/profile_dialog.vala:748
+#: src/profile_dialog.vala:766
 #, c-format
-msgid "%s downloaded message files · %s known attachment payload"
-msgstr "%s opgehaalde berichtbestanden · %s bekende bijlagen"
+msgid "Downloaded message files: %.0f%%"
+msgstr "Gedownloade berichtbestanden: %.0f%%"
 
-#: src/profile_dialog.vala:752
+#: src/profile_dialog.vala:767
+msgid "Local storage total unavailable"
+msgstr "Totaal lokaal opslaggebruik niet beschikbaar"
+
+#: src/profile_dialog.vala:770
 #, c-format
-msgid "%s local profile data · %s"
-msgstr "%s lokale profielgegevens · %s"
+msgid "%s known attachment payload"
+msgstr "%s bekende bijlagegegevens"
 
-#: src/profile_dialog.vala:757
+#: src/profile_dialog.vala:774
 msgid "No downloaded files found in chats"
 msgstr "Er zijn geen gedownloade bestanden aangetroffen"
 
-#: src/profile_dialog.vala:758
+#: src/profile_dialog.vala:775
 #, c-format
 msgid "%d chat with local or attached files"
 msgid_plural "%d chats with local or attached files"
 msgstr[0] "%d gesprek met lokaal of bijgevoegd bestand"
 msgstr[1] "%d gesprek met lokale of bijgevoegde bestanden"
 
-#: src/profile_dialog.vala:762
+#: src/profile_dialog.vala:779
 msgid "Storage scan failed: "
 msgstr "Het doorzoeken is mislukt: "
 
-#: src/profile_dialog.vala:782
+#: src/profile_dialog.vala:780 src/profile_dialog.vala:781
+msgid "Local storage scan incomplete"
+msgstr "Scan van lokale opslag onvolledig"
+
+#: src/profile_dialog.vala:795
+msgid "Could not load chats for storage scan"
+msgstr "Kon chats niet laden voor de opslagscan"
+
+#: src/profile_dialog.vala:814
 #, c-format
 msgid "Scanning %s…"
 msgstr "Bezig met doorzoeken van %s…"
 
-#: src/profile_dialog.vala:801
+#: src/profile_dialog.vala:833
 #, c-format
 msgid "Chat #%d"
 msgstr "Gesprek #%d"
 
-#: src/profile_dialog.vala:932
+#: src/profile_dialog.vala:964
 #, c-format
 msgid "%s local · %s attached · %s · %s"
 msgstr "%s lokaal · %s bijgevoegd · %s · %s"
 
-#: src/profile_dialog.vala:935
+#: src/profile_dialog.vala:967
 #, c-format
 msgid "%d file"
 msgid_plural "%d files"
 msgstr[0] "%d bestand"
 msgstr[1] "%d bestanden"
 
-#: src/profile_dialog.vala:937
+#: src/profile_dialog.vala:969
 #, c-format
 msgid "%d message"
 msgid_plural "%d messages"
 msgstr[0] "%d bericht"
 msgstr[1] "%d berichten"
 
-#: src/profile_dialog.vala:959
+#: src/profile_dialog.vala:991
 #, c-format
 msgid ""
 "Choose which messages to clear from “%s”. You can review the number of "
@@ -3064,94 +3077,94 @@ msgstr ""
 "Kies welke berichten je uit ‘%s’ wilt wissen. Je kunt het aantal berichten "
 "controleren voordat je ze verwijdert."
 
-#: src/profile_dialog.vala:961
+#: src/profile_dialog.vala:993
 msgid "Keep recent messages"
 msgstr "Recente berichten behouden"
 
-#: src/profile_dialog.vala:965 src/profile_dialog.vala:970
+#: src/profile_dialog.vala:997 src/profile_dialog.vala:1002
 msgid "Days to keep"
 msgstr "Aantal dagen behouden"
 
-#: src/profile_dialog.vala:977
+#: src/profile_dialog.vala:1009
 msgid "Review Messages"
 msgstr "Berichten controleren"
 
-#: src/profile_dialog.vala:993
+#: src/profile_dialog.vala:1025
 msgid "No messages match the selected age range."
 msgstr "Er zijn geen berichten binnen de geselecteerde periode."
 
-#: src/profile_dialog.vala:1048
+#: src/profile_dialog.vala:1080
 msgid "Preparing invite code…"
 msgstr "Bezig met voorbereiden van code…"
 
-#: src/profile_dialog.vala:1055 src/profile_dialog.vala:1116
+#: src/profile_dialog.vala:1087 src/profile_dialog.vala:1148
 msgid "Deactivate Link"
 msgstr "Link deactiveren"
 
-#: src/profile_dialog.vala:1081 src/profile_dialog.vala:1120
+#: src/profile_dialog.vala:1113 src/profile_dialog.vala:1152
 msgid "Share this QR code or invite link to let others join."
 msgstr ""
 "Deel deze link of QR-code die anderen kunnen gebruiken om deel te nemen."
 
-#: src/profile_dialog.vala:1082
+#: src/profile_dialog.vala:1114
 msgid "Share this QR code with another user, or copy the invite link below."
 msgstr ""
 "Deel deze QR-code met een andere gebruiker of kopieer onderstaande "
 "uitnodigingslink."
 
-#: src/profile_dialog.vala:1084
+#: src/profile_dialog.vala:1116
 msgid "Invite link is ready, but the QR image could not be rendered: "
 msgstr ""
 "De uitnodigingslink is gereed, maar de QR-code kan niet worden getoond: "
 
-#: src/profile_dialog.vala:1122
+#: src/profile_dialog.vala:1154
 msgid "Activate Link"
 msgstr "Link activeren"
 
-#: src/profile_dialog.vala:1126
+#: src/profile_dialog.vala:1158
 msgid "This invite link is deactivated — activate it to let others join."
 msgstr ""
 "De uitnodigingslink is gedeactiveerd — activeer deze om anderen te laten "
 "deelnemen."
 
-#: src/profile_dialog.vala:1135
+#: src/profile_dialog.vala:1167
 msgid "Deactivating…"
 msgstr "Bezig met deactiveren…"
 
-#: src/profile_dialog.vala:1135
+#: src/profile_dialog.vala:1167
 msgid "Activating…"
 msgstr "Bezig met activeren…"
 
-#: src/profile_dialog.vala:1142
+#: src/profile_dialog.vala:1174
 msgid "Could not update the invite link: "
 msgstr "De link kan niet worden bijgewerkt: "
 
-#: src/profile_dialog.vala:1151
+#: src/profile_dialog.vala:1183
 msgid "Invite code creation failed: "
 msgstr "Het aanmaken van de code is mislukt: "
 
-#: src/profile_dialog.vala:1168
+#: src/profile_dialog.vala:1200
 msgid "Add Second Device"
 msgstr "Secundair apparaat toevoegen"
 
-#: src/profile_dialog.vala:1173
+#: src/profile_dialog.vala:1205
 msgid "Preparing account…"
 msgstr "Bezig met voorbereiden van account…"
 
-#: src/profile_dialog.vala:1175
+#: src/profile_dialog.vala:1207
 msgid "Copy Text"
 msgstr "Tekst kopiëren"
 
-#: src/profile_dialog.vala:1209
+#: src/profile_dialog.vala:1241
 msgid "Scan this QR code with the second device, or copy the text below."
 msgstr ""
 "Scan deze QR-rode met een secundair apparaat of kopieer onderstaande tekst."
 
-#: src/profile_dialog.vala:1210
+#: src/profile_dialog.vala:1242
 msgid "QR text is ready, but the image could not be rendered: "
 msgstr "De QR-tekst is gereed, maar de afbeelding kan niet worden getoond: "
 
-#: src/profile_dialog.vala:1214
+#: src/profile_dialog.vala:1246
 msgid "Second-device setup failed: "
 msgstr "Het instellen is mislukt: "
 
@@ -4624,11 +4637,21 @@ msgstr "Alle stickers"
 msgid "Could not rename %s"
 msgstr "“%s” kan niet van naam worden gewijzigd"
 
-#: src/storage_quota.vala:63
+#: src/storage_quota.vala:24
+#, c-format
+msgid "%s downloaded message files · local profile total unavailable"
+msgstr "%s gedownloade berichtbestanden · lokaal profieltotaal niet beschikbaar"
+
+#: src/storage_quota.vala:27
+#, c-format
+msgid "%s profile and other data · %s downloaded message files · %s total"
+msgstr "%s profiel- en overige gegevens · %s gedownloade berichtbestanden · %s totaal"
+
+#: src/storage_quota.vala:94
 msgid "Server quota has not been reported yet."
 msgstr "Er is nog geen serverlimiet doorgegeven."
 
-#: src/storage_quota.vala:64
+#: src/storage_quota.vala:95
 #, c-format
 msgid "%s used · %s left of %s"
 msgstr "%s in gebruik · %s van %s vrije ruimte"

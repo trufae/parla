@@ -640,7 +640,9 @@ namespace Dc {
         private int account_id;
         private Gtk.ProgressBar quota_progress;
         private Gtk.Label quota_label;
+        private Gtk.ProgressBar local_progress;
         private Gtk.Label local_total_label;
+        private Gtk.Label attachment_total_label;
         private Gtk.Label scan_status_label;
         private Gtk.ListBox chat_usage_list;
         private Gtk.Button refresh_btn;
@@ -681,8 +683,18 @@ namespace Dc {
 
             content.append (heading_label (_("Local Copies")));
 
+            local_progress = new Gtk.ProgressBar ();
+            local_progress.add_css_class ("storage-quota-bar");
+            local_progress.add_css_class ("storage-local-bar");
+            local_progress.show_text = true;
+            content.append (local_progress);
+
             local_total_label = dim_label (_("Scanning local files…"));
             content.append (local_total_label);
+
+            attachment_total_label = dim_label ("");
+            attachment_total_label.add_css_class ("caption");
+            content.append (attachment_total_label);
 
             content.append (new Gtk.Separator (Gtk.Orientation.HORIZONTAL));
 
@@ -717,13 +729,12 @@ namespace Dc {
             global_local_paths.remove_all ();
             scan_status_label.label = _("Scanning chats…");
             local_total_label.label = _("Scanning local files…");
+            local_progress.fraction = 0;
+            local_progress.text = _("Scanning local files…");
+            local_progress.sensitive = false;
+            attachment_total_label.label = "";
 
             try {
-                int64 account_bytes = 0;
-                try {
-                    account_bytes = yield rpc.get_account_file_size (account_id);
-                } catch (Error e) { /* optional in older RPC servers */ }
-
                 try {
                     blob_dir = yield rpc.get_blob_dir (account_id);
                 } catch (Error e) {
@@ -744,14 +755,20 @@ namespace Dc {
                 sort_usages (usages);
                 populate_chat_usage_list (usages);
 
-                string file_summary =
-                    _("%s downloaded message files · %s known attachment payload").printf (
-                        StorageQuota.format_mb (unique_local_file_bytes),
-                        StorageQuota.format_mb (known_attachment_bytes));
-                local_total_label.label = account_bytes > 0
-                    ? _("%s local profile data · %s").printf (
-                        StorageQuota.format_mb (account_bytes), file_summary)
-                    : file_summary;
+                int64 account_bytes = -1;
+                try {
+                    account_bytes = yield rpc.get_account_file_size (account_id);
+                } catch (Error e) { /* optional in older RPC servers */ }
+                var local = new LocalStorageUsage (account_bytes, unique_local_file_bytes);
+                local_progress.fraction = local.downloaded_fraction ();
+                local_progress.sensitive = local.available;
+                local_progress.text = local.available
+                    ? _("Downloaded message files: %.0f%%").printf (100 * local.downloaded_fraction ())
+                    : _("Local storage total unavailable");
+                local_total_label.label = local.summary_text ();
+                local_progress.tooltip_text = local.summary_text ();
+                attachment_total_label.label = _("%s known attachment payload").printf (
+                    StorageQuota.format_mb (known_attachment_bytes));
 
                 scan_status_label.label = usages.length == 0
                     ? _("No downloaded files found in chats")
@@ -760,6 +777,8 @@ namespace Dc {
                         usages.length).printf (usages.length);
             } catch (Error e) {
                 scan_status_label.label = _("Storage scan failed: ") + e.message;
+                local_total_label.label = _("Local storage scan incomplete");
+                local_progress.text = _("Local storage scan incomplete");
             }
 
             refresh_btn.sensitive = !cleanup_busy;
@@ -768,8 +787,21 @@ namespace Dc {
 
         private async ChatStorageUsage[] scan_all_chats () throws Error {
             ChatStorageUsage[] usages = {};
-            var entries = yield rpc.get_chatlist_entries_for (account_id);
-            if (entries == null) return usages;
+            var entries = yield rpc.get_chatlist_entries_for (
+                account_id, null, RpcClient.GCL_NO_SPECIALS);
+            var archived = yield rpc.get_chatlist_entries_for (
+                account_id, null, RpcClient.GCL_NO_SPECIALS | RpcClient.GCL_ARCHIVED_ONLY);
+            if (entries == null || archived == null)
+                throw new IOError.FAILED (_("Could not load chats for storage scan"));
+            var seen = new HashTable<int, bool> (direct_hash, direct_equal);
+            for (uint i = 0; i < entries.get_length (); i++)
+                seen.insert ((int) entries.get_int_element (i), true);
+            for (uint i = 0; i < archived.get_length (); i++) {
+                int chat_id = (int) archived.get_int_element (i);
+                if (seen.contains (chat_id)) continue;
+                entries.add_int_element (chat_id);
+                seen.insert (chat_id, true);
+            }
 
             Json.Object? items = null;
             try {

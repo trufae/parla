@@ -79,6 +79,26 @@ private void test_thresholds_and_clamp () {
     assert (quota.left_bytes () == 0);
 }
 
+private void test_local_breakdown () {
+    int64 mib = 1024 * 1024;
+    var local = new Dc.LocalStorageUsage (10 * mib, 4 * mib);
+    assert (local.available);
+    assert (local.total_bytes == 10 * mib && local.profile_bytes == 6 * mib);
+    assert_fraction (local.downloaded_fraction (), 0.4);
+    assert (local.summary_text () == "6.0 MB profile and other data · 4.0 MB downloaded message files · 10.0 MB total");
+    local = new Dc.LocalStorageUsage (0, 0);
+    assert (local.available && local.total_bytes == 0 && local.profile_bytes == 0);
+    assert_fraction (local.downloaded_fraction (), 0);
+    local = new Dc.LocalStorageUsage (-1, 4 * mib);
+    assert (!local.available);
+    assert_fraction (local.downloaded_fraction (), 0);
+    assert (local.summary_text () == "4.0 MB downloaded message files · local profile total unavailable");
+    // A concurrent download must not yield negative profile data or >100%.
+    local = new Dc.LocalStorageUsage (mib, 2 * mib);
+    assert (local.total_bytes == 2 * mib && local.profile_bytes == 0);
+    assert_fraction (local.downloaded_fraction (), 1);
+}
+
 public int main (string[] args) {
     Test.init (ref args);
     Test.add_func ("/storage-quota/plain", test_plain_report);
@@ -87,5 +107,6 @@ public int main (string[] args) {
     Test.add_func ("/storage-quota/unavailable", test_unavailable_report);
     Test.add_func ("/storage-quota/display-values", test_display_values);
     Test.add_func ("/storage-quota/thresholds-and-clamp", test_thresholds_and_clamp);
+    Test.add_func ("/storage/local-breakdown", test_local_breakdown);
     return Test.run ();
 }
