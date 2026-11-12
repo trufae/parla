@@ -44,7 +44,9 @@ class Broadway:
                 sid, x, y, width, height = read('HhhHH')
                 self.surfaces[sid] = [x, y, width, height]
                 self.send(11, sid, x, y, width, height)
-            elif opcode in (3, 4, 5, 6, 7, 12):  # Visibility, stacking, keyboard.
+            elif opcode == 7:  # Destroy; a remapped window gets a new surface.
+                self.surfaces.pop(read('H'), None)
+            elif opcode in (3, 4, 5, 6, 12):  # Visibility, stacking, keyboard.
                 read('H')
             elif opcode == 8:  # Move/resize.
                 sid, flags = read('HB')
@@ -77,9 +79,21 @@ class Broadway:
                 raise AssertionError(f'Unexpected Broadway opcode {opcode}')
 
     def input(self, kind, x, y):
-        sid = next(iter(self.surfaces))
+        if kind == 'click-wheel-up':
+            self.input('click', x, y)
+            self.input('wheel-up', x, y)
+            return
+        sid = max(self.surfaces, key=lambda s: self.surfaces[s][2] * self.surfaces[s][3])
         self.sequence += 1
         self.send(0, sid, sid, x, y, x, y, 0, 0)  # Pointer enter.
+
+        if kind == 'click':
+            self.send(3, sid, sid, x, y, x, y, 0, 1)
+            self.send(4, sid, sid, x, y, x, y, 256, 1)
+            return
+        if kind in ('wheel-up', 'wheel-down'):
+            self.send(6, sid, sid, x, y, x, y, 0, int(kind == 'wheel-down'))
+            return
 
         def touch(phase, tx, ty):
             self.send(5, phase, sid, self.sequence, 1, tx, ty, tx, ty, 0)

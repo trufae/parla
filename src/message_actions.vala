@@ -186,13 +186,8 @@ namespace Dc {
 
         private void preserve_scroll_until_closed (Gtk.Popover popover) {
             var view = window.current_view ();
-            double saved_scroll = view != null ? view.get_scroll_value () : 0;
-            if (view != null) view.freeze_scroll_handler (1500);
             popover.closed.connect (() => {
-                if (view != null) {
-                    view.restore_scroll_value (saved_scroll);
-                    view.restore_scroll_value_deferred (saved_scroll);
-                }
+                if (view != null) view.preserve_scroll_on_focus_change ();
             });
         }
 

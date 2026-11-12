@@ -564,6 +564,7 @@ core_compat_test = executable(
         'tests/chat_lifetime_test.vala', 'tests/chat_navigation_ui_test.vala',
         'tests/long_press_ui_test.vala',
         'tests/touch_scroll_ui_test.vala',
+        'tests/conversation_scroll_ui_test.vala',
         'tests/audio_player_ui_test.vala', 'tests/language_test.vala',
         'tests/account_backup_test.vala', 'tests/storage_cleanup_test.vala',
         'tests/compose_scroll_ui_test.vala', 'tests/image_preview_ui_test.vala',

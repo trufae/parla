@@ -428,6 +428,8 @@ public int main (string[] args) {
     }
     if (args.length > 1 && args[1] == "--touch-scroll-ui")
         return run_touch_scroll_ui_test ();
+    if (args.length > 1 && args[1] == "--conversation-scroll-ui")
+        return run_conversation_scroll_ui_test ();
     if (args.length > 1 && args[1] == "--ephemeral-ui")
         return run_ephemeral_ui_test ();
     if (args.length > 1 && args[1] == "--chat-navigation-ui")

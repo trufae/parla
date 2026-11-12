@@ -12,7 +12,7 @@ import sys
 import tempfile
 
 
-def fake_core():
+def fake_core(variable_heights=False):
     seen = set()
     deleted = set()
     batches = []
@@ -20,9 +20,12 @@ def fake_core():
     held = None
 
     def message(i):
+        text = f"Message {i}\nContext around the search result."
+        if variable_heights:
+            text = f"Message {i}" + "\nA line of message text for scrolling." * (45 if i % 9 == 0 else i % 5)
         return dict(kind="message", id=i, chatId=20 if i >= 20000 else 10,
                     fromId=42, state=16 if i in seen else 13, viewType="Text",
-                    text=f"Message {i}\nContext around the search result.",
+                    text=text,
                     timestamp=1700000000 + i,
                     sender=dict(id=42, displayName="Sender"))
 
@@ -123,7 +126,7 @@ def check_ui(binary):
 
 
 if __name__ == "__main__":
-    if sys.argv[1] == "--fake-core":
-        fake_core()
+    if sys.argv[1] in ("--fake-core", "--fake-scroll-core"):
+        fake_core(sys.argv[1] == "--fake-scroll-core")
     else:
         check_ui(sys.argv[1])

@@ -69,8 +69,8 @@ namespace Dc {
            on_focus_widget_changed. */
         private int last_focus_message_id = 0;
         private bool focus_in_message_list = false;
-        private int64 list_press_us = 0;
-        private int64 focus_jump_until_us = 0;
+        private bool pointer_focus = false;
+        private bool changing_message_focus = false;
         private Gtk.ScrolledWindow message_scroll;
         private GLib.ListStore message_store;
         private ComposeBar compose_bar;
@@ -104,17 +104,12 @@ namespace Dc {
         private ulong playback_finished_handler = 0;
         private GenericArray<ConversationSignalHandler> signal_handlers =
             new GenericArray<ConversationSignalHandler> ();
-        private uint[] tick_callback_ids = {};
+        private uint anchor_tick = 0;
         private bool closed = false;
 
-        /* Exactly one owner of the vertical position at any time:
-           BOTTOM follows the newest message, ANCHOR pins one row while a
-           jump or history prepend settles (enforced by the tick loop in
-           anchor_message), FREE means the user owns the viewport and
-           nothing may correct it. Historically stick-to-bottom, the
-           prepend anchor and the jump hold each wrote to the adjustment
-           independently; two of them active at once bounced the viewport
-           until both gave up. */
+        /* GTK anchors ordinary scrolling and model splices. We only follow
+           the bottom or establish a position after explicit navigation and
+           full model replacement. Input cancels pending positioning work. */
         private enum ViewportGoal { FREE, BOTTOM, ANCHOR }
         private ViewportGoal goal = ViewportGoal.BOTTOM;
         /* Bumped on every anchor handoff; stale anchor loops see a
@@ -155,7 +150,10 @@ namespace Dc {
             SAVED
         }
 
-        private int64 scroll_freeze_until_us = 0;
+        private uint focus_scroll_tick = 0;
+        private uint focus_scroll_generation = 0;
+        private double focus_scroll_value = 0;
+        private uint bottom_scroll_idle = 0;
         private Queue<PendingSend> send_queue = new Queue<PendingSend> ();
         private bool sending_queue = false;
 
@@ -250,27 +248,9 @@ namespace Dc {
                 new ConversationSignalHandler (source, handler_id));
         }
 
-        /* Tick callbacks are registered directly on message_listview and
-           only their ids are tracked here (storing an owned delegate makes
-           valac emit code clang rejects under -Werror=unused-value).  Every
-           callback must bail out with end_tick_callback() when the view is
-           closed and use it instead of a bare Source.REMOVE so the id list
-           stays in sync. */
-        private void track_tick_callback (uint callback_id) {
-            tick_callback_ids += callback_id;
-        }
-
-        private bool end_tick_callback (uint callback_id) {
-            forget_tick_callback (callback_id);
+        private bool end_anchor () {
+            anchor_tick = 0;
             return Source.REMOVE;
-        }
-
-        private void forget_tick_callback (uint callback_id) {
-            uint[] remaining = {};
-            foreach (uint id in tick_callback_ids) {
-                if (id != callback_id) remaining += id;
-            }
-            tick_callback_ids = remaining;
         }
 
         private static ulong connect_playback_updates (
@@ -315,7 +295,6 @@ namespace Dc {
             track_signal (adjustment, adjustment.notify["value"].connect (() => {
                 flush_pending_seen ();
                 if (loading_chat) return;
-                if (GLib.get_monotonic_time () < scroll_freeze_until_us) return;
                 /* While a row is anchored the engine owns the viewport:
                    value changes are its own corrections plus ListView
                    estimation churn, never user intent (real input cancels
@@ -324,11 +303,14 @@ namespace Dc {
                     update_date_pill ();
                     return;
                 }
-                goal = is_near_bottom ()
-                    ? ViewportGoal.BOTTOM : ViewportGoal.FREE;
+                // Layout can change the estimated range before the bottom
+                // anchor is allocated. Only input releases bottom following.
+                if (goal != ViewportGoal.BOTTOM)
+                    goal = is_at_bottom () ? ViewportGoal.BOTTOM : ViewportGoal.FREE;
                 scroll_down_btn.visible = goal != ViewportGoal.BOTTOM;
+                maybe_autoscroll ();
                 update_date_pill ();
-                if (!loading_messages && pending_scroll_message_id == 0) {
+                if (goal == ViewportGoal.FREE && !loading_messages && pending_scroll_message_id == 0) {
                     if (is_near_top () && !loading_more && loaded_start_index > 0)
                         load_earlier_messages.begin ();
                     else if (at_loaded_bottom () && has_later_messages () && !loading_more)
@@ -338,9 +320,7 @@ namespace Dc {
 
             /* Real user input outranks every programmatic scroll: wheel or
                touchpad over the list and any press on the scrollbar cancel
-               an active anchor and a still-loading jump on the spot.
-               BOTTOM needs no cancelling — the value handler above already
-               re-evaluates it as the user moves. */
+               an active anchor, bottom following and a still-loading jump. */
             var wheel = new Gtk.EventControllerScroll (
                 Gtk.EventControllerScrollFlags.BOTH_AXES);
             wheel.propagation_phase = Gtk.PropagationPhase.CAPTURE;
@@ -349,6 +329,25 @@ namespace Dc {
                 return false;
             }));
             message_scroll.add_controller (wheel);
+
+            // Observe touch without competing with the scroller's gesture.
+            var touch = new Gtk.EventControllerLegacy ();
+            touch.propagation_phase = Gtk.PropagationPhase.CAPTURE;
+            double touch_x = 0, touch_y = 0;
+            track_signal (touch, touch.event.connect ((event) => {
+                double x, y;
+                if (!event.get_position (out x, out y)) return false;
+                if (event.get_event_type () == Gdk.EventType.TOUCH_BEGIN) {
+                    touch_x = x;
+                    touch_y = y;
+                } else if (event.get_event_type () == Gdk.EventType.TOUCH_UPDATE &&
+                        Gtk.drag_check_threshold (message_scroll,
+                            (int) touch_x, (int) touch_y, (int) x, (int) y)) {
+                    on_user_scroll_input ();
+                }
+                return false;
+            }));
+            message_scroll.add_controller (touch);
 
             var scrollbar_press = new Gtk.GestureClick ();
             scrollbar_press.propagation_phase = Gtk.PropagationPhase.CAPTURE;
@@ -494,6 +493,10 @@ namespace Dc {
             var message_keys = new Gtk.EventControllerKey ();
             message_keys.propagation_phase = Gtk.PropagationPhase.CAPTURE;
             track_signal (message_keys, message_keys.key_pressed.connect ((keyval, keycode, state) => {
+                if (keyval == Gdk.Key.Up || keyval == Gdk.Key.Down ||
+                        keyval == Gdk.Key.Page_Up || keyval == Gdk.Key.Page_Down ||
+                        keyval == Gdk.Key.Home || keyval == Gdk.Key.End)
+                    on_user_scroll_input ();
                 var focus = window.focus_widget;
                 if (focus == null) return false;
                 bool row_focus = focus.get_parent () == message_listview;
@@ -512,8 +515,9 @@ namespace Dc {
                     if (pos < 0) return false;
                     pos += keyval == Gdk.Key.Up ? -1 : 1;
                     if (pos >= 0 && pos < message_store.get_n_items ()) {
-                        focus_jump_until_us = get_monotonic_time () + 1000 * 1000;
+                        changing_message_focus = true;
                         message_listview.scroll_to (pos, Gtk.ListScrollFlags.FOCUS, null);
+                        changing_message_focus = false;
                     }
                     return true;
                 }
@@ -547,7 +551,9 @@ namespace Dc {
             press_stamp.button = 0;
             press_stamp.propagation_phase = Gtk.PropagationPhase.CAPTURE;
             track_signal (press_stamp, press_stamp.pressed.connect ((n, x, y) => {
-                list_press_us = get_monotonic_time ();
+                on_user_scroll_input (false);
+                pointer_focus = true;
+                preserve_scroll_on_focus_change ();
             }));
             message_listview.add_controller (press_stamp);
             track_signal (window, window.notify["focus-widget"].connect (() => {
@@ -611,7 +617,6 @@ namespace Dc {
                     dc_last_time = 0;
                     return;
                 }
-                hold_scroll_on_focus_shift ();
                 int64 now = get_monotonic_time () / 1000;
                 int dct = 400;
                 var gs = Gtk.Settings.get_default ();
@@ -890,10 +895,6 @@ namespace Dc {
             uint history = history_generation;
 
             int current_id = current_item.message_id;
-            double anchor_top;
-            var anchor = find_message_row (
-                message_listview, 0, out anchor_top);
-            int anchor_id = anchor != null ? anchor.message_id : 0;
             loading_more = true;
             set_loading_more_visible (true);
             /* Prepending batches must not trigger bottom-following. */
@@ -922,12 +923,6 @@ namespace Dc {
                         && msg != null && playback.current_item == current_item)
                     playback.play_message (msg, rpc.account_id);
 
-                int anchor_pos = anchor_id != 0
-                    ? find_message_index (message_store, anchor_id)
-                    : -1;
-                if (!closed && history == history_generation && anchor_pos >= 0) {
-                    anchor_message (anchor_id, (uint) anchor_pos, anchor_top);
-                }
                 finish_loading_earlier ();
             } catch (Error e) {
                 finish_loading_earlier ();
@@ -1006,14 +1001,20 @@ namespace Dc {
             now. Cancel an active anchor and a jump that is still loading
             history; load_until_pending_message notices the cleared ID and
             stops fetching. */
-        private void on_user_scroll_input () {
+        private void on_user_scroll_input (bool release_bottom = true) {
+            // Finish the preceding click before applying this input. This
+            // also handles a click and wheel event delivered in one frame.
+            if (focus_scroll_tick != 0) {
+                message_listview.remove_tick_callback (focus_scroll_tick);
+                focus_scroll_tick = 0;
+                restore_scroll_after_focus ();
+            }
             unread_scroll_cancelled = true;
             pending_scroll_message_id = 0;
             pending_voice_direction = 0;
-            if (goal == ViewportGoal.ANCHOR) {
-                goal_generation++;
+            goal_generation++;
+            if (release_bottom || goal == ViewportGoal.ANCHOR)
                 goal = ViewportGoal.FREE;
-            }
         }
 
         private GLib.GenericArray<Message>? collect_trailing_irc_images (
@@ -1160,8 +1161,9 @@ namespace Dc {
             double top;
             var row = find_message_row (message_listview, initial_msg_id, out top);
             if (row != null) {
-                focus_jump_until_us = get_monotonic_time () + 1000 * 1000;
+                changing_message_focus = true;
                 row.focus_selection ();
+                changing_message_focus = false;
             }
         }
 
@@ -1527,31 +1529,13 @@ namespace Dc {
             new_msg.selected = old_msg.selected;
             preserve_full_message_state (old_msg, new_msg);
 
-            var adj = message_scroll.vadjustment;
-            double saved_value = adj.value;
-            bool was_at_bottom = is_near_bottom ();
-            bool was_loading = loading_chat;
-            loading_chat = true;
-            freeze_scroll_handler (700);
+            var focused = focused_message_row ();
+            if (focused != null && focused.message_id == msg_id)
+                preserve_scroll_on_focus_change ();
 
             Object[] replacements = { new_msg };
             message_store.splice (idx, 1, replacements);
             update_conversation_media_bar ();
-
-            /* Wait for row height changes to update the scroll range. */
-            uint tick_id = 0;
-            tick_id = message_listview.add_tick_callback ((w, clock) => {
-                if (closed) return end_tick_callback (tick_id);
-                restore_scroll_value (was_at_bottom ? max_scroll_value () : saved_value);
-                loading_chat = was_loading;
-                if (goal != ViewportGoal.ANCHOR) {
-                    goal = was_at_bottom
-                        ? ViewportGoal.BOTTOM : ViewportGoal.FREE;
-                }
-                scroll_down_btn.visible = !is_near_bottom ();
-                return end_tick_callback (tick_id);
-            });
-            track_tick_callback (tick_id);
         }
 
         /** Rebind a row after changing transient properties on its existing
@@ -1695,48 +1679,38 @@ namespace Dc {
             dialog.present (window);
         }
 
-        /**
-         * Suppress the value-notify handler's "near top / near bottom"
-         * recalculation for `ms` milliseconds. Used to silence spurious
-         * scroll movements triggered by popovers, focus shifts, or row
-         * resizes after a reaction / edit.
-         */
-        public void freeze_scroll_handler (uint ms) {
-            int64 until = GLib.get_monotonic_time () + (int64) ms * 1000;
-            if (until > scroll_freeze_until_us) scroll_freeze_until_us = until;
-        }
-
         public double get_scroll_value () {
             return message_scroll.vadjustment.value;
         }
 
-        public void restore_scroll_value (double v) {
+        private void restore_scroll_value (double v) {
             var a = message_scroll.vadjustment;
             v = double.min (v, max_scroll_value ());
             if (Math.fabs (a.value - v) > 0.5) a.value = v;
         }
 
-        /* Re-assert position after GtkListView's focus scroll has run.
-           A no-op while a row is anchored — the anchor loop is already
-           enforcing the position and a stale value would fight it. */
-        public void restore_scroll_value_deferred (double v) {
-            if (goal == ViewportGoal.ANCHOR) return;
-            freeze_scroll_handler (250);
-            uint tick_id = 0;
-            tick_id = message_listview.add_tick_callback ((w, clock) => {
-                if (closed) return end_tick_callback (tick_id);
-                restore_scroll_value (v);
-                return end_tick_callback (tick_id);
+        /* GtkListView changes its anchor when a label takes focus, even if
+           the user only clicked the visible part of a clipped message.
+           Re-anchor at the current viewport after focus dispatch, BEFORE
+           GTK paints the next frame. This correction lasts one input dispatch;
+           wheel input and explicit navigation supersede it. */
+        public void preserve_scroll_on_focus_change () {
+            if (focus_scroll_tick != 0 || closed || goal == ViewportGoal.ANCHOR) return;
+            focus_scroll_generation = goal_generation;
+            focus_scroll_value = get_scroll_value ();
+            focus_scroll_tick = message_listview.add_tick_callback ((widget, clock) => {
+                focus_scroll_tick = 0;
+                restore_scroll_after_focus ();
+                return Source.REMOVE;
             });
-            track_tick_callback (tick_id);
         }
 
-        /* Hold position when a row click would otherwise focus-scroll.
-           Only relevant while the user owns the viewport: BOTTOM re-snaps
-           on its own and an anchor already enforces the position. */
-        private void hold_scroll_on_focus_shift () {
-            if (goal != ViewportGoal.FREE) return;
-            restore_scroll_value_deferred (message_scroll.vadjustment.value);
+        private void restore_scroll_after_focus () {
+            pointer_focus = false;
+            if (closed || focus_scroll_generation != goal_generation) return;
+            restore_scroll_value (goal == ViewportGoal.BOTTOM ? max_scroll_value () : focus_scroll_value);
+            // Also reset a focus anchor whose allocation is pending.
+            message_scroll.vadjustment.value_changed ();
         }
 
         public bool close_search_if_active () {
@@ -1795,51 +1769,42 @@ namespace Dc {
             msg.highlighted = true;
             /* FOCUS lands on the target; keep on_focus_widget_changed from
                treating that as Tab entering the list. */
-            focus_jump_until_us = get_monotonic_time () + 1000 * 1000;
+            last_focus_message_id = msg_id;
             bool restoring = restore_message_id == msg_id;
+            changing_message_focus = true;
             message_listview.scroll_to (pos, message_search_revealer.reveal_child || restoring
                 ? Gtk.ListScrollFlags.NONE : Gtk.ListScrollFlags.FOCUS, null);
+            changing_message_focus = false;
             if (restoring) {
-                anchor_message (msg_id, (uint) pos, restore_message_top, 45);
+                anchor_message (msg_id, (uint) pos, restore_message_top);
                 restore_message_id = 0;
             } else if ((uint) pos + 1 == message_store.get_n_items () && !has_later_messages ()) {
                 /* Jumping to the last row is just going to the bottom. */
-                anchor_message (msg_id, (uint) pos, 0, 45, true);
+                anchor_message (msg_id, (uint) pos, 0, true);
                 scroll_down_btn.visible = false;
             } else {
-                /* 45-frame minimum: survive the focus-restore scroll of a
-                   dialog that is still animating closed. */
-                anchor_message (msg_id, (uint) pos, double.MAX, 45);
+                anchor_message (msg_id, (uint) pos);
                 scroll_down_btn.visible = true;
             }
             return true;
         }
 
-        /** Pin msg_id where it currently sits (or at wanted_top when the
-            caller measured one before a splice) until the layout has held
-            still for a few frames, then hand the viewport back. scroll_to
-            only guarantees visibility for the layout of that one frame:
-            images and stickers in freshly realized rows finish decoding
-            later, resize, and would push the target away. min_frames keeps
-            the anchor enforcing for at least that many frames even when
-            the layout is instantly stable — an explicit jump must outlive
-            the closing dialog's focus restore, which scrolls the list a
-            few hundred ms later. Starting a new anchor, scroll_to_bottom
-            or user input cancels this one instantly via goal_generation. */
+        /* Explicit jumps and full model replacements need an initial row
+           position after realization. Once it settles, GTK's native anchor
+           owns subsequent resizing. Ordinary splices need no correction. */
         private void anchor_message (int msg_id, uint position,
                                      double wanted_top = double.MAX,
-                                     uint min_frames = 0,
                                      bool align_bottom = false) {
+            if (anchor_tick != 0) message_listview.remove_tick_callback (anchor_tick);
             goal = ViewportGoal.ANCHOR;
             uint generation = ++goal_generation;
             double want = wanted_top;
             uint stable_frames = 0;
             uint elapsed_frames = 0;
-            uint tick_id = 0;
-            tick_id = message_listview.add_tick_callback ((w, clock) => {
+            anchor_tick = message_listview.add_tick_callback ((w, clock) => {
                 if (closed || generation != goal_generation
                         || goal != ViewportGoal.ANCHOR)
-                    return end_tick_callback (tick_id);
+                    return end_anchor ();
 
                 double current_top;
                 var row = find_message_row (
@@ -1895,20 +1860,18 @@ namespace Dc {
                 }
 
                 elapsed_frames++;
-                bool settled = stable_frames >= 3
-                    && elapsed_frames >= min_frames;
-                if (!settled && elapsed_frames < min_frames + 60)
+                if (stable_frames < 3 && elapsed_frames < 60)
                     return Source.CONTINUE;
 
                 /* Layout settled (or we give up): hand the viewport back
                    to whoever the position now implies. */
-                goal = is_near_bottom ()
+                goal = is_at_bottom ()
                     ? ViewportGoal.BOTTOM : ViewportGoal.FREE;
+                maybe_autoscroll ();
                 scroll_down_btn.visible = goal != ViewportGoal.BOTTOM;
                 flush_pending_seen ();
-                return end_tick_callback (tick_id);
+                return end_anchor ();
             });
-            track_tick_callback (tick_id);
         }
 
         /* ================================================================
@@ -1945,13 +1908,6 @@ namespace Dc {
                 yield ensure_mention_roster ();
                 if (closed || activation != activation_generation) return;
 
-                bool was_near_bottom = goal == ViewportGoal.BOTTOM;
-                double previous_scroll_value = 0;
-                if (preserve_scroll) {
-                    was_near_bottom = is_near_bottom ();
-                    previous_scroll_value = message_scroll.vadjustment.value;
-                }
-
                 bool had_later_messages = has_later_messages ();
                 uint history = history_generation;
                 var ids = yield rpc.get_message_ids_for (rpc.account_id, chat_id);
@@ -1979,6 +1935,13 @@ namespace Dc {
                 if (closed || activation != activation_generation || history != history_generation) return;
                 webxdc_bar.load_for_chat.begin (chat_id);
 
+                // Capture after the RPC work: the user may have scrolled
+                // while it was in flight. Pixel offsets are estimates in a
+                // virtualized list, so preserve the visible message instead.
+                bool was_near_bottom = goal == ViewportGoal.BOTTOM;
+                double previous_top;
+                var previous_row = find_message_row (message_listview, 0, out previous_top);
+                int previous_id = previous_row != null ? previous_row.message_id : 0;
                 loading_chat = true;
                 loaded_start_index = start;
                 loaded_end_index = end;
@@ -2004,19 +1967,12 @@ namespace Dc {
                         last_focus_message_id = first_unread_message_id;
                         message_listview.scroll_to ((uint) unread_pos, Gtk.ListScrollFlags.NONE, null);
                         /* Leave room above the message for its separator. */
-                        anchor_message (first_unread_message_id, (uint) unread_pos, 48, 3);
+                        anchor_message (first_unread_message_id, (uint) unread_pos, 48);
                     } else if (!preserve_scroll || was_near_bottom) {
                         scroll_to_bottom ();
                     } else {
-                        uint scroll_generation = goal_generation;
-                        Idle.add (() => {
-                            if (closed || scroll_generation != goal_generation) return Source.REMOVE;
-                            restore_scroll_value (previous_scroll_value);
-                            goal = ViewportGoal.FREE;
-                            scroll_down_btn.visible = !is_near_bottom ();
-                            flush_pending_seen ();
-                            return Source.REMOVE;
-                        });
+                        int pos = find_message_index (message_store, previous_id);
+                        if (pos >= 0) anchor_message (previous_id, (uint) pos, previous_top);
                     }
                 }
 
@@ -2177,23 +2133,6 @@ namespace Dc {
             update_conversation_media_bar ();
         }
 
-        /* prepend_batch, but pin the topmost visible row in place: GtkListView
-           estimates the list height, so without a real anchor every splice
-           re-estimates it and visibly jerks the viewport. */
-        private void prepend_batch_preserving_anchor (
-                GLib.GenericArray<Message> messages, uint new_start) {
-            double anchor_top;
-            var anchor = find_message_row (message_listview, 0, out anchor_top);
-            int anchor_id = anchor != null ? anchor.message_id : 0;
-
-            prepend_batch (messages, new_start);
-
-            if (anchor_id == 0) return;
-            int anchor_pos = find_message_index (message_store, anchor_id);
-            if (anchor_pos >= 0)
-                anchor_message (anchor_id, (uint) anchor_pos, anchor_top);
-        }
-
         private async void load_earlier_messages () {
             if (closed || loading_messages || loading_more || all_msg_ids == null || loaded_start_index == 0) return;
             uint history = history_generation;
@@ -2206,7 +2145,7 @@ namespace Dc {
             try {
                 var messages = yield fetch_messages_batch (new_start, loaded_start_index);
                 if (!closed && history == history_generation)
-                    prepend_batch_preserving_anchor (messages, new_start);
+                    prepend_batch (messages, new_start);
                 finish_loading_earlier ();
             } catch (Error e) {
                 if (!closed && history == history_generation)
@@ -2223,13 +2162,8 @@ namespace Dc {
             try {
                 var messages = yield fetch_messages_batch (loaded_end_index, end);
                 if (!closed && history == history_generation) {
-                    double top;
-                    var anchor = find_message_row (message_listview, 0, out top);
-                    int id = anchor != null ? anchor.message_id : 0;
                     message_store.splice (message_store.get_n_items (), 0, pinned_message_batch (messages));
                     loaded_end_index = end;
-                    int pos = find_message_index (message_store, id);
-                    if (pos >= 0) anchor_message (id, (uint) pos, top);
                 }
             } catch (Error e) {
                 if (!closed && history == history_generation)
@@ -2252,7 +2186,7 @@ namespace Dc {
                     if (find_message (message_store, target_id) != null) break;
                     var ids = yield rpc.get_message_ids_for (rpc.account_id, chat_id);
                     if (closed) break;
-                    if (history != history_generation) continue;
+                    if (history != history_generation || target_id != pending_scroll_message_id) continue;
                     int target = ids != null ? MessageHistory.find_id (ids, target_id) : -1;
                     if (target < 0) {
                         unavailable_search_match (target_id);
@@ -2263,7 +2197,7 @@ namespace Dc {
                     MessageHistory.context_range (ids, (uint) target, out start, out end);
                     var messages = yield fetch_messages_batch (start, end);
                     if (closed) break;
-                    if (history != history_generation) continue;
+                    if (history != history_generation || target_id != pending_scroll_message_id) continue;
                     bool found = false;
                     foreach (var msg in messages) if (msg.id == target_id) found = true;
                     if (!found) {
@@ -2342,10 +2276,8 @@ namespace Dc {
             loading_more = false;
             if (closed) return;
             set_loading_more_visible (false);
-            /* An anchor started by the prepend still owns the viewport;
-               it hands the goal back itself once the layout settles. */
-            if (goal != ViewportGoal.ANCHOR) {
-                goal = is_near_bottom ()
+            if (goal == ViewportGoal.FREE) {
+                goal = is_at_bottom ()
                     ? ViewportGoal.BOTTOM : ViewportGoal.FREE;
             }
             scroll_down_btn.visible = !is_near_bottom ();
@@ -2431,6 +2363,11 @@ namespace Dc {
             return !has_later_messages () && at_loaded_bottom ();
         }
 
+        private bool is_at_bottom () {
+            return !has_later_messages ()
+                && max_scroll_value () - message_scroll.vadjustment.value <= 1;
+        }
+
         private bool at_loaded_bottom () {
             var adj = message_scroll.vadjustment;
             if (adj.upper <= adj.page_size) return true;
@@ -2449,8 +2386,16 @@ namespace Dc {
         }
 
         private void maybe_autoscroll () {
-            if (goal != ViewportGoal.BOTTOM) return;
-            message_scroll.vadjustment.value = max_scroll_value ();
+            if (goal != ViewportGoal.BOTTOM || bottom_scroll_idle != 0) return;
+            /* Bounds notifications run inside ListView allocation while its
+               adjustment handler is blocked. Set the bottom outside allocation
+               so GTK records the new anchor, including for a tall last row. */
+            bottom_scroll_idle = Idle.add (() => {
+                bottom_scroll_idle = 0;
+                if (!closed && goal == ViewportGoal.BOTTOM)
+                    restore_scroll_value (max_scroll_value ());
+                return Source.REMOVE;
+            });
         }
 
         public void scroll_to_bottom () {
@@ -2460,11 +2405,11 @@ namespace Dc {
             }
             goal_generation++;
             goal = ViewportGoal.BOTTOM;
-            maybe_autoscroll ();
             uint n = message_store.get_n_items ();
             if (n > 0) {
                 message_listview.scroll_to (n - 1, Gtk.ListScrollFlags.NONE, null);
             }
+            maybe_autoscroll ();
         }
 
         private void insert_message_sorted (Message msg) {
@@ -2792,9 +2737,7 @@ namespace Dc {
             bool entering = item != null && !focus_in_message_list;
             focus_in_message_list = item != null;
             if (item == null) return;
-            int64 now = get_monotonic_time ();
-            bool pointer = now - list_press_us < 500 * 1000;
-            if (entering && !pointer && now > focus_jump_until_us) {
+            if (entering && !pointer_focus && !changing_message_focus) {
                 var target = entry_item ();
                 if (target != null && target != focus) {
                     /* The nested notification records the new row. */
@@ -2869,8 +2812,9 @@ namespace Dc {
             var above = message_list_item_of (row)?.get_prev_sibling ();
             var above_row = above != null ? find_message_row_in (above) : null;
             int neighbour_id = above_row != null ? above_row.message_id : 0;
+            uint generation = goal_generation;
             Idle.add (() => {
-                if (closed) return Source.REMOVE;
+                if (closed || generation != goal_generation) return Source.REMOVE;
                 int pos = find_message_index (message_store, id);
                 if (pos < 0) pos = find_message_index (message_store, neighbour_id);
                 var current = focused_message_row ();
@@ -2878,10 +2822,11 @@ namespace Dc {
                         == ((Message) message_store.get_item (pos)).id)) {
                     return Source.REMOVE;
                 }
-                focus_jump_until_us = get_monotonic_time () + 1000 * 1000;
+                changing_message_focus = true;
                 message_listview.scroll_to (pos, Gtk.ListScrollFlags.FOCUS, null);
+                changing_message_focus = false;
                 return Source.REMOVE;
-            });
+            }, Priority.HIGH);
         }
 
         /* The message row holding the keyboard focus, whether the focus
@@ -3109,6 +3054,9 @@ namespace Dc {
         public void close () {
             if (closed) return;
             closed = true;
+            if (focus_scroll_tick != 0) message_listview.remove_tick_callback (focus_scroll_tick);
+            if (bottom_scroll_idle != 0) Source.remove (bottom_scroll_idle);
+            focus_scroll_tick = bottom_scroll_idle = 0;
             message_search.cancel ();
             history_generation++;
             activation_generation++;
@@ -3123,11 +3071,8 @@ namespace Dc {
             pending_voice_direction = 0;
             loading_more = false;
 
-            var active_ticks = tick_callback_ids;
-            tick_callback_ids = {};
-            foreach (uint callback_id in active_ticks) {
-                message_listview.remove_tick_callback (callback_id);
-            }
+            if (anchor_tick != 0) message_listview.remove_tick_callback (anchor_tick);
+            anchor_tick = 0;
 
             for (uint i = 0; i < signal_handlers.length; i++) {
                 signal_handlers[i].disconnect_handler ();
