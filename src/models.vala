@@ -309,27 +309,58 @@ namespace Dc {
     private static void restore_focus_on_close (Gtk.Popover popover) {
         var root = popover.get_root ();
         var previous = root != null ? root.get_focus () : null;
-        if (previous == null) return;
         WeakRef previous_ref = WeakRef (previous);
         popover.closed.connect ((closed) => {
+            /* closed runs before GTK's cascade_popdown focuses the parent.
+               Even a temporary focus on the first list row scrolls its
+               viewport, and restoring an offscreen cursor scrolls it again. */
+            var viewport = hold_focus_scroll (closed);
             WeakRef popover_ref = WeakRef (closed);
             Idle.add_full (Priority.HIGH_IDLE, () => {
-                var p = popover_ref.get () as Gtk.Popover;
-                var target = previous_ref.get () as Gtk.Widget;
-                if (p == null || target == null) return Source.REMOVE;
-                var r = p.get_root ();
-                var parent = p.get_parent ();
-                if (r == null || target.get_root () != r) return Source.REMOVE;
-                var focus = r.get_focus ();
-                /* Only undo GTK's fallback into the parent, not a move
-                   elsewhere such as an opened dialog. */
-                if (focus != target && (focus == null || focus == parent
-                        || focus.is_ancestor (p)
-                        || (parent != null && focus.is_ancestor (parent))))
-                    target.grab_focus ();
+                restore_popover_focus (popover_ref, previous_ref);
+                release_focus_scroll (viewport);
                 return Source.REMOVE;
             });
         });
+    }
+
+    private static void restore_popover_focus (WeakRef popover_ref, WeakRef previous_ref) {
+        var p = popover_ref.get () as Gtk.Popover;
+        var target = previous_ref.get () as Gtk.Widget;
+        if (p == null || target == null) return;
+        var r = p.get_root ();
+        var parent = p.get_parent ();
+        if (r == null || target.get_root () != r) return;
+        var focus = r.get_focus ();
+        /* Only undo GTK's fallback into the parent, not a move
+           elsewhere such as an opened dialog. */
+        if (focus != target && (focus == null || focus == parent
+                || focus.is_ancestor (p)
+                || (parent != null && focus.is_ancestor (parent))))
+            target.grab_focus ();
+    }
+
+    /* Nestable because a menu may close its parent menu, or a list refresh
+       may run during focus restoration. Keyboard navigation outside these
+       short, synchronous focus transfers keeps GTK's normal scrolling. */
+    internal static Gtk.Viewport? hold_focus_scroll (Gtk.Widget widget) {
+        var viewport = widget.get_ancestor (typeof (Gtk.Viewport)) as Gtk.Viewport;
+        if (viewport == null) return null;
+        int holds = viewport.get_data<int> ("parla-focus-scroll-holds");
+        if (holds == 0) {
+            viewport.set_data<bool> ("parla-focus-scroll-enabled", viewport.scroll_to_focus);
+            viewport.scroll_to_focus = false;
+        }
+        viewport.set_data<int> ("parla-focus-scroll-holds", holds + 1);
+        return viewport;
+    }
+
+    internal static void release_focus_scroll (Gtk.Viewport? viewport) {
+        if (viewport == null) return;
+        int holds = viewport.get_data<int> ("parla-focus-scroll-holds") - 1;
+        viewport.set_data<int> ("parla-focus-scroll-holds", holds);
+        if (holds == 0)
+            viewport.scroll_to_focus = viewport.get_data<bool> ("parla-focus-scroll-enabled");
     }
 
     private static void on_popover_closed (Gtk.Popover popover) {

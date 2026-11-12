@@ -93,6 +93,8 @@ namespace Dc {
 
         /* Chat list */
         private Gtk.ListBox chat_listbox;
+        private ChatListLayout chat_list_layout;
+        private Gtk.Viewport? dialog_focus_scroll;
         public GLib.ListStore chat_store { get; private set; }
         private HashTable<int, int> chat_order = new HashTable<int, int> (direct_hash, direct_equal);
         private uint chats_load_generation = 0;
@@ -918,10 +920,22 @@ namespace Dc {
             chat_listbox.add_controller (list_keys);
 
             var results_box = new Gtk.Box (Gtk.Orientation.VERTICAL, 6);
-            results_box.append (chat_listbox);
+            chat_list_layout = new ChatListLayout (chat_listbox);
+            results_box.append (chat_list_layout);
             results_box.append (message_results);
             chat_scroll.child = results_box;
             sidebar_box.append (chat_scroll);
+            /* Dialogs restore the old keyboard cursor, which may have been
+               wheeled offscreen before opening Delete, Details, Media, etc.
+               Keep that focus restoration from navigating the sidebar. */
+            notify["visible-dialog"].connect (() => {
+                if (visible_dialog != null && dialog_focus_scroll == null) {
+                    dialog_focus_scroll = hold_focus_scroll (chat_listbox);
+                } else if (visible_dialog == null && dialog_focus_scroll != null) {
+                    release_focus_scroll (dialog_focus_scroll);
+                    dialog_focus_scroll = null;
+                }
+            });
 
             /* ---- Content area ---- */
             var content_box = new Gtk.Box (Gtk.Orientation.VERTICAL, 0);
@@ -1899,6 +1913,11 @@ namespace Dc {
                 for (int i = 0; i < parsed_entries.length; i++)
                     chat_order.insert (parsed_entries[i].id, i);
 
+                chat_list_layout.preserve_position (chat_order);
+                var focus_scroll = hold_focus_scroll (chat_listbox);
+                var focused_row = focused_chat_row ();
+                if (focused_row != null && !chat_order.contains (((ChatRow) focused_row.child).chat_id))
+                    chat_list_layout.focus_surviving_neighbor (focused_row, chat_order);
                 foreach (int id in rows.get_keys ()) {
                     if (!chat_order.contains (id)) chat_listbox.remove (rows.lookup (id));
                 }
@@ -1947,6 +1966,7 @@ namespace Dc {
                     /* The open chat left the list (deleted, archived). */
                     clear_chat_view ();
                 }
+                release_focus_scroll (focus_scroll);
             } catch (Error e) {
                 if (chats_load_is_current (generation, acct_id, archived_view))
                     show_toast (_("Failed to load chats: ") + e.message);
@@ -3691,6 +3711,8 @@ namespace Dc {
         }
 
         public override void dispose () {
+            release_focus_scroll (dialog_focus_scroll);
+            dialog_focus_scroll = null;
             if (unread_update_timer != 0) {
                 Source.remove (unread_update_timer);
                 unread_update_timer = 0;

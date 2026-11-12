@@ -1,5 +1,138 @@
 namespace Dc {
 
+    /* Keep a visible chat in place across sidebar reconciliation. Restoring
+       after row allocation accounts for removals, sorting and height changes
+       without a timeout that could overwrite a later scroll gesture. */
+    internal class ChatListLayout : Gtk.Widget {
+        private Gtk.ListBox list;
+        private Gtk.ListBoxRow? scroll_anchor;
+        private double anchor_y;
+        private double scroll_value;
+        private Gtk.Adjustment? scroll_adjustment;
+        private ulong scroll_changed;
+
+        public ChatListLayout (Gtk.ListBox list) {
+            this.list = list;
+            list.set_parent (this);
+        }
+
+        public override Gtk.SizeRequestMode get_request_mode () {
+            return list.get_request_mode ();
+        }
+
+        public override void measure (Gtk.Orientation orientation, int for_size,
+                out int minimum, out int natural, out int minimum_baseline, out int natural_baseline) {
+            list.measure (orientation, for_size, out minimum, out natural,
+                out minimum_baseline, out natural_baseline);
+        }
+
+        public override void dispose () {
+            cancel_scroll_restore ();
+            if (list != null && list.get_parent () == this) list.unparent ();
+            base.dispose ();
+        }
+
+        public override void snapshot (Gtk.Snapshot snapshot) {
+            snapshot_child (list, snapshot);
+        }
+
+        public void preserve_position (HashTable<int, int> next_order) {
+            cancel_scroll_restore ();
+            var viewport = get_ancestor (typeof (Gtk.Viewport)) as Gtk.Viewport;
+            if (viewport == null || !get_mapped ()) return;
+            var adj = viewport.vadjustment;
+            if (adj.value <= 0) return;
+
+            int best_move = int.MAX;
+            double best_distance = double.MAX;
+            for (var c = list.get_first_child (); c != null; c = c.get_next_sibling ()) {
+                var row = c as Gtk.ListBoxRow;
+                var chat = row != null ? row.child as ChatRow : null;
+                if (chat == null || !row.get_child_visible () || !next_order.contains (chat.chat_id)) continue;
+                Graphene.Rect bounds;
+                if (!row.compute_bounds (list, out bounds)) continue;
+                double distance = double.max (0, double.max (
+                    adj.value - bounds.origin.y - bounds.size.height,
+                    bounds.origin.y - adj.value - adj.page_size));
+                int movement = (next_order.lookup (chat.chat_id) - row.get_index ()).abs ();
+                /* Prefer visible survivors that stayed with their neighbours
+                   over a chat just pinned or bumped to the top. If the whole
+                   viewport was removed, use the nearest surviving row. */
+                if (distance > best_distance || (distance == best_distance && movement >= best_move)) continue;
+                scroll_anchor = row;
+                anchor_y = bounds.origin.y;
+                best_distance = distance;
+                best_move = movement;
+            }
+            if (scroll_anchor == null) return;
+            scroll_value = adj.value;
+            scroll_adjustment = adj;
+            double upper = adj.upper;
+            double page = adj.page_size;
+            scroll_changed = adj.value_changed.connect (() => {
+                // Honour input before layout; ignore GTK clamping a shorter list.
+                if (adj.upper == upper && adj.page_size == page) scroll_value = adj.value;
+            });
+        }
+
+        public override void size_allocate (int width, int height, int baseline) {
+            list.allocate (width, height, baseline, null);
+            if (scroll_adjustment == null) return;
+            var adj = scroll_adjustment;
+            double value = scroll_value;
+            Graphene.Rect bounds;
+            if (scroll_anchor != null && scroll_anchor.get_parent () == list
+                    && scroll_anchor.get_child_visible ()) {
+                if (scroll_anchor.compute_bounds (list, out bounds))
+                    value += bounds.origin.y - anchor_y;
+            }
+            cancel_scroll_restore ();
+            double before = adj.value;
+            adj.value = value.clamp (adj.lower, double.max (adj.lower, adj.upper - adj.page_size));
+            if (adj.value != before) {
+                /* The viewport has already placed us using the old value.
+                   Compensate in this frame, then let it allocate normally;
+                   queue_allocate during its allocation alone gets swallowed. */
+                var transform = new Gsk.Transform ().translate ({ 0, (float) (before - adj.value) });
+                list.allocate (width, height, baseline, transform);
+                add_tick_callback ((widget, clock) => {
+                    widget.queue_allocate ();
+                    var viewport = widget.get_ancestor (typeof (Gtk.Viewport));
+                    if (viewport != null) viewport.queue_allocate ();
+                    return Source.REMOVE;
+                });
+            }
+        }
+
+        private void cancel_scroll_restore () {
+            if (scroll_adjustment != null && scroll_changed != 0)
+                scroll_adjustment.disconnect (scroll_changed);
+            scroll_changed = 0;
+            scroll_adjustment = null;
+            scroll_anchor = null;
+        }
+
+        public override void unroot () {
+            cancel_scroll_restore ();
+            base.unroot ();
+        }
+
+        public void focus_surviving_neighbor (Gtk.ListBoxRow row, HashTable<int, int> next_order) {
+            for (int distance = 1; distance < int.MAX; distance++) {
+                var after = list.get_row_at_index (row.get_index () + distance);
+                var before = list.get_row_at_index (row.get_index () - distance);
+                if (after == null && before == null) return;
+                foreach (var candidate in new Gtk.ListBoxRow?[] { after, before }) {
+                    var chat = candidate != null ? candidate.child as ChatRow : null;
+                    if (chat != null && candidate.get_child_visible () && next_order.contains (chat.chat_id)) {
+                        candidate.grab_focus ();
+                        return;
+                    }
+                }
+            }
+        }
+    }
+
     /**
      * A single row in the chat list sidebar.
      * Shows avatar placeholder, chat name, last message preview, time, and unread badge.
