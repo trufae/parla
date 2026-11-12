@@ -561,12 +561,23 @@ namespace Dc {
         }
 
         public async void send_reaction (int msg_id, string[] emojis) throws Error {
+            yield send_reaction_for (account_id, msg_id, emojis);
+        }
+
+        public async void send_reaction_for (int acct_id, int msg_id,
+                                            string[] emojis) throws Error {
             yield call ("send_reaction",
                 Params.begin ()
-                    .add_int (account_id)
+                    .add_int (acct_id)
                     .add_int (msg_id)
                     .add_string_array (emojis)
                     .build ());
+        }
+
+        public async Json.Object? get_message_reactions_for (int acct_id,
+                                                             int msg_id) throws Error {
+            return yield call_object ("get_message_reactions",
+                Params.begin ().add_int (acct_id).add_int (msg_id).build ());
         }
 
         public async void set_pinned_message_state (int msg_id,

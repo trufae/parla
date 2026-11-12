@@ -557,7 +557,7 @@ test('rpc-transport', rpc_transport_test, timeout: 30)
 core_compat_test = executable(
   'core-compat-test',
   files('tests/core_compat_test.vala', 'tests/vcard_test.vala', 'tests/unread_ui_test.vala',
-        'tests/message_retry_test.vala', 'tests/message_search_test.vala',
+        'tests/message_retry_test.vala', 'tests/message_reactions_test.vala', 'tests/message_search_test.vala',
         'tests/ephemeral_ui_test.vala',
         'tests/search_ui_test.vala', 'tests/webxdc_realtime_test.vala',
         'tests/webxdc_realtime_ui_test.vala', 'tests/sync_ui_test.vala',

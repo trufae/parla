@@ -60,7 +60,7 @@ instructions are in [docs/website.md](docs/website.md).
 
 - **Rich compose bar** — multi-line text, file attachments via picker or drag-and-drop, paste images or files straight from the clipboard. Drag downloaded pictures or attachments onto a contact in the sidebar to forward them immediately, including their caption. Drop onto the composer to prepare an attachment, or into Finder/Files to copy it.
 - **Reply, edit, delete, forward** — full message actions via right-click; Delete for Me syncs to linked devices, while Delete for Everyone requests deletion of eligible sent messages from other participants too. Leave Group keeps the history; Leave and Delete removes it for your profile.
-- **Emoji reactions** — quick-pick 👍 ❤️ 😂 😮 😢 👎 shown as badges on the message.
+- **Emoji reactions** — quick-pick 👍 ❤️ 😂 😮 😢 👎 shown as badges on the message. Select your emoji again or choose **Remove reaction** in the message menu to un-react.
 - **Pinned messages** — pin any message in a chat; a pinned-messages bar at the top of the conversation lets you jump back to them.
 - **Reply previews** — quoted sender and text preview (capped at 3 lines) above the compose entry and inside bubbles.
 - **Inline image previews** with a full-screen viewer (click to open, right-click to save, Escape to close).

@@ -161,7 +161,9 @@ namespace Dc {
                         show_emoji_picker (msg_id, parent, x, y);
                     });
                 } else {
-                    if (has_my_reaction (msg, emoji)) btn.add_css_class ("suggested-action");
+                    bool selected = has_my_reaction (msg, emoji);
+                    if (selected) btn.add_css_class ("suggested-action");
+                    btn.tooltip_text = selected ? _("Remove reaction") : _("React");
                     btn.selected.connect (() => {
                         send_reaction.begin (msg_id, emoji);
                     });
@@ -171,6 +173,11 @@ namespace Dc {
             }
             vbox.append (emoji_row1);
             vbox.append (emoji_row2);
+            if (msg != null && msg.my_reactions != null && msg.my_reactions.length > 0) {
+                var remove = new PopoverButton (popover, _("Remove reaction"));
+                remove.selected.connect (() => { send_reaction.begin (msg_id, ""); });
+                vbox.append (remove);
+            }
         }
 
         /** Standalone quick-reaction popover pointing at (x, y) in parent. */
@@ -200,16 +207,39 @@ namespace Dc {
         }
 
         public async void send_reaction (int msg_id, string emoji) {
+            var client = rpc;
+            var owner = window;
+            var store = message_store;
+            if (client.account_id != account_id) return;
+            var current = find_message (store, msg_id);
+            if (current == null) return;
+            string[] emojis = {};
+            if (emoji.length > 0 && !has_my_reaction (current, emoji)) emojis += emoji;
             try {
-                var current = find_message (message_store, msg_id);
-                if (has_my_reaction (current, emoji)) {
-                    yield rpc.send_reaction (msg_id, new string[] {});
-                } else {
-                    yield rpc.send_reaction (msg_id, new string[] { emoji });
-                }
-                yield update_row (msg_id);
+                yield client.send_reaction_for (account_id, msg_id, emojis);
             } catch (Error e) {
-                window.show_toast (_("Reaction failed: ") + e.message);
+                owner.show_toast (Markup.escape_text (_("Reaction failed: ") + e.message));
+                return;
+            }
+            try {
+                // A reaction update must not depend on reloading unrelated
+                // message content or sender metadata. Refresh the originating
+                // store even if another chat became visible during the RPC.
+                var reactions = yield client.get_message_reactions_for (account_id, msg_id);
+                if (client.account_id != account_id) return;
+                current = find_message (store, msg_id);
+                if (current == null) return;
+                var updated = current.dup ();
+                RpcParsers.parse_reactions (reactions, updated);
+                var view = owner.current_view ();
+                if (view != null && view.chat_id == updated.chat_id) {
+                    view.replace_message (msg_id, updated);
+                } else {
+                    int idx = find_message_index (store, msg_id);
+                    if (idx >= 0) store.splice (idx, 1, new Object[] { updated });
+                }
+            } catch (Error e) {
+                owner.show_toast (Markup.escape_text (_("Could not refresh reactions: ") + e.message));
             }
         }
 

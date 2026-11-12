@@ -59,7 +59,7 @@ namespace Dc {
             // Contact IDs identify SELF across all relays and linked devices.
             msg.is_outgoing = msg.sender_contact_id == 1;
 
-            parse_reactions (obj, msg);
+            parse_reactions (json_obj (obj, "reactions"), msg);
             parse_quote (obj, msg);
             return msg;
         }
@@ -127,8 +127,12 @@ namespace Dc {
             return ChatKind.UNKNOWN;
         }
 
-        private static void parse_reactions (Json.Object obj, Message msg) {
-            var reactions_obj = json_obj (obj, "reactions");
+        /** Replace reaction state from get_message_reactions or a message's
+            reactions member. A null result clears the last remaining badge. */
+        public static void parse_reactions (Json.Object? reactions_obj, Message msg) {
+            msg.reactions = null;
+            msg.my_reactions = null;
+            msg.reaction_details = null;
             if (reactions_obj == null) return;
 
             var details = new GenericArray<MessageReaction> ();

@@ -224,6 +224,22 @@ private void test_channel_reactions () {
     assert (msg.reactions == "👍:2");
     assert (msg.my_reactions == "👍");
     assert (msg.reaction_details[0].users.length == 2);
+
+    // Refresh only reactions on a copy, retaining message content and UI state.
+    msg.text = "Original message";
+    msg.selected = true;
+    var updated = msg.dup ();
+    RpcParsers.parse_reactions (object_from_json ("""
+        {"reactions":[{"emoji":"👍","count":1,"isFromSelf":false}],
+         "reactionsByContact":{"42":["👍"]}}
+        """), updated);
+    assert (updated.reactions == "👍:1" && updated.my_reactions == null);
+    assert (updated.reaction_details[0].users[0].contact_id == 42);
+    assert (updated.text == "Original message" && updated.selected);
+    assert (msg.my_reactions == "👍" && msg.reactions == "👍:2");
+    RpcParsers.parse_reactions (null, updated);
+    assert (updated.reactions == null && updated.my_reactions == null);
+    assert (updated.reaction_details == null);
 }
 
 private async void check_account_addresses () {
@@ -490,6 +506,8 @@ public int main (string[] args) {
         return run_search_ui_test ();
     if (args.length > 1 && args[1] == "--retry-ui")
         return run_retry_ui_test ();
+    if (args.length > 1 && args[1] == "--reactions-ui")
+        return run_reactions_ui_test ();
     if (args.length > 1 && args[1] == "--unread-ui")
         return run_unread_ui_test ();
     if (args.length > 1 && args[1] == "--sync-ui")

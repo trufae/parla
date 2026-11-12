@@ -18,7 +18,8 @@ public int run_fake_retry_server () {
         var args = request.get_array_member ("params");
         var result = new Json.Node (Json.NodeType.NULL);
         string? failure = null;
-        if (method == "get_message" || method == "resend_messages"
+        if (method == "get_message" || method == "resend_messages" || method == "send_reaction"
+                || method == "get_message_reactions"
                 || method == "search_messages" || method == "message_ids_to_search_results"
                 || method == "set_chat_ephemeral_timer" || method == "get_message_info_object")
             calls.add_object_element (request);
@@ -122,6 +123,34 @@ public int run_fake_retry_server () {
             case "get_message":
                 var msg = messages.lookup ((int) args.get_int_element (1));
                 if (msg != null) result.init_object (msg);
+                break;
+            case "send_reaction":
+                var msg = messages.lookup ((int) args.get_int_element (1));
+                assert (msg != null);
+                var emojis = args.get_array_element (2);
+                if (emojis.get_length () == 0) {
+                    msg.set_null_member ("reactions");
+                } else {
+                    assert (emojis.get_length () == 1);
+                    var entry = new Json.Object ();
+                    entry.set_string_member ("emoji", emojis.get_string_element (0));
+                    entry.set_int_member ("count", 1);
+                    entry.set_boolean_member ("isFromSelf", true);
+                    var totals = new Json.Array ();
+                    totals.add_object_element (entry);
+                    var contacts = new Json.Object ();
+                    contacts.set_array_member ("1", emojis);
+                    var reactions = new Json.Object ();
+                    reactions.set_array_member ("reactions", totals);
+                    reactions.set_object_member ("reactionsByContact", contacts);
+                    msg.set_object_member ("reactions", reactions);
+                }
+                result.init_int (200);
+                break;
+            case "get_message_reactions":
+                var msg = messages.lookup ((int) args.get_int_element (1));
+                assert (msg != null);
+                if (msg.has_member ("reactions")) result = msg.get_member ("reactions").copy ();
                 break;
             case "resend_messages":
                 var ids = args.get_array_element (1);
