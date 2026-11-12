@@ -99,6 +99,41 @@ private void test_local_breakdown () {
     assert_fraction (local.downloaded_fraction (), 1);
 }
 
+private void test_disk_space_threshold () {
+    uint64 gb = Dc.DiskSpace.BYTES_PER_GB;
+    var space = new Dc.DiskSpace (true, 10 * gb, gb);
+    assert (!space.is_low (1));
+    assert (space.is_low (2));
+    assert_fraction (space.free_fraction (), 0.1);
+    space = new Dc.DiskSpace (true, 10 * gb, gb - 1);
+    assert (space.is_low (1));
+    space = new Dc.DiskSpace (true, 10 * gb, 0);
+    assert (space.is_low (1));
+    assert_fraction (space.free_fraction (), 0);
+    space = new Dc.DiskSpace (false, 0, 0);
+    assert (!space.is_low (1));
+    assert (space.summary_text () == "Free disk space unavailable");
+    space = new Dc.DiskSpace (true, 0, 0);
+    assert (!space.available && !space.is_low (1));
+    space = new Dc.DiskSpace (true, gb, 2 * gb);
+    assert_fraction (space.free_fraction (), 1);
+}
+
+private void test_disk_space_query () {
+    // Query an existing directory. Never substitute the home filesystem on failure.
+    var space = Dc.DiskSpace.query (Environment.get_tmp_dir ());
+    assert (space.available && space.total_bytes > 0);
+    assert (space.free_bytes <= space.total_bytes);
+    assert (space.path == Environment.get_tmp_dir ());
+}
+
+private void test_disk_space_missing () {
+    assert (!Dc.DiskSpace.query (null).available);
+    assert (!Dc.DiskSpace.query ("").available);
+    var space = Dc.DiskSpace.query ("/nonexistent-parla-disk-space-test/child");
+    assert (!space.available && !space.is_low (1));
+}
+
 public int main (string[] args) {
     Test.init (ref args);
     Test.add_func ("/storage-quota/plain", test_plain_report);
@@ -108,5 +143,8 @@ public int main (string[] args) {
     Test.add_func ("/storage-quota/display-values", test_display_values);
     Test.add_func ("/storage-quota/thresholds-and-clamp", test_thresholds_and_clamp);
     Test.add_func ("/storage/local-breakdown", test_local_breakdown);
+    Test.add_func ("/storage/disk-threshold", test_disk_space_threshold);
+    Test.add_func ("/storage/disk-query", test_disk_space_query);
+    Test.add_func ("/storage/disk-missing", test_disk_space_missing);
     return Test.run ();
 }

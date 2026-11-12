@@ -421,7 +421,7 @@ namespace Dc {
             var details_btn = new Gtk.Button.with_label (_("Storage Details"));
             details_btn.tooltip_text = _("Show Storage by Chat");
             details_btn.clicked.connect (() => {
-                var dialog = new StorageDetailsDialog (rpc, account_id);
+                var dialog = new StorageDetailsDialog (rpc, account_id, settings);
                 dialog.present (this);
             });
             actions.append (details_btn);
@@ -644,6 +644,9 @@ namespace Dc {
     public class StorageDetailsDialog : Adw.Dialog {
         private RpcClient rpc;
         private int account_id;
+        private SettingsManager? settings;
+        private Gtk.ProgressBar disk_progress;
+        private Gtk.Label disk_label;
         private Gtk.ProgressBar quota_progress;
         private Gtk.Label quota_label;
         private Gtk.ProgressBar local_progress;
@@ -660,9 +663,10 @@ namespace Dc {
         private HashTable<string,string> global_local_paths =
             new HashTable<string,string> (str_hash, str_equal);
 
-        public StorageDetailsDialog (RpcClient rpc, int acct_id) {
+        public StorageDetailsDialog (RpcClient rpc, int acct_id, SettingsManager? settings = null) {
             this.rpc = rpc;
             this.account_id = acct_id;
+            this.settings = settings;
             this.title = _("Storage Details");
             this.content_width = 560;
             this.content_height = 680;
@@ -701,6 +705,19 @@ namespace Dc {
             attachment_total_label = dim_label ("");
             attachment_total_label.add_css_class ("caption");
             content.append (attachment_total_label);
+
+            content.append (heading_label (_("Free Disk Space")));
+            disk_progress = new Gtk.ProgressBar ();
+            disk_progress.add_css_class ("storage-quota-bar");
+            disk_progress.add_css_class ("storage-disk-bar");
+            disk_progress.show_text = true;
+#if A11Y
+            disk_progress.update_property (Gtk.AccessibleProperty.LABEL, _("Free Disk Space"), -1);
+#endif
+            disk_progress.text = _("Checking free space…");
+            content.append (disk_progress);
+            disk_label = dim_label (_("Available on the disk holding this profile, shared with other files and apps."));
+            content.append (disk_label);
 
             content.append (new Gtk.Separator (Gtk.Orientation.HORIZONTAL));
 
@@ -745,6 +762,23 @@ namespace Dc {
                     blob_dir = yield rpc.get_blob_dir (account_id);
                 } catch (Error e) {
                     blob_dir = null;
+                }
+
+                // Reuse the core's path and the same snapshot for the bar and
+                // startup warning; no directory scan or second disk query.
+                var space = DiskSpace.query (blob_dir);
+                disk_progress.fraction = space.free_fraction ();
+                disk_progress.sensitive = space.available;
+                disk_progress.text = space.summary_text ();
+                disk_progress.tooltip_text = space.path;
+                disk_label.tooltip_text = space.path;
+                disk_progress.remove_css_class ("storage-quota-warning");
+                if (space.is_low (settings != null ? settings.low_disk_space_gb : 1)) {
+                    disk_progress.add_css_class ("storage-quota-warning");
+                }
+                var window = get_root () as Window;
+                if (window != null && !closed_dialog) {
+                    window.update_disk_space_warning (rpc, account_id, space);
                 }
 
                 try {

@@ -122,7 +122,7 @@ def fake_core():
         elif method == "test_remove":
             chats = [10, 20]
             event("ChatDeleted", chatId=30)
-        elif method not in ("get_config", "get_draft", "select_account",
+        elif method not in ("get_blob_dir", "get_config", "get_draft", "select_account",
                              "start_io_for_all_accounts", "batch_set_config",
                              "get_first_unread_message_of_chat", "marknoticed_chat", "markseen_msgs"):
             raise AssertionError(f"Unexpected RPC: {method}")

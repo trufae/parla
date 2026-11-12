@@ -21,7 +21,8 @@ def check_ui(binary, mode="--retry-ui"):
         wrapper.write_text("#!/bin/sh\nexec " + shlex.join(
             [binary, "--fake-retry"]) + " 2>" + shlex.quote(str(log)) + "\n")
         wrapper.chmod(0o700)
-        env = dict(os.environ, PARLA_RPC_SERVER=str(wrapper), GTK_A11Y="none")
+        env = dict(os.environ, PARLA_RPC_SERVER=str(wrapper), GTK_A11Y="none",
+                   PARLA_TEST_CONFIG=str(root / "config"))
         for name in ("CONFIG", "DATA", "CACHE", "STATE"):
             env[f"XDG_{name}_HOME"] = str(root / name.lower())
         try:

@@ -442,6 +442,8 @@ public int main (string[] args) {
         test_executable = File.new_for_path (args[0]).get_path ();
         return run_storage_cleanup_ui_test ();
     }
+    if (args.length > 1 && args[1] == "--disk-space-ui")
+        return run_disk_space_ui_test ();
     if (args.length > 1 && args[1] == "--touch-scroll-ui")
         return run_touch_scroll_ui_test ();
     if (args.length > 1 && args[1] == "--conversation-scroll-ui")

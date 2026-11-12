@@ -64,7 +64,7 @@ def fake_core():
             result = 1000
         elif method == "get_config":
             result = "Forwarding test" if params[1] == "displayname" else None
-        elif method not in ("select_account", "start_io_for_all_accounts", "batch_set_config",
+        elif method not in ("get_blob_dir", "select_account", "start_io_for_all_accounts", "batch_set_config",
                             "get_draft", "misc_set_draft", "marknoticed_chat", "markseen_msgs",
                             "get_first_unread_message_of_chat", "forward_messages"):
             raise AssertionError(f"Unexpected RPC: {method}")

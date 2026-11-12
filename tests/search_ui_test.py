@@ -97,7 +97,7 @@ def fake_core(variable_heights=False):
             result = params[0] in seen
         elif method == "test_batches":
             result = batches
-        elif method not in ("get_draft", "select_account", "get_first_unread_message_of_chat",
+        elif method not in ("get_blob_dir", "get_draft", "select_account", "get_first_unread_message_of_chat",
                              "start_io_for_all_accounts", "batch_set_config", "marknoticed_chat"):
             raise AssertionError(f"Unexpected RPC: {method}")
         response = dict(jsonrpc="2.0", id=request["id"])

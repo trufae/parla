@@ -72,6 +72,7 @@ namespace Dc {
 
         public signal void appearance_changed ();
         public signal void font_changed ();
+        public signal void disk_space_settings_changed ();
 
         public int double_click_action { get; set; default = 0; }
         public MarkdownMode markdown_mode { get; set; default = MarkdownMode.ENABLED; }
@@ -116,6 +117,8 @@ namespace Dc {
         public string accounts_path { get; set; default = ""; }
         public RpcServerSource rpc_server_source { get; set; default = RpcServerSource.AUTO; }
         public bool rpc_check_updates_on_startup { get; set; default = true; }
+        public bool check_disk_space { get; private set; default = true; }
+        public int low_disk_space_gb { get; private set; default = 1; }
         public SidebarMode sidebar_mode { get; set; default = SidebarMode.FULL; }
         public string default_account_addr { get; set; default = ""; }
         public ThemeOverride theme_override { get; set; default = ThemeOverride.SYSTEM; }
@@ -250,6 +253,8 @@ namespace Dc {
             rpc_server_source = (RpcServerSource) source;
             rpc_check_updates_on_startup =
                 kf_bool (kf, "rpc_check_updates_on_startup", true);
+            check_disk_space = kf_bool (kf, "check_disk_space", true);
+            low_disk_space_gb = kf_int (kf, "low_disk_space_gb", 1).clamp (1, 1024);
             int sb = kf_enum (kf, "sidebar_mode", (int) SidebarMode.FULL, 2);
             sidebar_mode = (SidebarMode) sb;
             default_account_addr = kf_str (kf, "default_account_addr", "");
@@ -541,6 +546,18 @@ namespace Dc {
             save_bool ("rpc_check_updates_on_startup", v);
         }
 
+        public void save_check_disk_space (bool v) {
+            check_disk_space = v;
+            save_bool ("check_disk_space", v);
+            disk_space_settings_changed ();
+        }
+
+        public void save_low_disk_space_gb (int v) {
+            low_disk_space_gb = v.clamp (1, 1024);
+            save_int ("low_disk_space_gb", low_disk_space_gb);
+            disk_space_settings_changed ();
+        }
+
         public void save_sidebar_mode (SidebarMode v) {
             sidebar_mode = v;
             save_int ("sidebar_mode", (int) v);
@@ -819,6 +836,7 @@ namespace Dc {
             if (!Platform.is_android ()) build_notifications_section (general_page);
 
             build_chatmail_core_section (advanced_page);
+            build_disk_space_section (advanced_page);
             build_backups_section (advanced_page);
             build_network_section (advanced_page);
             build_webxdc_section (advanced_page);
@@ -1225,6 +1243,24 @@ namespace Dc {
             chatmail_group.add (accounts_path_row);
 
             sync_accounts_path_row ();
+        }
+
+        private void build_disk_space_section (Adw.PreferencesPage page) {
+            var group = settings_group (page, _("Free Disk Space"));
+            var check = add_switch_row (group, _("Check Free Space on Startup"),
+                _("Warn when the disk holding your messages is running low"),
+                app_window.settings.check_disk_space,
+                (v) => app_window.settings.save_check_disk_space (v));
+            var threshold = new Adw.SpinRow.with_range (1, 1024, 1);
+            threshold.title = _("Warn Below (GB)");
+            threshold.subtitle = _("Open Storage Details from the warning to free up space");
+            threshold.value = app_window.settings.low_disk_space_gb;
+            threshold.sensitive = check.active;
+            threshold.notify["value"].connect (() => {
+                app_window.settings.save_low_disk_space_gb ((int) threshold.value);
+            });
+            check.notify["active"].connect (() => { threshold.sensitive = check.active; });
+            group.add (threshold);
         }
 
         private void build_network_section (Adw.PreferencesPage page) {

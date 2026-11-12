@@ -28,7 +28,10 @@ public int run_fake_storage_server () {
         case "test_missing_total": missing_total = true; break;
         case "test_new_message": count++; break;
         case "get_account_file_size": result.init_int (10 * 1024 * 1024); break;
-        case "get_blob_dir": break;
+        case "get_blob_dir":
+            string? file = Environment.get_variable ("PARLA_TEST_STORAGE_FILE");
+            if (file != null) result.init_string (Path.get_dirname (file));
+            break;
         case "get_connectivity_html": result.init_string ("Quota: 5 MiB of 20 MiB used"); break;
         case "get_chatlist_entries":
             var chats = new Json.Array ();
@@ -139,6 +142,10 @@ private async void check_storage_cleanup_ui (Adw.Window window) {
         assert (local_bar.text == "Downloaded message files: 40%");
         assert (retry_widget (details.child, "6.0 MB profile and other data · 4.0 MB downloaded message files · 10.0 MB total") != null);
         assert (retry_widget (details.child, "Archived storage chat") != null);
+        var disk = storage_disk_bar (details.child);
+        assert (disk != null && disk.sensitive);
+        assert (disk.text.contains ("free of"));
+        assert (disk.tooltip_text == Path.get_dirname (Environment.get_variable ("PARLA_TEST_STORAGE_FILE")));
         audio_screenshot (window, "storage-details.png");
         var clear = retry_widget (details.child, "Clear Chat…") as Gtk.Button;
         assert (clear != null && clear.is_sensitive ());
@@ -206,6 +213,15 @@ private async void check_storage_cleanup_ui (Adw.Window window) {
     window.destroy ();
 }
 
+private Gtk.ProgressBar? storage_disk_bar (Gtk.Widget root) {
+    if (root.has_css_class ("storage-disk-bar")) return root as Gtk.ProgressBar;
+    for (var child = root.get_first_child (); child != null; child = child.get_next_sibling ()) {
+        var found = storage_disk_bar (child);
+        if (found != null) return found;
+    }
+    return null;
+}
+
 public int run_storage_cleanup_ui_test () {
     string folder;
     try {
@@ -225,5 +241,107 @@ public int run_storage_cleanup_ui_test () {
     FileUtils.unlink (Path.build_filename (folder, "shared-attachment"));
     DirUtils.remove (folder);
     Environment.unset_variable ("PARLA_TEST_STORAGE_FILE");
+    return 0;
+}
+
+private async void check_disk_space_ui (Dc.Application app, Dc.Window window) {
+    try {
+        for (int i = 0; i < 100 && app.rpc.account_id == 0; i++) yield nap (50);
+        yield nap (150);
+        var rpc = app.rpc;
+        assert (rpc.account_id == 1);
+        var pill = disk_warning_button (window);
+        assert (pill != null);
+        assert ((yield retry_call_count (rpc, "get_blob_dir")) == 1);
+        var space = DiskSpace.query (Environment.get_variable ("PARLA_TEST_DISK_PATH"));
+        assert (pill.visible == space.is_low (1));
+        var low = new DiskSpace (true, 10 * DiskSpace.BYTES_PER_GB, 0);
+        window.update_disk_space_warning (rpc, 1, low);
+        assert (pill.visible && pill.label.contains ("Low disk space"));
+        window.update_disk_space_warning (rpc, 2, space);
+        assert (pill.visible); // A background profile cannot hide this warning.
+        yield nap (100);
+        audio_screenshot (window, "disk-space-warning.png");
+        pill.clicked ();
+        yield nap (150);
+        var details = window.get_visible_dialog () as StorageDetailsDialog;
+        assert (details != null && storage_disk_bar (details.child).sensitive);
+        assert (pill.visible == space.is_low (1)); // Refresh updates the pill too.
+        details.close ();
+        yield nap (50);
+        assert (yield window.switch_account (2));
+        window.update_disk_space_warning (rpc, 2, low);
+        pill.clicked ();
+        yield nap (150);
+        details = window.get_visible_dialog () as StorageDetailsDialog;
+        assert (details != null);
+        var calls = (yield rpc.call ("test_calls", Params.begin ().build ())).get_array ();
+        var last = calls.get_object_element (calls.get_length () - 1);
+        assert (last.get_string_member ("method") == "get_blob_dir");
+        assert (last.get_array_member ("params").get_int_element (0) == 2);
+        details.close ();
+        yield nap (50);
+
+        var preferences = new SettingsDialog (window, rpc);
+        preferences.present (window);
+        var row = retry_widget (preferences, "Check Free Space on Startup");
+        var toggle = ephemeral_widget (row, typeof (Gtk.Switch)) as Gtk.Switch;
+        var threshold = retry_widget (preferences, "Warn Below (GB)") as Adw.SpinRow;
+        assert (toggle.active && threshold.value == 1);
+        window.update_disk_space_warning (rpc, 2, low);
+        uint checks = yield retry_call_count (rpc, "get_blob_dir");
+        toggle.active = false;
+        assert (!pill.visible && !threshold.sensitive);
+        yield nap (50);
+        assert ((yield retry_call_count (rpc, "get_blob_dir")) == checks);
+        threshold.value = 7;
+        var saved = new SettingsManager ();
+        saved.load ();
+        assert (!saved.check_disk_space && saved.low_disk_space_gb == 7);
+        preferences.close ();
+        yield nap (50);
+        // Disabled automatic checking must also survive reconnect/startup.
+        yield window.reconnect_rpc_server ();
+        assert ((yield retry_call_count (app.rpc, "get_blob_dir")) == 0);
+        assert (!pill.visible);
+        // Exercise a real startup warning without filling the test disk.
+        int threshold_gb = (int) (space.free_bytes / DiskSpace.BYTES_PER_GB) + 1;
+        if (threshold_gb <= 1024) {
+            window.settings.save_low_disk_space_gb (threshold_gb);
+            window.settings.save_check_disk_space (true);
+            yield window.reconnect_rpc_server ();
+            assert ((yield retry_call_count (app.rpc, "get_blob_dir")) == 1);
+            assert (pill.visible);
+        }
+        app.rpc.stop ();
+        window.destroy ();
+    } catch (Error e) { error ("Disk space UI: %s", e.message); }
+}
+
+private Gtk.Button? disk_warning_button (Gtk.Widget root) {
+    if (root.has_css_class ("low-disk-space")) return root as Gtk.Button;
+    for (var child = root.get_first_child (); child != null; child = child.get_next_sibling ()) {
+        var found = disk_warning_button (child);
+        if (found != null) return found;
+    }
+    return null;
+}
+
+public int run_disk_space_ui_test () {
+    assert (Environment.get_variable ("PARLA_TEST_CONFIG") == Environment.get_user_config_dir ());
+    DirUtils.create_with_parents (Environment.get_user_data_dir (), 0700);
+    Environment.set_variable ("PARLA_TEST_DISK_PATH", Environment.get_user_data_dir (), true);
+    Adw.init ();
+    Gtk.Settings.get_default ().gtk_enable_animations = false;
+    var app = new Dc.Application ();
+    app.flags |= ApplicationFlags.NON_UNIQUE;
+    try { app.register (null); }
+    catch (Error e) { error ("Register disk space test: %s", e.message); }
+    var window = new Dc.Window (app);
+    window.set_default_size (390, 640);
+    window.present ();
+    var loop = new MainLoop ();
+    check_disk_space_ui.begin (app, window, () => { loop.quit (); });
+    loop.run ();
     return 0;
 }

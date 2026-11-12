@@ -192,6 +192,7 @@ sources = files(
   'src/touch_text_menu.vala',
   'src/selectable_label.vala',
   'src/storage_quota.vala',
+  'src/disk_space.c',
   'src/profile_dialog.vala',
   'src/qr_code_view.vala',
   'src/pinned_messages_manager.vala',
@@ -417,8 +418,9 @@ test('link-preview', link_preview_test)
 
 storage_quota_test = executable(
   'storage-quota-test',
-  files('tests/storage_quota_test.vala', 'src/storage_quota.vala'),
+  files('tests/storage_quota_test.vala', 'src/storage_quota.vala', 'src/disk_space.c'),
   dependencies: [dependency('glib-2.0'), dependency('gobject-2.0')],
+  include_directories: src_inc,
   install: false,
 )
 

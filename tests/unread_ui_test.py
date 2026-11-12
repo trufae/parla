@@ -68,7 +68,7 @@ def fake_core():
             result = states[params[0]] == 16
         elif method == "test_incoming":
             states[params[0]] = 10
-        elif method not in ("get_config", "get_draft", "select_account",
+        elif method not in ("get_blob_dir", "get_config", "get_draft", "select_account",
                              "start_io_for_all_accounts", "batch_set_config"):
             raise AssertionError(f"Unexpected RPC: {method}")
         print(json.dumps(dict(jsonrpc="2.0", id=request["id"], result=result)), flush=True)

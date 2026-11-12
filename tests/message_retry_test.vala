@@ -21,7 +21,8 @@ public int run_fake_retry_server () {
         if (method == "get_message" || method == "resend_messages" || method == "send_reaction"
                 || method == "get_message_reactions"
                 || method == "search_messages" || method == "message_ids_to_search_results"
-                || method == "set_chat_ephemeral_timer" || method == "get_message_info_object")
+                || method == "set_chat_ephemeral_timer" || method == "get_message_info_object"
+                || method == "get_blob_dir")
             calls.add_object_element (request);
         if (method == fail) {
             fail = "";
@@ -162,6 +163,12 @@ public int run_fake_retry_server () {
                 msg.set_int_member ("state", 20);
                 msg.set_null_member ("error");
                 break;
+            case "get_blob_dir":
+                string? path = Environment.get_variable ("PARLA_TEST_DISK_PATH");
+                if (path != null) result.init_string (path);
+                break;
+            case "get_account_file_size": result.init_int (0); break;
+            case "get_connectivity_html": result.init_string (""); break;
             default:
                 error ("Unexpected retry fixture RPC: %s", method);
             }

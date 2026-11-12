@@ -1,5 +1,47 @@
 namespace Dc {
 
+    public class DiskSpace : Object {
+        public const uint64 BYTES_PER_GB = 1000000000;
+        public bool available { get; private set; }
+        public uint64 total_bytes { get; private set; }
+        public uint64 free_bytes { get; private set; }
+        public string? path { get; private set; }
+
+        [CCode (cheader_filename = "disk_space.h", cname = "parla_disk_space_query")]
+        private static extern bool query_filesystem (string path,
+            out uint64 total, out uint64 free);
+
+        public DiskSpace (bool available, uint64 total, uint64 free) {
+            this.available = available && total > 0;
+            total_bytes = total;
+            free_bytes = uint64.min (free, total);
+        }
+
+        public static DiskSpace query (string? path) {
+            uint64 total = 0, free = 0;
+            bool ok = path != null && path.length > 0
+                && query_filesystem (path, out total, out free);
+            var space = new DiskSpace (ok, total, free);
+            space.path = path;
+            return space;
+        }
+
+        public bool is_low (int threshold_gb) {
+            return available && threshold_gb > 0
+                && free_bytes < (uint64) threshold_gb * BYTES_PER_GB;
+        }
+
+        public double free_fraction () {
+            return available ? (double) free_bytes / (double) total_bytes : 0;
+        }
+
+        public string summary_text () {
+            return available
+                ? _("%s free of %s").printf (format_size (free_bytes), format_size (total_bytes))
+                : _("Free disk space unavailable");
+        }
+    }
+
     public class LocalStorageUsage : Object {
         public bool available { get; private set; }
         public int64 total_bytes { get; private set; }

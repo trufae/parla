@@ -1145,6 +1145,14 @@ namespace Dc {
                 font-size: 1.4em;
                 min-width: 36px;
             }
+            .low-disk-space {
+                background-color: @warning_bg_color;
+                color: @warning_fg_color;
+            }
+            .storage-disk-bar.storage-quota-warning progress {
+                background-color: @warning_bg_color;
+            }
+
             /* Floating "disconnected" pill over the chat area. */
             .connection-banner {
                 background-color: alpha(@view_fg_color, 0.80);

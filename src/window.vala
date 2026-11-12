@@ -123,6 +123,8 @@ namespace Dc {
         private Gtk.Revealer connection_banner;
         private Gtk.Label connection_banner_label;
         private Gtk.Button parla_update_button;
+        private Gtk.Button disk_space_button;
+        private uint disk_space_revision = 0;
 
         /* Profile avatar */
         private Gtk.MenuButton account_menu_button;
@@ -394,6 +396,9 @@ namespace Dc {
             });
             settings.font_changed.connect (() => {
                 queue_font_update ();
+            });
+            settings.disk_space_settings_changed.connect (() => {
+                refresh_disk_space_warning.begin ();
             });
             close_request.connect (on_close_request);
 
@@ -1045,6 +1050,17 @@ namespace Dc {
             status_banners.margin_start = 8;
             status_banners.margin_end = 8;
             status_banners.append (build_connection_banner ());
+            disk_space_button = new Gtk.Button ();
+            disk_space_button.add_css_class ("pill");
+            disk_space_button.add_css_class ("low-disk-space");
+            disk_space_button.halign = Gtk.Align.CENTER;
+            disk_space_button.visible = false;
+            disk_space_button.tooltip_text = _("Open Storage Details for the current profile");
+            disk_space_button.clicked.connect (() => {
+                if (!can_show_account_modal ()) return;
+                present_modal (new StorageDetailsDialog (rpc, rpc.account_id, settings));
+            });
+            status_banners.append (disk_space_button);
             parla_update_button = new Gtk.Button ();
             parla_update_button.add_css_class ("pill");
             parla_update_button.add_css_class ("suggested-action");
@@ -1076,6 +1092,33 @@ namespace Dc {
             scroll_ctrl.propagation_phase = Gtk.PropagationPhase.CAPTURE;
             scroll_ctrl.scroll.connect (on_chat_scroll);
             content_stack.add_controller (scroll_ctrl);
+        }
+
+        public void update_disk_space_warning (RpcClient client, int acct_id, DiskSpace space) {
+            if (client != rpc || acct_id != rpc.account_id) return;
+            // Invalidate a startup query if a newer dialog refresh has arrived.
+            disk_space_revision++;
+            disk_space_button.visible = settings.check_disk_space
+                && space.is_low (settings.low_disk_space_gb);
+            if (disk_space_button.visible) {
+                disk_space_button.label = _("Low disk space · %s free").printf (
+                    format_size (space.free_bytes));
+            }
+        }
+
+        private async void refresh_disk_space_warning () {
+            uint revision = ++disk_space_revision;
+            disk_space_button.visible = false;
+            if (!settings.check_disk_space || rpc == null
+                    || !rpc.is_connected || rpc.account_id <= 0) return;
+            var client = rpc;
+            int acct_id = client.account_id;
+            string? path = null;
+            try { path = yield client.get_blob_dir (acct_id); }
+            catch (Error e) { /* An unavailable path is not a full disk. */ }
+            if (revision != disk_space_revision || client != rpc
+                    || acct_id != rpc.account_id) return;
+            update_disk_space_warning (client, acct_id, DiskSpace.query (path));
         }
 
         private static void configure_phone_header (Adw.HeaderBar header) {
@@ -1183,6 +1226,7 @@ namespace Dc {
                                                     settings.default_account_addr,
                                                     out acct_desc, out acct_toast);
             if (acct_toast != null) show_toast (acct_toast);
+            refresh_disk_space_warning.begin ();
             if (rpc.account_id > 0) {
                 try {
                     yield apply_auto_download_limit ();
@@ -1611,6 +1655,8 @@ namespace Dc {
         public async void reconnect_rpc_server () {
             if (reconnecting_rpc || backup_busy) return;
             reconnecting_rpc = true;
+            disk_space_revision++;
+            disk_space_button.visible = false;
 
             var app = (Dc.Application) this.application;
             /* Close views while their old RPC object is still valid. */
@@ -3608,6 +3654,7 @@ namespace Dc {
 
         public async void reload_active_account () {
             reset_chat_ui ();
+            refresh_disk_space_warning.begin ();
             if (events != null) events.refresh_connectivity ();
 
             if (rpc.account_id <= 0) {
