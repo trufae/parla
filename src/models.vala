@@ -4,8 +4,8 @@ namespace Dc {
     public enum LeaveChoice { CANCEL, KEEP_HISTORY, DELETE_HISTORY }
 
     // Manual deletion is synced by core; it is not a device-only cache purge.
-    /* Long explanations shared by the delete/clear confirmations and the
-       storage page. Marked with N_ so xgettext picks them up from this const
+    /* Long explanations shared by the delete/clear confirmations.
+       Marked with N_ so xgettext picks them up from this const
        initializer; call sites wrap them with _() at display time. */
     public const string DELETE_FOR_ME_DESCRIPTION = N_(
         "Messages and their attachments, including in-chat apps, are removed from this history. Deletion is also requested on the server and linked devices using this profile. Other participants keep their copies.");

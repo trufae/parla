@@ -644,7 +644,6 @@ namespace Dc {
         private Gtk.Label scan_status_label;
         private Gtk.ListBox chat_usage_list;
         private Gtk.Button refresh_btn;
-        private Gtk.Button clear_cache_btn;
         private string? blob_dir = null;
         private int64 known_attachment_bytes = 0;
         private int64 unique_local_file_bytes = 0;
@@ -682,12 +681,6 @@ namespace Dc {
 
             local_total_label = dim_label (_("Scanning local files…"));
             content.append (local_total_label);
-
-            clear_cache_btn = new Gtk.Button.with_label (_("How to Free Up Space"));
-            clear_cache_btn.halign = Gtk.Align.START;
-            clear_cache_btn.tooltip_text = _("Explain what can be safely cleared");
-            clear_cache_btn.clicked.connect (show_clear_cache_info);
-            content.append (clear_cache_btn);
 
             content.append (new Gtk.Separator (Gtk.Orientation.HORIZONTAL));
 
@@ -946,16 +939,7 @@ namespace Dc {
             return row;
         }
 
-        private void show_clear_cache_info () {
-            var dialog = new Adw.AlertDialog (
-                _("Free Up Space"),
-                _("Delete messages or chats that are no longer needed. Unused attachment files are cleaned up automatically.")
-                + "\n\n" + _(DELETE_FOR_ME_DESCRIPTION)
-                + "\n\n" + _("Parla cannot currently remove only downloaded files while keeping the messages. Files saved elsewhere and backups must be removed separately.")
-            );
-            dialog.add_response ("ok", _("OK"));
-            dialog.present (this);
-        }
+
     }
 
     private static void apply_quota_progress (Gtk.ProgressBar progress,
