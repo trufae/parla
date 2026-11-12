@@ -42,6 +42,9 @@ namespace Dc {
             actions.append (share);
             import_button = new Gtk.Button.with_label (document.contacts.length == 1
                 ? _("Start Chat") : _("Import Contacts"));
+            // A standard vCard need not have an email address. Only importing
+            // a chat contact requires one; viewing, saving and sharing do not.
+            import_button.visible = document.has_email_contacts;
             import_button.add_css_class ("suggested-action");
             import_button.clicked.connect (() => import_contacts.begin ());
             actions.append (import_button);
@@ -75,6 +78,7 @@ namespace Dc {
         }
 
         private async void import_contacts () {
+            if (!document.has_email_contacts) return;
             import_button.sensitive = false;
             try {
                 var ids = yield rpc.import_vcard_contents (account_id, document.contents);

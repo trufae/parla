@@ -70,7 +70,7 @@ instructions are in [docs/website.md](docs/website.md).
 - **In-chat search** (Ctrl+F, Command+F on macOS) across the full history, with previous/next matches and scroll restoration.
 - **Sidebar search** finds chats and messages together, including archived conversations, in the selected profile.
 - **Save attachments** to disk from the message context menu.
-- **Contact cards (VCF)** — share contacts from the attachment menu, a contact's details, or your profile. Preview names and avatars in messages, the composer, and the Files gallery. Open a VCF with Parla or choose **New Chat → Open vCard…** to review and import contacts, start a chat, save the card, or share it. Delta Chat handles contact identity and public encryption keys; previewing a card does not import it. Files may contain multiple contacts and must include email addresses (up to 4 MiB per file).
+- **Contact cards (VCF)** — share contacts from the attachment menu, a contact's details, or your profile. Preview names and avatars in messages, the composer, and the Files gallery. Open a VCF with Parla or choose **New Chat → Open vCard…** to review, save, or share it. Standard vCards without email addresses are supported; cards with email addresses also offer import and chat actions. Right-click a card in a conversation or the Files gallery to save it or open it with the system app. Delta Chat handles contact identity and public encryption keys; previewing a card does not import it. Files may contain multiple contacts (up to 4 MiB per file).
 
 ### Chats
 

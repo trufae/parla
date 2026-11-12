@@ -2254,6 +2254,16 @@ namespace Dc {
             video_player.show (path, name);
         }
 
+        public async void open_attachment_with_system (string path) {
+            var launcher = new Gtk.FileLauncher (File.new_for_path (path));
+            try {
+                yield launcher.launch (this, null);
+            } catch (Error e) {
+                if (!is_dialog_dismissal (e))
+                    show_toast (_("Could not open file: ") + e.message);
+            }
+        }
+
         public async void save_attachment (string src_path, string? name) {
             var dialog = new Gtk.FileDialog ();
             dialog.initial_name = name ?? Path.get_basename (src_path);

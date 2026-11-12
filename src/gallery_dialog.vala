@@ -1248,16 +1248,7 @@ namespace Dc {
                     File.new_for_path (m.file_path));
                 return;
             }
-            var launcher = new Gtk.FileLauncher (
-                File.new_for_path (m.file_path));
-            launcher.launch.begin (app_window, null, (o, res) => {
-                try {
-                    launcher.launch.end (res);
-                } catch (Error e) {
-                    if (!is_dialog_dismissal (e))
-                        toast (_("Could not open file: ") + e.message);
-                }
-            });
+            app_window.open_attachment_with_system.begin (m.file_path);
         }
 
         /* ================================================================
@@ -1332,6 +1323,12 @@ namespace Dc {
                 save_btn.selected.connect (() =>
                     app_window.save_attachment.begin (fpath, fname));
                 vbox.append (save_btn);
+                if (m.is_vcard ()) {
+                    var open_btn = new PopoverButton (popover, _("Open with System App"));
+                    open_btn.selected.connect (() =>
+                        app_window.open_attachment_with_system.begin (fpath));
+                    vbox.append (open_btn);
+                }
             }
 
             int msg_id = m.id;

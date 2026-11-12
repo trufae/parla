@@ -19,10 +19,19 @@ public void test_vcard_metadata () {
     assert (!msg.is_vcard ());
     msg.file_path = "/tmp/card.vcf";
     assert (msg.is_vcard ());
+    msg = RpcParsers.parse_message (object_from_json (
+        """{"viewType":"File","fileName":"phone.vcf","vcardContact":{"addr":"","displayName":"Phone contact"}}"""));
+    assert (msg.is_vcard ());
+    assert (msg.vcard_contact.name == "Phone contact");
+    assert (msg.vcard_contact.address == "");
+    var unnamed = new VcardContact (object_from_json ("{}"));
+    assert (unnamed.name == "Contact card");
 }
 
 private const string VCARD_ALICE = "BEGIN:VCARD\r\nVERSION:4.0\r\nFN:Alice <&>\r\nEMAIL:alice@example.org\r\nEND:VCARD\r\n";
 private const string VCARD_BOB = "BEGIN:VCARD\r\nVERSION:3.0\r\nFN:Bob\\, Example\r\nEMAIL:bob@example.org\r\nEND:VCARD\r\n";
+private const string VCARD_PHONE = "BEGIN:VCARD\r\nVERSION:3.0\r\nFN:Phone Contact\r\nTEL;TYPE=CELL:+34 123 456 789\r\nEND:VCARD\r\n";
+private const string VCARD_NAME = "BEGIN:VCARD\r\nVERSION:4.0\r\nFN:Name Only\r\nEND:VCARD\r\n";
 
 /* Optional integration smoke against the installed backend. All accounts
    live in a fresh temporary directory, and no network I/O is started. */
@@ -40,9 +49,33 @@ private async void check_vcard_core (string server, string fixture, bool ui) {
         assert (doc.contacts.length == 2);
         assert (doc.contacts[0].name == "Alice <&>");
         assert (doc.contacts[1].address == "bob@example.org");
+        assert (doc.has_email_contacts);
+        var phone = yield VcardDocument.from_contents (rpc, VCARD_PHONE, "phone.vcf");
+        assert (phone.contacts.length == 1);
+        assert (phone.contacts[0].name == "Phone Contact");
+        assert (phone.contacts[0].address == "");
+        assert (!phone.has_email_contacts);
+        assert (phone.contents == VCARD_PHONE);
+        var name_only = yield VcardDocument.from_contents (rpc, VCARD_NAME);
+        assert (name_only.contacts.length == 1);
+        assert (name_only.contacts[0].name == "Name Only");
+        assert (!name_only.has_email_contacts);
+        var mixed = yield VcardDocument.from_contents (rpc, VCARD_PHONE + VCARD_ALICE + VCARD_NAME);
+        assert (mixed.contacts.length == 3);
+        assert (mixed.contacts[0].name == "Phone Contact");
+        assert (mixed.contacts[1].address == "alice@example.org");
+        assert (mixed.contacts[2].name == "Name Only");
+        assert (mixed.has_email_contacts);
         var after = yield rpc.get_contact_ids_for (source, null);
         assert (before.get_length () == after.get_length ());
 
+        // Saving/sharing a card must retain fields that core's preview metadata
+        // does not expose, including phone numbers.
+        snapshot = phone.write_temp ();
+        var saved_phone = yield VcardDocument.load (rpc, File.new_for_path (snapshot));
+        assert (saved_phone.contents == VCARD_PHONE);
+        assert (saved_phone.contacts[0].name == "Phone Contact");
+        FileUtils.unlink (snapshot);
         snapshot = doc.write_temp ();
         var loaded = yield VcardDocument.load (rpc, File.new_for_path (snapshot));
         assert (loaded.contents == doc.contents);
@@ -53,6 +86,9 @@ private async void check_vcard_core (string server, string fixture, bool ui) {
         assert (ids.get_length () == 2);
         var again = yield rpc.import_vcard_contents (source, loaded.contents);
         assert (again.get_int_element (0) == ids.get_int_element (0));
+        var mixed_ids = yield rpc.import_vcard_contents (source, mixed.contents);
+        assert (mixed_ids.get_length () == 1);
+        assert (mixed_ids.get_int_element (0) == ids.get_int_element (0));
         var other_contacts = yield rpc.get_contact_ids_for (destination, null);
         assert (other_contacts.get_length () == 0);
         string exported = yield rpc.make_vcard (source, { (int) ids.get_int_element (0) });
@@ -82,7 +118,7 @@ private async void check_vcard_core (string server, string fixture, bool ui) {
         draft.vcard_contact = roundtrip.contacts[0];
         assert (draft.is_vcard ());
 
-        foreach (string invalid in new string[] { "", "garbage", "BEGIN:VCARD\nVERSION:4.0\nFN:No address\nEND:VCARD" }) {
+        foreach (string invalid in new string[] { "", "garbage", "BEGIN:VCARD\nVERSION:4.0\nFN:Unfinished card" }) {
             bool rejected = false;
             try { yield VcardDocument.from_contents (rpc, invalid); }
             catch (Error e) { rejected = true; }
@@ -126,6 +162,17 @@ private async void check_vcard_core (string server, string fixture, bool ui) {
                 assert (preview.get_width () <= window.get_width ());
                 audio_screenshot (window, "vcard-" + style.to_string () + ".png");
                 window.destroy ();
+
+                var phone_msg = new Message ();
+                phone_msg.file_path = snapshot;
+                phone_msg.file_name = "phone.vcf";
+                phone_msg.vcard_contact = phone.contacts[0];
+                var phone_row = new MessageRow (phone_msg);
+                var phone_preview = search_widget (phone_row, typeof (VcardPreview));
+                assert (phone_preview != null);
+                assert (search_widget (phone_preview, typeof (Gtk.Label), "Phone Contact") != null);
+                assert (search_widget (phone_preview, typeof (Gtk.Label), "vCard contact") != null);
+                assert (phone_preview.tooltip_text == "Phone Contact");
             }
             var composer = new ComposeBar ();
             composer.configure_contacts (rpc, source);
@@ -140,10 +187,17 @@ private async void check_vcard_core (string server, string fixture, bool ui) {
             audio_screenshot (host, "vcard-composer.png");
             composer.set_pending_attachment (snapshot, "second.vcf");
             assert (search_widget (composer, typeof (VcardPreview)) == null);
+            composer.cancel_active_mode ();
+            FileUtils.set_contents (snapshot, VCARD_PHONE);
+            composer.set_pending_attachment (snapshot, "phone.vcf");
+            for (int i = 0; i < 100 && search_widget (composer, typeof (Gtk.Label), "Phone Contact") == null; i++)
+                yield nap (10);
+            assert (search_widget (composer, typeof (Gtk.Label), "Phone Contact") != null);
+            audio_screenshot (host, "vcard-phone-composer.png");
             composer.close ();
             host.destroy ();
         }
-        stdout.printf ("vCard parse, preview without import, multi-contact import, deduplication, account isolation, export, public-key preservation, invalid files%s: PASS\n", ui ? ", thumbnails and composer" : "");
+        stdout.printf ("vCard parse, cards without email, mixed cards, preview without import, multi-contact import, deduplication, account isolation, export, public-key preservation, invalid files%s: PASS\n", ui ? ", thumbnails and composer" : "");
         yield rpc.stop_gracefully ();
     } catch (Error e) {
         error ("vCard integration: %s", e.message);

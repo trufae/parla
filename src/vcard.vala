@@ -11,6 +11,7 @@ namespace Dc {
             address = json_str (obj, "addr") ?? "";
             name = json_str (obj, "displayName") ?? address;
             if (name.length == 0) name = address;
+            if (name.length == 0) name = _("Contact card");
             image_data = json_str (obj, "profileImage");
         }
 
@@ -34,6 +35,15 @@ namespace Dc {
         public string contents { get; private set; }
         public string filename { get; private set; default = "contact.vcf"; }
         public GenericArray<VcardContact> contacts = new GenericArray<VcardContact> ();
+
+        public bool has_email_contacts {
+            get {
+                for (uint i = 0; i < contacts.length; i++) {
+                    if (contacts[i].address.strip ().length > 0) return true;
+                }
+                return false;
+            }
+        }
 
         public static async VcardDocument load (RpcClient rpc, File file) throws Error {
             var stream = yield file.read_async ();
@@ -72,13 +82,12 @@ namespace Dc {
                     for (uint i = 0; i < items.get_length (); i++) {
                         var item = items.get_element (i);
                         if (item.get_node_type () == Json.NodeType.OBJECT) {
-                            var contact = new VcardContact (item.get_object ());
-                            if (contact.address.strip ().length > 0) doc.contacts.add (contact);
+                            doc.contacts.add (new VcardContact (item.get_object ()));
                         }
                     }
                 }
                 if (doc.contacts.length == 0)
-                    throw new IOError.INVALID_DATA (_("No supported contacts found. A vCard must contain an email address."));
+                    throw new IOError.INVALID_DATA (_("No contacts found in the vCard file."));
             } finally {
                 FileUtils.unlink (path);
             }
@@ -136,10 +145,11 @@ namespace Dc {
             name_label.label = contact.name;
             detail_label.label = count > 1
                 ? ngettext ("%u contact", "%u contacts", count).printf (count)
-                : contact.address;
+                : contact.address.strip ().length > 0 ? contact.address : _("vCard contact");
             avatar.text = contact.name;
             avatar.custom_image = contact.thumbnail ();
-            tooltip_text = contact.name + "\n" + contact.address;
+            tooltip_text = contact.address.strip ().length > 0
+                ? contact.name + "\n" + contact.address : contact.name;
         }
 
         public async void load (RpcClient rpc, string path) {

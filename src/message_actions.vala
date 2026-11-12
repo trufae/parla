@@ -85,14 +85,19 @@ namespace Dc {
             vbox.append (details_btn);
 
             /* Save file (for messages with attachments) */
-            if (msg != null && msg.file_path != null &&
-                msg.file_path.length > 0) {
+            if (msg != null && msg.has_local_file) {
                 string fpath = msg.file_path;
                 string? fname = msg.file_name;
                 var save_btn = new PopoverButton (popover, _("Save file"));
                 save_btn.selected.connect (() =>
                     window.save_attachment.begin (fpath, fname));
                 vbox.append (save_btn);
+                if (msg.is_vcard ()) {
+                    var open_btn = new PopoverButton (popover, _("Open with System App"));
+                    open_btn.selected.connect (() =>
+                        window.open_attachment_with_system.begin (fpath));
+                    vbox.append (open_btn);
+                }
             }
 
             /* Transcribe voice messages with the external whisper tool */

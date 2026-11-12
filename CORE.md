@@ -327,7 +327,10 @@ and the Files gallery. The composer supports sharing contacts, including self,
 and previews attached VCF files. Contact details and profiles expose vCard
 view/share/export. Desktop file opening and New Chat's Open vCard action load
 single- and multi-contact files into a viewer with explicit import/start-chat
-actions. Core's `parse_vcard`, `import_vcard_contents`, and `make_vcard` preserve
+actions for cards with email addresses. Standard cards without email addresses
+can also be previewed, saved, shared, or opened with the system handler from
+conversation and gallery context menus. Core's `parse_vcard`,
+`import_vcard_contents`, and `make_vcard` preserve
 keys and resolve identity/duplicates; preview alone never imports contacts.
 Import uses the reviewed snapshot, caps files at 4 MiB, and reports unsupported
 or malformed data. Imported contacts are opened by ID, rather than address.
