@@ -457,10 +457,10 @@ namespace Dc {
             }
 
             /* Attach to the list, not each row, so label link gestures keep
-               working. Selected text keeps GTK's native right-click menu. */
+               working. Selected text and links keep GTK's native menu. */
             var context_menu = new ContextMenuGestures (message_listview, settings);
             track_signal (context_menu, context_menu.requested.connect ((x, y, long_press) => {
-                if (long_press ? selection_mode : pointer_on_selected_text (x, y))
+                if (long_press ? selection_mode : pointer_has_text_menu (x, y))
                     return false;
                 var row = pick_message_row (x, y);
                 if (row == null) return false;
@@ -2935,12 +2935,18 @@ namespace Dc {
             });
         }
 
-        private bool pointer_on_selected_text (double x, double y) {
+        private bool pointer_has_text_menu (double x, double y) {
             return pick_ancestor_matches (x, y, (w) => {
                 var lbl = w as Gtk.Label;
+                if (lbl == null) return false;
                 int start, end;
-                return lbl != null && lbl.selectable &&
-                    lbl.get_selection_bounds (out start, out end);
+                if (lbl.selectable && lbl.get_selection_bounds (out start, out end))
+                    return true;
+                // GTK's link hit testing sets the pointer cursor. Let the
+                // label handle the click so Copy Link uses that exact link;
+                // get_current_uri() can still refer to the keyboard cursor.
+                var cursor = lbl.get_cursor ();
+                return cursor != null && cursor.get_name () == "pointer";
             });
         }
 
