@@ -51,6 +51,26 @@ private void chat_scope () {
     assert (!MessageDeletion.can_delete_in_chat (new Json.Object ()));
 }
 
+private void retention_dates () {
+    var message = parse ("""{"kind":"message","chatId":100,"timestamp":1000}""");
+    assert (MessageDeletion.is_older_than (message, 100, 1001));
+    assert (!MessageDeletion.is_older_than (message, 100, 1000));
+    assert (!MessageDeletion.is_older_than (message, 100, 999));
+    assert (!MessageDeletion.is_older_than (message, 101, 1001));
+    foreach (string field in new string[] { "receivedTimestamp", "sortTimestamp" }) {
+        message.set_int_member (field, 1001);
+        assert (!MessageDeletion.is_older_than (message, 100, 1001));
+        message.set_int_member (field, 0);
+        assert (MessageDeletion.is_older_than (message, 100, 1001));
+    }
+    message.set_int_member ("timestamp", 0);
+    assert (!MessageDeletion.is_older_than (message, 100, 1001));
+    message.remove_member ("timestamp");
+    assert (!MessageDeletion.is_older_than (message, 100, 1001));
+    assert (!MessageDeletion.is_older_than (parse ("""{"kind":"loadingError"}"""), 100, 1001));
+    assert (!MessageDeletion.is_older_than (null, 100, 1001));
+}
+
 private void chat_actions () {
     foreach (string type in new string[] { "Group", "InBroadcast" }) {
         assert (ChatActions.can_leave (type, true, true, false));
@@ -79,6 +99,7 @@ int main (string[] args) {
     Test.init (ref args);
     Test.add_func ("/message-deletion/selection-scope", selection_scope);
     Test.add_func ("/message-deletion/chat-scope", chat_scope);
+    Test.add_func ("/message-deletion/retention-dates", retention_dates);
     Test.add_func ("/chat-actions/permissions", chat_actions);
     return Test.run ();
 }

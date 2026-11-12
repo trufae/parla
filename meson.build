@@ -563,7 +563,7 @@ core_compat_test = executable(
         'tests/long_press_ui_test.vala',
         'tests/touch_scroll_ui_test.vala',
         'tests/audio_player_ui_test.vala', 'tests/language_test.vala',
-        'tests/account_backup_test.vala',
+        'tests/account_backup_test.vala', 'tests/storage_cleanup_test.vala',
         'tests/compose_scroll_ui_test.vala', 'tests/image_preview_ui_test.vala',
         'tests/video_thumbnail_ui_test.vala', 'tests/video_player_ui_test.vala',
         'tests/touch_text_menu_ui_test.vala',

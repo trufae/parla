@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: parla\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-12 11:52+0100\n"
+"POT-Creation-Date: 2026-11-12 11:59+0100\n"
 "PO-Revision-Date: 2026-10-19 19:30+0200\n"
 "Last-Translator: Heimen Stoffels <vistausss@fastmail.com>\n"
 "Language-Team: \n"
@@ -112,9 +112,9 @@ msgstr "Met deze code kan geen profiel worden aangemaakt"
 #: src/conversation_view.vala:1063 src/full_message_dialog.vala:83
 #: src/gallery_dialog.vala:277 src/gallery_dialog.vala:1479 src/models.vala:107
 #: src/models.vala:122 src/models.vala:160 src/models.vala:246
-#: src/settings_dialog.vala:999 src/settings_dialog.vala:1004
-#: src/sticker_manager_dialog.vala:127 src/window.vala:2299
-#: src/window.vala:3430
+#: src/profile_dialog.vala:976 src/settings_dialog.vala:999
+#: src/settings_dialog.vala:1004 src/sticker_manager_dialog.vala:127
+#: src/window.vala:2299 src/window.vala:3430
 msgid "Cancel"
 msgstr "Annuleren"
 
@@ -415,8 +415,8 @@ msgid "Use Restored Accounts"
 msgstr "Herstelde accounts gebruiken"
 
 #: src/backup_dialog.vala:70 src/backup_dialog.vala:112
-#: src/profile_dialog.vala:58 src/settings_dialog.vala:1000
-#: src/settings_dialog.vala:1044
+#: src/profile_dialog.vala:58 src/profile_dialog.vala:994
+#: src/settings_dialog.vala:1000 src/settings_dialog.vala:1044
 msgid "Close"
 msgstr "Sluiten"
 
@@ -456,7 +456,9 @@ msgstr "Kies een lokaal bestand of een aangesloten usb-stick"
 msgid ""
 "Encrypted backups require libzip with AES support and a Parla build with "
 "backups enabled."
-msgstr "Versleutelde back-ups vereisen libzip met AES-ondersteuning en een Parla-build met back-ups ingeschakeld."
+msgstr ""
+"Versleutelde back-ups vereisen libzip met AES-ondersteuning en een Parla-"
+"build met back-ups ingeschakeld."
 
 #: src/backup_dialog.vala:120
 msgid "Choose a backup file first"
@@ -627,7 +629,7 @@ msgstr "Direct gesprek"
 msgid " · End-to-end encrypted"
 msgstr " · eind-tot-eind versleuteld"
 
-#: src/chat_info_dialog.vala:300 src/profile_dialog.vala:972
+#: src/chat_info_dialog.vala:300 src/profile_dialog.vala:1043
 msgid "Invite Link"
 msgstr "Uitnodigingslink"
 
@@ -699,6 +701,7 @@ msgid "Hide this chat and new messages; keep the history"
 msgstr "Verberg dit gesprek en nieuwe berichten, maar bewaar de geschiedenis"
 
 #: src/chat_info_dialog.vala:435 src/chat_row.vala:321
+#: src/profile_dialog.vala:925
 msgid "Clear Chat…"
 msgstr "Gesprek wissen…"
 
@@ -870,6 +873,7 @@ msgid "No sent messages can be deleted for everyone"
 msgstr "Reeds verstuurde berichten kunnen niet worden gewist"
 
 #: src/chat_info_dialog.vala:759 src/chat_row.vala:453
+#: src/profile_dialog.vala:992
 msgid "No messages to clear"
 msgstr "Er zijn geen te wissen berichten"
 
@@ -1072,7 +1076,7 @@ msgstr "Het gesprek is verlaten en gewist"
 msgid "Chat cleared for this profile"
 msgstr "Het gesprek is gewist"
 
-#: src/chat_row.vala:515
+#: src/chat_row.vala:515 src/profile_dialog.vala:1005
 msgid "Clear failed: "
 msgstr "Het wissen is mislukt: "
 
@@ -1623,7 +1627,7 @@ msgstr "Bewerken mislukt: "
 msgid "Apps and Media"
 msgstr "Apps en media"
 
-#: src/gallery_dialog.vala:139 src/models.vala:477
+#: src/gallery_dialog.vala:139 src/models.vala:486
 msgid "Images"
 msgstr "Afbeeldingen"
 
@@ -1800,7 +1804,7 @@ msgstr "Het bestand kan niet worden geopend: "
 msgid "Open Link"
 msgstr "Link openen"
 
-#: src/gallery_dialog.vala:1298 src/profile_dialog.vala:990
+#: src/gallery_dialog.vala:1298 src/profile_dialog.vala:1061
 msgid "Copy Link"
 msgstr "Linkadres kopiëren"
 
@@ -2500,7 +2504,7 @@ msgstr ""
 msgid "Delete Sent Messages for Everyone?"
 msgstr "Wil je verstuurde berichten voor iedereen verwijderen?"
 
-#: src/models.vala:208
+#: src/models.vala:208 src/profile_dialog.vala:958
 msgid "Clear Chat?"
 msgstr "Gesprek wissen?"
 
@@ -2612,6 +2616,10 @@ msgstr "Contactpersoon blokkeren"
 msgid "Block Chat"
 msgstr "Gesprek blokkeren"
 
+#: src/models.vala:468
+msgid "Could not load messages to clear"
+msgstr "Kon de te wissen berichten niet laden"
+
 #: src/new_group_dialog.vala:20 src/window.vala:3322
 msgid "New Channel"
 msgstr "Nieuw kanaal"
@@ -2722,7 +2730,7 @@ msgstr "De aac-encodering is mislukt"
 msgid "Profile"
 msgstr "Profiel"
 
-#: src/profile_dialog.vala:108 src/profile_dialog.vala:972
+#: src/profile_dialog.vala:108 src/profile_dialog.vala:1043
 msgid "Invite Code"
 msgstr "Uitnodigingscode"
 
@@ -2877,7 +2885,7 @@ msgstr "Bezig met ophalen van serverlimieten…"
 msgid "Refresh storage and connectivity"
 msgstr "Opslag en verbinding herladen"
 
-#: src/profile_dialog.vala:415 src/profile_dialog.vala:656
+#: src/profile_dialog.vala:415 src/profile_dialog.vala:658
 msgid "Storage Details"
 msgstr "Opslaginformatie"
 
@@ -2957,168 +2965,193 @@ msgstr "Profiel verwijderen"
 msgid "Select Avatar"
 msgstr "Kies een profielfoto"
 
-#: src/profile_dialog.vala:664
+#: src/profile_dialog.vala:666
 msgid "Rescan storage usage"
 msgstr "Opslaginformatie herladen"
 
-#: src/profile_dialog.vala:671
+#: src/profile_dialog.vala:673
 msgid "Server Quota"
 msgstr "Serverlimieten"
 
-#: src/profile_dialog.vala:677
+#: src/profile_dialog.vala:679
 msgid "Loading quota…"
 msgstr "Bezig met laden van limieten…"
 
-#: src/profile_dialog.vala:680
+#: src/profile_dialog.vala:682
 msgid "Local Copies"
 msgstr "Lokale kopieën"
 
-#: src/profile_dialog.vala:682 src/profile_dialog.vala:715
+#: src/profile_dialog.vala:684 src/profile_dialog.vala:719
 msgid "Scanning local files…"
 msgstr "Bezig met doorzoeken van lokale bestanden…"
 
-#: src/profile_dialog.vala:687
+#: src/profile_dialog.vala:689
 msgid "Chats by Storage Size"
 msgstr "Gesprekken per opslagomvang"
 
-#: src/profile_dialog.vala:689
+#: src/profile_dialog.vala:691
 msgid "Preparing scan…"
 msgstr "Bezig met voorbereiden…"
 
-#: src/profile_dialog.vala:714
+#: src/profile_dialog.vala:718
 msgid "Scanning chats…"
 msgstr "Bezig met doorzoeken…"
 
-#: src/profile_dialog.vala:736
+#: src/profile_dialog.vala:740
 msgid "Server quota unavailable: "
 msgstr "De serverlimieten zijn niet beschikbaar: "
 
-#: src/profile_dialog.vala:744
+#: src/profile_dialog.vala:748
 #, c-format
 msgid "%s downloaded message files · %s known attachment payload"
 msgstr "%s opgehaalde berichtbestanden · %s bekende bijlagen"
 
-#: src/profile_dialog.vala:748
+#: src/profile_dialog.vala:752
 #, c-format
 msgid "%s local profile data · %s"
 msgstr "%s lokale profielgegevens · %s"
 
-#: src/profile_dialog.vala:753
+#: src/profile_dialog.vala:757
 msgid "No downloaded files found in chats"
 msgstr "Er zijn geen gedownloade bestanden aangetroffen"
 
-#: src/profile_dialog.vala:754
+#: src/profile_dialog.vala:758
 #, c-format
 msgid "%d chat with local or attached files"
 msgid_plural "%d chats with local or attached files"
 msgstr[0] "%d gesprek met lokaal of bijgevoegd bestand"
 msgstr[1] "%d gesprek met lokale of bijgevoegde bestanden"
 
-#: src/profile_dialog.vala:758
+#: src/profile_dialog.vala:762
 msgid "Storage scan failed: "
 msgstr "Het doorzoeken is mislukt: "
 
-#: src/profile_dialog.vala:777
+#: src/profile_dialog.vala:782
 #, c-format
 msgid "Scanning %s…"
 msgstr "Bezig met doorzoeken van %s…"
 
-#: src/profile_dialog.vala:796
+#: src/profile_dialog.vala:801
 #, c-format
 msgid "Chat #%d"
 msgstr "Gesprek #%d"
 
-#: src/profile_dialog.vala:923
+#: src/profile_dialog.vala:932
 #, c-format
 msgid "%s local · %s attached · %s · %s"
 msgstr "%s lokaal · %s bijgevoegd · %s · %s"
 
-#: src/profile_dialog.vala:926
+#: src/profile_dialog.vala:935
 #, c-format
 msgid "%d file"
 msgid_plural "%d files"
 msgstr[0] "%d bestand"
 msgstr[1] "%d bestanden"
 
-#: src/profile_dialog.vala:928
+#: src/profile_dialog.vala:937
 #, c-format
 msgid "%d message"
 msgid_plural "%d messages"
 msgstr[0] "%d bericht"
 msgstr[1] "%d berichten"
 
+#: src/profile_dialog.vala:959
+#, c-format
+msgid ""
+"Choose which messages to clear from “%s”. You can review the number of "
+"messages before deleting them."
+msgstr ""
+"Kies welke berichten je uit ‘%s’ wilt wissen. Je kunt het aantal berichten "
+"controleren voordat je ze verwijdert."
+
+#: src/profile_dialog.vala:961
+msgid "Keep recent messages"
+msgstr "Recente berichten behouden"
+
+#: src/profile_dialog.vala:965 src/profile_dialog.vala:970
+msgid "Days to keep"
+msgstr "Aantal dagen behouden"
+
 #: src/profile_dialog.vala:977
+msgid "Review Messages"
+msgstr "Berichten controleren"
+
+#: src/profile_dialog.vala:993
+msgid "No messages match the selected age range."
+msgstr "Er zijn geen berichten binnen de geselecteerde periode."
+
+#: src/profile_dialog.vala:1048
 msgid "Preparing invite code…"
 msgstr "Bezig met voorbereiden van code…"
 
-#: src/profile_dialog.vala:984 src/profile_dialog.vala:1045
+#: src/profile_dialog.vala:1055 src/profile_dialog.vala:1116
 msgid "Deactivate Link"
 msgstr "Link deactiveren"
 
-#: src/profile_dialog.vala:1010 src/profile_dialog.vala:1049
+#: src/profile_dialog.vala:1081 src/profile_dialog.vala:1120
 msgid "Share this QR code or invite link to let others join."
 msgstr ""
 "Deel deze link of QR-code die anderen kunnen gebruiken om deel te nemen."
 
-#: src/profile_dialog.vala:1011
+#: src/profile_dialog.vala:1082
 msgid "Share this QR code with another user, or copy the invite link below."
 msgstr ""
 "Deel deze QR-code met een andere gebruiker of kopieer onderstaande "
 "uitnodigingslink."
 
-#: src/profile_dialog.vala:1013
+#: src/profile_dialog.vala:1084
 msgid "Invite link is ready, but the QR image could not be rendered: "
 msgstr ""
 "De uitnodigingslink is gereed, maar de QR-code kan niet worden getoond: "
 
-#: src/profile_dialog.vala:1051
+#: src/profile_dialog.vala:1122
 msgid "Activate Link"
 msgstr "Link activeren"
 
-#: src/profile_dialog.vala:1055
+#: src/profile_dialog.vala:1126
 msgid "This invite link is deactivated — activate it to let others join."
 msgstr ""
 "De uitnodigingslink is gedeactiveerd — activeer deze om anderen te laten "
 "deelnemen."
 
-#: src/profile_dialog.vala:1064
+#: src/profile_dialog.vala:1135
 msgid "Deactivating…"
 msgstr "Bezig met deactiveren…"
 
-#: src/profile_dialog.vala:1064
+#: src/profile_dialog.vala:1135
 msgid "Activating…"
 msgstr "Bezig met activeren…"
 
-#: src/profile_dialog.vala:1071
+#: src/profile_dialog.vala:1142
 msgid "Could not update the invite link: "
 msgstr "De link kan niet worden bijgewerkt: "
 
-#: src/profile_dialog.vala:1080
+#: src/profile_dialog.vala:1151
 msgid "Invite code creation failed: "
 msgstr "Het aanmaken van de code is mislukt: "
 
-#: src/profile_dialog.vala:1097
+#: src/profile_dialog.vala:1168
 msgid "Add Second Device"
 msgstr "Secundair apparaat toevoegen"
 
-#: src/profile_dialog.vala:1102
+#: src/profile_dialog.vala:1173
 msgid "Preparing account…"
 msgstr "Bezig met voorbereiden van account…"
 
-#: src/profile_dialog.vala:1104
+#: src/profile_dialog.vala:1175
 msgid "Copy Text"
 msgstr "Tekst kopiëren"
 
-#: src/profile_dialog.vala:1138
+#: src/profile_dialog.vala:1209
 msgid "Scan this QR code with the second device, or copy the text below."
 msgstr ""
 "Scan deze QR-rode met een secundair apparaat of kopieer onderstaande tekst."
 
-#: src/profile_dialog.vala:1139
+#: src/profile_dialog.vala:1210
 msgid "QR text is ready, but the image could not be rendered: "
 msgstr "De QR-tekst is gereed, maar de afbeelding kan niet worden getoond: "
 
-#: src/profile_dialog.vala:1143
+#: src/profile_dialog.vala:1214
 msgid "Second-device setup failed: "
 msgstr "Het instellen is mislukt: "
 
@@ -3752,11 +3785,14 @@ msgstr "Toegankelijkheidsondersteuning is uitgeschakeld in deze build"
 msgid ""
 "Allow screen readers and other assistive tools to access Parla. Requires a "
 "restart."
-msgstr "Geef schermlezers en andere hulpmiddelen toegang tot Parla. Opnieuw opstarten is vereist."
+msgstr ""
+"Geef schermlezers en andere hulpmiddelen toegang tot Parla. Opnieuw "
+"opstarten is vereist."
 
 #: src/settings_dialog.vala:1043
 msgid "Close Parla, then reopen it to apply accessibility changes"
-msgstr "Sluit Parla en open het opnieuw om toegankelijkheidswijzigingen toe te passen"
+msgstr ""
+"Sluit Parla en open het opnieuw om toegankelijkheidswijzigingen toe te passen"
 
 #: src/settings_dialog.vala:1046
 msgid "Restart Parla to apply accessibility changes"
@@ -3957,7 +3993,8 @@ msgstr "Automatisch controleren na opstarten"
 
 #: src/settings_dialog.vala:1195
 msgid "Notify when a newer Parla or Chatmail Core version is available"
-msgstr "Melden wanneer een nieuwere versie van Parla of Chatmail Core beschikbaar is"
+msgstr ""
+"Melden wanneer een nieuwere versie van Parla of Chatmail Core beschikbaar is"
 
 #: src/settings_dialog.vala:1207
 msgid "Profile Storage Folder"

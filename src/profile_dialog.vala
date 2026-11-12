@@ -644,6 +644,8 @@ namespace Dc {
         private Gtk.Label scan_status_label;
         private Gtk.ListBox chat_usage_list;
         private Gtk.Button refresh_btn;
+        private bool cleanup_busy = false;
+        private bool closed_dialog = false;
         private string? blob_dir = null;
         private int64 known_attachment_bytes = 0;
         private int64 unique_local_file_bytes = 0;
@@ -702,11 +704,13 @@ namespace Dc {
 
             this.child = box;
             install_escape_close (this);
+            this.closed.connect (() => { closed_dialog = true; });
             load_details.begin ();
         }
 
         private async void load_details () {
             refresh_btn.sensitive = false;
+            chat_usage_list.sensitive = false;
             clear_listbox (chat_usage_list);
             known_attachment_bytes = 0;
             unique_local_file_bytes = 0;
@@ -758,7 +762,8 @@ namespace Dc {
                 scan_status_label.label = _("Storage scan failed: ") + e.message;
             }
 
-            refresh_btn.sensitive = true;
+            refresh_btn.sensitive = !cleanup_busy;
+            chat_usage_list.sensitive = !cleanup_busy;
         }
 
         private async ChatStorageUsage[] scan_all_chats () throws Error {
@@ -917,6 +922,10 @@ namespace Dc {
             amount.add_css_class ("numeric");
             amount.halign = Gtk.Align.END;
             top.append (amount);
+            var clear_button = new Gtk.Button.with_label (_("Clear Chat…"));
+            clear_button.valign = Gtk.Align.CENTER;
+            clear_button.clicked.connect (() => { clear_chat.begin (usage); });
+            top.append (clear_button);
             box.append (top);
 
             var subtitle = dim_label (
@@ -939,6 +948,68 @@ namespace Dc {
             return row;
         }
 
+        private async void clear_chat (ChatStorageUsage usage) {
+            if (cleanup_busy || closed_dialog) return;
+            cleanup_busy = true;
+            refresh_btn.sensitive = false;
+            chat_usage_list.sensitive = false;
+            bool deletion_started = false;
+            try {
+                var options = new Adw.AlertDialog (_("Clear Chat?"),
+                    _("Choose which messages to clear from “%s”. You can review the number of messages before deleting them.").printf (usage.name));
+                var controls = new Gtk.Box (Gtk.Orientation.VERTICAL, 8);
+                var keep_recent = new Gtk.CheckButton.with_label (_("Keep recent messages"));
+                keep_recent.active = true;
+                controls.append (keep_recent);
+                var days_row = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 8);
+                days_row.append (dim_label (_("Days to keep"), true));
+                var days = new Gtk.SpinButton.with_range (1, 36500, 1);
+                days.value = 30;
+                days.numeric = true;
+#if A11Y
+                days.update_property (Gtk.AccessibleProperty.LABEL, _("Days to keep"), -1);
+#endif
+                days_row.append (days);
+                controls.append (days_row);
+                keep_recent.toggled.connect (() => { days_row.sensitive = keep_recent.active; });
+                options.extra_child = controls;
+                options.add_response ("cancel", _("Cancel"));
+                options.add_response ("review", _("Review Messages"));
+                options.default_response = "cancel";
+                options.close_response = "cancel";
+                if ((yield options.choose (this, null)) != "review" || closed_dialog) return;
+                days.update ();
+                // Zero means "all history" to the selector. A very long
+                // retention period must keep history, not wrap into that mode.
+                int64 cutoff = keep_recent.active
+                    ? int64.max (1, new DateTime.now_utc ().to_unix ()
+                        - (int64) days.get_value_as_int () * 86400)
+                    : 0;
+                var ids = yield chat_message_ids_for_clear (
+                    rpc, account_id, usage.chat_id, false, cutoff);
+                if (closed_dialog) return;
+                if (ids.length == 0) {
+                    var empty = new Adw.AlertDialog (_("No messages to clear"),
+                        _("No messages match the selected age range."));
+                    empty.add_response ("close", _("Close"));
+                    empty.present (this);
+                    return;
+                }
+                if (!(yield confirm_chat_clear (this, usage.name, false, ids.length))
+                        || closed_dialog) return;
+                deletion_started = true;
+                // The storage dialog can belong to a background profile.
+                // Never resolve this request through rpc.account_id.
+                yield rpc.delete_messages_for (account_id, ids);
+            } catch (Error e) {
+                if (!closed_dialog) show_error (this, _("Clear failed: ") + e.message);
+            } finally {
+                if (deletion_started && !closed_dialog) yield load_details ();
+                cleanup_busy = false;
+                refresh_btn.sensitive = true;
+                chat_usage_list.sensitive = true;
+            }
+        }
 
     }
 

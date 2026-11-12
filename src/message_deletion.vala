@@ -2,6 +2,24 @@ namespace Dc {
 
     // Match core's delete_msgs_ext restrictions before offering a remote delete.
     public class MessageDeletion : Object {
+        // Keep unknown dates and messages received/sorted recently even when
+        // their sender supplied an old timestamp (for example imported mail).
+        public static bool is_older_than (Json.Object? message, int chat_id,
+                                          int64 cutoff) {
+            if (message == null || !message.has_member ("chatId")
+                    || message.get_int_member ("chatId") != chat_id
+                    || !message.has_member ("timestamp")) return false;
+            if (message.has_member ("kind")
+                    && message.get_string_member ("kind") != "message") return false;
+            int64 timestamp = message.get_int_member ("timestamp");
+            if (timestamp <= 0 || timestamp >= cutoff) return false;
+            foreach (string field in new string[] { "receivedTimestamp", "sortTimestamp" }) {
+                if (message.has_member (field)
+                        && message.get_int_member (field) >= cutoff) return false;
+            }
+            return true;
+        }
+
         public static bool can_delete_for_everyone (Json.Object? message) {
             if (message == null || !message.has_member ("sender") || !message.has_member ("isInfo")
                     || !message.has_member ("showPadlock")) return false;

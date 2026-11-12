@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: parla\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-12 11:52+0100\n"
+"POT-Creation-Date: 2026-11-12 11:59+0100\n"
 "PO-Revision-Date: 2026-10-19 19:30+0200\n"
 "Last-Translator: \n"
 "Language-Team: Catalan\n"
@@ -110,9 +110,9 @@ msgstr "Aquest codi no permet crear un perfil"
 #: src/conversation_view.vala:1063 src/full_message_dialog.vala:83
 #: src/gallery_dialog.vala:277 src/gallery_dialog.vala:1479 src/models.vala:107
 #: src/models.vala:122 src/models.vala:160 src/models.vala:246
-#: src/settings_dialog.vala:999 src/settings_dialog.vala:1004
-#: src/sticker_manager_dialog.vala:127 src/window.vala:2299
-#: src/window.vala:3430
+#: src/profile_dialog.vala:976 src/settings_dialog.vala:999
+#: src/settings_dialog.vala:1004 src/sticker_manager_dialog.vala:127
+#: src/window.vala:2299 src/window.vala:3430
 msgid "Cancel"
 msgstr "Cancel·la"
 
@@ -415,8 +415,8 @@ msgid "Use Restored Accounts"
 msgstr "Fes servir els comptes restaurats"
 
 #: src/backup_dialog.vala:70 src/backup_dialog.vala:112
-#: src/profile_dialog.vala:58 src/settings_dialog.vala:1000
-#: src/settings_dialog.vala:1044
+#: src/profile_dialog.vala:58 src/profile_dialog.vala:994
+#: src/settings_dialog.vala:1000 src/settings_dialog.vala:1044
 msgid "Close"
 msgstr "Tanca"
 
@@ -456,7 +456,9 @@ msgstr "Tria un fitxer local o una memòria USB connectada"
 msgid ""
 "Encrypted backups require libzip with AES support and a Parla build with "
 "backups enabled."
-msgstr "Les còpies de seguretat xifrades requereixen la libzip amb suport d'AES i una compilació del Parla amb les còpies de seguretat habilitades."
+msgstr ""
+"Les còpies de seguretat xifrades requereixen la libzip amb suport d'AES i "
+"una compilació del Parla amb les còpies de seguretat habilitades."
 
 #: src/backup_dialog.vala:120
 msgid "Choose a backup file first"
@@ -627,7 +629,7 @@ msgstr "Xat directe"
 msgid " · End-to-end encrypted"
 msgstr " · Xifrat d'extrem a extrem"
 
-#: src/chat_info_dialog.vala:300 src/profile_dialog.vala:972
+#: src/chat_info_dialog.vala:300 src/profile_dialog.vala:1043
 msgid "Invite Link"
 msgstr "Enllaç d'invitació"
 
@@ -699,6 +701,7 @@ msgid "Hide this chat and new messages; keep the history"
 msgstr "Amaga aquest xat i els missatges nous; conserva l'historial"
 
 #: src/chat_info_dialog.vala:435 src/chat_row.vala:321
+#: src/profile_dialog.vala:925
 msgid "Clear Chat…"
 msgstr "Buida el xat…"
 
@@ -870,6 +873,7 @@ msgid "No sent messages can be deleted for everyone"
 msgstr "No es pot suprimir per a tothom cap missatge enviat"
 
 #: src/chat_info_dialog.vala:759 src/chat_row.vala:453
+#: src/profile_dialog.vala:992
 msgid "No messages to clear"
 msgstr "No hi ha missatges per buidar"
 
@@ -1071,7 +1075,7 @@ msgstr "Has sortit del xat i l'has suprimit"
 msgid "Chat cleared for this profile"
 msgstr "Xat buidat per a aquest perfil"
 
-#: src/chat_row.vala:515
+#: src/chat_row.vala:515 src/profile_dialog.vala:1005
 msgid "Clear failed: "
 msgstr "No s'ha pogut buidar: "
 
@@ -1623,7 +1627,7 @@ msgstr "L'edició ha fallat: "
 msgid "Apps and Media"
 msgstr "Aplicacions i multimèdia"
 
-#: src/gallery_dialog.vala:139 src/models.vala:477
+#: src/gallery_dialog.vala:139 src/models.vala:486
 msgid "Images"
 msgstr "Imatges"
 
@@ -1802,7 +1806,7 @@ msgstr "No s'ha pogut obrir el fitxer: "
 msgid "Open Link"
 msgstr "Obre l'enllaç"
 
-#: src/gallery_dialog.vala:1298 src/profile_dialog.vala:990
+#: src/gallery_dialog.vala:1298 src/profile_dialog.vala:1061
 msgid "Copy Link"
 msgstr "Copia l'enllaç"
 
@@ -2504,7 +2508,7 @@ msgstr ""
 msgid "Delete Sent Messages for Everyone?"
 msgstr "Vols suprimir per a tothom els missatges enviats?"
 
-#: src/models.vala:208
+#: src/models.vala:208 src/profile_dialog.vala:958
 msgid "Clear Chat?"
 msgstr "Vols buidar el xat?"
 
@@ -2615,6 +2619,10 @@ msgstr "Bloqueja el contacte"
 #: src/models.vala:270
 msgid "Block Chat"
 msgstr "Bloqueja el xat"
+
+#: src/models.vala:468
+msgid "Could not load messages to clear"
+msgstr "No s'han pogut carregar els missatges per suprimir"
 
 #: src/new_group_dialog.vala:20 src/window.vala:3322
 msgid "New Channel"
@@ -2727,7 +2735,7 @@ msgstr "El codificador AAC ha fallat"
 msgid "Profile"
 msgstr "Perfil"
 
-#: src/profile_dialog.vala:108 src/profile_dialog.vala:972
+#: src/profile_dialog.vala:108 src/profile_dialog.vala:1043
 msgid "Invite Code"
 msgstr "Codi d'invitació"
 
@@ -2882,7 +2890,7 @@ msgstr "S'està carregant la quota del servidor…"
 msgid "Refresh storage and connectivity"
 msgstr "Actualitza l'emmagatzematge i la connexió"
 
-#: src/profile_dialog.vala:415 src/profile_dialog.vala:656
+#: src/profile_dialog.vala:415 src/profile_dialog.vala:658
 msgid "Storage Details"
 msgstr "Detalls de l'emmagatzematge"
 
@@ -2962,171 +2970,196 @@ msgstr "Suprimeix el perfil"
 msgid "Select Avatar"
 msgstr "Selecciona un avatar"
 
-#: src/profile_dialog.vala:664
+#: src/profile_dialog.vala:666
 msgid "Rescan storage usage"
 msgstr "Torna a analitzar l'ús de l'emmagatzematge"
 
-#: src/profile_dialog.vala:671
+#: src/profile_dialog.vala:673
 msgid "Server Quota"
 msgstr "Quota del servidor"
 
-#: src/profile_dialog.vala:677
+#: src/profile_dialog.vala:679
 msgid "Loading quota…"
 msgstr "S'està carregant la quota…"
 
-#: src/profile_dialog.vala:680
+#: src/profile_dialog.vala:682
 msgid "Local Copies"
 msgstr "Còpies locals"
 
-#: src/profile_dialog.vala:682 src/profile_dialog.vala:715
+#: src/profile_dialog.vala:684 src/profile_dialog.vala:719
 msgid "Scanning local files…"
 msgstr "S'estan analitzant els fitxers locals…"
 
-#: src/profile_dialog.vala:687
+#: src/profile_dialog.vala:689
 msgid "Chats by Storage Size"
 msgstr "Xats per espai ocupat"
 
-#: src/profile_dialog.vala:689
+#: src/profile_dialog.vala:691
 msgid "Preparing scan…"
 msgstr "S'està preparant l'anàlisi…"
 
-#: src/profile_dialog.vala:714
+#: src/profile_dialog.vala:718
 msgid "Scanning chats…"
 msgstr "S'estan analitzant els xats…"
 
-#: src/profile_dialog.vala:736
+#: src/profile_dialog.vala:740
 msgid "Server quota unavailable: "
 msgstr "La quota del servidor no està disponible: "
 
-#: src/profile_dialog.vala:744
+#: src/profile_dialog.vala:748
 #, c-format
 msgid "%s downloaded message files · %s known attachment payload"
 msgstr ""
 "%s de fitxers de missatges descarregats · %s de contingut d'adjuncions "
 "conegut"
 
-#: src/profile_dialog.vala:748
+#: src/profile_dialog.vala:752
 #, c-format
 msgid "%s local profile data · %s"
 msgstr "%s de dades locals del perfil · %s"
 
-#: src/profile_dialog.vala:753
+#: src/profile_dialog.vala:757
 msgid "No downloaded files found in chats"
 msgstr "No s'han trobat fitxers descarregats als xats"
 
-#: src/profile_dialog.vala:754
+#: src/profile_dialog.vala:758
 #, c-format
 msgid "%d chat with local or attached files"
 msgid_plural "%d chats with local or attached files"
 msgstr[0] "%d xat amb fitxers locals o adjunts"
 msgstr[1] "%d xats amb fitxers locals o adjunts"
 
-#: src/profile_dialog.vala:758
+#: src/profile_dialog.vala:762
 msgid "Storage scan failed: "
 msgstr "L'anàlisi de l'emmagatzematge ha fallat: "
 
-#: src/profile_dialog.vala:777
+#: src/profile_dialog.vala:782
 #, c-format
 msgid "Scanning %s…"
 msgstr "S'està analitzant %s…"
 
-#: src/profile_dialog.vala:796
+#: src/profile_dialog.vala:801
 #, c-format
 msgid "Chat #%d"
 msgstr "Xat núm. %d"
 
-#: src/profile_dialog.vala:923
+#: src/profile_dialog.vala:932
 #, c-format
 msgid "%s local · %s attached · %s · %s"
 msgstr "%s locals · %s adjunts · %s · %s"
 
-#: src/profile_dialog.vala:926
+#: src/profile_dialog.vala:935
 #, c-format
 msgid "%d file"
 msgid_plural "%d files"
 msgstr[0] "%d fitxer"
 msgstr[1] "%d fitxers"
 
-#: src/profile_dialog.vala:928
+#: src/profile_dialog.vala:937
 #, c-format
 msgid "%d message"
 msgid_plural "%d messages"
 msgstr[0] "%d missatge"
 msgstr[1] "%d missatges"
 
+#: src/profile_dialog.vala:959
+#, c-format
+msgid ""
+"Choose which messages to clear from “%s”. You can review the number of "
+"messages before deleting them."
+msgstr ""
+"Tria quins missatges vols suprimir de «%s». Pots revisar el nombre de "
+"missatges abans de suprimir-los."
+
+#: src/profile_dialog.vala:961
+msgid "Keep recent messages"
+msgstr "Conserva els missatges recents"
+
+#: src/profile_dialog.vala:965 src/profile_dialog.vala:970
+msgid "Days to keep"
+msgstr "Dies que cal conservar"
+
 #: src/profile_dialog.vala:977
+msgid "Review Messages"
+msgstr "Revisa els missatges"
+
+#: src/profile_dialog.vala:993
+msgid "No messages match the selected age range."
+msgstr "Cap missatge no coincideix amb l'antiguitat seleccionada."
+
+#: src/profile_dialog.vala:1048
 msgid "Preparing invite code…"
 msgstr "S'està preparant el codi d'invitació…"
 
-#: src/profile_dialog.vala:984 src/profile_dialog.vala:1045
+#: src/profile_dialog.vala:1055 src/profile_dialog.vala:1116
 msgid "Deactivate Link"
 msgstr "Desactiva l'enllaç"
 
-#: src/profile_dialog.vala:1010 src/profile_dialog.vala:1049
+#: src/profile_dialog.vala:1081 src/profile_dialog.vala:1120
 msgid "Share this QR code or invite link to let others join."
 msgstr ""
 "Comparteix aquest codi QR o enllaç d'invitació perquè altres persones s'hi "
 "puguin unir."
 
-#: src/profile_dialog.vala:1011
+#: src/profile_dialog.vala:1082
 msgid "Share this QR code with another user, or copy the invite link below."
 msgstr ""
 "Comparteix aquest codi QR amb un altre usuari o copia l'enllaç d'invitació "
 "de sota."
 
-#: src/profile_dialog.vala:1013
+#: src/profile_dialog.vala:1084
 msgid "Invite link is ready, but the QR image could not be rendered: "
 msgstr ""
 "L'enllaç d'invitació està a punt, però no s'ha pogut generar la imatge QR: "
 
-#: src/profile_dialog.vala:1051
+#: src/profile_dialog.vala:1122
 msgid "Activate Link"
 msgstr "Activa l'enllaç"
 
-#: src/profile_dialog.vala:1055
+#: src/profile_dialog.vala:1126
 msgid "This invite link is deactivated — activate it to let others join."
 msgstr ""
 "Aquest enllaç d'invitació està desactivat: activa'l perquè altres persones "
 "s'hi puguin unir."
 
-#: src/profile_dialog.vala:1064
+#: src/profile_dialog.vala:1135
 msgid "Deactivating…"
 msgstr "S'està desactivant…"
 
-#: src/profile_dialog.vala:1064
+#: src/profile_dialog.vala:1135
 msgid "Activating…"
 msgstr "S'està activant…"
 
-#: src/profile_dialog.vala:1071
+#: src/profile_dialog.vala:1142
 msgid "Could not update the invite link: "
 msgstr "No s'ha pogut actualitzar l'enllaç d'invitació: "
 
-#: src/profile_dialog.vala:1080
+#: src/profile_dialog.vala:1151
 msgid "Invite code creation failed: "
 msgstr "No s'ha pogut crear el codi d'invitació: "
 
-#: src/profile_dialog.vala:1097
+#: src/profile_dialog.vala:1168
 msgid "Add Second Device"
 msgstr "Afegeix un segon dispositiu"
 
-#: src/profile_dialog.vala:1102
+#: src/profile_dialog.vala:1173
 msgid "Preparing account…"
 msgstr "S'està preparant el compte…"
 
-#: src/profile_dialog.vala:1104
+#: src/profile_dialog.vala:1175
 msgid "Copy Text"
 msgstr "Copia el text"
 
-#: src/profile_dialog.vala:1138
+#: src/profile_dialog.vala:1209
 msgid "Scan this QR code with the second device, or copy the text below."
 msgstr ""
 "Escaneja aquest codi QR amb el segon dispositiu o copia el text de sota."
 
-#: src/profile_dialog.vala:1139
+#: src/profile_dialog.vala:1210
 msgid "QR text is ready, but the image could not be rendered: "
 msgstr "El text QR està a punt, però no s'ha pogut generar la imatge: "
 
-#: src/profile_dialog.vala:1143
+#: src/profile_dialog.vala:1214
 msgid "Second-device setup failed: "
 msgstr "La configuració del segon dispositiu ha fallat: "
 
@@ -3761,11 +3794,14 @@ msgstr "El suport d'accessibilitat està deshabilitat en aquesta compilació"
 msgid ""
 "Allow screen readers and other assistive tools to access Parla. Requires a "
 "restart."
-msgstr "Permet que els lectors de pantalla i altres eines d'assistència accedeixin al Parla. Cal reiniciar-lo."
+msgstr ""
+"Permet que els lectors de pantalla i altres eines d'assistència accedeixin "
+"al Parla. Cal reiniciar-lo."
 
 #: src/settings_dialog.vala:1043
 msgid "Close Parla, then reopen it to apply accessibility changes"
-msgstr "Tanca el Parla i torna'l a obrir per aplicar els canvis d'accessibilitat"
+msgstr ""
+"Tanca el Parla i torna'l a obrir per aplicar els canvis d'accessibilitat"
 
 #: src/settings_dialog.vala:1046
 msgid "Restart Parla to apply accessibility changes"

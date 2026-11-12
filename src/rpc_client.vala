@@ -818,9 +818,13 @@ namespace Dc {
         }
 
         public async void delete_messages (int[] msg_ids) throws Error {
+            yield delete_messages_for (account_id, msg_ids);
+        }
+
+        public async void delete_messages_for (int acct_id, int[] msg_ids) throws Error {
             yield call ("delete_messages",
                 Params.begin ()
-                    .add_int (account_id)
+                    .add_int (acct_id)
                     .add_int_array (msg_ids)
                     .build ());
         }

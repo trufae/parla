@@ -418,6 +418,12 @@ private void test_unread_calls () {
 }
 
 public int main (string[] args) {
+    if (args.length > 1 && args[1] == "--fake-storage")
+        return run_fake_storage_server ();
+    if (args.length > 1 && args[1] == "--storage-ui") {
+        test_executable = File.new_for_path (args[0]).get_path ();
+        return run_storage_cleanup_ui_test ();
+    }
     if (args.length > 1 && args[1] == "--touch-scroll-ui")
         return run_touch_scroll_ui_test ();
     if (args.length > 1 && args[1] == "--ephemeral-ui")
@@ -504,6 +510,7 @@ public int main (string[] args) {
     }
     test_executable = File.new_for_path (args[0]).get_path ();
     Test.init (ref args);
+    Test.add_func ("/storage/cleanup", test_storage_cleanup);
     Test.add_func ("/updates/versions", test_update_versions);
     register_account_backup_tests ();
     Test.add_func ("/core-compat/presence", test_presence);

@@ -446,7 +446,8 @@ namespace Dc {
     public static async int[] chat_message_ids_for_clear (RpcClient rpc,
                                                            int account_id,
                                                            int chat_id,
-                                                           bool for_all) throws Error {
+                                                           bool for_all,
+                                                           int64 older_than = 0) throws Error {
         var msg_ids = yield rpc.get_message_ids_for (account_id, chat_id);
         if (msg_ids == null || msg_ids.get_length () == 0) return {};
 
@@ -454,17 +455,25 @@ namespace Dc {
         for (uint i = 0; i < msg_ids.get_length (); i++) {
             all_ids[i] = (int) msg_ids.get_int_element (i);
         }
-        if (!for_all) return all_ids;
+        if (!for_all && older_than == 0) return all_ids;
 
-        var chat = yield rpc.get_full_chat_by_id_for (account_id, chat_id);
-        if (chat == null || !MessageDeletion.can_delete_in_chat (chat)) return {};
+        if (for_all) {
+            var chat = yield rpc.get_full_chat_by_id_for (account_id, chat_id);
+            if (chat == null || !MessageDeletion.can_delete_in_chat (chat)) return {};
+        }
         int[] ids = {};
-        var map = yield rpc.get_messages_for (account_id, all_ids);
-        if (map == null) return ids;
-        foreach (int msg_id in all_ids) {
-            var message = MessageDeletion.message_by_id (map, msg_id);
-            if (MessageDeletion.can_delete_for_everyone (message)
-                    && json_int (message, "chatId") == chat_id) ids += msg_id;
+        for (int start = 0; start < all_ids.length; start += 200) {
+            int end = int.min (start + 200, all_ids.length);
+            var map = yield rpc.get_messages_for (account_id, all_ids[start:end]);
+            if (map == null) throw new IOError.FAILED (_("Could not load messages to clear"));
+            for (int i = start; i < end; i++) {
+                var message = MessageDeletion.message_by_id (map, all_ids[i]);
+                if (message == null || json_int (message, "chatId") != chat_id) continue;
+                if (older_than > 0 && !MessageDeletion.is_older_than (
+                        message, chat_id, older_than)) continue;
+                if (!for_all || MessageDeletion.can_delete_for_everyone (message))
+                    ids += all_ids[i];
+            }
         }
         return ids;
     }
