@@ -4,6 +4,8 @@ namespace Dc {
 
         public signal void contact_picked (int contact_id, string email);
         public signal void chat_picked (int chat_id);
+        public signal void import_requested ();
+        private bool sharing_contacts = false;
 
         /* The account whose chat/contact was picked. Callers read this after
            a pick signal to know which account to act on — it equals the
@@ -34,8 +36,11 @@ namespace Dc {
         public ContactPickerDialog (RpcClient rpc,
                                      GLib.ListStore? chat_store = null,
                                      string? title = null,
-                                     bool enable_account_selector = false) {
+                                     bool enable_account_selector = false,
+                                     bool sharing_contacts = false,
+                                     bool allow_vcard_import = false) {
             this.rpc = rpc;
+            this.sharing_contacts = sharing_contacts;
             this.chat_store = chat_store;
             this.account_selector_enabled = enable_account_selector;
             this.selected_account_id = rpc.account_id;
@@ -49,6 +54,11 @@ namespace Dc {
             var header = new Adw.HeaderBar ();
             header.show_end_title_buttons = true;
             box.append (header);
+            if (allow_vcard_import) {
+                var import_button = new Gtk.Button.with_label (_("Open vCard…"));
+                import_button.clicked.connect (() => { close (); import_requested (); });
+                header.pack_end (import_button);
+            }
 
             var content = new Gtk.Box (Gtk.Orientation.VERTICAL, 8);
             content.margin_start = 12;
@@ -72,6 +82,7 @@ namespace Dc {
                 ? _("Search chats, contacts or enter email\u2026")
                 : _("Search or enter email\u2026");
             search_entry.hexpand = true;
+            if (sharing_contacts) search_entry.placeholder_text = _("Search contacts…");
             search_entry.search_changed.connect (on_search_changed);
             search_entry.activate.connect (on_activate_search);
             content.append (search_entry);
@@ -228,6 +239,10 @@ namespace Dc {
             int acct_id = selected_account_id;
             var collected = new GenericArray<Contact> ();
             try {
+                if (sharing_contacts) {
+                    var self = yield rpc.get_contact_for (acct_id, 1);
+                    if (self != null) collected.add (RpcParsers.parse_contact (1, self));
+                }
                 var ids = yield rpc.get_contact_ids_for (acct_id, null);
                 if (ids == null) return;
 
@@ -319,7 +334,7 @@ namespace Dc {
 
             /* Show "use this email" button if text looks like an email
                and doesn't exactly match an existing contact */
-            if (text.contains ("@") && text.length > 3) {
+            if (!sharing_contacts && text.contains ("@") && text.length > 3) {
                 bool already_listed = false;
                 for (uint i = 0; i < all_contacts.length; i++) {
                     var ci = all_contacts[i];
@@ -399,6 +414,7 @@ namespace Dc {
         }
 
         private void on_use_email () {
+            if (sharing_contacts) return;
             string email = search_entry.text.strip ();
             if (email.length == 0 || !email.contains ("@")) return;
 

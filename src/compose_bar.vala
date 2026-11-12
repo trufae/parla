@@ -63,6 +63,14 @@ namespace Dc {
         private Gtk.Label reply_label;
         private Gtk.Box reply_bar;
         private Gtk.Box attachment_bar;
+        private VcardPreview? contact_preview = null;
+        private RpcClient? contact_rpc = null;
+        private int contact_account_id = 0;
+
+        public void configure_contacts (RpcClient rpc, int account_id) {
+            contact_rpc = rpc;
+            contact_account_id = account_id;
+        }
         private Gtk.Box long_msg_bar;
         private Gtk.Picture attachment_picture;
         private Gtk.Image attachment_icon;
@@ -1051,6 +1059,7 @@ namespace Dc {
                 extra_pending_preview_urls += preview_url;
                 if (is_temp) extra_pending_temp_files += file_path;
                 int count = 1 + extra_pending_files.length;
+                clear_contact_preview ();
                 attachment_picture.paintable = null;
                 attachment_picture.visible = false;
                 attachment_icon.icon_name = "mail-attachment-symbolic";
@@ -1191,6 +1200,7 @@ namespace Dc {
         }
 
         private void refresh_attachment_preview () {
+            clear_contact_preview ();
             if (pending_file == null) {
                 cancel_attach_button.visible = false;
                 attachment_bar.visible = false;
@@ -1233,7 +1243,16 @@ namespace Dc {
                 link_previews_requested (urls, preview_generation);
         }
 
+        private void clear_contact_preview () {
+            if (contact_preview != null) {
+                attachment_bar.remove (contact_preview);
+                contact_preview = null;
+            }
+            attachment_name_label.get_parent ().visible = true;
+        }
+
         private void populate_attachment_preview (string file_path, string file_name) {
+            clear_contact_preview ();
             string mime = guess_mime (file_path);
             bool is_image = mime != null && mime.has_prefix ("image/");
             attachment_picture.visible = false;
@@ -1259,6 +1278,14 @@ namespace Dc {
                 ? "%s · %s".printf (mime, size_str)
                 : size_str;
             attachment_bar.visible = true;
+            if (AttachmentTypes.is_vcard (file_path, file_name, mime)) {
+                attachment_picture.visible = attachment_icon.visible = false;
+                attachment_name_label.get_parent ().visible = false;
+                contact_preview = new VcardPreview (null, file_name);
+                attachment_bar.prepend (contact_preview);
+                if (contact_rpc != null) contact_preview.load.begin (contact_rpc, file_path);
+                attachment_meta_label.label = _("vCard contact") + " · " + size_str;
+            }
         }
 
         private static string? guess_mime (string file_path) {
@@ -1324,6 +1351,7 @@ namespace Dc {
         }
 
         private void clear_attachment () {
+            clear_contact_preview ();
             if (pending_file_is_temp && pending_file != null) {
                 try {
                     var f = GLib.File.new_for_path (pending_file);
@@ -1613,7 +1641,38 @@ namespace Dc {
         }
 
         private void on_attach_clicked () {
-            pick_attachments.begin ();
+            if (contact_rpc == null) {
+                pick_attachments.begin ();
+                return;
+            }
+            Gtk.Box box;
+            var popover = popover_menu (attach_button, 0, 0, out box);
+            var file = new PopoverButton (popover, _("Attach File…"));
+            file.selected.connect (() => pick_attachments.begin ());
+            box.append (file);
+            var contact = new PopoverButton (popover, _("Share Contact…"));
+            contact.selected.connect (pick_contact);
+            box.append (contact);
+            popover.popup ();
+        }
+
+        private void pick_contact () {
+            var picker = new ContactPickerDialog (contact_rpc, null, _("Share Contact"), false, true);
+            uint generation = preview_generation;
+            picker.contact_picked.connect ((id, email) => attach_contact.begin (id, generation));
+            picker.present (this);
+        }
+
+        private async void attach_contact (int id, uint generation) {
+            try {
+                string contents = yield contact_rpc.make_vcard (contact_account_id, { id });
+                var doc = yield VcardDocument.from_contents (contact_rpc, contents);
+                if (closed || generation != preview_generation || !can_accept_attachment ()) return;
+                set_pending_attachment (doc.write_temp (), doc.filename, true);
+                grab_entry_focus ();
+            } catch (Error e) {
+                if (!closed) show_error ((Gtk.Window) get_root (), _("Could not share contact: ") + e.message);
+            }
         }
 
         private async void pick_attachments () {

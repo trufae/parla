@@ -307,6 +307,7 @@ namespace Dc {
         /* An invite link received (via the system handler or an in-app click)
            before a profile was connected; opened once try_connect finishes. */
         private string? pending_invite_uri = null;
+        private File[] pending_vcard_files = {};
 
 #if MACOS
         private MacosTray? tray = null;
@@ -1254,6 +1255,10 @@ namespace Dc {
                     pending_invite_uri = null;
                     show_use_invite_link_dialog (uri);
                 }
+                var files = pending_vcard_files;
+                pending_vcard_files = {};
+                foreach (var file in files)
+                    VcardDialog.open_file.begin (this, rpc, rpc.account_id, file);
             } else if (acct_desc != null) {
                 show_profile_setup ();
             }
@@ -3152,19 +3157,21 @@ namespace Dc {
         private void on_new_chat () {
             if (!can_show_account_modal ()) return;
 
-            var picker = new ContactPickerDialog (rpc);
+            var picker = new ContactPickerDialog (rpc, null, null, false, false, true);
+            picker.import_requested.connect (() => pick_vcard_file.begin ());
             picker.contact_picked.connect ((contact_id, email) => {
-                create_chat_by_email.begin (email);
+                create_chat_by_email.begin (email, contact_id);
             });
             present_modal (picker);
         }
 
-        private async void create_chat_by_email (string email) {
+        private async void create_chat_by_email (string email, int contact_id = 0) {
             if (rpc.account_id <= 0) return;
-
+            int account_id = rpc.account_id;
             try {
-                int contact_id = yield rpc.get_or_create_contact (email);
-                int chat_id = yield rpc.get_or_create_chat_by_contact (contact_id);
+                if (contact_id <= 0) contact_id = yield rpc.get_or_create_contact_for (account_id, email);
+                int chat_id = yield rpc.get_or_create_chat_by_contact_for (account_id, contact_id);
+                if (rpc.account_id != account_id) return;
 
                 yield load_chats ();
                 select_chat_by_id (chat_id);
@@ -3385,6 +3392,33 @@ namespace Dc {
                 return;
             }
             show_use_invite_link_dialog (uri);
+        }
+
+        public void handle_vcard_file (File file) {
+            restore_from_tray ();
+            if (rpc == null || rpc.account_id <= 0 || connecting_rpc) {
+                pending_vcard_files += file;
+                show_toast (_("Contact file will open once a profile is ready"));
+                return;
+            }
+            VcardDialog.open_file.begin (this, rpc, rpc.account_id, file);
+        }
+
+        private async void pick_vcard_file () {
+            var dialog = new Gtk.FileDialog ();
+            dialog.title = _("Open Contact File");
+            var filter = new Gtk.FileFilter ();
+            filter.name = _("vCard files");
+            filter.add_suffix ("vcf");
+            var filters = new GLib.ListStore (typeof (Gtk.FileFilter));
+            filters.append (filter);
+            dialog.filters = filters;
+            try {
+                var file = yield dialog.open (this, null);
+                handle_vcard_file (file);
+            } catch (Error e) {
+                if (!is_dialog_dismissal (e)) show_toast (e.message);
+            }
         }
 
         private void show_use_invite_link_dialog (string? prefill = null) {

@@ -33,6 +33,8 @@ namespace Dc {
             msg.dimensions_width = (int) json_int (obj, "dimensionsWidth");
             msg.dimensions_height = (int) json_int (obj, "dimensionsHeight");
             msg.view_type = json_str (obj, "viewType");
+            var vcard = json_obj (obj, "vcardContact");
+            if (vcard != null) msg.vcard_contact = new VcardContact (vcard);
             msg.state = (int) json_int (obj, "state");
             msg.error = json_str (obj, "error");
             msg.has_html = json_bool (obj, "hasHtml");

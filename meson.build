@@ -145,6 +145,8 @@ sources = files(
   'src/rpc_params.vala',
   'src/rpc_blob.vala',
   'src/attachment_types.vala',
+  'src/vcard.vala',
+  'src/vcard_dialog.vala',
   'src/rpc_parsers.vala',
   'src/rpc_client.vala',
   'src/account_finder.vala',
@@ -554,7 +556,7 @@ test('rpc-transport', rpc_transport_test, timeout: 30)
 # Exercise the actual RPC parsers and client models without starting GTK.
 core_compat_test = executable(
   'core-compat-test',
-  files('tests/core_compat_test.vala', 'tests/unread_ui_test.vala',
+  files('tests/core_compat_test.vala', 'tests/vcard_test.vala', 'tests/unread_ui_test.vala',
         'tests/message_retry_test.vala', 'tests/message_search_test.vala',
         'tests/ephemeral_ui_test.vala',
         'tests/search_ui_test.vala', 'tests/webxdc_realtime_test.vala',
@@ -574,6 +576,12 @@ core_compat_test = executable(
   install: false,
 )
 test('core-compat', core_compat_test)
+vcard_rpc_server = find_program('deltachat-rpc-server', required: false)
+if vcard_rpc_server.found()
+  test('vcard-core', core_compat_test,
+    args: ['--vcard-core', vcard_rpc_server.full_path(),
+           files('tests/fixtures/vcard-contact.vcf')])
+endif
 if host_machine.system() == 'darwin'
   test('compose-line-keys', core_compat_test,
     args: ['--compose-line-keys-ui'],

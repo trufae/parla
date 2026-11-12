@@ -47,6 +47,14 @@ cat > "$CONTENTS/Info.plist" <<EOF
   <string>Parla</string>
   <key>CFBundlePackageType</key>
   <string>APPL</string>
+  <key>CFBundleDocumentTypes</key>
+  <array><dict>
+    <key>CFBundleTypeName</key><string>vCard Contact</string>
+    <key>CFBundleTypeRole</key><string>Viewer</string>
+    <key>LSHandlerRank</key><string>Alternate</string>
+    <key>LSItemContentTypes</key><array><string>public.vcard</string></array>
+    <key>CFBundleTypeExtensions</key><array><string>vcf</string></array>
+  </dict></array>
   <key>CFBundleShortVersionString</key>
   <string>$VERSION</string>
   <key>CFBundleVersion</key>

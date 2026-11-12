@@ -108,6 +108,12 @@ namespace Dc {
             var invite_button = append_profile_action_row (content, _("Invite Code"),
                 _("Show a contact invite QR code"), _("Share your contact"));
             invite_button.clicked.connect (show_invite_code_dialog);
+            var contact_button = append_profile_action_row (content, _("Contact Card"),
+                _("Share or save your vCard"), _("Share your contact as a VCF file"));
+            contact_button.clicked.connect (() => {
+                var window = get_root () as Window;
+                if (window != null) VcardDialog.show_contact.begin (window, rpc, account_id, 1);
+            });
 
             content.append (new Gtk.Separator (Gtk.Orientation.HORIZONTAL));
             content.append (build_read_receipts_row ());

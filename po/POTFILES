@@ -3,6 +3,8 @@ src/account_backup.vala
 src/account_creation.vala
 src/account_finder.vala
 src/application.vala
+src/vcard.vala
+src/vcard_dialog.vala
 src/audio_player.vala
 src/audio_recorder.vala
 src/backup_dialog.vala

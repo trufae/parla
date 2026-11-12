@@ -19,8 +19,16 @@ private void test_regular_attachments () {
     assert (AttachmentTypes.infer_outgoing_view_type (null) == null);
 }
 
+private void test_vcards () {
+    assert (AttachmentTypes.infer_outgoing_view_type ("/tmp/contact.vcf") == "Vcard");
+    assert (AttachmentTypes.infer_outgoing_view_type ("/tmp/blob", "CONTACT.VCF") == "Vcard");
+    assert (AttachmentTypes.is_vcard (null, null, "TEXT/VCARD; charset=utf-8"));
+    assert (!AttachmentTypes.is_vcard ("contact.vcf.txt", null, "text/plain"));
+}
+
 public int main (string[] args) {
     Test.init (ref args);
+    Test.add_func ("/attachment-types/vcard", test_vcards);
     Test.add_func ("/attachment-types/media-formats",
         test_media_formats_are_not_semantic_types);
     Test.add_func ("/attachment-types/webxdc", test_webxdc_apps);

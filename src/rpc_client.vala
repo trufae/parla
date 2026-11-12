@@ -645,6 +645,20 @@ namespace Dc {
             return yield call_object ("get_next_event", Params.begin ().build ());
         }
 
+        public async Json.Array? parse_vcard (string path) throws Error {
+            return yield call_array ("parse_vcard", Params.begin ().add_string (path).build ());
+        }
+
+        public async Json.Array? import_vcard_contents (int acct_id, string contents) throws Error {
+            return yield call_array ("import_vcard_contents",
+                Params.begin ().add_int (acct_id).add_string (contents).build ());
+        }
+
+        public async string make_vcard (int acct_id, int[] contacts) throws Error {
+            return (yield call_string_opt ("make_vcard", Params.begin ()
+                .add_int (acct_id).add_int_array (contacts).build ())) ?? "";
+        }
+
         public async Json.Array? get_contact_ids_for (int acct_id, string? query) throws Error {
             return yield call_array ("get_contact_ids",
                 Params.begin ()

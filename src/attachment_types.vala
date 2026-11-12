@@ -12,7 +12,20 @@ namespace Dc {
                 || has_xdc_extension (file_name)) {
                 return "Webxdc";
             }
+            if (is_vcard (file_path, file_name)) return "Vcard";
             return null;
+        }
+
+        public static bool is_vcard (string? path, string? name = null,
+                                     string? mime = null) {
+            string type = mime ?? "";
+            int separator = type.index_of_char (';');
+            if (separator >= 0) type = type.substring (0, separator);
+            type = type.strip ().down ();
+            return (path ?? "").down ().has_suffix (".vcf")
+                || (name ?? "").down ().has_suffix (".vcf")
+                || type == "text/vcard" || type == "text/x-vcard"
+                || type == "text/directory";
         }
 
         private static bool has_xdc_extension (string? value) {

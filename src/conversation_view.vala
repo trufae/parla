@@ -765,6 +765,7 @@ namespace Dc {
             append (scroll_overlay);
 
             compose_bar = new ComposeBar ();
+            compose_bar.configure_contacts (rpc, rpc.account_id);
             compose_bar.hexpand = true;
             compose_bar.halign = Gtk.Align.FILL;
             settings.bind_property ("shift-enter-sends", compose_bar,
@@ -981,6 +982,10 @@ namespace Dc {
                 var msg = find_message (message_store, msg_id);
                 if (msg != null)
                     window.prompt_webxdc_app.begin (window, rpc, msg);
+                break;
+            case "vcard":
+                var card_message = find_message (message_store, msg_id);
+                if (card_message != null) on_message_activated (card_message);
                 break;
             default:
                 msg_actions.show_context_menu (msg_id, is_outgoing,
@@ -2977,7 +2982,7 @@ namespace Dc {
                 return;
             }
             if (!msg.has_local_file) {
-                if (msg.is_video_file () && msg.can_download_full_message) {
+                if ((msg.is_video_file () || msg.is_vcard ()) && msg.can_download_full_message) {
                     toggle_full_message.begin (msg.id);
                     return;
                 }
@@ -2985,7 +2990,10 @@ namespace Dc {
                 window.show_toast (_("File not available"));
                 return;
             }
-            if (msg.is_video_sticker_file ()) {
+            if (msg.is_vcard ()) {
+                VcardDialog.open_file.begin (window, rpc, rpc.account_id,
+                    File.new_for_path (msg.file_path));
+            } else if (msg.is_video_sticker_file ()) {
                 window.show_video (msg.file_path, msg.file_name);
             } else if (msg.is_image_file ()) {
                 string[] paths;

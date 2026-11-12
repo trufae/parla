@@ -788,6 +788,20 @@ namespace Dc {
         private void append_attachment (Gtk.Box box, Message msg, bool irc,
                                         GLib.GenericArray<Message>? trailing_images = null) {
             if (!msg.has_file) return;
+            if (msg.is_vcard ()) {
+                var preview = new VcardPreview (msg.vcard_contact, msg.display_file_name ());
+                preview.add_css_class ("message-attachment");
+                var button = new Gtk.Button ();
+                button.child = preview;
+                button.tooltip_text = _("View contact card");
+                connect_action_button (button, "vcard");
+                FileDragSource.attach (button, msg, account_id);
+                box.append (button);
+                var app = GLib.Application.get_default () as Application;
+                if (msg.vcard_contact == null && msg.has_local_file && app != null)
+                    preview.load.begin (app.rpc, msg.file_path);
+                return;
+            }
             if (msg.has_local_file
                 && (msg.is_sticker_file () || msg.is_image_file ())) {
                 if (irc) append_irc_images (box, msg, trailing_images);
@@ -2271,6 +2285,8 @@ namespace Dc {
         }
 
         private static string? attachment_summary (Message msg) {
+            if (msg.is_vcard ()) return _("contact %s").printf (
+                msg.vcard_contact != null ? msg.vcard_contact.name : msg.display_file_name ());
             if (msg.is_webxdc ()) return _("app %s").printf (msg.file_name ?? "");
             if (!msg.has_file) return null;
             if (msg.is_sticker_file () || msg.is_video_sticker_file ()) {

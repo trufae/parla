@@ -294,6 +294,15 @@ namespace Dc {
                 type_lbl.add_css_class ("dim-label");
                 type_lbl.halign = Gtk.Align.CENTER;
                 content.append (type_lbl);
+                if (is_dm_chat && dm_contact_id > 0) {
+                    var contact_list = boxed_list ();
+                    add_action_row (contact_list, _("Share Contact"),
+                        _("View, share or save this contact as a vCard"),
+                        "avatar-default-symbolic", () => {
+                        VcardDialog.show_contact.begin (app_window, rpc, account_id, dm_contact_id);
+                    });
+                    content.append (contact_list);
+                }
 
                 if (can_edit_members) {
                     var invite_list = boxed_list ();

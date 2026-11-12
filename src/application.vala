@@ -366,7 +366,9 @@ namespace Dc {
            the SecureJoin code receives the exact link the user clicked. */
         protected override int command_line (ApplicationCommandLine cmd) {
             string? invite_uri = null;
+            File[] contact_files = {};
             foreach (unowned string arg in cmd.get_arguments ()) {
+                if (AttachmentTypes.is_vcard (arg)) contact_files += cmd.create_file_for_arg (arg);
                 if (is_delta_invite_uri (arg)) {
                     invite_uri = arg;
                     break;
@@ -383,6 +385,7 @@ namespace Dc {
             if (options.contains ("background")
                 && !options.contains ("show")
                 && invite_uri == null
+                && contact_files.length == 0
                 && Platform.supports_background_mode ()) {
                 if (!cmd.get_is_remote ()) enter_background_mode ();
                 return 0;
@@ -394,6 +397,7 @@ namespace Dc {
             var window = get_or_create_window ();
             window.restore_from_tray ();
             if (invite_uri != null) window.handle_invite_uri (invite_uri);
+            foreach (var file in contact_files) window.handle_vcard_file (file);
             return 0;
         }
 
@@ -420,6 +424,10 @@ namespace Dc {
             var window = get_or_create_window ();
             window.restore_from_tray ();
             foreach (var file in files) {
+                if (AttachmentTypes.is_vcard (file.get_basename ())) {
+                    window.handle_vcard_file (file);
+                    continue;
+                }
                 string uri = repair_dbus_open_uri (file.get_uri ());
                 if (is_delta_invite_uri (uri)) {
                     window.handle_invite_uri (uri);

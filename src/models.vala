@@ -686,6 +686,7 @@ namespace Dc {
         public int dimensions_width { get; set; default = 0; }
         public int dimensions_height { get; set; default = 0; }
         public string? view_type { get; set; default = null; }
+        public VcardContact? vcard_contact { get; set; default = null; }
         public bool is_info { get; set; default = false; }
         public bool has_html { get; set; default = false; }
         public string download_state { get; set; default = "Done"; }
@@ -785,6 +786,11 @@ namespace Dc {
         /** Webxdc mini-app attachment (runnable when built with -Dwebxdc). */
         public bool is_webxdc () {
             return view_type_is ("webxdc");
+        }
+
+        public bool is_vcard () {
+            return view_type_is ("vcard") || vcard_contact != null
+                || AttachmentTypes.is_vcard (file_path, file_name, file_mime);
         }
 
         public bool is_video_sticker_file () {

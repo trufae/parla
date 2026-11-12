@@ -35,7 +35,7 @@ recommendations, not release commitments.
 | [CORE-010](#core-010-webxdc-realtime-channels) | P2 | Done | Webxdc realtime channels |
 | [CORE-011](#core-011-voice-and-video-calls) | P3 | TODO | Voice and video calls |
 | [CORE-012](#core-012-location-messages-and-live-sharing) | P3 | TODO | Location messages and live sharing |
-| [CORE-013](#core-013-contact-cards-and-vcard-importexport) | P2 | TODO | Contact cards and vCard import/export |
+| [CORE-013](#core-013-contact-cards-and-vcard-importexport) | P2 | Done | Contact cards and vCard import/export |
 | [CORE-014](#core-014-native-forwarding-between-profiles) | P1 | TODO | Native forwarding between profiles |
 | [CORE-015](#core-015-group-and-channel-descriptions) | P2 | TODO | Group and channel descriptions |
 | [CORE-016](#core-016-core-controlled-composer-availability) | P1 | TODO | Core-controlled composer availability |
@@ -320,16 +320,22 @@ Webxdc-based map may use `set_webxdc_integration`/`init_webxdc_integration`.
 
 ## CORE-013: Contact cards and vCard import/export
 
-**Gap:** Contact attachments lack a dedicated card/import/share flow.
+**Status:** Done (2026-11-12).
 
-**Implement:** Parse message `vcardContact` metadata and render a contact card
-with an explicit import/open-chat action. Use `parse_vcard`, `import_vcard` or
-`import_vcard_contents`, and `make_vcard` for file import, export, and sharing.
-Let core resolve imported contact identity and duplicates.
+**Implemented:** `vcardContact` metadata provides contact thumbnails in chats
+and the Files gallery. The composer supports sharing contacts, including self,
+and previews attached VCF files. Contact details and profiles expose vCard
+view/share/export. Desktop file opening and New Chat's Open vCard action load
+single- and multi-contact files into a viewer with explicit import/start-chat
+actions. Core's `parse_vcard`, `import_vcard_contents`, and `make_vcard` preserve
+keys and resolve identity/duplicates; preview alone never imports contacts.
+Import uses the reviewed snapshot, caps files at 4 MiB, and reports unsupported
+or malformed data. Imported contacts are opened by ID, rather than address.
 
-**Done when:** Single- and multi-contact files can be reviewed and imported,
-malformed cards produce a useful error, and exported cards can be consumed by
-another client. Rendering an attachment alone does not import contacts.
+**Validation:** Metadata and type regression tests, plus an optional real-core
+test for multi-contact import, deduplication, profile isolation, export, public
+key preservation, invalid UTF-8, and oversized files. The `--vcard-ui` smoke
+mode additionally checks thumbnails in each message layout and the composer.
 
 **Entry points:** [rpc_parsers.vala](src/rpc_parsers.vala),
 [message_row.vala](src/message_row.vala), [contact_picker_dialog.vala](src/contact_picker_dialog.vala).

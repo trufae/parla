@@ -173,7 +173,7 @@ namespace Dc {
                 new GalleryTab () {
                     key = "files", title = _("Files"),
                     icon_name = "text-x-generic-symbolic",
-                    types = { "File" },
+                    types = { "File", "Vcard" },
                     empty_title = _("No Files"),
                     empty_description = _("Documents and other files shared in this chat will appear here"),
                     save_all_tooltip = _("Save all files to a folder…"),
@@ -985,6 +985,7 @@ namespace Dc {
                same message, shown in place of the generic icon. */
             private Gtk.Picture? thumb = null;
             private int generation = 0;
+            private VcardPreview? contact_preview = null;
             /* AudioPlayback outlives the dialog, so unlike the dialog's
                own selection_changed these must disconnect on unbind. */
             private ulong playing_handler = 0;
@@ -1064,6 +1065,12 @@ namespace Dc {
             public void bind (Message m) {
                 msg = m;
                 generation++;
+                if (contact_preview != null) {
+                    remove (contact_preview);
+                    contact_preview = null;
+                }
+                icon.visible = true;
+                title_label.get_parent ().visible = true;
                 update_selection_visuals ();
 
                 string sender = m.is_outgoing ? _("You")
@@ -1117,6 +1124,15 @@ namespace Dc {
                     }
                     break;
                 default:
+                    if (m.is_vcard ()) {
+                        icon.visible = false;
+                        title_label.get_parent ().visible = false;
+                        contact_preview = new VcardPreview (m.vcard_contact, m.display_file_name ());
+                        append (contact_preview);
+                        if (m.vcard_contact == null && m.has_local_file)
+                            contact_preview.load.begin (dialog.rpc, m.file_path);
+                        break;
+                    }
                     icon.gicon = file_type_icon (m);
                     title_label.label = m.display_file_name ();
                     subtitle_label.label = m.file_bytes > 0
@@ -1227,6 +1243,11 @@ namespace Dc {
 
         private void open_file (Message m) {
             if (!ensure_local_file (m)) return;
+            if (m.is_vcard ()) {
+                VcardDialog.open_file.begin (app_window, rpc, rpc.account_id,
+                    File.new_for_path (m.file_path));
+                return;
+            }
             var launcher = new Gtk.FileLauncher (
                 File.new_for_path (m.file_path));
             launcher.launch.begin (app_window, null, (o, res) => {
