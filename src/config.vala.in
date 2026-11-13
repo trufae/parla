@@ -5,6 +5,9 @@ namespace Parla {
        Empty unless a packager fixes the engine to a specific binary. */
     public const string RPC_SERVER_PATH = "@RPC_SERVER_PATH@";
 
+    /* Startup update policy; PARLA_CHECK_UPDATES can override it at runtime. */
+    public const bool UPDATE_CHECKS = @UPDATE_CHECKS@;
+
     /* Gettext domain and locale directory used by the i18n setup in main().
        LOCALEDIR is normally <prefix>/share/locale. */
     public const string GETTEXT_PACKAGE = "@GETTEXT_PACKAGE@";

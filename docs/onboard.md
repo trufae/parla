@@ -68,8 +68,9 @@ this list.
 ## For packagers: make Parla self-contained
 
 A proper package should provide the engine through any location **above** the
-managed fallback (steps 1–4). When it does, Parla never touches the network and
-the download UI never appears. Pick whichever fits your distro:
+managed fallback (steps 1–4). When it does, Parla does not download an engine and
+the download UI never appears. To also suppress startup release checks, use the
+[update-check controls](rpc-server.md#startup-update-checks). Pick whichever fits your distro:
 
 - **Depend on a packaged `deltachat-rpc-server`** that lands on `PATH`. Known
   examples: Arch `extra/deltachat-rpc-server`, FreeBSD `net/deltachat-rpc-server`.
@@ -100,11 +101,12 @@ The same install/update actions are available in **Settings → Advanced → Cha
 
 - **Check for Updates**, then **Install** — download the latest engine into the managed directory.
 - **Check for Updates** — compare the running engine against the latest release.
-- **Check for Updates on Startup** — when enabled (default), Parla quietly
-  checks for a newer release at launch *only* when it is running its own managed
-  binary, and shows a non-blocking "Update available" notification with an action.
-  It never swaps the binary silently. Disable this to suppress all startup update
-  network calls.
+- **Check for Updates on Startup** — when enabled (default), Parla checks for
+  newer Parla releases and, when running its own managed binary, newer Core
+  releases. It offers updates without swapping the binary silently. Disable
+  this to suppress startup update network calls. The package build option and
+  `PARLA_CHECK_UPDATES` can override this behavior; see
+  [startup update checks](rpc-server.md#startup-update-checks).
 
 ## Architecture → release asset
 

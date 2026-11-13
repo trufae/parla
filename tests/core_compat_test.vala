@@ -434,6 +434,20 @@ private void test_unread_calls () {
 }
 
 public int main (string[] args) {
+    if (args.length == 6 && args[1] == "--startup-updates") {
+        var settings = new SettingsManager ();
+        settings.load ();
+        assert (settings.rpc_check_updates_on_startup == bool.parse (args[2]));
+        assert (settings.startup_update_checks_enabled () == bool.parse (args[3]));
+        assert (settings.rpc_auto_update_enabled () == bool.parse (args[4]));
+        assert (SettingsManager.startup_update_checks_configurable () == bool.parse (args[5]));
+        // Saving an unrelated setting must not persist the environment override.
+        settings.save_shift_enter_sends (true);
+        var restored = new SettingsManager ();
+        restored.load ();
+        assert (restored.rpc_check_updates_on_startup == bool.parse (args[2]));
+        return 0;
+    }
     if (args.length == 4 && (args[1] == "--vcard-core" || args[1] == "--vcard-ui"))
         return run_vcard_core_test (args[2], args[3], args[1] == "--vcard-ui");
     if (args.length > 1 && args[1] == "--fake-storage")

@@ -73,6 +73,7 @@ deps = [
 config = configuration_data()
 config.set('VERSION', meson.project_version())
 config.set('RPC_SERVER_PATH', get_option('rpc_server_path'))
+config.set('UPDATE_CHECKS', get_option('update_checks').to_string())
 config.set('GETTEXT_PACKAGE', meson.project_name())
 config.set('LOCALEDIR', get_option('prefix') / get_option('localedir'))
 translation_languages = []
@@ -580,6 +581,11 @@ core_compat_test = executable(
   install: false,
 )
 test('core-compat', core_compat_test)
+test('startup-updates', python, args: [
+  files('tests/startup_updates_test.py'), core_compat_test,
+  get_option('update_checks').to_string(),
+  (get_option('rpc_server_path') != '').to_string(),
+])
 vcard_rpc_server = find_program('deltachat-rpc-server', required: false)
 if vcard_rpc_server.found()
   test('vcard-core', core_compat_test,

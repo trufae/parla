@@ -240,6 +240,12 @@ release.
 See [docs/rpc-server.md](docs/rpc-server.md) for how Parla finds the JSON-RPC
 server and how to package it for Flatpak or distro packages.
 
+Package maintainers can disable startup update checks with
+`-Dupdate_checks=false` in Meson. At runtime,
+`PARLA_CHECK_UPDATES=0 parla` disables both checks; `PARLA_CHECK_UPDATES=1 parla`
+enables them for that launch. See [startup update checks](docs/rpc-server.md#startup-update-checks)
+for precedence and fixed Core binaries.
+
 Parla is being localized with GNU gettext. See [docs/locales.md](docs/locales.md)
 for how to run Parla in another language and how to contribute translations.
 

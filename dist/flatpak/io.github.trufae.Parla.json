@@ -57,6 +57,9 @@
         {
             "name": "parla",
             "buildsystem": "meson",
+            "config-opts": [
+                "-Dupdate_checks=false"
+            ],
             "sources": [
                 {
                     "type": "dir",

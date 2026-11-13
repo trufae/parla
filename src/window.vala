@@ -421,7 +421,7 @@ namespace Dc {
             /* Defer until the main loop — the tray's D-Bus connection and the
                application property aren't ready during construct. */
             Idle.add (() => {
-                if (settings.rpc_check_updates_on_startup) {
+                if (settings.startup_update_checks_enabled ()) {
                     check_parla_update.begin ();
                 }
                 try_connect.begin ();
@@ -1608,12 +1608,12 @@ namespace Dc {
             return null;
         }
 
-        /* Parla updates use the same startup preference as engine updates,
-           including when the engine is bundled or managed by the system. */
+        /* Parla and Core share the same startup update policy. */
         private async void check_parla_update () {
+            if (!settings.startup_update_checks_enabled ()) return;
             try {
                 string tag = yield RpcInstaller.fetch_latest_tag ("trufae/parla");
-                if (!settings.rpc_check_updates_on_startup ||
+                if (!settings.startup_update_checks_enabled () ||
                     !RpcInstaller.is_newer_version (tag, Parla.VERSION)) return;
                 parla_update_button.label = _("Parla %s available").printf (tag);
                 parla_update_button.visible = true;
@@ -1633,10 +1633,12 @@ namespace Dc {
 
         /* Quietly check GitHub for a newer managed server and offer to update. */
         private async void check_managed_update () {
+            if (!settings.rpc_auto_update_enabled ()) return;
             try {
                 string? installed = yield RpcInstaller.installed_version ();
-                if (installed == null) return;
+                if (installed == null || !settings.rpc_auto_update_enabled ()) return;
                 string tag = yield RpcInstaller.fetch_latest_tag ();
+                if (!settings.rpc_auto_update_enabled ()) return;
                 string? latest = RpcInstaller.extract_version (tag);
                 string? current = RpcInstaller.extract_version (installed);
                 if (latest == null || current == null || latest == current) return;

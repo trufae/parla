@@ -170,9 +170,32 @@ namespace Dc {
                 ? RpcServerSource.CUSTOM : rpc_server_source;
         }
 
-        /** Whether Parla may check for / install engine updates. */
+        /** A per-launch override, never written to the user's preferences. */
+        public static bool? startup_update_checks_override () {
+            string? value = Environment.get_variable ("PARLA_CHECK_UPDATES");
+            if (value == null) return null;
+            switch (value.strip ().ascii_down ()) {
+            case "1": case "true": case "yes": case "on":
+                return true;
+            case "0": case "false": case "no": case "off":
+                return false;
+            default:
+                return null;
+            }
+        }
+
+        public static bool startup_update_checks_configurable () {
+            return Parla.UPDATE_CHECKS && startup_update_checks_override () == null;
+        }
+
+        public bool startup_update_checks_enabled () {
+            return startup_update_checks_override () ??
+                (Parla.UPDATE_CHECKS && rpc_check_updates_on_startup);
+        }
+
+        /** Whether to check for managed engine updates at startup. */
         public bool rpc_auto_update_enabled () {
-            return !rpc_server_path_is_fixed () && rpc_check_updates_on_startup;
+            return !rpc_server_path_is_fixed () && startup_update_checks_enabled ();
         }
 
         public string default_accounts_path () {
@@ -1213,7 +1236,12 @@ namespace Dc {
                 _("Notify when a newer Parla or Chatmail Core version is available"));
             var autocheck_switch = row_switch (
                 rpc_autocheck_row,
-                app_window.settings.rpc_check_updates_on_startup);
+                app_window.settings.startup_update_checks_enabled ());
+            rpc_autocheck_row.sensitive = SettingsManager.startup_update_checks_configurable ();
+            if (!rpc_autocheck_row.sensitive) {
+                rpc_autocheck_row.subtitle =
+                    _("Startup update checks are managed by your installation");
+            }
             autocheck_switch.notify["active"].connect (() => {
                 app_window.settings.save_rpc_check_updates_on_startup (
                     autocheck_switch.active);

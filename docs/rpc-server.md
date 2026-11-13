@@ -53,6 +53,45 @@ Parla does not scan Delta Chat Desktop internals. `Auto` mode uses, in order:
 Parla stores accounts in its own XDG data directory and does not reuse Delta Chat
 Desktop's account store.
 
+## Startup update checks
+
+Parla normally checks for new Parla releases on startup and checks for new
+Chatmail Core releases when running its own managed Core binary. Both follow
+**Settings → Advanced → Chatmail Core → Check for Updates on Startup**.
+
+Flatpak, Snap and distro maintainers can disable both checks
+when updates are delivered by their package manager:
+
+```sh
+meson setup builddir -Dupdate_checks=false
+```
+
+The Meson option defaults to `true`. Setting it to `false` suppresses both
+startup checks even if an existing profile has the startup preference enabled.
+The Flatpak manifest disables it.
+
+Launchers and package wrappers can override both checks with one environment
+variable, without changing the saved preference:
+
+```sh
+PARLA_CHECK_UPDATES=0 parla # disable both startup checks
+PARLA_CHECK_UPDATES=1 parla # enable both startup checks
+```
+
+`true`/`false`, `yes`/`no`, and `on`/`off` are also accepted, ignoring case and
+surrounding whitespace. An unset, empty or unrecognized value uses the normal
+build policy and saved preference. A recognized value overrides the Meson
+option and the saved startup preference for that process. The Settings switch
+shows the effective state and is unavailable while overridden or when the
+build disables checks.
+
+Core checks still require a Parla-managed binary. A fixed `-Drpc_server_path`
+or Android build always disables automatic Core checks and updates, even with
+`PARLA_CHECK_UPDATES=1`. These controls only affect automatic startup checks;
+manual checks and first-run Core installation retain their existing behavior.
+Use `-Drpc_server_path=/path/to/deltachat-rpc-server` as well when the package
+must pin the engine and disable its installer.
+
 ## Flatpak
 
 The current manifest installs a pinned upstream binary release into `/app/bin`.

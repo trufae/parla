@@ -10,6 +10,10 @@ option('rpc_server_path',
   type: 'string',
   value: '',
   description: 'Absolute path to a fixed deltachat-rpc-server (Delta Chat jsonrpc server) binary. When set, Parla uses this binary as the Custom server and disables engine auto-updates.')
+option('update_checks',
+  type: 'boolean',
+  value: true,
+  description: 'Allow startup checks for new Parla and Chatmail Core releases. Runtime override: PARLA_CHECK_UPDATES=0 or 1. Disable for packages updated by a package manager.')
 option('bundle_icons',
   type: 'boolean',
   value: false,
