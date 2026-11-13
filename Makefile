@@ -21,11 +21,19 @@ BUNDLE_ICONS?=0
 MESON_OPTIONS+=-Dbundle_icons=$(if $(filter 1,$(BUNDLE_ICONS)),true,false)
 SANITIZER_DEBUG_OPTIONS=-Dstrip=false -Dvala_args=--debug -Dc_args=-g
 
-.PHONY: all asan tsan run clean install uninstall deb app macos appimage
+.PHONY: all cli asan tsan run clean install uninstall install-cli uninstall-cli \
+	user-install user-uninstall user-install-cli user-uninstall-cli \
+	deb app macos appimage
 
 all:
 	$(RUN_ENV) if [ -f "$(BUILD_DIR)/build.ninja" ]; then meson setup --reconfigure "$(BUILD_DIR)" --buildtype="$(BUILDTYPE)" --prefix="$(PREFIX)" -Dwerror="$(WERROR)" $(MESON_OPTIONS); else meson setup "$(BUILD_DIR)" . --buildtype="$(BUILDTYPE)" --prefix="$(PREFIX)" -Dwerror="$(WERROR)" $(MESON_OPTIONS); fi
 	$(RUN_ENV) meson compile -C "$(BUILD_DIR)"
+
+# CLI-only build: no GTK/libadwaita frontend. Uses its own build dir and
+# options so it never clashes with the GUI build.
+cli: BUILD_DIR=$(CLI_BUILD_DIR)
+cli: MESON_OPTIONS += -Dgui=false -Dcli=true
+cli: all
 
 asan: BUILD_DIR=builddir-asan
 asan: BUILDTYPE=debug
@@ -51,6 +59,31 @@ clean:
 
 install: all
 	DESTDIR="$(DESTDIR)" meson install -C "$(BUILD_DIR)"
+
+# CLI-only install, mirroring `make install` for a `-Dgui=false` build dir
+# (default: `builddir-cli`). Nothing but the binary goes in.
+CLI_BUILD_DIR?=builddir-cli
+
+install-cli: cli
+	DESTDIR="$(DESTDIR)" meson install -C "$(CLI_BUILD_DIR)"
+
+uninstall-cli:
+	rm -f "$(DESTDIR)$(BINDIR)/parla-cli"
+	rm -f "$(DESTDIR)$(DATADIR)"/locale/*/LC_MESSAGES/parla.mo
+
+# User install: no root, everything under ~/.local
+USER_PREFIX?=$(HOME)/.local
+user-install: PREFIX=$(USER_PREFIX)
+user-install: install
+
+user-uninstall: PREFIX=$(USER_PREFIX)
+user-uninstall: uninstall
+
+user-install-cli: PREFIX=$(USER_PREFIX)
+user-install-cli: install-cli
+
+user-uninstall-cli: PREFIX=$(USER_PREFIX)
+user-uninstall-cli: uninstall-cli
 
 uninstall:
 	@if [ -z "$(DESTDIR)" ] && [ -f /etc/apparmor.d/parla ] \
