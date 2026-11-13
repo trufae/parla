@@ -176,7 +176,8 @@ with tempfile.TemporaryDirectory(prefix="parla-commands-") as folder:
         terminal.until("[Image: test image.png] /")
         assert "(not downloaded)" not in terminal.screen
         assert (b"\x1b]8;;" + attachment.as_uri().encode() + b"\x1b\\") in terminal.raw[restored_output:]
-        terminal.send("\x15\x1b[<0;20;2M")
+        row = next(i for i, line in enumerate(terminal.lines) if "Account 1 history" in line)
+        terminal.send(f"\x15\x1b[<0;20;{row + 1}M")
         assert "Selected #42" in terminal.lines[-2]
         terminal.command("/reply clicked reply")
         assert requests("send_msg")[-1]["params"][2]["quotedMessageId"] == 42
@@ -205,6 +206,63 @@ with tempfile.TemporaryDirectory(prefix="parla-commands-") as folder:
         assert len(requests("send_msg")) == sent
         terminal.send("\x15")
 
+        # Enter updates the latest own message, preserving literal slashes/newlines.
+        sent = len(requests("send_msg"))
+        terminal.send("/ed\t")
+        assert terminal.lines[-1].startswith("> /edit ")
+        terminal.send("\r")
+        terminal.until("Editing #44")
+        assert terminal.lines[-1].rstrip() == "> My own text"
+        terminal.send("\x15/quit\x0asecond line\r")
+        assert requests("send_edit_request")[-1]["params"] == [1, 44, "/quit\nsecond line"]
+        assert len(requests("send_msg")) == sent
+        assert "Editing #" not in terminal.lines[-2]
+        terminal.until("<Me> /quit")
+
+        # Clicking an older own message edits that target, even after tab switches.
+        row = next(i for i, line in enumerate(terminal.lines) if "Earlier own text" in line)
+        terminal.send(f"\x1b[<0;20;{row + 1}M")
+        terminal.command("/edit")
+        assert terminal.lines[-1].rstrip() == "> Earlier own text"
+        terminal.send(" revised\x1b1")
+        terminal.command("/account 2")
+        terminal.command("/query 10")
+        assert "Editing #" not in terminal.lines[-2]
+        terminal.command("/account 1")
+        terminal.send("\x1b3")
+        terminal.until("Editing #41")
+        assert terminal.lines[-1].rstrip() == "> Earlier own text revised"
+        terminal.send("\r")
+        assert requests("send_edit_request")[-1]["params"] == [1, 41, "Earlier own text revised"]
+        terminal.until("<Me> Earlier own text revised")
+
+        # Failed updates retain edit mode and the draft for a corrected retry.
+        terminal.command("/edit")
+        terminal.send("\x15Rejected edit\r")
+        assert "Editing #44" in terminal.lines[-2]
+        assert terminal.lines[-1].rstrip() == "> Rejected edit"
+        terminal.send("\x15Retried edit\r")
+        assert requests("send_edit_request")[-1]["params"] == [1, 44, "Retried edit"]
+        terminal.until("<Me> Retried edit")
+
+        edits = len(requests("send_edit_request"))
+        terminal.command("/edit")
+        terminal.send(" abandoned\x1b")
+        assert "Editing #" not in terminal.lines[-2]
+        assert terminal.lines[-1].rstrip() == ">"
+        assert len(requests("send_edit_request")) == edits
+
+        # An incoming selection is rejected instead of silently editing our last message.
+        row = next(i for i, line in enumerate(terminal.lines) if "Account 1 history" in line)
+        terminal.send(f"\x1b[<0;20;{row + 1}M")
+        terminal.command("/edit")
+        assert "Editing #" not in terminal.lines[-2]
+        terminal.send("\x1b1")
+        terminal.until("Selected message cannot be edited")
+        terminal.send("\x1b3\x15\x1b")
+        assert len(requests("send_edit_request")) == edits
+        assert len(requests("send_msg")) == sent
+
         terminal.send("\x1b2")
         assert "2:Contacts" in terminal.lines[0]
         assert "[focus]" not in terminal.lines[1]
@@ -231,6 +289,10 @@ with tempfile.TemporaryDirectory(prefix="parla-commands-") as folder:
         assert "Account 1 history" not in terminal.screen
         terminal.command("/msg 10 from account two")
         assert requests("send_msg")[-1]["params"][0:2] == [2, 10]
+        terminal.command("/edit")
+        assert terminal.lines[-1].rstrip() == "> My own text"
+        terminal.send("\x15Account two edit\r")
+        assert requests("send_edit_request")[-1]["params"] == [2, 44, "Account two edit"]
         terminal.command("/account 1")
         terminal.until("Account 1 history")
         terminal.command("/query Alice")
@@ -247,6 +309,15 @@ with tempfile.TemporaryDirectory(prefix="parla-commands-") as folder:
         assert requests("create_contact")[-1]["params"][:2] == [1, "new@example.org"]
         assert requests("create_chat_by_contact_id")[-1]["params"] == [1, 3]
         assert "4:@Alice" in terminal.lines[0]
+        edits = len(requests("send_edit_request"))
+        terminal.command("/edit")
+        assert "Editing #" not in terminal.lines[-2]
+        terminal.send("\x1b1")
+        terminal.until("No editable message in this chat")
+        terminal.command("/edit")
+        terminal.until("Open a conversation first")
+        assert len(requests("send_edit_request")) == edits
+        terminal.send("\x15\x1b4")
         terminal.send("\x1bx")
         assert "4:@Alice" not in terminal.lines[0]
         terminal.send("\x1b3")

@@ -226,6 +226,7 @@ Esc+1..9 (0 for 10): switch tab · Alt-Left/Right: previous/next
         public InputHistory input_history { get; set; default = new InputHistory (); }
         public signal void invalidated ();
         public signal void submitted (Buffer buffer, string text);
+        public signal void input_cancelled (Buffer buffer);
         public signal void contact_activated (Contact contact);
         public signal void contact_pin_requested (Contact contact, bool pinned);
         public signal void quit_requested ();
@@ -547,7 +548,11 @@ Esc+1..9 (0 for 10): switch tab · Alt-Left/Right: previous/next
                     break;
                 }
                 escape_pending = true;
-                if (buffer != null) { buffer.select_message (""); message_selected (buffer); }
+                if (buffer != null) {
+                    buffer.select_message ("");
+                    input_cancelled (buffer);
+                    message_selected (buffer);
+                }
                 contacts_focus = false; body_dirty = footer_dirty = true; break;
             case Key.SELECT_TAB:
                 int number = int.parse (text);

@@ -556,9 +556,14 @@ namespace Dc {
         }
 
         public async void send_edit_request (int msg_id, string new_text) throws Error {
+            yield send_edit_request_for (account_id, msg_id, new_text);
+        }
+
+        public async void send_edit_request_for (int acct_id, int msg_id,
+                                                string new_text) throws Error {
             yield call ("send_edit_request",
                 Params.begin ()
-                    .add_int (account_id)
+                    .add_int (acct_id)
                     .add_int (msg_id)
                     .add_string (new_text)
                     .build ());

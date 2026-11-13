@@ -3,11 +3,16 @@ using Parla.Terminal;
 
 /** All RPC operations capture an account before yielding. */
 internal class CliTerminal : Object {
+    private class MessageEdit : Object {
+        public int id;
+        public bool saving;
+    }
     private class History : Object {
         public Buffer buffer;
         public string[] signatures = {};
         public Message[] messages = {};
         public string[]? members;
+        public MessageEdit? edit;
         public History (Buffer buffer) { this.buffer = buffer; }
     }
     private class AccountState : Object {
@@ -22,7 +27,7 @@ internal class CliTerminal : Object {
         public HashTable<int, bool> reacting = new HashTable<int, bool> (direct_hash, direct_equal);
         public AccountState (int id) { this.id = id; }
     }
-    private const string[] COMMANDS = { "account", "accounts", "bottom", "clear", "close", "color", "help",
+    private const string[] COMMANDS = { "account", "accounts", "bottom", "clear", "close", "color", "edit", "help",
         "info", "invite", "join", "list", "msg", "part", "qr", "query", "quit", "react", "refresh", "reply", "set", "unreact", "version", "window" };
     private const string HELP_TEXT = """# Parla commands
 /help [COMMAND]             Show help
@@ -31,6 +36,7 @@ internal class CliTerminal : Object {
 /query NAME|ADDRESS|ID      Open a chat or start one with a contact
 /join CHAT                  Open an existing conversation by ID or name
 /msg CHAT_ID TEXT           Send to a conversation in this account
+/edit                      Edit selected/last editable own message; Enter updates, Escape cancels
 /reply [TEXT]               Reply to selected/latest incoming message; no text selects with j/k then Enter
 /reply @USER TEXT           Reply to that user's latest message; #ID targets a message explicitly
 /react [#ID] EMOJI          Add your reaction to selected/latest incoming message
@@ -92,6 +98,14 @@ Click a message to select it; Escape clears the selection. Image/file links use 
         state.view.contact_activated.connect ((contact) => open_chat (state, contact.id, contact.name));
         state.view.contact_pin_requested.connect ((contact, pinned) => pin_chat.begin (state, contact, pinned));
         state.view.message_selected.connect (() => update_status (state));
+        state.view.input_cancelled.connect ((buffer) => {
+            var history = state.histories[buffer.id];
+            if (history == null || history.edit == null || history.edit.saving) return;
+            history.edit = null;
+            buffer.editor.clear ();
+            completion.reset ();
+            update_status (state);
+        });
         state.view.message_selection_confirmed.connect ((buffer, action) => {
             buffer.editor.clear ();
             buffer.editor.insert (action + " ");
@@ -182,6 +196,13 @@ Click a message to select it; Escape clears the selection. Image/file links use 
             "%s (#%s) · %d unread".printf (buffer.title, buffer.id, buffer.unread_count);
         if (buffer != null && buffer.selected_message_id != "") chat +=
             (state.view.selecting_messages ? " · Selecting #" : " · Selected #") + buffer.selected_message_id;
+        var history = buffer == null ? null : state.histories[buffer.id];
+        if (history != null && history.edit != null) {
+            var edit = history.edit;
+            string editing = edit.id == 0 ? "Loading edit… (Esc cancels)" : edit.saving ?
+                "Saving edit #%d…".printf (edit.id) : "Editing #%d (Enter updates, Esc cancels)".printf (edit.id);
+            chat = editing + " · " + chat;
+        }
         state.view.set_status ("Account %d %s · %s · %s".printf (state.id, state.address, chat, state.connection));
     }
 
@@ -567,14 +588,15 @@ Click a message to select it; Escape clears the selection. Image/file links use 
         if (state.view.active_buffer.id == "home") state.view.scroll (-int.MAX);
     }
 
-    private async Message message_target (AccountState state, Buffer buffer, string arg, out string text) throws Error {
+    private async Message message_target (AccountState state, Buffer buffer, string arg, bool editable,
+                                         out string text) throws Error {
         text = arg;
         if (state.id <= 0 || !state.histories.contains (buffer.id))
             throw new IOError.NOT_INITIALIZED ("Open a conversation first");
         int chat_id = int.parse (buffer.id), id = 0;
         string sender = "";
         string[] parts = arg.split (" ", 2);
-        if (parts[0].has_prefix ("#") && int.try_parse (parts[0].substring (1), out id) && id > 0) {
+        if (arg.has_prefix ("#") && int.try_parse (parts[0].substring (1), out id) && id > 0) {
             text = parts.length > 1 ? parts[1].strip () : "";
         } else if (arg.has_prefix ("@")) {
             sender = parts[0].substring (1);
@@ -610,13 +632,58 @@ Click a message to select it; Escape clears the selection. Image/file links use 
             for (int i = messages.length - 1; i >= 0; i--) {
                 var message = messages[i];
                 if (message.chat_id != chat_id || message.is_info) continue;
+                if (editable) {
+                    if (message.can_edit_text) return message;
+                    continue;
+                }
                 if (sender == "" ? !message.is_outgoing :
                     (message.sender_name ?? "").casefold () == sender.casefold () ||
                     (message.sender_address ?? "").casefold () == sender.casefold ()) return message;
             }
             end = begin;
         }
-        throw new IOError.NOT_FOUND (sender == "" ? "No incoming message in this chat" : "No message from @" + sender);
+        throw new IOError.NOT_FOUND (editable ? "No editable message in this chat" :
+            sender == "" ? "No incoming message in this chat" : "No message from @" + sender);
+    }
+
+    private async void begin_edit (AccountState state, Buffer buffer, string arg) throws Error {
+        if (arg != "") throw new IOError.INVALID_ARGUMENT ("Usage: /edit");
+        var history = state.histories[buffer.id];
+        if (state.id <= 0 || history == null) throw new IOError.NOT_INITIALIZED ("Open a conversation first");
+        var edit = new MessageEdit ();
+        history.edit = edit;
+        update_status (state);
+        try {
+            string unused;
+            var message = yield message_target (state, buffer, "", true, out unused);
+            if (!running || history.edit != edit) return;
+            if (!message.can_edit_text) throw new IOError.INVALID_ARGUMENT ("Selected message cannot be edited");
+            if (buffer.editor.text != "") throw new IOError.PENDING ("Input changed while loading the message; run /edit again");
+            edit.id = message.id;
+            buffer.editor.insert (message.text);
+        } catch (Error e) {
+            if (history.edit != edit) return;
+            history.edit = null;
+            throw e;
+        } finally { update_status (state); }
+    }
+
+    private async void save_edit (AccountState state, History history, string text) throws Error {
+        var edit = history.edit;
+        if (edit.id == 0 || edit.saving) throw new IOError.PENDING ("An edit is still in progress");
+        edit.saving = true;
+        update_status (state);
+        try {
+            yield core.rpc.send_edit_request_for (state.id, edit.id, text);
+            history.edit = null;
+            if (!running) return;
+            if (history.buffer.selected_message_id == edit.id.to_string ()) history.buffer.select_message ("");
+            reply (state, "Updated #%d".printf (edit.id));
+            if (state == current) schedule_refresh ();
+        } finally {
+            edit.saving = false;
+            update_status (state);
+        }
     }
 
     private async void message_action (AccountState state, Buffer buffer, string command, string arg) throws Error {
@@ -626,7 +693,7 @@ Click a message to select it; Escape clears the selection. Image/file links use 
             return;
         }
         string text;
-        var message = yield message_target (state, buffer, arg, out text);
+        var message = yield message_target (state, buffer, arg, false, out text);
         if (!running) return;
         if (command == "/reply") {
             if (text == "") throw new IOError.INVALID_ARGUMENT ("Usage: /reply [@USER|#ID] TEXT");
@@ -710,6 +777,7 @@ Click a message to select it; Escape clears the selection. Image/file links use 
     }
 
     private async void complete (AccountState state, Buffer buffer, bool backwards) {
+        if (state.histories.contains (buffer.id) && state.histories[buffer.id].edit != null) return;
         var editor = buffer.editor;
         string text = editor.text;
         int cursor = editor.cursor;
@@ -778,6 +846,11 @@ Click a message to select it; Escape clears the selection. Image/file links use 
     private async void submit (AccountState state, Buffer buffer, owned string text) {
         completion.reset ();
         try {
+            var history = state.histories[buffer.id];
+            if (history != null && history.edit != null) {
+                yield save_edit (state, history, text);
+                return;
+            }
             if (text.has_prefix ("/") && !text.has_prefix ("//")) {
                 string[] parts = text.strip ().split (" ", 2);
                 string command = parts[0].down ();
@@ -789,6 +862,7 @@ Click a message to select it; Escape clears the selection. Image/file links use 
                 case "/set": setting (state, buffer, arg); return;
                 case "/color": color (state, buffer, arg); return;
                 case "/info": reply (state, yield load_info (state, buffer)); return;
+                case "/edit": yield begin_edit (state, buffer, arg); return;
                 case "/invite": case "/qr": yield invite (state, buffer, arg); return;
                 case "/reply": case "/react": case "/unreact": yield message_action (state, buffer, command, arg); return;
                 case "/accounts": yield list_accounts (state, buffer); return;

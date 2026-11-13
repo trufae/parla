@@ -14,6 +14,7 @@ private int fake_core (string mode) throws Error {
     var pinned = new HashTable<int, bool> (direct_hash, direct_equal);
     var message_maps = new HashTable<int, Json.Object> (direct_hash, direct_equal);
     var my_reactions = new HashTable<string, Json.Array> (str_hash, str_equal);
+    var edited_text = new HashTable<string, string> (str_hash, str_equal);
     string? line;
     while ((line = stdin.read_line ()) != null) {
         log.printf ("%s\n", line);
@@ -36,7 +37,7 @@ private int fake_core (string mode) throws Error {
                 mode == "terminal" ? "Profile %lld chat".printf (args.get_int_element (0)) : "Shared chat",
                 mode == "terminal" ? "Group" : "Single", seen[(int) args.get_int_element (0)] ? 0 : 2, pinned[(int) args.get_int_element (0)] ? "true" : "false"); break;
         case "set_chat_visibility": pinned[(int) args.get_int_element (0)] = args.get_string_element (2) == "Pinned"; break;
-        case "get_message_ids": result = mode == "terminal" ? "[42,44]" : "[42]"; break;
+        case "get_message_ids": result = mode == "terminal" ? "[41,42,44]" : "[42]"; break;
         case "get_messages":
             if (mode == "terminal") {
                 int account = (int) args.get_int_element (0);
@@ -47,6 +48,15 @@ private int fake_core (string mode) throws Error {
             var parsed_messages = new Json.Parser ();
             parsed_messages.load_from_data (result);
             var map = parsed_messages.get_root ().get_object ();
+            if (mode == "terminal") {
+                var older = new Json.Parser ();
+                older.load_from_data ("{\"kind\":\"message\",\"id\":41,\"chatId\":10,\"state\":26,\"text\":\"Earlier own text\",\"sender\":{\"id\":1,\"displayName\":\"Me\"}}");
+                map.set_member ("41", older.get_root ().copy ());
+                foreach (string id in map.get_members ()) {
+                    string key = "%lld:%s".printf (args.get_int_element (0), id);
+                    if (edited_text.contains (key)) map.get_object_member (id).set_string_member ("text", edited_text[key]);
+                }
+            }
             string? attachment = Environment.get_variable ("PARLA_TEST_ATTACHMENT");
             if (mode == "terminal" && attachment != null) {
                 var message = map.get_object_member ("44");
@@ -88,6 +98,15 @@ private int fake_core (string mode) throws Error {
             var qr_node = new Json.Node (Json.NodeType.VALUE); qr_node.set_string (svg);
             result = Json.to_string (qr_node, false); break;
         case "send_msg": result = "43"; break;
+        case "send_edit_request":
+            if (args.get_string_element (2) == "Rejected edit") {
+                stdout.printf ("{\"jsonrpc\":\"2.0\",\"id\":%lld,\"error\":{\"code\":-32000,\"message\":\"Edit rejected\"}}\n", request.get_int_member ("id"));
+                stdout.flush ();
+                continue;
+            }
+            string key = "%lld:%lld".printf (args.get_int_element (0), args.get_int_element (1));
+            edited_text[key] = args.get_string_element (2);
+            break;
         case "test_echo":
             var node = new Json.Node (Json.NodeType.ARRAY);
             node.set_array (args);

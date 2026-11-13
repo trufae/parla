@@ -58,6 +58,13 @@ targets an explicit message in the current chat. Escape outside selection
 mode clears a clicked selection. Default/sender lookup searches older history
 in batches if the target is outside the visible 100-message scrollback.
 
+`/edit` loads the selected message into the input, or your latest editable
+message when none is selected. Change the text and press Enter to update it;
+Escape cancels. The status line shows which message is being edited. Edits
+stay with their chat and account when switching tabs, and failed updates keep
+the text for retrying. While editing, leading slashes are literal text.
+Only your own editable messages can be changed.
+
 `/react EMOJI` adds a reaction to the selected/latest incoming message while
 preserving your other reactions. `/unreact EMOJI` removes that reaction;
 `/unreact` removes all your reactions on the target. Both accept `#ID` before
@@ -183,6 +190,8 @@ Supply `message_id` to `append_message()` for click/keyboard selection.
 `begin_message_selection()` emits `message_selected` and
 `message_selection_confirmed`. `Text.link()` and optional message attachment
 arguments provide sanitized OSC 8 links, including during incremental redraws.
+`input_cancelled` reports Escape outside message selection so applications can
+cancel their current input action.
 `set_info_visible()` and `set_info(title, text)` control the information pane.
 `option_changed` reports interactive preference changes for application-side
 persistence. `Session.set_view()` swaps account views while retaining terminal
@@ -213,16 +222,16 @@ mouse motion is not requested and stray motion events do not cause redraws.
 | Ctrl-W / Ctrl-U | Delete the previous word / clear input |
 | Click a contact / tab | Open the conversation / select the tab |
 | Click the input | Focus input and place the caret |
-| Click a message | Select it for replies and reactions |
+| Click a message | Select it for replies, edits and reactions |
 | Wheel over history / contacts / tabs | Scroll one row / move one contact / switch one tab |
 | Tab / Shift-Tab | Complete `/commands`, settings, or `@members`; cycle forwards/backwards |
 | Ctrl-P / Ctrl-N or Up / Down | Recall previous / next submitted input across tabs and accounts |
 | Alt-Right / Alt-Left | Next / previous tab |
 | Ctrl-B / Ctrl-F or Page Up / Page Down | Page up / down through message history |
-| Enter | Submit the draft |
+| Enter | Submit the draft or update the message being edited |
 | Alt-Enter / Ctrl-J | Insert a newline |
 | Left / Right, Home / End, Backspace / Delete | Edit the draft |
-| Escape | Return focus to input, cancel message selection, or clear its target |
+| Escape | Return focus to input, cancel an edit or message selection, or clear its target |
 | Ctrl-L | Force a redraw |
 | Ctrl-C / Ctrl-D | Request exit |
 
