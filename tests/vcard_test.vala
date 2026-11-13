@@ -6,7 +6,7 @@ public void test_vcard_metadata () {
     assert (msg.is_vcard ());
     assert (msg.vcard_contact.name == "Alice <&>");
     assert (msg.vcard_contact.address == "alice@example.org");
-    assert (msg.vcard_contact.thumbnail () == null);
+    assert (VcardPreview.thumbnail (msg.vcard_contact) == null);
     assert (msg.dup ().vcard_contact == msg.vcard_contact);
     msg = new Message ();
     assert (!msg.is_vcard ());
@@ -146,7 +146,7 @@ private async void check_vcard_core (string server, string fixture, bool ui) {
             obj.set_string_member ("displayName", "Alice <&>");
             obj.set_string_member ("profileImage", Base64.encode (png));
             draft.vcard_contact = new VcardContact (obj);
-            var texture = draft.vcard_contact.thumbnail ();
+            var texture = VcardPreview.thumbnail (draft.vcard_contact);
             assert (texture != null && texture.width <= 72 && texture.height <= 72);
             foreach (var style in new MessageStyle[] { MessageStyle.BUBBLES, MessageStyle.IRC, MessageStyle.WORKSPACE }) {
                 MessageRow.style = style;

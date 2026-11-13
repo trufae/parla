@@ -365,8 +365,13 @@ namespace Dc {
 #endif
             chat_store = new GLib.ListStore (typeof (ChatEntry));
             views = new HashTable<int, ConversationView> (direct_hash, direct_equal);
-            settings = new SettingsManager ();
-            settings.load ();
+            settings = ((Dc.Application) application).core.settings;
+            AudioPlayer.prefer_system = settings.system_audio_player;
+            settings.notify["system-audio-player"].connect (() => {
+                AudioPlayer.prefer_system = settings.system_audio_player;
+            });
+            Markdown.mode = settings.markdown_mode;
+            SyntaxHighlight.theme = settings.code_theme;
             image_viewer = new ImageViewer ();
             image_viewer.set_window (this);
             video_player = new VideoPlayer ();
@@ -391,6 +396,8 @@ namespace Dc {
             });
 
             settings.appearance_changed.connect (() => {
+                Markdown.mode = settings.markdown_mode;
+                SyntaxHighlight.theme = settings.code_theme;
                 MessageRow.style = settings.message_style;
                 MessageRow.animate_stickers = settings.animate_stickers;
                 apply_current_appearance ();
@@ -421,9 +428,7 @@ namespace Dc {
             /* Defer until the main loop — the tray's D-Bus connection and the
                application property aren't ready during construct. */
             Idle.add (() => {
-                if (settings.startup_update_checks_enabled ()) {
-                    check_parla_update.begin ();
-                }
+                check_parla_update.begin ();
                 try_connect.begin ();
                 sync_tray ();
                 return Source.REMOVE;
@@ -1185,24 +1190,17 @@ namespace Dc {
             show_empty_status ("parla-welcome", _("Welcome to Parla"),
                 _("Select a chat to start messaging"));
 
-            /* Find the RPC server binary. Auto mode uses Parla/distro-owned
-               standalone servers; Custom uses the explicit configured path. */
-            string? rpc_path = AccountFinder.find_rpc_server (
-                settings.effective_rpc_server_path (),
-                settings.effective_rpc_server_source ());
-            if (rpc_path == null) {
-                set_connection_status (false, _("RPC server not found"));
-                show_rpc_not_found ();
-                return;
-            }
-
-            string data_dir = AccountFinder.get_data_dir ();
-            string accounts_path = settings.effective_accounts_path ();
+            var core = ((Dc.Application) application).core;
 
             /* Try to connect */
             try {
-                yield rpc.start ({ rpc_path }, data_dir, accounts_path);
+                yield core.start ();
             } catch (Error e) {
+                if (e is IOError.NOT_FOUND && core.server_path == null) {
+                    set_connection_status (false, _("RPC server not found"));
+                    show_rpc_not_found ();
+                    return;
+                }
                 string msg = e.message;
                 if ("already running" in msg.down () || "accounts.lock" in msg.down ()) {
                     show_toast (_("Cannot connect - account store is already in use"));
@@ -1229,25 +1227,14 @@ namespace Dc {
 
             /* If we're running Parla's own downloaded server, optionally check
                for a newer release in the background and offer to update. */
-            if (settings.rpc_auto_update_enabled () &&
-                rpc_path == AccountFinder.get_managed_rpc_path ()) {
-                check_managed_update.begin ();
-            }
+            check_managed_update.begin ();
 
             /* Ensure we have an account */
             string? acct_desc, acct_toast;
-            yield AccountFinder.ensure_configured (rpc,
-                                                    settings.default_account_addr,
-                                                    out acct_desc, out acct_toast);
+            yield core.prepare_accounts (out acct_desc, out acct_toast);
             if (acct_toast != null) show_toast (acct_toast);
             refresh_disk_space_warning.begin ();
             if (rpc.account_id > 0) {
-                try {
-                    yield apply_auto_download_limit ();
-                    yield rpc.start_io_for_all_accounts ();
-                } catch (Error e) {
-                    show_toast (_("Connection setup error: ") + e.message);
-                }
                 refresh_tracking_filter.begin (false);
             }
 
@@ -1610,16 +1597,10 @@ namespace Dc {
 
         /* Parla and Core share the same startup update policy. */
         private async void check_parla_update () {
-            if (!settings.startup_update_checks_enabled ()) return;
-            try {
-                string tag = yield RpcInstaller.fetch_latest_tag ("trufae/parla");
-                if (!settings.startup_update_checks_enabled () ||
-                    !RpcInstaller.is_newer_version (tag, Parla.VERSION)) return;
-                parla_update_button.label = _("Parla %s available").printf (tag);
-                parla_update_button.visible = true;
-            } catch (Error e) {
-                /* Update checks are best-effort; stay quiet on failure. */
-            }
+            string? tag = yield ((Dc.Application) application).core.check_parla_update ();
+            if (tag == null) return;
+            parla_update_button.label = _("Parla %s available").printf (tag);
+            parla_update_button.visible = true;
         }
 
         private async void open_parla_download_page () {
@@ -1633,27 +1614,14 @@ namespace Dc {
 
         /* Quietly check GitHub for a newer managed server and offer to update. */
         private async void check_managed_update () {
-            if (!settings.rpc_auto_update_enabled ()) return;
-            try {
-                string? installed = yield RpcInstaller.installed_version ();
-                if (installed == null || !settings.rpc_auto_update_enabled ()) return;
-                string tag = yield RpcInstaller.fetch_latest_tag ();
-                if (!settings.rpc_auto_update_enabled ()) return;
-                string? latest = RpcInstaller.extract_version (tag);
-                string? current = RpcInstaller.extract_version (installed);
-                if (latest == null || current == null || latest == current) return;
-
-                var toast = new Adw.Toast (
-                    _("Delta Chat engine update available: %s").printf (latest));
-                toast.timeout = 8;
-                toast.button_label = _("Update");
-                toast.button_clicked.connect (() => {
-                    update_managed_server.begin ();
-                });
-                toast_overlay.add_toast (toast);
-            } catch (Error e) {
-                /* Update checks are best-effort; stay quiet on failure. */
-            }
+            string? latest = yield ((Dc.Application) application).core.check_core_update ();
+            if (latest == null) return;
+            var toast = new Adw.Toast (
+                _("Delta Chat engine update available: %s").printf (latest));
+            toast.timeout = 8;
+            toast.button_label = _("Update");
+            toast.button_clicked.connect (() => { update_managed_server.begin (); });
+            toast_overlay.add_toast (toast);
         }
 
         private async void update_managed_server () {
@@ -3058,23 +3026,9 @@ namespace Dc {
             settings.save_auto_download_limit (bytes);
             if (!rpc.is_connected) return;
             try {
-                yield apply_auto_download_limit ();
+                yield ((Dc.Application) application).core.apply_auto_download_limit ();
             } catch (Error e) {
                 show_toast (_("Unable to update attachment downloads: ") + e.message);
-            }
-        }
-
-        private async void apply_auto_download_limit () throws Error {
-            var accounts_node = yield rpc.get_all_accounts ();
-            if (accounts_node == null) return;
-            var accounts = accounts_node.get_array ();
-            string limit = settings.auto_download_limit.to_string ();
-            for (uint i = 0; i < accounts.get_length (); i++) {
-                var account = accounts.get_object_element (i);
-                int id = (int) account.get_int_member ("id");
-                if (id > 0) {
-                    yield rpc.batch_set_config ("download_limit", limit, id);
-                }
             }
         }
 
@@ -3089,8 +3043,7 @@ namespace Dc {
                    which account is shown — the others keep fetching mail in the
                    background. Re-asserting all-accounts IO here is idempotent and
                    also covers accounts created during this session. */
-                yield apply_auto_download_limit ();
-                yield rpc.start_io_for_all_accounts ();
+                yield ((Dc.Application) application).core.start_io ();
                 yield reload_active_account ();
                 return true;
             } catch (Error e) {
@@ -4011,7 +3964,7 @@ namespace Dc {
 
         private void adjust_font_size (int delta) {
             int next_size = SettingsManager.clamp_font_size (
-                settings.effective_font_size () + delta);
+                SettingsFonts.effective_size (settings) + delta);
             settings.save_font_size (next_size);
         }
 

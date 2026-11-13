@@ -50,3 +50,6 @@ src/webxdc.vala
 src/webxdc_bar.vala
 src/webxdc_manager_dialog.vala
 src/window.vala
+src/core_session.vala
+src/ui_helpers.vala
+src/vcard_preview.vala

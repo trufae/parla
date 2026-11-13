@@ -1,5 +1,52 @@
 # Delta Chat RPC Server Packaging
 
+## Shared frontend API
+
+`parla` and `parla-cli` link the same `parla-core` static library. Meson exposes
+it as `parla_core_dep`, with generated `parla-core.h` and `parla-core.vapi` in the
+build directory. Its public API uses GLib/GIO and JSON-GLib; GTK widgets, font
+adapters and image previews live in the GUI sources. The library also reuses
+SafeStore's account path policy and the native platform helpers.
+
+`Dc.CoreSession` owns a loaded `SettingsManager` and an `RpcClient`:
+
+```vala
+// Inside an async method, with a GLib main loop running:
+var core = new Dc.CoreSession ();
+yield core.start ();
+try {
+    string? description, notice;
+    yield core.prepare_accounts (out description, out notice);
+    // account_id == 0 means there is no configured profile yet.
+    var accounts = yield core.rpc.get_all_accounts ();
+} finally {
+    yield core.rpc.stop_gracefully ();
+}
+```
+
+Use the typed methods on `core.rpc` for chats, messages and account management;
+`call()` is the raw JSON-RPC escape hatch. `prepare_accounts()` selects the saved
+default profile, applies attachment download preferences and starts all-account
+IO. `start_io()` reapplies that policy after switching or creating a profile.
+`check_parla_update()` and `check_core_update()` return an available version or
+null and respect the saved, build-time and environment update policy.
+`RpcInstaller` remains available for frontends that offer installation.
+
+Call the API from one GLib main context. Keep that context running while waiting
+for terminal input. Stop the RPC client before releasing the session; use
+`stop()` for forced cleanup after a failed graceful shutdown. Subscribe to
+`rpc.disconnected` after startup and use `rpc.get_next_event()` if the frontend
+needs live events. The GUI's notification and Webxdc event handling stays in the
+GUI. Settings persistence is in `src/settings.vala`; graphical adapters are in
+`src/settings_fonts.vala`, `src/vcard_preview.vala` and `src/ui_helpers.vala`.
+
+The account path, including `DC_ACCOUNTS_PATH` and legacy-directory fallback,
+is shared without migration. The existing core lock protects it when another
+frontend is running. `meson test -C builddir-cli` exercises the backend and REPL
+with isolated temporary settings and a fake core, without GTK or network access.
+
+## RPC server
+
 Parla talks to `deltachat-rpc-server` over JSON-RPC on stdin/stdout. The
 server is provided by the Chatmail/Delta Chat core project:
 

@@ -33,7 +33,8 @@ namespace Dc {
 
     public class Application : Adw.Application {
 
-        public RpcClient rpc { get; private set; }
+        public CoreSession core { get; private set; }
+        public RpcClient rpc { get { return core.rpc; } }
         public bool restart_requested { get; private set; default = false; }
 
         public void request_restart () {
@@ -80,7 +81,7 @@ namespace Dc {
         }
 
         construct {
-            rpc = new RpcClient ();
+            core = new CoreSession ();
             add_main_option (
                 "background", 'b', OptionFlags.NONE, OptionArg.NONE,
                 _("Start in the background without opening a window"), null);
@@ -119,8 +120,7 @@ namespace Dc {
         }
 
         public void reset_rpc_client () {
-            rpc.stop ();
-            rpc = new RpcClient ();
+            core.reset_rpc ();
         }
 
         public void apply_accent_color (string hex) {
@@ -452,8 +452,7 @@ namespace Dc {
                built, so named colors resolve to it from the first style
                computation. Applying it later (in Window.construct, after
                build_ui) leaves already-styled widgets blue until a re-apply. */
-            var settings = new SettingsManager ();
-            settings.load ();
+            var settings = core.settings;
             apply_theme_override (settings.theme_override);
             apply_accent_color (settings.accent_color);
             /* Bubble tint depends on light/dark, so link colours must

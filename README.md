@@ -163,6 +163,29 @@ make run
 On GNOME, install the desktop entry with `sudo make install` so the app
 switcher can resolve Parla's name and icon, especially on Wayland.
 
+The desktop build also produces **`parla-cli`**, a plain line-oriented REPL.
+For a CLI-only build, install Vala, Meson, a C compiler, GLib/GIO and JSON-GLib
+development files, then run:
+
+```sh
+meson setup builddir-cli -Dgui=false
+meson compile -C builddir-cli
+./builddir-cli/parla-cli
+```
+
+This build does not require GTK, libadwaita or WebKit. On macOS it also uses
+the system Foundation framework. Use `-Dcli=false` for a GUI-only build.
+The REPL supports `accounts`, `account ID`, `chats`, `messages CHAT_ID`,
+`send CHAT_ID TEXT`, `settings`, `updates`, `rpc METHOD [JSON_ARRAY]`, and `quit`.
+Type `help` for details; EOF also exits.
+
+Both frontends link the same backend and use the same settings, account store,
+core discovery and update policy. Close the GUI before starting `parla-cli`
+over SSH; the core's account lock prevents concurrent access. No import or copy
+is needed. Configure new profiles in the GUI for now. The CLI checks for updates
+but does not install them, and conversation refreshes are explicit commands.
+See [the shared backend API](docs/rpc-server.md#shared-frontend-api).
+
 AES-256 backups optionally use libzip 1.7+: install its development package
 before building to enable the adapter, and its runtime library to use backups.
 Parla builds and starts without it. Ordinary `zip`/`unzip` only support the

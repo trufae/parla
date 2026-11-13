@@ -1675,7 +1675,7 @@ namespace Dc {
             var msg = find_message (message_store, msg_id);
             if (msg == null) return;
             var dialog = new FullMessageDialog (window, rpc, msg_actions, msg,
-                full_text, settings.effective_font_size ());
+                full_text, SettingsFonts.effective_size (settings));
             dialog.present (window);
         }
 
@@ -2989,7 +2989,7 @@ namespace Dc {
             }
             var dialog = new FullMessageDialog.for_file (window,
                 msg.display_file_name (), content,
-                settings.effective_font_size (), msg.is_markdown_file ());
+                SettingsFonts.effective_size (settings), msg.is_markdown_file ());
             dialog.present (window);
         }
 

@@ -1,11 +1,5 @@
 namespace Dc {
 
-    public enum MarkdownMode {
-        ENABLED = 0,
-        STRIPPED = 1,
-        DISABLED = 2;
-    }
-
     /**
      * Converts markdown-formatted text to Pango markup for GTK labels.
      * Supports: bold, italic, strikethrough, inline code, code blocks,

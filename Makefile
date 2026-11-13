@@ -58,7 +58,7 @@ uninstall:
 		apparmor_parser --remove /etc/apparmor.d/parla 2>/dev/null || true; \
 	fi
 	rm -f "$(DESTDIR)/etc/apparmor.d/parla"
-	rm -f "$(DESTDIR)$(BINDIR)/parla"
+	rm -f "$(DESTDIR)$(BINDIR)/parla" "$(DESTDIR)$(BINDIR)/parla-cli"
 	rm -f "$(DESTDIR)$(DATADIR)/applications/io.github.trufae.Parla.desktop"
 	rm -f "$(DESTDIR)$(DATADIR)/icons/hicolor/scalable/apps/io.github.trufae.Parla.svg"
 	rm -f "$(DESTDIR)$(DATADIR)/icons/hicolor/scalable/apps/parla-welcome.svg"

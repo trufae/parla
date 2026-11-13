@@ -1,18 +1,5 @@
 namespace Dc {
 
-    public static bool is_phosh_session () {
-        foreach (var variable in new string[] {
-            "XDG_CURRENT_DESKTOP", "XDG_SESSION_DESKTOP", "DESKTOP_SESSION"
-        }) {
-            var value = Environment.get_variable (variable);
-            if (value == null) continue;
-            foreach (var desktop in value.split (":")) {
-                if (desktop.ascii_casecmp ("phosh") == 0) return true;
-            }
-        }
-        return false;
-    }
-
     /** Attach once to a widget and handle requested to open its menu.
         Coordinates are relative to that widget. Return true when a menu
         opens, or false to leave the event to GTK (e.g. selected text).

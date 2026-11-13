@@ -1,3 +1,5 @@
+option('gui', type: 'boolean', value: true, description: 'Build the GTK frontend')
+option('cli', type: 'boolean', value: true, description: 'Build the plain command-line REPL (desktop targets)')
 option('webxdc',
   type: 'boolean',
   value: true,

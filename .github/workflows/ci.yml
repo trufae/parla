@@ -11,6 +11,39 @@ permissions:
   contents: write
 
 jobs:
+  build-cli:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install CLI dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential pkg-config python3-venv gettext ninja-build valac \
+            libglib2.0-dev libjson-glib-dev
+          python3 -m venv "$RUNNER_TEMP/meson-venv"
+          "$RUNNER_TEMP/meson-venv/bin/pip" install meson==1.12.1
+          echo "$RUNNER_TEMP/meson-venv/bin" >> "$GITHUB_PATH"
+
+      - name: Configure CLI-only build
+        run: meson setup builddir-cli -Dgui=false -Dcli=true -Dwerror=true
+
+      - name: Build CLI
+        run: meson compile -C builddir-cli
+
+      - name: Test CLI and backend
+        run: meson test -C builddir-cli --print-errorlogs
+
+      - name: Check CLI has no GUI dependencies
+        run: |
+          ldd builddir-cli/parla-cli > builddir-cli/cli-dependencies.txt
+          cat builddir-cli/cli-dependencies.txt
+          if grep -Ei 'lib(gtk|gdk|adwaita|webkit|pango)' builddir-cli/cli-dependencies.txt; then
+            echo "::error::parla-cli must not depend on GUI libraries"
+            exit 1
+          fi
+
   # Plain Linux build, once with the accessibility extras (the default)
   # and once with -Da11y=false so both halves of every #if A11Y keep
   # compiling.

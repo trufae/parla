@@ -1,14 +1,5 @@
 namespace Dc {
 
-    /** Selectable palette family for code-block syntax highlighting. */
-    public enum CodeTheme {
-        ADAPTIVE = 0,
-        SOLARIZED = 1,
-        MONOKAI = 2,
-        NORD = 3,
-        NONE = 4;
-    }
-
     /**
      * Generic, language-agnostic syntax highlighter for fenced code blocks.
      * A single tokenizer colors comments, strings, numbers and a keyword set
