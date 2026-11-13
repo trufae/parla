@@ -76,3 +76,62 @@ with tempfile.TemporaryDirectory(prefix="parla-cli-") as folder:
         process.stdin.flush()
         assert process.wait(timeout=5) != 0
         assert "Disconnected" in process.stderr.read()
+
+    # The POSIX TUI uses the same configured account and RPC facade. Exercise
+    # contact selection and a bracketed multiline paste through a real PTY.
+    if os.name == "posix":
+        import fcntl
+        import pty
+        import select
+        import struct
+        import termios
+        import time
+
+        master, slave = pty.openpty()
+        fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 24, 100, 0, 0))
+        process = subprocess.Popen([cli], stdin=slave, stdout=slave,
+                                   stderr=subprocess.PIPE,
+                                   env=dict(env, TERM="xterm-256color", G_DEBUG="fatal-warnings"))
+
+        def wait_text(needle):
+            data = b""
+            deadline = time.monotonic() + 5
+            while needle not in data and time.monotonic() < deadline:
+                if select.select([master], [], [], 0.1)[0]:
+                    data += os.read(master, 65536)
+            assert needle in data, data
+            return data
+
+        try:
+            wait_text(b"Contacts (2)")
+            os.write(master, b"\x07")
+            wait_text(b"Shared chat")
+            os.write(master, b"\x1b[<0;2;3M\x1b[<0;2;3m")  # Click the first contact.
+            history = wait_text(b"Shared history")
+            import re
+            plain = re.sub(rb"\x1b\[[0-9;?]*[A-Za-z]", b"", history)
+            assert b"--:-- <Alice> Shared history" in plain, plain
+            assert b"Shared chat" in plain, history
+            os.write(master, b"\x1b[200~hello\nworld\x1b[201~")
+            wait_text(b"world")
+            assert '"method":"send_msg"' not in log.read_text()
+            os.write(master, b"\r")
+            deadline = time.monotonic() + 5
+            sent = []
+            while time.monotonic() < deadline:
+                requests = [json.loads(line) for line in log.read_text().splitlines()[1:] if line.startswith("{")]
+                sent = [call for call in requests if call["method"] == "send_msg"]
+                if sent:
+                    break
+                select.select([], [], [], 0.02)
+            assert len(sent) == 1 and sent[0]["params"][0:2] == [2, 10], sent
+            assert sent[0]["params"][2]["text"] == "hello\nworld", sent
+            os.write(master, b"\x03")
+            assert process.wait(timeout=5) == 0
+            assert not process.stderr.read()
+        finally:
+            if process.poll() is None:
+                process.kill()
+                process.wait()
+            os.close(master)
+            os.close(slave)

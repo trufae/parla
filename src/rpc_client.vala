@@ -467,7 +467,11 @@ namespace Dc {
             order. Entries that are missing or tagged "loadingError"
             (get_messages results are tagged) are skipped. */
         public async Message[] get_parsed_messages (int[] msg_ids) throws Error {
-            var map = yield get_messages_for (account_id, msg_ids);
+            return yield get_parsed_messages_for (account_id, msg_ids);
+        }
+
+        public async Message[] get_parsed_messages_for (int acct_id, int[] msg_ids) throws Error {
+            var map = yield get_messages_for (acct_id, msg_ids);
             Message[] msgs = {};
             if (map == null) return msgs;
             foreach (int msg_id in msg_ids) {
@@ -599,8 +603,12 @@ namespace Dc {
         }
 
         public async void marknoticed_chat (int chat_id) throws Error {
+            yield marknoticed_chat_for (account_id, chat_id);
+        }
+
+        public async void marknoticed_chat_for (int acct_id, int chat_id) throws Error {
             yield call_read_state ("marknoticed_chat",
-                Params.begin ().add_int (account_id).add_int (chat_id).build ());
+                Params.begin ().add_int (acct_id).add_int (chat_id).build ());
         }
 
         public async void markfresh_chat (int chat_id) throws Error {
@@ -615,9 +623,13 @@ namespace Dc {
         }
 
         public async void mark_seen_msgs (int[] msg_ids) throws Error {
+            yield mark_seen_msgs_for (account_id, msg_ids);
+        }
+
+        public async void mark_seen_msgs_for (int acct_id, int[] msg_ids) throws Error {
             yield call_read_state ("markseen_msgs",
                 Params.begin ()
-                    .add_int (account_id)
+                    .add_int (acct_id)
                     .add_int_array (msg_ids)
                     .build ());
         }
@@ -814,9 +826,13 @@ namespace Dc {
         }
 
         public async void set_chat_visibility (int chat_id, string visibility) throws Error {
+            yield set_chat_visibility_for (account_id, chat_id, visibility);
+        }
+
+        public async void set_chat_visibility_for (int acct_id, int chat_id, string visibility) throws Error {
             yield call ("set_chat_visibility",
                 Params.begin ()
-                    .add_int (account_id)
+                    .add_int (acct_id)
                     .add_int (chat_id)
                     .add_string (visibility)
                     .build ());

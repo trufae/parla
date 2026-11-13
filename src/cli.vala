@@ -157,10 +157,18 @@ int main (string[] args) {
             stdout.printf ("Parla %s\n", Parla.VERSION);
             return 0;
         }
-        stdout.printf ("Usage: parla-cli [--help|--version]\n\n%s", HELP);
+        stdout.puts ("Usage: parla-cli [--help|--version]\n\n");
+#if TERMINAL_UI
+        stdout.puts ("Interactive terminals open the TUI. Click to select, wheel to scroll,\nCtrl-G then j/k or arrows for contacts. Piped input uses these commands:\n\n");
+#endif
+        stdout.puts (HELP);
         return args.length == 2 && args[1] == "--help" ? 0 : 1;
     }
     Localization.initialize (SettingsManager.load_language ());
+#if TERMINAL_UI
+    if (Posix.isatty (stdin.fileno ()) && Posix.isatty (stdout.fileno ()))
+        return new CliTerminal ().run ();
+#endif
     var core = new CoreSession ();
     var loop = new MainLoop ();
     int status = 1;

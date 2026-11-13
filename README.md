@@ -163,7 +163,8 @@ make run
 On GNOME, install the desktop entry with `sudo make install` so the app
 switcher can resolve Parla's name and icon, especially on Wayland.
 
-The desktop build also produces **`parla-cli`**, a plain line-oriented REPL.
+The desktop build also produces **`parla-cli`**, with a line-oriented REPL and
+a BitchX-style terminal interface on Linux and macOS.
 For a CLI-only build, install Vala, Meson, a C compiler, GLib/GIO and JSON-GLib
 development files, then run:
 
@@ -175,6 +176,22 @@ meson compile -C builddir-cli
 
 This build does not require GTK, libadwaita or WebKit. On macOS it also uses
 the system Foundation framework. Use `-Dcli=false` for a GUI-only build.
+Interactive terminals open the TUI by default. Click contacts or tabs to
+select them, use the wheel to scroll, or press Ctrl-G and navigate contacts
+with `j`/`k` or arrows. Contacts has its own permanent tab, with aligned pin,
+unread, time and grey message-preview columns. Use `g` to group chats, `a`
+to sort alphabetically or by activity, and `p` to pin/unpin. Its badge counts
+unread messages from chats without open tabs. Esc+number selects a tab; Esc+x, `/close`, or middle-click
+closes it. Ctrl-W deletes a word, Ctrl-B/F pages through messages, and
+Ctrl-P/N recalls shared input history. Tab completes `/commands` and `@members`.
+Command output goes to the Parla tab. `/account` switches profiles,
+`/query name|address` opens or starts a direct chat, and `/invite` displays a QR/link.
+Click a message for `/reply`, `/react` or `/unreact`; `/reply` alone opens a
+keyboard selector. `/reply text` defaults to the latest incoming message,
+and `/reply @user text` chooses that user's latest message. Image/file
+attachments provide clickable terminal hyperlinks to local files.
+`/color` configures themes; layout and color preferences persist across runs.
+Piped input uses the line-oriented REPL.
 The REPL supports `accounts`, `account ID`, `chats`, `messages CHAT_ID`,
 `send CHAT_ID TEXT`, `settings`, `updates`, `rpc METHOD [JSON_ARRAY]`, and `quit`.
 Type `help` for details; EOF also exits.
@@ -182,8 +199,12 @@ Type `help` for details; EOF also exits.
 Both frontends link the same backend and use the same settings, account store,
 core discovery and update policy. Close the GUI before starting `parla-cli`
 over SSH; the core's account lock prevents concurrent access. No import or copy
-is needed. Configure new profiles in the GUI for now. The CLI checks for updates
-but does not install them, and conversation refreshes are explicit commands.
+is needed. Configure new profiles in the GUI for now. The plain REPL checks for
+updates but does not install them, and its conversation refreshes are explicit
+commands. The TUI refreshes on core events and provides a Contacts tab,
+tabs, Markdown history, a status line and multiline drafts. It uses the
+independent Vala [terminal library](docs/terminal.md), which caches layout and
+writes only changed terminal cells.
 See [the shared backend API](docs/rpc-server.md#shared-frontend-api).
 
 AES-256 backups optionally use libzip 1.7+: install its development package

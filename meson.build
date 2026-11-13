@@ -157,11 +157,27 @@ parla_core_dep = declare_dependency(
 )
 
 if get_option('cli') and not android
-  parla_cli = executable('parla-cli', 'src/cli.vala',
-    dependencies: parla_core_dep, install: true)
+  cli_sources = files('src/cli.vala')
+  cli_deps = [parla_core_dep]
+  cli_vala_args = []
+  if host_machine.system() != 'windows'
+    subdir('terminal')
+    cli_sources += files('src/cli_tui.vala', 'src/cli_options.vala', 'src/cli_qr.vala')
+    cli_deps += parla_terminal_dep
+    cli_vala_args += '--define=TERMINAL_UI'
+  endif
+  parla_cli = executable('parla-cli', cli_sources,
+    dependencies: cli_deps, vala_args: cli_vala_args, install: true)
   core_session_test = executable('core-session-test', 'tests/core_session_test.vala',
     dependencies: parla_core_dep, install: false)
   test('cli', python, args: [files('tests/cli_test.py'), parla_cli, core_session_test])
+  if host_machine.system() != 'windows'
+    terminal_test = executable('terminal-test', 'tests/terminal_test.vala',
+      dependencies: parla_terminal_dep, install: false)
+    test('terminal', terminal_test)
+    test('terminal-pty', python, args: [files('tests/terminal_pty_test.py'), parla_cli, core_session_test], timeout: 30)
+    test('terminal-commands', python, args: [files('tests/terminal_commands_test.py'), parla_cli, core_session_test], timeout: 45)
+  endif
 endif
 
 if not android
