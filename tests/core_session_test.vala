@@ -30,11 +30,11 @@ private int fake_core (string mode) throws Error {
         case "get_all_accounts": result = mode == "empty" ? "[]" : "[{\"id\":1},{\"id\":2}]"; break;
         case "is_configured": result = args.get_int_element (0) <= 2 ? "true" : "false"; break;
         case "list_transports":
-            result = "[{\"addr\":\"user%lld@example.org\"}]".printf (args.get_int_element (0)); break;
+            result = ("[{\"addr\":\"user%" + int64.FORMAT + "@example.org\"}]").printf (args.get_int_element (0)); break;
         case "get_chatlist_entries": result = "[10]"; break;
         case "get_chatlist_items_by_entries":
             result = "{\"10\":{\"name\":\"%s\",\"chatType\":\"%s\",\"freshMessageCounter\":%d,\"isPinned\":%s,\"lastMessageTimestamp\":1700000000,\"summaryText2\":\"Latest message preview\"}}".printf (
-                mode == "terminal" ? "Profile %lld chat".printf (args.get_int_element (0)) : "Shared chat",
+                mode == "terminal" ? ("Profile %" + int64.FORMAT + " chat").printf (args.get_int_element (0)) : "Shared chat",
                 mode == "terminal" ? "Group" : "Single", seen[(int) args.get_int_element (0)] ? 0 : 2, pinned[(int) args.get_int_element (0)] ? "true" : "false"); break;
         case "set_chat_visibility": pinned[(int) args.get_int_element (0)] = args.get_string_element (2) == "Pinned"; break;
         case "get_message_ids": result = mode == "terminal" ? "[41,42,44]" : "[42]"; break;
@@ -53,7 +53,7 @@ private int fake_core (string mode) throws Error {
                 older.load_from_data ("{\"kind\":\"message\",\"id\":41,\"chatId\":10,\"state\":26,\"text\":\"Earlier own text\",\"sender\":{\"id\":1,\"displayName\":\"Me\"}}");
                 map.set_member ("41", older.get_root ().copy ());
                 foreach (string id in map.get_members ()) {
-                    string key = "%lld:%s".printf (args.get_int_element (0), id);
+                    string key = ("%" + int64.FORMAT + ":%s").printf (args.get_int_element (0), id);
                     if (edited_text.contains (key)) map.get_object_member (id).set_string_member ("text", edited_text[key]);
                 }
             }
@@ -73,14 +73,14 @@ private int fake_core (string mode) throws Error {
             result = map != null && map.has_member (id) ? Json.to_string (map.get_member (id), false) : "null";
             break;
         case "get_message_reactions":
-            string key = "%lld:%lld".printf (args.get_int_element (0), args.get_int_element (1));
+            string key = ("%" + int64.FORMAT + ":%" + int64.FORMAT).printf (args.get_int_element (0), args.get_int_element (1));
             var own = my_reactions[key];
             if (own == null) { own = new Json.Array (); own.add_string_element ("❤"); }
             var arr = new Json.Node (Json.NodeType.ARRAY); arr.set_array (own);
             result = "{\"reactionsByContact\":{\"1\":%s,\"2\":[\"👍\"]}}".printf (Json.to_string (arr, false));
             break;
         case "send_reaction":
-            string key = "%lld:%lld".printf (args.get_int_element (0), args.get_int_element (1));
+            string key = ("%" + int64.FORMAT + ":%" + int64.FORMAT).printf (args.get_int_element (0), args.get_int_element (1));
             my_reactions[key] = args.get_array_element (2);
             break;
         case "markseen_msgs": case "marknoticed_chat": seen[(int) args.get_int_element (0)] = true; break;
@@ -100,11 +100,11 @@ private int fake_core (string mode) throws Error {
         case "send_msg": result = "43"; break;
         case "send_edit_request":
             if (args.get_string_element (2) == "Rejected edit") {
-                stdout.printf ("{\"jsonrpc\":\"2.0\",\"id\":%lld,\"error\":{\"code\":-32000,\"message\":\"Edit rejected\"}}\n", request.get_int_member ("id"));
+                stdout.printf ("{\"jsonrpc\":\"2.0\",\"id\":%" + int64.FORMAT + ",\"error\":{\"code\":-32000,\"message\":\"Edit rejected\"}}\n", request.get_int_member ("id"));
                 stdout.flush ();
                 continue;
             }
-            string key = "%lld:%lld".printf (args.get_int_element (0), args.get_int_element (1));
+            string key = ("%" + int64.FORMAT + ":%" + int64.FORMAT).printf (args.get_int_element (0), args.get_int_element (1));
             edited_text[key] = args.get_string_element (2);
             break;
         case "test_echo":
@@ -114,7 +114,7 @@ private int fake_core (string mode) throws Error {
             break;
         case "test_disconnect": return 0;
         }
-        stdout.printf ("{\"jsonrpc\":\"2.0\",\"id\":%lld,\"result\":%s}\n",
+        stdout.printf ("{\"jsonrpc\":\"2.0\",\"id\":%" + int64.FORMAT + ",\"result\":%s}\n",
             request.get_int_member ("id"), result);
         stdout.flush ();
     }

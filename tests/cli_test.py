@@ -13,10 +13,11 @@ with tempfile.TemporaryDirectory(prefix="parla-cli-") as folder:
     settings = root / "config/parla/settings.ini"
     settings.parent.mkdir(parents=True)
     store = root / "shared-accounts"
+    escaped_store = str(store).replace("\\", "\\\\")
     original = ("[General]\ndefault_account_addr=user2@example.org\n"
                 "auto_download_limit=262144\nfuture_setting=preserved\n"
-                f"accounts_path={store}\n")
-    settings.write_text(original)
+                f"accounts_path={escaped_store}\n")
+    settings.write_text(original, encoding="utf-8")
     log = root / "rpc.log"
     env = dict(os.environ, XDG_CONFIG_HOME=str(root / "config"),
                XDG_DATA_HOME=str(root / "data"), XDG_CACHE_HOME=str(root / "cache"),
@@ -25,11 +26,11 @@ with tempfile.TemporaryDirectory(prefix="parla-cli-") as folder:
     env.pop("DC_ACCOUNTS_PATH", None)
     env.pop("PARLA_TEST_SERVER", None)
     subprocess.run([backend], env=env, check=True, timeout=15)
-    settings.write_text(original)
+    settings.write_text(original, encoding="utf-8")
     env["PARLA_TEST_SERVER"] = "normal"
 
     def run(commands, **changes):
-        result = subprocess.run([cli], input=commands, text=True, capture_output=True,
+        result = subprocess.run([cli], input=commands, encoding="utf-8", capture_output=True,
                                 env=dict(env, **changes), timeout=15)
         assert result.returncode == 0, result.stderr
         assert not result.stderr, result.stderr
@@ -45,7 +46,7 @@ with tempfile.TemporaryDirectory(prefix="parla-cli-") as folder:
     assert "10\tShared chat\t2 unread" in output, output
     assert "Alice: Shared history" in output and "Sent 43" in output, output
     assert '["quoted text",42]' in output, output
-    lines = log.read_text().splitlines()
+    lines = log.read_text(encoding="utf-8").splitlines()
     assert lines[0] == str(store) and lines[-1] == "EOF", lines
     calls = [json.loads(line) for line in lines[1:-1]]
     assert [c["params"] for c in calls if c["method"] == "select_account"] == [[2], [1]]
@@ -53,25 +54,25 @@ with tempfile.TemporaryDirectory(prefix="parla-cli-") as folder:
     assert downloads == [[1, {"download_limit": "262144"}], [2, {"download_limit": "262144"}]] * 2
     sent = next(c["params"] for c in calls if c["method"] == "send_msg")
     assert sent[0:2] == [2, 10] and sent[2]["text"] == text, sent
-    assert settings.read_text() == original  # Reading never rewrites GUI preferences.
+    assert settings.read_text(encoding="utf-8") == original  # Reading never rewrites GUI preferences.
 
     # EOF, a fresh store, environment path precedence, and repeat launches.
     run("")
     output = run("settings\nquit\n", DC_ACCOUNTS_PATH=str(root / "override"))
     assert str(root / "override") in output
-    assert log.read_text().splitlines()[0] == str(root / "override")
+    assert log.read_text(encoding="utf-8").splitlines()[0] == str(root / "override")
     assert "No profiles configured" in run("quit\n", PARLA_TEST_SERVER="empty")
 
-    result = subprocess.run([cli], input="", text=True, capture_output=True,
+    result = subprocess.run([cli], input="", encoding="utf-8", capture_output=True,
                             env=dict(env, PARLA_RPC_SERVER=str(root / "missing")), timeout=5)
     assert result.returncode != 0 and "RPC server not found" in result.stderr, result
-    result = subprocess.run([cli], input="", text=True, capture_output=True,
+    result = subprocess.run([cli], input="", encoding="utf-8", capture_output=True,
                             env=dict(env, PARLA_TEST_SERVER="locked"), timeout=5)
     assert result.returncode != 0 and "accounts.lock" in result.stderr, result
 
     # A disconnected core must wake the main loop even with stdin still open.
     with subprocess.Popen([cli], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                          stderr=subprocess.PIPE, text=True, env=env) as process:
+                          stderr=subprocess.PIPE, encoding="utf-8", env=env) as process:
         process.stdin.write("rpc test_disconnect\n")
         process.stdin.flush()
         assert process.wait(timeout=5) != 0
@@ -114,12 +115,12 @@ with tempfile.TemporaryDirectory(prefix="parla-cli-") as folder:
             assert b"Shared chat" in plain, history
             os.write(master, b"\x1b[200~hello\nworld\x1b[201~")
             wait_text(b"world")
-            assert '"method":"send_msg"' not in log.read_text()
+            assert '"method":"send_msg"' not in log.read_text(encoding="utf-8")
             os.write(master, b"\r")
             deadline = time.monotonic() + 5
             sent = []
             while time.monotonic() < deadline:
-                requests = [json.loads(line) for line in log.read_text().splitlines()[1:] if line.startswith("{")]
+                requests = [json.loads(line) for line in log.read_text(encoding="utf-8").splitlines()[1:] if line.startswith("{")]
                 sent = [call for call in requests if call["method"] == "send_msg"]
                 if sent:
                     break

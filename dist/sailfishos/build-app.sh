@@ -7,7 +7,7 @@ export CC="ccache ${CC:-cc}"
 ccache --zero-stats
 meson setup _build . \
     --prefix="$PREFIX" --libdir=lib --buildtype=release \
-    -Dbundle_icons=true -Dsailfish=true -Dwebxdc=false \
+    -Dbundle_icons=true -Dsailfish=true -Dcli=false -Dwebxdc=false \
     -Drpc_server_path="$PREFIX/bin/deltachat-rpc-server"
 meson compile -C _build parla parla-gmo
 ccache --show-stats

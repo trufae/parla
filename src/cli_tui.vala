@@ -199,8 +199,10 @@ Click a message to select it; Escape clears the selection. Image/file links use 
         var history = buffer == null ? null : state.histories[buffer.id];
         if (history != null && history.edit != null) {
             var edit = history.edit;
-            string editing = edit.id == 0 ? "Loading edit… (Esc cancels)" : edit.saving ?
-                "Saving edit #%d…".printf (edit.id) : "Editing #%d (Enter updates, Esc cancels)".printf (edit.id);
+            string editing = "Loading edit… (Esc cancels)";
+            if (edit.id != 0)
+                editing = edit.saving ? "Saving edit #%d…".printf (edit.id) :
+                    "Editing #%d (Enter updates, Esc cancels)".printf (edit.id);
             chat = editing + " · " + chat;
         }
         state.view.set_status ("Account %d %s · %s · %s".printf (state.id, state.address, chat, state.connection));
@@ -285,7 +287,7 @@ Click a message to select it; Escape clears the selection. Image/file links use 
     private void render_history (AccountState state, History history, Message[] messages, bool force = false) {
         string[] signatures = {};
         foreach (var message in messages)
-            signatures += "%d:%lld:%d:%s:%s:%s:%s:%s:%s:%s:%d:%s:%s:%s:%s".printf (message.id, message.timestamp, message.state,
+            signatures += ("%d:%" + int64.FORMAT + ":%d:%s:%s:%s:%s:%s:%s:%s:%d:%s:%s:%s:%s").printf (message.id, message.timestamp, message.state,
                 message.is_outgoing.to_string (), message.sender_name ?? "", message.sender_address ?? "",
                 message.text ?? "", message.file_name ?? "", message.file_path ?? "", message.reactions ?? "",
                 message.quote_msg_id, message.quote_text ?? "", message.quote_sender_name ?? "",
@@ -300,8 +302,10 @@ Click a message to select it; Escape clears the selection. Image/file links use 
         if (!prefix) buffer.clear ();
         for (int i = start; i < messages.length; i++) {
             var message = messages[i];
-            string time = options.enabled ("timestamps") ? (!message.is_pending && message.timestamp > 0 ?
-                new DateTime.from_unix_local (message.timestamp).format (options.value ("time_format")) : "--:--") : "";
+            string time = "";
+            if (options.enabled ("timestamps"))
+                time = !message.is_pending && message.timestamp > 0 ?
+                    new DateTime.from_unix_local (message.timestamp).format (options.value ("time_format")) : "--:--";
             string nick = message.sender_name ?? message.sender_address ?? "?";
             string label = "", uri = "";
             if (message.has_file) {
@@ -426,7 +430,7 @@ Click a message to select it; Escape clears the selection. Image/file links use 
         if (timer > 0 && timer % 86400 == 0) { amount = timer / 86400; unit = "day"; }
         else if (timer > 0 && timer % 3600 == 0) { amount = timer / 3600; unit = "hour"; }
         else if (timer > 0 && timer % 60 == 0) { amount = timer / 60; unit = "minute"; }
-        string expiry = timer <= 0 ? "Off" : "%lld %s%s".printf (amount, unit, amount == 1 ? "" : "s");
+        string expiry = timer <= 0 ? "Off" : ("%" + int64.FORMAT + " %s%s").printf (amount, unit, amount == 1 ? "" : "s");
         var text = new StringBuilder ();
         text.append_printf ("%s\n%s\n\nDisappearing messages\n%s\n\n%s\n",
             json_str (chat, "name") ?? buffer.title, json_str (chat, "chatType") ?? "Chat", expiry,
