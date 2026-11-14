@@ -343,9 +343,6 @@ namespace Dc {
                 height_request: 320,
                 title: Parla.AppData.NAME
             );
-        }
-
-        construct {
 #if ANDROID
             TouchTextMenu.install (this);
 #endif
@@ -365,7 +362,7 @@ namespace Dc {
 #endif
             chat_store = new GLib.ListStore (typeof (ChatEntry));
             views = new HashTable<int, ConversationView> (direct_hash, direct_equal);
-            settings = ((Dc.Application) application).core.settings;
+            settings = app.core.settings;
             AudioPlayer.prefer_system = settings.system_audio_player;
             settings.notify["system-audio-player"].connect (() => {
                 AudioPlayer.prefer_system = settings.system_audio_player;
@@ -425,8 +422,7 @@ namespace Dc {
             /* Keep the tray menu's show/minimize label matching the window. */
             this.notify["visible"].connect (sync_window_visibility);
 
-            /* Defer until the main loop — the tray's D-Bus connection and the
-               application property aren't ready during construct. */
+            /* Defer connection and tray startup until the main loop. */
             Idle.add (() => {
                 check_parla_update.begin ();
                 try_connect.begin ();
