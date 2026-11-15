@@ -6,23 +6,39 @@ internal class CliOptions : Object {
         "time_format", "message_layout", "markdown", "nick_colors", "chat_info", "theme", "contacts_grouped", "contacts_sort" };
     private KeyFile values = new KeyFile ();
     private string path = Path.build_filename (Environment.get_user_config_dir (), "parla", "terminal.ini");
+    private string colors_path = Path.build_filename (Environment.get_user_config_dir (), "parla", "colors.ini");
+    private bool legacy_colors;
 
     public CliOptions () {
         string[] defaults = { "on", "%H:%M", "compact", "on", "on", "off", "default", "off", "recent" };
         for (int i = 0; i < NAMES.length; i++) values.set_string ("Terminal", NAMES[i], defaults[i]);
+        legacy_colors = load (path);
+        if (legacy_colors) {
+            try {
+                // Move old colors once, so deleting colors.ini cannot revive them.
+                if (!FileUtils.test (colors_path, FileTest.EXISTS)) save (true);
+                save ();
+            } catch (Error e) { stderr.printf ("Cannot migrate terminal colors: %s\n", e.message); }
+            if (FileUtils.test (colors_path, FileTest.EXISTS)) reset_color_values ();
+        }
+        load (colors_path, true);
+    }
+
+    public static bool is_color (string name) { return name == "theme" || name.has_prefix ("color_"); }
+
+    private bool load (string filename, bool colors_only = false) {
+        bool has_colors = false;
         try {
             var saved = new KeyFile ();
-            saved.load_from_file (path, KeyFileFlags.NONE);
-            foreach (var name in NAMES) {
+            saved.load_from_file (filename, KeyFileFlags.NONE);
+            foreach (var name in saved.get_keys ("Terminal")) {
+                if (is_color (name)) has_colors = true;
+                if (colors_only && !is_color (name)) continue;
                 try { values.set_string ("Terminal", name, validate (name, saved.get_string ("Terminal", name))); }
-                catch (Error e) { /* Keep the default for absent/invalid entries. */ }
-            }
-            foreach (var role in Theme.ROLES) {
-                string key = "color_" + role;
-                try { values.set_string ("Terminal", key, validate (key, saved.get_string ("Terminal", key))); }
-                catch (Error e) { }
+                catch (Error e) { /* Keep the default for invalid entries. */ }
             }
         } catch (Error e) { /* First launch uses defaults. */ }
+        return has_colors;
     }
 
     public string value (string name) {
@@ -55,7 +71,7 @@ internal class CliOptions : Object {
             if (value == "compact" || value == "stacked") return value;
             break;
         case "theme":
-            if (value == "default" || value == "light" || value == "ocean") return value;
+            foreach (var preset in Theme.PRESETS) if (value == preset) return value;
             break;
         default: throw new IOError.INVALID_ARGUMENT ("Unknown setting: " + name);
         }
@@ -68,17 +84,37 @@ internal class CliOptions : Object {
         values.set_string ("Terminal", name, checked);
         if (!persist) return;
         try {
-            save ();
+            save (is_color (name));
         } catch (Error e) {
             values.set_string ("Terminal", name, old);
             throw e;
         }
     }
 
-    public void save () throws Error {
+    public void save (bool colors = false) throws Error {
         if (DirUtils.create_with_parents (Path.get_dirname (path), 0700) != 0)
             throw new IOError.FAILED ("Cannot create terminal settings directory");
-        FileUtils.set_contents (path, values.to_data ());
+        var saved = new KeyFile ();
+        foreach (var name in values.get_keys ("Terminal"))
+            if (is_color (name) == colors && value (name) != "inherit")
+                saved.set_string ("Terminal", name, value (name));
+        FileUtils.set_contents (colors ? colors_path : path, saved.to_data ());
+        if (!colors) legacy_colors = false;
+    }
+
+    private void reset_color_values () {
+        foreach (var role in Theme.ROLES) {
+            try { values.remove_key ("Terminal", "color_" + role); }
+            catch (Error e) { }
+        }
+        values.set_string ("Terminal", "theme", "default");
+    }
+
+    public void reset_colors () throws Error {
+        if (legacy_colors) save ();
+        try { File.new_for_path (colors_path).delete (); }
+        catch (IOError.NOT_FOUND e) { }
+        reset_color_values ();
     }
 
     public Theme theme () {

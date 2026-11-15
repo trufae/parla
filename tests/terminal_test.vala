@@ -247,8 +247,13 @@ private void message_format_test () {
     var block = new Text.block ("▄▄\n▀▀", 2, Style.QR);
     assert (block.wrap (1).get (0).plain_text () == "[");
     assert (block.wrap (3).get (0).plain_text ().has_prefix ("▄▄"));
-    foreach (var preset in new string[] { "default", "light", "ocean" }) {
+    foreach (var preset in Theme.PRESETS) {
         var theme = new Theme (preset);
+        foreach (var role in Theme.ROLES) assert (Theme.valid_color (theme.get_color (role)));
+        if (preset == "mono") {
+            assert (theme.codes (Style.OWN_NICK) == theme.codes (Style.NICK1));
+            continue;
+        }
         foreach (Style remote in new Style[] { Style.NICK1, Style.NICK2, Style.NICK3, Style.NICK4 })
             assert (theme.codes (Style.OWN_NICK) != theme.codes (remote));
         theme.set_color ("nick1", theme.get_color ("own_nick"));
@@ -257,10 +262,36 @@ private void message_format_test () {
     assert (Theme.valid_color ("#123ABC:blue"));
     assert (!Theme.valid_color ("#123:blue") && !Theme.valid_color ("red:blue:green"));
     var ocean = new Theme ("ocean");
-    assert (ocean.codes (Style.INPUT) == ";38;2;220;227;237;48;2;15;23;42");
+    assert (ocean.codes (Style.INPUT) == ";38;2;203;213;225;48;2;16;21;33");
     ocean.set_color ("text", "white:#abcdef");
-    assert (ocean.codes (Style.INPUT) == ";38;2;220;227;237;48;2;171;205;239");
+    assert (ocean.codes (Style.INPUT) == ";38;2;203;213;225;48;2;171;205;239");
     assert (ocean.codes (Style.OWN_NICK) == ";38;2;74;222;128;48;2;171;205;239");
+}
+
+private void theme_test () {
+    var shipped = new Theme ();
+    foreach (var preset in Theme.PRESETS) {
+        var theme = new Theme (preset);
+        bool basic = preset == "ansi" || preset == "mono";
+        foreach (var role in Theme.ROLES) {
+            string[] pair = theme.get_color (role).split (":");
+            if (basic) assert (!theme.get_color (role).contains ("#") && pair.length == 1);
+            else {
+                string[] original = shipped.get_color (role).split (":");
+                assert (pair.length == original.length);
+                if (pair.length == 2) assert (pair[1] == original[1]);
+            }
+        }
+        if (basic) {
+            foreach (Style style in new Style[] { Style.NORMAL, Style.OWN_NICK, Style.NICK1, Style.INPUT, Style.QR }) {
+                assert (!theme.codes (style).contains (";38;") && !theme.codes (style).contains (";48;"));
+                if (preset == "mono" && style != Style.QR) assert (theme.codes (style) == ";39;49");
+            }
+            foreach (Style style in new Style[] { Style.ACTIVE_TAB, Style.SELECTED | Style.CONTACT, Style.SELECTED | Style.MESSAGE })
+                assert (theme.codes (style).has_suffix (";7"));
+            assert (!theme.codes (Style.MESSAGE).contains (";7"));
+        }
+    }
 }
 
 private void navigation_test () {
@@ -501,6 +532,7 @@ int main (string[] args) {
     Test.add_func ("/terminal/shared-history", shared_history_test);
     Test.add_func ("/terminal/contacts-tab", contacts_tab_test);
     Test.add_func ("/terminal/message-format", message_format_test);
+    Test.add_func ("/terminal/themes", theme_test);
     Test.add_func ("/terminal/contact-order", contacts_order_test);
     Test.add_func ("/terminal/message-selection", message_selection_test);
     Test.add_func ("/terminal/hyperlinks", hyperlink_test);

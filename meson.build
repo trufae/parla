@@ -175,6 +175,9 @@ if get_option('cli') and not android
     terminal_test = executable('terminal-test', 'tests/terminal_test.vala',
       dependencies: parla_terminal_dep, install: false)
     test('terminal', terminal_test)
+    cli_options_test = executable('cli-options-test', 'tests/cli_options_test.vala', 'src/cli_options.vala',
+      dependencies: parla_terminal_dep, install: false)
+    test('cli-options', cli_options_test)
     test('terminal-pty', python, args: [files('tests/terminal_pty_test.py'), parla_cli, core_session_test], timeout: 30)
     test('terminal-commands', python, args: [files('tests/terminal_commands_test.py'), parla_cli, core_session_test], timeout: 45)
   endif

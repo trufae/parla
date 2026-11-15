@@ -81,7 +81,8 @@ namespace Dc {
             entry.is_draft = (int) json_int (obj, "summaryStatus")
                              == (int) MessageState.OUT_DRAFT;
             entry.unread_count = (int) json_int (obj, "freshMessageCounter");
-            entry.timestamp = json_int (obj, "lastMessageTimestamp");
+            // Chat-list lastUpdated is milliseconds; message timestamps are seconds.
+            entry.timestamp = json_int (obj, "lastUpdated") / 1000;
             entry.avatar_path = json_str (obj, "avatarPath");
             entry.kind = parse_chat_kind (obj);
             entry.is_muted = json_bool (obj, "isMuted");

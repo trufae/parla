@@ -30,7 +30,7 @@ internal class CliTerminal : Object {
         public AccountState (int id) { this.id = id; }
     }
     private const string[] COMMANDS = { "account", "accounts", "bottom", "clear", "close", "color", "edit", "help",
-        "info", "invite", "join", "list", "msg", "part", "qr", "query", "quit", "react", "refresh", "reply", "set", "unreact", "version", "window" };
+        "info", "invite", "join", "list", "msg", "part", "qr", "query", "quit", "react", "refresh", "reply", "set", "theme", "unreact", "version", "window" };
     private const string HELP_TEXT = """# Parla commands
 /help [COMMAND]             Show help
 /account [ID|next|prev]      List or switch accounts; /accounts also lists them
@@ -46,7 +46,8 @@ internal class CliTerminal : Object {
 /window next|prev|CHAT      Switch tabs or open a conversation
 /close, /part               Close this tab, preserving its draft
 /set [OPTION[=VALUE]]       Show or save terminal preferences
-/color [ROLE[=FG[:BG]]]     Show or save colors; /color theme=ocean picks a palette
+/theme [NAME|reset]         List or save a theme; reset restores shipped colors
+/color [ROLE[=FG[:BG]]]     Show or save overrides; ROLE=inherit clears one
 /info                       Show current chat information
 /invite [self]              Show an invite link and QR code; self shares your account
 /refresh, /bottom, /clear   Reload, follow latest, or clear this view
@@ -62,7 +63,8 @@ Ctrl-P/N or Up/Down recall shared input history; Ctrl-U clears the draft.
 Enter sends; Alt-Enter/Ctrl-J inserts a newline. Ctrl-L redraws.
 Use //text to send a literal leading slash.
 /set chat_info=on shows members and disappearing message settings.
-/color theme=ocean selects a palette; /color status=white:blue customizes it.
+/theme ocean selects a palette; /color status=cyan customizes it.
+/theme reset removes colors.ini and restores the default theme without overrides.
 Command output goes to the Parla tab.
 Click a message to select it; Escape clears the selection. Image/file links use terminal hyperlinks.
 """;
@@ -865,18 +867,21 @@ Click a message to select it; Escape clears the selection. Image/file links use 
                 case "contacts_sort": values = { "recent", "alphabetical" }; break;
                 case "time_format": values = { "%H:%M", "%H:%M:%S" }; break;
                 case "message_layout": values = { "compact", "stacked" }; break;
-                case "theme": values = { "default", "light", "ocean" }; break;
+                case "theme": values = Theme.PRESETS; break;
                 }
                 if (words[1].has_prefix ("color_")) values = { "inherit", "default", "red", "green", "blue", "cyan", "magenta", "yellow", "white", "black", "bright_blue" };
                 foreach (var value in values) result += "/set " + words[1] + " " + value;
             }
+        } else if (words[0] == "/theme") {
+            foreach (var name in Theme.PRESETS) result += "/theme " + name;
+            result += "/theme reset";
         } else if (words[0] == "/color") {
             if (words.length == 2) {
                 result += "/color theme";
                 foreach (var role in Theme.ROLES) result += "/color " + role;
             } else {
-                string[] colors = words[1] == "theme" ? new string[] { "default", "light", "ocean" } :
-                    new string[] { "inherit", "default", "black", "red", "green", "yellow", "blue", "magenta", "cyan", "white", "bright_blue" };
+                string[] colors = { "inherit", "default", "black", "red", "green", "yellow", "blue", "magenta", "cyan", "white", "bright_blue" };
+                if (words[1] == "theme") colors = Theme.PRESETS;
                 foreach (var value in colors) result += "/color " + words[1] + " " + value;
             }
         } else if (words[0] == "/account") {
@@ -939,13 +944,24 @@ Click a message to select it; Escape clears the selection. Image/file links use 
         foreach (var account in accounts.get_values ()) {
             if (name == "time_format") show_contacts (account);
             if (name.has_prefix ("contacts") || name == "chat_info") options.apply (account.view);
-            else if (name != "theme" && !name.has_prefix ("color_")) foreach (var history in account.histories.get_values ())
+            else if (!CliOptions.is_color (name)) foreach (var history in account.histories.get_values ())
                 render_history (account, history, history.messages, true);
         }
         applying_options = false;
-        if (name == "theme" || name.has_prefix ("color_")) terminal.use_theme (options.theme ());
+        if (CliOptions.is_color (name)) terminal.use_theme (options.theme ());
         if (name == "chat_info") schedule_refresh ();
         reply (state, (name.has_prefix ("color_") ? name.substring (6) : name) + " = " + options.value (name));
+    }
+
+    private void theme (AccountState state, Buffer buffer, string arg) throws Error {
+        if (arg == "") {
+            reply (state, "theme = " + options.value ("theme") + "\nThemes: " + string.joinv (", ", Theme.PRESETS) +
+                "\n/theme NAME selects a theme; /theme reset restores shipped colors and removes overrides.");
+        } else if (arg == "reset") {
+            options.reset_colors ();
+            terminal.use_theme (options.theme ());
+            reply (state, "Colors reset to the default theme; overrides removed.");
+        } else setting (state, buffer, "theme=" + arg);
     }
 
     private void color (AccountState state, Buffer buffer, string arg) throws Error {
@@ -986,6 +1002,7 @@ Click a message to select it; Escape clears the selection. Image/file links use 
                 case "/help": reply (state, HELP_TEXT); return;
                 case "/set": setting (state, buffer, arg); return;
                 case "/color": color (state, buffer, arg); return;
+                case "/theme": theme (state, buffer, arg); return;
                 case "/info": reply (state, yield load_info (state, buffer)); return;
                 case "/edit": yield begin_edit (state, buffer, arg); return;
                 case "/invite": case "/qr": yield invite (state, buffer, arg); return;

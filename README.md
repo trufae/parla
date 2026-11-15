@@ -192,7 +192,11 @@ Click a message for `/reply`, `/react` or `/unreact`; `/reply` alone opens a
 keyboard selector. `/reply text` defaults to the latest incoming message,
 and `/reply @user text` chooses that user's latest message. Image/file
 attachments provide clickable terminal hyperlinks to local files.
-`/color` configures themes; layout and color preferences persist across runs.
+`/theme` lists `default`, `ocean`, `forest`, `ember`, `ansi`, and `mono`;
+`/theme ocean` selects one. `/color ROLE=COLOR` saves an override, and
+`/color ROLE=inherit` clears it. `/theme reset` removes saved colors and restores
+the shipped defaults. Layout preferences live in `parla/terminal.ini` and colors
+in `parla/colors.ini` under the user config directory; both persist across runs.
 Piped input uses the line-oriented REPL.
 The REPL supports `accounts`, `account ID`, `chats`, `messages CHAT_ID`,
 `send CHAT_ID TEXT`, `settings`, `updates`, `rpc METHOD [JSON_ARRAY]`, and `quit`.

@@ -57,7 +57,7 @@ private int fake_core (string mode) throws Error {
             result = ("[{\"addr\":\"user%" + int64.FORMAT + "@example.org\"}]").printf (args.get_int_element (0)); break;
         case "get_chatlist_entries": result = "[10]"; break;
         case "get_chatlist_items_by_entries":
-            result = "{\"10\":{\"name\":\"%s\",\"chatType\":\"%s\",\"freshMessageCounter\":%d,\"isPinned\":%s,\"lastMessageTimestamp\":1700000000,\"summaryText2\":\"Latest message preview\"}}".printf (
+            result = "{\"10\":{\"name\":\"%s\",\"chatType\":\"%s\",\"freshMessageCounter\":%d,\"isPinned\":%s,\"lastUpdated\":1700000000000,\"summaryText2\":\"Latest message preview\"}}".printf (
                 mode == "terminal" ? ("Profile %" + int64.FORMAT + " chat").printf (args.get_int_element (0)) : "Shared chat",
                 mode == "terminal" ? "Group" : "Single", seen[(int) args.get_int_element (0)] ? 0 :
                 unread.contains ((int) args.get_int_element (0)) ? unread[(int) args.get_int_element (0)] : 2,
@@ -152,6 +152,12 @@ int main (string[] args) {
     try {
         string? mode = Environment.get_variable ("PARLA_TEST_SERVER");
         if (mode != null) return fake_core (mode);
+        var chat = new Json.Object ();
+        assert (RpcParsers.parse_chat_item (10, chat).timestamp == 0);
+        chat.set_null_member ("lastUpdated");
+        assert (RpcParsers.parse_chat_item (10, chat).timestamp == 0);
+        chat.set_int_member ("lastUpdated", 1700000000123);
+        assert (RpcParsers.parse_chat_item (10, chat).timestamp == 1700000000);
         var core = new CoreSession ();
         assert (!core.rpc.is_connected);
         var settings = core.settings;

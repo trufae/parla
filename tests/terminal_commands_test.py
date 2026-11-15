@@ -282,7 +282,7 @@ with tempfile.TemporaryDirectory(prefix="parla-commands-") as folder:
         terminal.command("/set chat_info=on")
         terminal.until("Disappearing messages")
         assert "Members (2)" in terminal.screen and "Alice" in terminal.screen
-        terminal.command("/color theme=ocean")
+        terminal.command("/theme ocean")
         terminal.command("/color status=#123456:#abcdef")
         assert b"38;2;18;52;86;48;2;171;205;239" in terminal.raw
 
@@ -359,8 +359,12 @@ with tempfile.TemporaryDirectory(prefix="parla-commands-") as folder:
         terminal.close()
 
     saved = (Path(folder) / "parla/terminal.ini").read_text()
-    for setting in ("contacts_grouped=on", "contacts_sort=alphabetical", "chat_info=on", "theme=ocean", "color_status=#123456:#abcdef"):
+    for setting in ("contacts_grouped=on", "contacts_sort=alphabetical", "chat_info=on"):
         assert setting in saved, saved
+    assert "theme=" not in saved and "color_" not in saved, saved
+    colors = Path(folder) / "parla/colors.ini"
+    saved = colors.read_text()
+    assert "theme=ocean" in saved and "color_status=#123456:#abcdef" in saved, saved
     terminal = Terminal(env)
     try:
         terminal.until("2:Contacts")
@@ -371,6 +375,28 @@ with tempfile.TemporaryDirectory(prefix="parla-commands-") as folder:
         terminal.until("Disappearing messages")
         terminal.send("\x1b2")
         assert "Group chats" in terminal.screen and "A–Z" in terminal.lines[1]
+        terminal.send("\x1b1")
+        terminal.command("/theme")
+        terminal.until("Themes: default, ocean, forest, ember, ansi, mono")
+        terminal.send("\x15/theme fo\t")
+        assert terminal.lines[-1].strip() == "› /theme forest"
+        terminal.send("\r")
+        terminal.until("theme = forest")
+        terminal.command("/color status")
+        terminal.until("status = #123456:#abcdef")  # Overrides survive a theme switch.
+        terminal.command("/color status=inherit")
+        assert "color_status=" not in colors.read_text()
+        terminal.command("/theme reset")
+        terminal.until("Colors reset to the default theme; overrides removed.")
+        assert not colors.exists()
+        terminal.command("/set chat_info")
+        terminal.until("chat_info = on")
+        terminal.command("/theme mono")
+        terminal.raw = b""
+        terminal.send("\x0c")  # A full monochrome redraw emits no RGB escapes.
+        assert b";38;2;" not in terminal.raw and b";48;2;" not in terminal.raw
+        assert b";7m" in terminal.raw
+        terminal.command("/theme reset")
     finally:
         terminal.close()
 

@@ -98,8 +98,10 @@ available if a future Core version returns an unsupported SVG format.
 
 ## Preferences and colors
 
-Preferences are saved in `$XDG_CONFIG_HOME/parla/terminal.ini` (normally
-`~/.config/parla/terminal.ini`), separate from GUI preferences. Contact grouping
+Layout preferences are saved in `$XDG_CONFIG_HOME/parla/terminal.ini` (normally
+`~/.config/parla/terminal.ini`), separate from GUI preferences. The selected theme
+and color overrides live alongside it in `colors.ini`. Older colors saved in
+`terminal.ini` are moved automatically. Contact grouping
 and sorting changed with the keyboard also persist. Pins are stored by Core
 and shared with the GUI. Existing saved choices take precedence over defaults.
 
@@ -112,7 +114,7 @@ and shared with the GUI. Existing saved choices take precedence over defaults.
 /set message_layout=compact
 /set markdown=on
 /set nick_colors=on
-/color theme=ocean
+/theme ocean
 /color status=white:blue
 /color selected_contact=white:blue
 /color contact_preview=#999999
@@ -120,6 +122,7 @@ and shared with the GUI. Existing saved choices take precedence over defaults.
 /color own_nick=#4ade80
 /color message=#e2e8f0:#0f172a
 /color status=inherit
+/theme reset
 ```
 
 `/set` lists layout/printing options; `/set NAME` shows one value. Assignments
@@ -135,9 +138,19 @@ Parla and Contacts stay open; other tabs can be closed.
 members, permission to send, and disappearing-message duration. `/info` also
 prints these details in Parla. The panel hides below 72 columns.
 
-`/color` lists effective colors. Presets are `default` (dark slate, lavender and
-teal), `light`, and `ocean`. Each palette supplies coordinated text, panel,
-selection and activity colors. Active tabs retain their highlight even when
+`/theme` lists the current theme and available presets: `default` (lavender and
+teal), `ocean` (blue and cyan), `forest` (green), `ember` (orange), `ansi` (basic
+ANSI colors), and `mono` (terminal defaults without color). The four RGB palettes
+share the shipped backgrounds. `ansi` and `mono` keep the terminal's background
+and use reverse video for selections; neither requires RGB or 256-color support.
+The old `light` preset falls back to `default`.
+
+`/color` lists effective colors. Overrides persist across theme changes and
+restarts. `/color ROLE=inherit` removes one override. `/theme reset` removes
+`colors.ini`, selects `default`, and clears all overrides without changing layout
+preferences. Deleting `colors.ini` manually restores shipped colors on the next
+run. `/color theme=NAME` and `/set theme=NAME` remain supported.
+Active tabs retain their highlight even when
 they have unread messages; the count remains visible. The input uses a `›`
 prompt, and Parla shows a `/help` hint when the draft is empty.
 Roles include `text`, `message`, `timestamp`, `own_nick`, `nick1`–`nick4`,
