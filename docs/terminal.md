@@ -15,7 +15,18 @@ meson test -C builddir-cli terminal terminal-pty terminal-commands cli --print-e
 ```
 
 Interactive stdin/stdout select the TUI automatically; piped input uses the
-line-oriented REPL. The permanent Contacts tab lists conversations, including contacts and groups,
+line-oriented REPL. The Parla tab welcomes you with a short introduction and
+an invitation to use `/help`. Its timestamped activity feed records connection
+changes, unread conversation names and counts (with `/join ID` shortcuts),
+incoming reactions, delivery failures, and Core warnings/errors. Unchanged
+connection states and unread snapshots are suppressed. Read receipts update
+the summary without adding a notification badge; reaching zero unread shows
+an all-caught-up message. Background activity preserves your scroll position.
+Each account keeps its own activity history, including events received while
+another account is selected. The status bar puts connection state first and
+shows the account's total unread count when outside a chat.
+
+The permanent Contacts tab lists conversations, including contacts and groups,
 with unread counts. Open one to load its latest 100 messages. Core events
 refresh the conversation list and active tab; switching tabs refreshes that
 tab. Group/channel labels have a `#` prefix and direct chats an `@` prefix
@@ -24,7 +35,7 @@ Messages use `HH:MM <nick> text`, with a stable color for each sender
 and Markdown in the body. Continuation lines align with the body after the
 nick. Own nicks use a separate color from remote senders. Pending messages
 show `--:--` until Core reports delivery, when the timestamp updates in place.
-Unread contacts have `*` before their name; pinned chats have 📌 in a separate
+Unread contacts have a `●` marker and bold names; pinned chats have 📌 in a separate
 column. Both marker columns reserve their space so every name, time and
 grey message preview stays aligned. Open conversations are cyan and the
 selected contact has a background highlight. Unread chat tabs show their
@@ -124,7 +135,11 @@ Parla and Contacts stay open; other tabs can be closed.
 members, permission to send, and disappearing-message duration. `/info` also
 prints these details in Parla. The panel hides below 72 columns.
 
-`/color` lists effective colors. Presets are `default`, `light`, and `ocean`.
+`/color` lists effective colors. Presets are `default` (dark slate, lavender and
+teal), `light`, and `ocean`. Each palette supplies coordinated text, panel,
+selection and activity colors. Active tabs retain their highlight even when
+they have unread messages; the count remains visible. The input uses a `›`
+prompt, and Parla shows a `/help` hint when the draft is empty.
 Roles include `text`, `message`, `timestamp`, `own_nick`, `nick1`–`nick4`,
 `status`, `tab`, `active_tab`, `unread_tab`, `contact`, `active_contact`,
 `open_contact`, `selected_contact`, `input`, `separator`, `info`, `completion`,
@@ -178,6 +193,9 @@ line and input editor. `add_tab(id, title)` returns the existing tab for a
 known ID; `select_tab(id)` activates it. Each `Buffer` owns its draft and
 scroll offset. `append()` parses Markdown; `append_text()` displays literal
 text; `append_message(time, nick, markdown)` adds an IRC-style message.
+`append_notice(time, label, text, style)` adds a sanitized plain-text activity
+entry with a colored label and aligned continuation lines. `input_hint` supplies
+display-only text for an empty draft.
 `clear()` clears history while preserving the draft. `set_contacts()`
 preserves selection by ID and synchronizes tab unread counts from each
 `Contact.unread_count`; `Buffer.set_unread()` also works independently.

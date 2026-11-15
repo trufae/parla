@@ -92,6 +92,18 @@ namespace Parla.Terminal {
             append (label, style, safe_link (uri));
         }
 
+        /** A plain-text activity entry with a colored label and aligned wraps. */
+        public Text.notice (string time, string label, string value, Style style = Style.INFO) {
+            append ("  " + time.replace ("\n", " ") + "  ", Style.TIME);
+            int label_start = glyphs.length, label_width = 0;
+            append (label.replace ("\n", " "), style | Style.BOLD);
+            for (int i = label_start; i < glyphs.length; i++) label_width += glyphs[i].width;
+            append (string.nfill (int.max (2, 12 - label_width), ' '));
+            body_start = glyphs.length;
+            foreach (var cell in glyphs) continuation_indent += cell.width;
+            append (value);
+        }
+
         private static string? safe_link (string uri) {
             if (uri.length > 8192 || !(uri.has_prefix ("file://") || uri.has_prefix ("https://") || uri.has_prefix ("http://"))) return null;
             int index = 0; unichar c;

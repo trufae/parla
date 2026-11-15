@@ -19,7 +19,7 @@ private void renderer_test () {
     string change = renderer.render (frame);
     assert (!change.contains ("\033[2J"));
     assert (change.contains ("\033[5;2H"));
-    assert (change.length < 40);
+    assert (change.length < 80); // Includes truecolor foreground/background escapes.
     frame.cursor_x = 3;
     assert (renderer.render (frame) == "\033[1;4H");
     renderer.invalidate ();
@@ -54,6 +54,12 @@ private void text_test () {
     assert (many.line_count (1000) == 16001);
     rows = many.wrap (1000, 16000, 5);
     assert (rows.length == 1 && rows.get (0).plain_text ().strip () == "last");
+    var notice = new Text.notice ("12:34", "Unread", "**literal**\033[2J\n日本語", Style.CODE);
+    rows = notice.wrap (50);
+    assert (rows.get (0).plain_text ().contains ("**literal**[2J"));
+    assert (column_of (rows.get (1).plain_text (), "日本語") == 21);
+    for (int width = 1; width < 60; width++)
+        assert (notice.wrap (width).length == notice.line_count (width));
 }
 
 private void input_test () {
@@ -215,7 +221,7 @@ private void contacts_tab_test () {
     view.handle_key (Key.SELECT_TAB, "2");
     var frame = view.draw (80, 24);
     assert (frame.get_row (0).plain_text ().contains ("2:Contacts"));
-    assert (frame.get_row (3).plain_text ().has_prefix ("*    Bob"));
+    assert (frame.get_row (3).plain_text ().has_prefix ("●    Bob"));
     assert (!frame.get_row (3).plain_text ().contains ("│"));
     view.handle_key (Key.TEXT, "j"); view.handle_key (Key.ENTER);
     assert (selected == "b" && view.active_buffer.id == "b");
@@ -251,9 +257,9 @@ private void message_format_test () {
     assert (Theme.valid_color ("#123ABC:blue"));
     assert (!Theme.valid_color ("#123:blue") && !Theme.valid_color ("red:blue:green"));
     var ocean = new Theme ("ocean");
-    assert (ocean.codes (Style.INPUT) == ";39;48;2;15;23;42");
+    assert (ocean.codes (Style.INPUT) == ";38;2;220;227;237;48;2;15;23;42");
     ocean.set_color ("text", "white:#abcdef");
-    assert (ocean.codes (Style.INPUT) == ";39;48;2;171;205;239");
+    assert (ocean.codes (Style.INPUT) == ";38;2;220;227;237;48;2;171;205;239");
     assert (ocean.codes (Style.OWN_NICK) == ";38;2;74;222;128;48;2;171;205;239");
 }
 
@@ -316,7 +322,7 @@ private void view_test () {
     frame = view.draw (80, 24);
     assert (frame.get_row (5) == history);
     string edit = renderer.render (frame);
-    assert (edit.length < 60 && edit.contains ("hello"));
+    assert (edit.length < 100 && edit.contains ("hello"));
     other.append_text ("background");
     assert (renderer.render (view.draw (80, 24)) == "");
     view.set_contacts ({ new Contact ("a", "Alice", "online", 0, ContactKind.DIRECT, false, 1, "12:00", "new preview") });
@@ -361,19 +367,21 @@ private void irc_layout_test () {
     var frame = view.draw (80, 24);
     assert (frame.get_row (1).plain_text ().has_prefix ("14:05 <Alice> Hello world"));
     string ansi = renderer.render (frame);
-    assert (Regex.match_simple ("\\x1b\\[0;1;(94|35|36|33);49mAlice", ansi));
-    assert (ansi.contains ("\033[0;1;33;49m 1:Alice (2) "));
+    var theme = new Theme ();
+    assert (ansi.contains ("mAlice"));
+    assert (theme.codes (Style.ACTIVE_TAB | Style.UNREAD_TAB) == theme.codes (Style.ACTIVE_TAB));
+    assert (ansi.contains ("\033[0;1" + theme.codes (Style.ACTIVE_TAB) + "m 1:Alice (2) "));
     Row history = frame.get_row (1);
     bob.set_unread (3);
     frame = view.draw (80, 24);
     assert (frame.get_row (1) == history);
-    assert (renderer.render (frame).contains ("\033[0;1;33;49m 2:Bob (3) "));
+    assert (renderer.render (frame).contains ("\033[0;1" + theme.codes (Style.UNREAD_TAB) + "m 2:Bob (3) "));
     bob.set_unread (0);
     alice.editor.insert ("saved draft");
     view.handle_key (Key.FOCUS);
     frame = view.draw (80, 24);
     assert (!frame.cursor_visible && !frame.get_row (1).plain_text ().contains ("[focus]"));
-    assert (frame.get_row (2).plain_text ().has_prefix ("*    Alice"));
+    assert (frame.get_row (2).plain_text ().has_prefix ("●    Alice"));
     view.select_tab ("a");
     assert (view.close_tab ("a"));
     assert (view.add_tab ("a", "Alice") == alice);
@@ -423,7 +431,7 @@ private void contacts_order_test () {
     view.handle_key (Key.DOWN); view.handle_key (Key.ENTER);
     assert (activated == "a");
     var renderer = new Renderer ();
-    assert (renderer.render (view.draw (100, 24)).contains ("38;2;153;153;153"));
+    assert (renderer.render (view.draw (100, 24)).contains ("38;2;142;155;176"));
     assert (renderer.render (view.draw (100, 24)) == "");
     view.set_contacts_grouped (false);
     view.set_contacts ({

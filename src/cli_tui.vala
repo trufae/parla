@@ -18,7 +18,9 @@ internal class CliTerminal : Object {
     private class AccountState : Object {
         public int id;
         public string address = "";
-        public string connection = "Core connected";
+        public string connection = "Checking connection";
+        public bool unread_loaded;
+        public HashTable<int, int> unread = new HashTable<int, int> (direct_hash, direct_equal);
         public View view = new View ();
         public ChatEntry[] chats = {};
         public HashTable<string, History> histories = new HashTable<string, History> (str_hash, str_equal);
@@ -90,7 +92,17 @@ Click a message to select it; Escape clears the selection. Image/file links use 
         state.view.input_history = input_history;
         var home = state.view.add_tab ("home", "Parla");
         home.closable = false;
-        home.append (HELP_TEXT);
+        home.input_hint = "Type /help to explore";
+        home.append ("""
+#   ◈  Welcome to Parla
+  Your conversations, at home in the terminal.
+
+  Press `Ctrl-G` to open Contacts, pick a chat, and say hello.
+  Start a chat with `/query NAME` or `/query ADDRESS`.
+  Type `/help` to see all commands and keyboard shortcuts.
+
+##   Activity
+""");
         state.view.set_contacts ({});
         options.apply (state.view);
         state.view.quit_requested.connect (() => terminal.close ());
@@ -139,6 +151,7 @@ Click a message to select it; Escape clears the selection. Image/file links use 
 
     public int run () {
         current = state_for (0);
+        activity (current, "Starting", "Connecting to Chatmail Core…");
         current.view.set_status ("Starting Chatmail Core…");
         try { terminal = new Session (current.view); }
         catch (Error e) { stderr.printf ("%s\n", e.message); return 1; }
@@ -175,12 +188,17 @@ Click a message to select it; Escape clears the selection. Image/file links use 
             if (current.id > 0) current.address = (yield core.rpc.get_account_address (current.id)) ?? "";
             if (!running) return;
             terminal.set_view (current.view);
-            var home = current.view.add_tab ("home", "Parla");
-            if (description != null) home.append_text (description);
-            if (notice != null) home.append_text (notice);
+            activity (current, "Core", "Chatmail Core is ready.");
+            if (current.id > 0)
+                activity (current, "Account", "Signed in as " + current.address);
+            else
+                activity (current, "Welcome", "Set up your first account in the Parla app, then come back here.");
+            if (description != null) activity (current, "Account", description);
+            if (notice != null) activity (current, "Notice", notice, Style.ERROR, true);
             update_status (current);
             schedule_refresh ();
             events.begin ();
+            yield load_connection (current);
             yield load_accounts ();
         } catch (Error e) {
             status = 1;
@@ -192,7 +210,9 @@ Click a message to select it; Escape clears the selection. Image/file links use 
     private void update_status (AccountState state) {
         if (state.id <= 0) { state.view.set_status ("No configured account"); return; }
         var buffer = state.view.active_buffer;
-        string chat = buffer == null || !state.histories.contains (buffer.id) ? "%d conversations".printf (state.chats.length) :
+        int64 unread = 0;
+        foreach (var item in state.chats) unread += item.unread_count;
+        string chat = buffer == null || !state.histories.contains (buffer.id) ? "%d conversation%s · %lld unread".printf (state.chats.length, state.chats.length == 1 ? "" : "s", unread) :
             "%s (#%s) · %d unread".printf (buffer.title, buffer.id, buffer.unread_count);
         if (buffer != null && buffer.selected_message_id != "") chat +=
             (state.view.selecting_messages ? " · Selecting #" : " · Selected #") + buffer.selected_message_id;
@@ -205,7 +225,73 @@ Click a message to select it; Escape clears the selection. Image/file links use 
                     "Editing #%d (Enter updates, Esc cancels)".printf (edit.id);
             chat = editing + " · " + chat;
         }
-        state.view.set_status ("Account %d %s · %s · %s".printf (state.id, state.address, chat, state.connection));
+        state.view.set_status ("%s · Account %d %s · %s".printf (state.connection, state.id, state.address, chat));
+    }
+
+    private void activity (AccountState state, string label, string text, Style style = Style.INFO, bool notify = false) {
+        var home = state.view.add_tab ("home", "Parla");
+        home.append_notice (new DateTime.now_local ().format (options.value ("time_format")), label, text, style);
+        if (notify && (state != current || state.view.active_buffer != home))
+            home.set_unread (home.unread_count + 1);
+    }
+
+    private async void load_connection (AccountState state) {
+        if (state.id <= 0) return;
+        try {
+            int connectivity = yield core.rpc.get_connectivity (state.id);
+            if (!running) return;
+            string connection = connectivity >= 4000 ? "Connected" : connectivity >= 3000 ? "Syncing" :
+                connectivity >= 2000 ? "Connecting" : connectivity >= 1000 ? "Offline" : "Connection unknown";
+            if (connection == state.connection) return;
+            state.connection = connection;
+            string detail = connectivity >= 4000 ? "Your conversations are up to date." :
+                connectivity >= 3000 ? "Sending and syncing messages…" :
+                connectivity >= 2000 ? "Reaching your mail server…" :
+                connectivity >= 1000 ? "Not connected. Waiting for the connection to return." :
+                "Waiting for connection information.";
+            activity (state, connection, detail, connectivity >= 1000 && connectivity < 2000 ? Style.ERROR : Style.INFO);
+            update_status (state);
+        } catch (Error e) {
+            if (running && state.connection != "Connection unknown") {
+                state.connection = "Connection unknown";
+                activity (state, "Connection", "Status unavailable: " + e.message, Style.ERROR);
+                update_status (state);
+            }
+        }
+    }
+
+    private void report_unread (AccountState state) {
+        int64 total = 0;
+        int conversations = 0, shown = 0;
+        var details = new StringBuilder ();
+        bool changed = !state.unread_loaded, increased = false, notify = false;
+        var counts = new HashTable<int, int> (direct_hash, direct_equal);
+        foreach (var chat in state.chats) {
+            if (chat.unread_count <= 0) continue;
+            counts[chat.id] = chat.unread_count;
+            total += chat.unread_count;
+            conversations++;
+            if (state.unread[chat.id] != chat.unread_count) changed = true;
+            if (chat.unread_count > state.unread[chat.id]) {
+                increased = true;
+                if (state != current || state.view.active_buffer.id != chat.id.to_string ()) notify = true;
+            }
+            if (shown++ < 5) details.append_printf ("\n%s · %d unread · /join %d", chat_label (chat).replace ("\n", " "), chat.unread_count, chat.id);
+        }
+        if (counts.size () != state.unread.size ()) changed = true;
+        bool first = !state.unread_loaded;
+        state.unread_loaded = true;
+        state.unread = counts;
+        if (!changed) return;
+        // Read receipts update the overview without creating a notification.
+        if (total == 0) {
+            activity (state, "Caught up", state.chats.length == 0 ?
+                "No conversations yet. Use /query ADDRESS to say hello." : "You're all caught up. No unread messages.");
+        } else {
+            if (conversations > 5) details.append_printf ("\n… and %d more. Use /list or Ctrl-G to see all.", conversations - 5);
+            activity (state, first || !increased ? "Unread" : "New", "%lld unread message%s in %d conversation%s.%s".printf (
+                total, total == 1 ? "" : "s", conversations, conversations == 1 ? "" : "s", details.str), Style.CODE, notify && (!first || state != current));
+        }
     }
 
     private void reply (AccountState state, string text) {
@@ -282,6 +368,7 @@ Click a message to select it; Escape clears the selection. Image/file links use 
         }
         state.chats = chats;
         show_contacts (state);
+        report_unread (state);
     }
 
     private void render_history (AccountState state, History history, Message[] messages, bool force = false) {
@@ -360,6 +447,7 @@ Click a message to select it; Escape clears the selection. Image/file links use 
                 if (!running) return;
                 foreach (var chat in state.chats) if (chat.id == chat_id) chat.unread_count = 0;
                 show_contacts (state);
+                report_unread (state);
                 buffer.set_unread (0);
             }
         } catch (Error e) {
@@ -376,33 +464,63 @@ Click a message to select it; Escape clears the selection. Image/file links use 
             try {
                 var ev = yield core.rpc.get_next_event ();
                 if (!running || ev == null) return;
-                var state = current;
-                if (json_int (ev, "contextId") != state.id) continue;
+                int account_id = (int) json_int (ev, "contextId");
+                if (account_id <= 0) continue;
+                var state = state_for (account_id);
                 var detail = json_obj (ev, "event");
                 if (detail == null) continue;
                 switch (json_str (detail, "kind") ?? "") {
                 case "ContactsChanged":
                     state.contact_names.remove_all ();
                     foreach (var history in state.histories.get_values ()) history.members = null;
-                    schedule_refresh (); break;
+                    break;
                 case "ChatModified":
                     foreach (var history in state.histories.get_values ()) history.members = null;
-                    schedule_refresh (); break;
-                case "IncomingMsg": case "IncomingMsgBunch": case "MsgsChanged": case "MsgsNoticed":
-                case "ChatlistChanged": case "MsgDelivered": case "MsgFailed": case "MsgRead":
-                case "ChatEphemeralTimerModified": case "ReactionsChanged": case "IncomingReaction":
-                    schedule_refresh (); break;
-                case "ConnectivityChanged":
-                    int connectivity = yield core.rpc.get_connectivity (state.id);
-                    state.connection = connectivity >= 4000 ? "Connected" : connectivity >= 3000 ? "Syncing" : "Connecting";
-                    if (running) update_status (state);
                     break;
+                case "IncomingReaction":
+                    activity (state, "Reaction", "New reaction in " + event_chat (state, detail) + ": " +
+                        (json_str (detail, "reaction") ?? "") + event_join (detail), Style.ACCENT, true);
+                    break;
+                case "MsgFailed":
+                    activity (state, "Failed", "Message #%lld could not be sent to %s.%s".printf (
+                        json_int (detail, "msgId"), event_chat (state, detail), event_join (detail)), Style.ERROR, true);
+                    break;
+                case "Warning": case "Error":
+                    activity (state, json_str (detail, "kind"), json_str (detail, "msg") ??
+                        json_str (detail, "message") ?? "Chatmail Core reported a problem.", Style.ERROR, true);
+                    continue;
+                case "IncomingMsg": case "IncomingMsgBunch": case "MsgsChanged": case "MsgsNoticed":
+                case "ChatlistChanged": case "ChatlistItemChanged": case "ChatDeleted":
+                case "MsgDelivered": case "MsgRead": case "MsgDeleted":
+                case "ChatEphemeralTimerModified": case "ReactionsChanged":
+                    break;
+                case "ConnectivityChanged":
+                    yield load_connection (state);
+                    continue;
+                default: continue;
+                }
+                if (state == current) schedule_refresh ();
+                else {
+                    try { yield load_chats (state); }
+                    catch (Error e) {
+                        if (running) activity (state, "Error", "Cannot refresh conversations: " + e.message, Style.ERROR, true);
+                    }
                 }
             } catch (Error e) {
-                if (running) reply (current, "Event stream: " + e.message);
+                if (running) activity (current, "Error", "Event stream: " + e.message, Style.ERROR, true);
                 return;
             }
         }
+    }
+
+    private string event_chat (AccountState state, Json.Object detail) {
+        int id = (int) json_int (detail, "chatId");
+        foreach (var chat in state.chats) if (chat.id == id) return chat_label (chat);
+        return "conversation #%d".printf (id);
+    }
+
+    private string event_join (Json.Object detail) {
+        return " · /join %lld".printf (json_int (detail, "chatId"));
     }
 
     private async void load_accounts () throws Error {
@@ -501,8 +619,11 @@ Click a message to select it; Escape clears the selection. Image/file links use 
             current.address = address;
             completion.reset ();
             terminal.set_view (current.view);
+            if (current.view.active_buffer.id == "home") current.view.active_buffer.set_unread (0);
+            activity (current, "Account", "Switched to " + current.address);
             update_status (current);
             schedule_refresh ();
+            yield load_connection (current);
         } finally { switching = false; }
     }
 

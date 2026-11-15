@@ -20,9 +20,9 @@ cli, backend = (str(Path(arg).resolve()) for arg in sys.argv[1:])
 
 
 class Terminal:
-    def __init__(self, env):
+    def __init__(self, env, width=120, height=42):
         self.master, self.slave = pty.openpty()
-        self.width, self.height = 120, 42
+        self.width, self.height = width, height
         fcntl.ioctl(self.slave, termios.TIOCSWINSZ,
                     struct.pack("HHHH", self.height, self.width, 0, 0))
         self.process = subprocess.Popen([cli], stdin=self.slave, stdout=self.slave,
@@ -131,6 +131,12 @@ with tempfile.TemporaryDirectory(prefix="parla-commands-") as folder:
     terminal = Terminal(env)
     try:
         terminal.until("Contacts (2)")
+        terminal.until("2 unread messages in 1 conversation.")
+        assert "Welcome to Parla" in terminal.screen
+        assert "Type /help to see all commands" in terminal.screen
+        assert "#Profile 1 chat · 2 unread · /join 10" in terminal.screen
+        assert "Your conversations are up to date." in terminal.screen
+        assert "Parla commands" not in terminal.screen
         terminal.send("\x1b2")
         terminal.until("Profile 1 chat")
         assert "[focus]" not in terminal.screen
@@ -152,18 +158,18 @@ with tempfile.TemporaryDirectory(prefix="parla-commands-") as folder:
         terminal.send("\x1b1")
         terminal.until("Parla 0.")
         terminal.send("\x1b3\x10")
-        assert terminal.lines[-1].startswith("> /version")  # Shared recall.
+        assert terminal.lines[-1].startswith("› /version")  # Shared recall.
         terminal.send("\x15hello world\x17")
-        assert terminal.lines[-1].rstrip() == "> hello"
+        assert terminal.lines[-1].rstrip() == "› hello"
         assert "3:#Profile 1 chat" in terminal.lines[0]
         terminal.send("\x15/vers\t")
-        assert terminal.lines[-1].startswith("> /version ")
+        assert terminal.lines[-1].startswith("› /version ")
         terminal.send("\x15hello @al\t")
-        assert terminal.lines[-1].startswith("> hello @Alice ")
+        assert terminal.lines[-1].startswith("› hello @Alice ")
         terminal.send("\x15@\t")
         assert "@Alice" in terminal.screen and "@Me" in terminal.screen
         terminal.send("\t")
-        assert terminal.lines[-1].startswith("> @Me ")
+        assert terminal.lines[-1].startswith("› @Me ")
 
         assert (b"\x1b]8;;" + attachment.as_uri().encode() + b"\x1b\\") in terminal.raw
         stored_attachment = attachment.with_suffix(".stored")
@@ -190,7 +196,7 @@ with tempfile.TemporaryDirectory(prefix="parla-commands-") as folder:
         terminal.command("/reply")
         assert "Selecting #44" in terminal.lines[-2]
         terminal.send("k\r")
-        assert terminal.lines[-1].startswith("> /reply ")
+        assert terminal.lines[-1].startswith("› /reply ")
         terminal.send("selected reply\r")
         assert requests("send_msg")[-1]["params"][2]["quotedMessageId"] == 42
         terminal.command("/react #44 👍")
@@ -209,10 +215,10 @@ with tempfile.TemporaryDirectory(prefix="parla-commands-") as folder:
         # Enter updates the latest own message, preserving literal slashes/newlines.
         sent = len(requests("send_msg"))
         terminal.send("/ed\t")
-        assert terminal.lines[-1].startswith("> /edit ")
+        assert terminal.lines[-1].startswith("› /edit ")
         terminal.send("\r")
         terminal.until("Editing #44")
-        assert terminal.lines[-1].rstrip() == "> My own text"
+        assert terminal.lines[-1].rstrip() == "› My own text"
         terminal.send("\x15/quit\x0asecond line\r")
         assert requests("send_edit_request")[-1]["params"] == [1, 44, "/quit\nsecond line"]
         assert len(requests("send_msg")) == sent
@@ -223,7 +229,7 @@ with tempfile.TemporaryDirectory(prefix="parla-commands-") as folder:
         row = next(i for i, line in enumerate(terminal.lines) if "Earlier own text" in line)
         terminal.send(f"\x1b[<0;20;{row + 1}M")
         terminal.command("/edit")
-        assert terminal.lines[-1].rstrip() == "> Earlier own text"
+        assert terminal.lines[-1].rstrip() == "› Earlier own text"
         terminal.send(" revised\x1b1")
         terminal.command("/account 2")
         terminal.command("/query 10")
@@ -231,7 +237,7 @@ with tempfile.TemporaryDirectory(prefix="parla-commands-") as folder:
         terminal.command("/account 1")
         terminal.send("\x1b3")
         terminal.until("Editing #41")
-        assert terminal.lines[-1].rstrip() == "> Earlier own text revised"
+        assert terminal.lines[-1].rstrip() == "› Earlier own text revised"
         terminal.send("\r")
         assert requests("send_edit_request")[-1]["params"] == [1, 41, "Earlier own text revised"]
         terminal.until("<Me> Earlier own text revised")
@@ -240,7 +246,7 @@ with tempfile.TemporaryDirectory(prefix="parla-commands-") as folder:
         terminal.command("/edit")
         terminal.send("\x15Rejected edit\r")
         assert "Editing #44" in terminal.lines[-2]
-        assert terminal.lines[-1].rstrip() == "> Rejected edit"
+        assert terminal.lines[-1].rstrip() == "› Rejected edit"
         terminal.send("\x15Retried edit\r")
         assert requests("send_edit_request")[-1]["params"] == [1, 44, "Retried edit"]
         terminal.until("<Me> Retried edit")
@@ -249,7 +255,7 @@ with tempfile.TemporaryDirectory(prefix="parla-commands-") as folder:
         terminal.command("/edit")
         terminal.send(" abandoned\x1b")
         assert "Editing #" not in terminal.lines[-2]
-        assert terminal.lines[-1].rstrip() == ">"
+        assert terminal.lines[-1].rstrip() == "›"
         assert len(requests("send_edit_request")) == edits
 
         # An incoming selection is rejected instead of silently editing our last message.
@@ -283,14 +289,14 @@ with tempfile.TemporaryDirectory(prefix="parla-commands-") as folder:
         terminal.command("/account 2")
         terminal.until("Account 2 user2@example.org")
         terminal.send("\x10")
-        assert terminal.lines[-1].startswith("> /account 2")
+        assert terminal.lines[-1].startswith("› /account 2")
         terminal.command("/query 10")
         terminal.until("Account 2 history")
         assert "Account 1 history" not in terminal.screen
         terminal.command("/msg 10 from account two")
         assert requests("send_msg")[-1]["params"][0:2] == [2, 10]
         terminal.command("/edit")
-        assert terminal.lines[-1].rstrip() == "> My own text"
+        assert terminal.lines[-1].rstrip() == "› My own text"
         terminal.send("\x15Account two edit\r")
         assert requests("send_edit_request")[-1]["params"] == [2, 44, "Account two edit"]
         terminal.command("/account 1")
@@ -367,13 +373,89 @@ with tempfile.TemporaryDirectory(prefix="parla-commands-") as folder:
         assert "Group chats" in terminal.screen and "A–Z" in terminal.lines[1]
     finally:
         terminal.close()
+
+    event_file = Path(folder) / "event.json"
+    terminal = Terminal(dict(env, PARLA_TEST_EVENT=str(event_file)))
+    try:
+        terminal.until("2 unread messages in 1 conversation.")
+        initial = terminal.screen
+        terminal.send("\r")
+        assert terminal.screen == initial, "the input hint was submitted as a command"
+        terminal.command("/refresh")
+        assert terminal.screen == initial, "unchanged unread snapshot was repeated"
+
+        def emit(kind, account=1, **fields):
+            update = {"contextId": account, "event": {"kind": kind, "chatId": 10, "msgId": 42}}
+            for key, value in fields.items():
+                (update if key in ("connectivity", "unread") else update["event"])[key] = value
+            event_file.write_text(json.dumps(update))
+            terminal.command("/refresh")
+            deadline = time.monotonic() + 5
+            while event_file.exists() and time.monotonic() < deadline:
+                terminal.pump()
+            assert not event_file.exists(), "event was not consumed"
+
+        emit("ConnectivityChanged", connectivity=1000)
+        terminal.until("Not connected. Waiting for the connection to return.")
+        emit("ConnectivityChanged", connectivity=1000)
+        assert terminal.screen.count("Not connected. Waiting for the connection to return.") == 1
+        emit("ConnectivityChanged", connectivity=3000)
+        terminal.until("Sending and syncing messages…")
+        emit("ConnectivityChanged", connectivity=4000)
+        terminal.until("Connected · Account 1")
+
+        terminal.command("/window contacts")
+        emit("IncomingMsg", unread=3)
+        terminal.until("1:Parla (1)")
+        assert "Contacts (3)" in terminal.lines[0]
+        terminal.send("\x1b1")
+        terminal.until("3 unread messages in 1 conversation.")
+        assert "1:Parla (" not in terminal.lines[0]
+        emit("MsgsNoticed", unread=0)
+        terminal.until("You're all caught up. No unread messages.")
+
+        emit("IncomingReaction", reaction="👍")
+        terminal.until("New reaction in #Profile 1 chat: 👍 · /join 10")
+        emit("MsgFailed")
+        terminal.until("Message #42 could not be sent to #Profile 1 chat.")
+        emit("Warning", msg="Server maintenance")
+        terminal.until("Server maintenance")
+        emit("IncomingMsg", account=2, unread=4)
+        assert "4 unread messages" not in terminal.screen
+        terminal.command("/account 2")
+        terminal.until("4 unread messages in 1 conversation.")
+        assert "#Profile 2 chat · 4 unread · /join 10" in terminal.screen
+        assert "Server maintenance" not in terminal.screen
+        assert "1:Parla (" not in terminal.lines[0]
+
+        terminal.command("/help")
+        terminal.send("\x02")
+        anchored = terminal.lines[1]
+        emit("Error", account=2, msg="An asynchronous error")
+        assert terminal.lines[1] == anchored, "activity moved the scrolled viewport"
+        terminal.command("/bottom")
+        terminal.until("An asynchronous error")
+    finally:
+        terminal.close()
     saved = (Path(folder) / "parla/terminal.ini").read_text()
     assert "contacts_side" not in saved and "contacts_width" not in saved and "contacts=" not in saved, saved
     terminal = Terminal(env)
     try:
         terminal.until("Account 1 user1@example.org")
         assert "Contacts" not in terminal.lines[1]
-        terminal.until("1 conversations")  # Wait for the startup chat-list RPC.
+        terminal.until("1 conversation")  # Wait for the startup chat-list RPC.
         assert not terminal.pump(0.3), "idle refresh after restoring settings"
+    finally:
+        terminal.close()
+
+    terminal = Terminal(dict(env, PARLA_TEST_SERVER="empty"), width=80, height=24)
+    try:
+        terminal.until("Set up your first account in the Parla app")
+        terminal.until("No configured account")
+        assert "Welcome to Parla" in terminal.screen
+        assert "No configured account" in terminal.lines[-2]
+        terminal.command("/window contacts")
+        terminal.until("No conversations yet")
+        assert "Use /query ADDRESS to start a chat." in terminal.screen
     finally:
         terminal.close()

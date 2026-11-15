@@ -10,28 +10,44 @@ namespace Parla.Terminal {
             "bright_black", "bright_red", "bright_green", "bright_yellow", "bright_blue", "bright_magenta", "bright_cyan", "bright_white" };
 
         public Theme (string preset = "default") {
-            foreach (var role in ROLES) colors[role] = "default";
-            colors["own_nick"] = "green";
-            colors["nick1"] = "bright_blue"; colors["nick2"] = "magenta";
-            colors["nick3"] = "cyan"; colors["nick4"] = "yellow";
-            colors["status"] = "black:white"; colors["active_tab"] = "black:cyan";
-            colors["unread_tab"] = "yellow"; colors["active_contact"] = "black:cyan";
-            colors["selected_contact"] = "white:blue";
-            colors["contact_preview"] = "#999999";
-            colors["selected_message"] = "white:#334155";
-            colors["open_contact"] = "cyan"; colors["completion"] = "cyan";
-            colors["separator"] = "bright_black"; colors["info"] = "cyan";
-            colors["code"] = "yellow"; colors["accent"] = "cyan"; colors["error"] = "red";
+            foreach (var role in ROLES) colors[role] = "#dce3ed";
+            colors["text"] = "#dce3ed:#101521";
+            colors["timestamp"] = "#8e9bb0";
+            colors["own_nick"] = "#82dfb2";
+            colors["nick1"] = "#83b9ff"; colors["nick2"] = "#e9a0d8";
+            colors["nick3"] = "#7ddde8"; colors["nick4"] = "#efca86";
+            colors["tab"] = "#8e9bb0:#192131";
+            colors["status"] = "#b6c3d7:#192131";
+            colors["active_tab"] = "#101521:#b1a2ff";
+            colors["unread_tab"] = "#efca86:#192131";
+            colors["active_contact"] = "#dce3ed:#26344d";
+            colors["selected_contact"] = "#ffffff:#26344d";
+            colors["contact_preview"] = "#8e9bb0";
+            colors["selected_message"] = "#ffffff:#26344d";
+            colors["open_contact"] = "#6ddbc5"; colors["completion"] = "#b1a2ff";
+            colors["separator"] = "#465570"; colors["info"] = "#6ddbc5";
+            colors["code"] = "#efca86"; colors["accent"] = "#b1a2ff"; colors["error"] = "#ff8f9b";
             if (preset == "light") {
-                colors["own_nick"] = "magenta"; colors["nick1"] = "blue"; colors["nick2"] = "green";
-                colors["nick3"] = "cyan"; colors["nick4"] = "red"; colors["unread_tab"] = "red";
-                colors["active_contact"] = "white:blue"; colors["open_contact"] = "cyan";
-                colors["status"] = "white:blue"; colors["active_tab"] = "white:blue";
+                foreach (var role in ROLES) colors[role] = "#263247";
+                colors["text"] = "#263247:#f4f6fb";
+                colors["timestamp"] = "#62718a"; colors["contact_preview"] = "#62718a";
+                colors["own_nick"] = "#187353"; colors["nick1"] = "#285fa8";
+                colors["nick2"] = "#9c3e85"; colors["nick3"] = "#077482"; colors["nick4"] = "#875e10";
+                colors["tab"] = "#62718a:#e2e8f2"; colors["status"] = "#40516e:#e2e8f2";
+                colors["active_tab"] = "#ffffff:#6353b5"; colors["unread_tab"] = "#97571c:#e2e8f2";
+                colors["active_contact"] = "#263247:#dce3f2"; colors["selected_contact"] = colors["active_contact"];
+                colors["selected_message"] = colors["active_contact"];
+                colors["open_contact"] = "#14766b"; colors["info"] = "#14766b";
+                colors["separator"] = "#a1aec3"; colors["completion"] = "#6353b5";
+                colors["accent"] = "#6353b5"; colors["code"] = "#875e10"; colors["error"] = "#bc304c";
             } else if (preset == "ocean") {
                 colors["text"] = "#cbd5e1:#0f172a"; colors["message"] = colors["text"];
                 colors["own_nick"] = "#4ade80"; colors["nick1"] = "#60a5fa"; colors["nick2"] = "#e879f9";
                 colors["nick3"] = "#22d3ee"; colors["nick4"] = "#facc15";
                 colors["status"] = "#e2e8f0:#1e293b"; colors["active_tab"] = "#0f172a:#38bdf8";
+                colors["tab"] = "#94a3b8:#1e293b"; colors["unread_tab"] = "#facc15:#1e293b";
+                colors["accent"] = "#38bdf8"; colors["info"] = "#22d3ee";
+                colors["completion"] = "#38bdf8"; colors["open_contact"] = "#22d3ee";
             }
         }
 
@@ -73,8 +89,8 @@ namespace Parla.Terminal {
             if (Style.QR in style) return ";38;2;0;0;0;48;2;255;255;255";
             string role = "text";
             if (Style.STATUS in style) role = "status";
-            else if (Style.UNREAD_TAB in style) role = "unread_tab";
             else if (Style.ACTIVE_TAB in style) role = "active_tab";
+            else if (Style.UNREAD_TAB in style) role = "unread_tab";
             else if (Style.TAB in style) role = "tab";
             else if (Style.SELECTED in style && !(Style.MESSAGE in style)) role = "selected_contact";
             else if (Style.ACTIVE_CONTACT in style) role = "active_contact";

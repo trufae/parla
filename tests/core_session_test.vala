@@ -15,6 +15,10 @@ private int fake_core (string mode) throws Error {
     var message_maps = new HashTable<int, Json.Object> (direct_hash, direct_equal);
     var my_reactions = new HashTable<string, Json.Array> (str_hash, str_equal);
     var edited_text = new HashTable<string, string> (str_hash, str_equal);
+    string? event_file = Environment.get_variable ("PARLA_TEST_EVENT");
+    int64 event_request = 0;
+    var connectivity = new HashTable<int, int> (direct_hash, direct_equal);
+    var unread = new HashTable<int, int> (direct_hash, direct_equal);
     string? line;
     while ((line = stdin.read_line ()) != null) {
         log.printf ("%s\n", line);
@@ -24,8 +28,28 @@ private int fake_core (string mode) throws Error {
         var request = parser.get_root ().get_object ();
         string method = request.get_string_member ("method");
         var args = request.get_array_member ("params");
+        // Tests release a pending event through the next ordinary RPC call.
+        if (event_request != 0 && event_file != null && FileUtils.test (event_file, FileTest.EXISTS)) {
+            var injected = new Json.Parser ();
+            injected.load_from_file (event_file);
+            var ev = injected.get_root ().get_object ();
+            int account = (int) json_int (ev, "contextId");
+            if (ev.has_member ("connectivity")) connectivity[account] = (int) json_int (ev, "connectivity");
+            if (ev.has_member ("unread")) { unread[account] = (int) json_int (ev, "unread"); seen[account] = false; }
+            FileUtils.unlink (event_file);
+            stdout.printf ("{\"jsonrpc\":\"2.0\",\"id\":%lld,\"result\":%s}\n", event_request, Json.to_string (injected.get_root (), false));
+            stdout.flush ();
+            event_request = 0;
+        }
         string result = "null";
         switch (method) {
+        case "get_next_event":
+            if (event_file != null) { event_request = request.get_int_member ("id"); continue; }
+            break;
+        case "get_connectivity":
+            int account = (int) args.get_int_element (0);
+            result = (connectivity.contains (account) ? connectivity[account] : 4000).to_string ();
+            break;
         case "get_system_info": result = "{}"; break;
         case "get_all_accounts": result = mode == "empty" ? "[]" : "[{\"id\":1},{\"id\":2}]"; break;
         case "is_configured": result = args.get_int_element (0) <= 2 ? "true" : "false"; break;
@@ -35,7 +59,9 @@ private int fake_core (string mode) throws Error {
         case "get_chatlist_items_by_entries":
             result = "{\"10\":{\"name\":\"%s\",\"chatType\":\"%s\",\"freshMessageCounter\":%d,\"isPinned\":%s,\"lastMessageTimestamp\":1700000000,\"summaryText2\":\"Latest message preview\"}}".printf (
                 mode == "terminal" ? ("Profile %" + int64.FORMAT + " chat").printf (args.get_int_element (0)) : "Shared chat",
-                mode == "terminal" ? "Group" : "Single", seen[(int) args.get_int_element (0)] ? 0 : 2, pinned[(int) args.get_int_element (0)] ? "true" : "false"); break;
+                mode == "terminal" ? "Group" : "Single", seen[(int) args.get_int_element (0)] ? 0 :
+                unread.contains ((int) args.get_int_element (0)) ? unread[(int) args.get_int_element (0)] : 2,
+                pinned[(int) args.get_int_element (0)] ? "true" : "false"); break;
         case "set_chat_visibility": pinned[(int) args.get_int_element (0)] = args.get_string_element (2) == "Pinned"; break;
         case "get_message_ids": result = mode == "terminal" ? "[41,42,44]" : "[42]"; break;
         case "get_messages":

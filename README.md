@@ -164,7 +164,7 @@ On GNOME, install the desktop entry with `sudo make install` so the app
 switcher can resolve Parla's name and icon, especially on Wayland.
 
 The desktop build also produces **`parla-cli`**, with a line-oriented REPL and
-a BitchX-style terminal interface on Linux and macOS.
+a styled, tabbed terminal interface on Linux and macOS.
 For a CLI-only build, install Vala, Meson, a C compiler, GLib/GIO and JSON-GLib
 development files, then run:
 
@@ -176,7 +176,9 @@ meson compile -C builddir-cli
 
 This build does not require GTK, libadwaita or WebKit. On macOS it also uses
 the system Foundation framework. Use `-Dcli=false` for a GUI-only build.
-Interactive terminals open the TUI by default. Click contacts or tabs to
+Interactive terminals open the TUI with a welcome in the Parla tab, connection
+activity, notifications, and a summary of unread conversations. Type `/help`
+for commands and keyboard shortcuts. Click contacts or tabs to
 select them, use the wheel to scroll, or press Ctrl-G and navigate contacts
 with `j`/`k` or arrows. Contacts has its own permanent tab, with aligned pin,
 unread, time and grey message-preview columns. Use `g` to group chats, `a`

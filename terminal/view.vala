@@ -10,6 +10,11 @@ namespace Parla.Terminal {
         public string id { get; construct; }
         public string title { get; private set; }
         public Editor editor { get; private set; }
+        private string _input_hint = "";
+        public string input_hint {
+            get { return _input_hint; }
+            set { if (_input_hint != value) { _input_hint = value; changed (); } }
+        }
         public bool closable { get; set; default = true; }
         public int scroll_offset { get; internal set; default = 0; }
         public int unread_count { get; private set; default = 0; }
@@ -35,6 +40,13 @@ namespace Parla.Terminal {
 
         public void append (string markdown) { add (markdown, true); }
         public void append_text (string text) { add (text, false); }
+
+        public void append_notice (string time, string label, string text, Style style = Style.INFO) {
+            string clock = limited (time, 64);
+            string name = limited (label, 64);
+            string body = limited (text, MAX_ENTRY_BYTES);
+            add_text (new Text.notice (clock, name, body, style), clock.length + name.length + body.length);
+        }
 
         internal void rename (string title) {
             if (this.title == title) return;
@@ -703,11 +715,11 @@ Esc+1..9 (0 for 10): switch tab · Alt-Left/Right: previous/next
                 message_hits = new string[height];
                 tabs_dirty = body_dirty = footer_dirty = true;
             }
-            int new_info = info_visible && !contacts_tab_active && width >= 72 ? int.min (28, width / 3) : 0;
+            var buffer = active_buffer;
+            int new_info = info_visible && buffer != null && buffer.closable && width >= 72 ? int.min (28, width / 3) : 0;
             if (info_width != new_info) { info_width = new_info; body_dirty = true; }
             if (!footer_dirty && !body_dirty && !tabs_dirty) return frame;
             int cx = 0, cy = 0;
-            var buffer = active_buffer;
             int available = int.max (1, height - 3);
             var input_rows = buffer == null ? new Text.plain ("").wrap (int.max (1, width - 2)) :
                 buffer.editor.layout (int.max (1, width - 2), out cx, out cy, int.min (5, available));
@@ -737,7 +749,7 @@ Esc+1..9 (0 for 10): switch tab · Alt-Left/Right: previous/next
                     var clean = new Text.plain (label);
                     foreach (var cell in clean.glyphs) x += cell.width;
                     for (int hit = tab_start; hit < int.min (width, x); hit++) tab_hits[hit] = i;
-                    row.text (x++, "│", Style.SEPARATOR);
+                    row.text (x++, " ", Style.TAB);
                 }
                 frame.set_row (0, row);
                 tabs_dirty = false;
@@ -795,7 +807,7 @@ Esc+1..9 (0 for 10): switch tab · Alt-Left/Right: previous/next
                 int status_y = height - input_height - 1;
                 var row = new Row (width, Style.STATUS);
                 string prefix = buffer != null && buffer.scroll_offset > 0 ? "[scroll %d] ".printf (buffer.scroll_offset) : "";
-                row.text (0, contacts_focus ? "Contacts · " +
+                row.text (1, contacts_focus ? "Contacts · " +
                     (contacts.length > 0 ? contacts[selected_contact].name : "empty") : prefix + status,
                     contacts_focus ? Style.STATUS | Style.DIM : Style.STATUS);
                 frame.set_row (status_y, row);
@@ -803,14 +815,16 @@ Esc+1..9 (0 for 10): switch tab · Alt-Left/Right: previous/next
                 for (int y = 0; y < input_height; y++) {
                     row = new Row (width, Style.INPUT);
                     row.text (0,
-                        contacts_focus ? (y == 0 ? "[input inactive]" : "") : (y == 0 ? "> " : "  "),
-                        contacts_focus ? Style.INPUT | Style.DIM : Style.INPUT);
+                        contacts_focus ? (y == 0 ? "[input inactive] · j/k move · Enter open · ? keys" : "") : (y == 0 ? "› " : "  "),
+                        contacts_focus ? Style.INPUT | Style.DIM : Style.INPUT | Style.BOLD);
                     if (!contacts_focus && input_start + y < input_rows.length) {
                         var input = input_rows.get (input_start + y);
                         for (int x = 0; x < input.width; x++) {
                             var cell = input.cells[x]; cell.style |= Style.INPUT;
                             row.put (x + 2, cell);
                         }
+                        if (y == 0 && buffer != null && buffer.editor.text == "")
+                            row.text (2, buffer.input_hint, Style.INPUT | Style.DIM);
                     }
                     frame.set_row (height - input_height + y, row);
                 }
@@ -846,16 +860,20 @@ Esc+1..9 (0 for 10): switch tab · Alt-Left/Right: previous/next
                 for (int x = 0; x < frame.width; x++) row.put (x, old.cells[x]);
                 row.text (0, string.nfill (columns, ' '), Style.CONTACT);
                 if (y == help_height + 1) {
-                    row.text (name_start, " Contacts" + (contacts_sort == ContactSort.ALPHABETICAL ? " · A–Z" : ""), Style.CONTACT | Style.BOLD, name_width);
+                    row.text (name_start, " Contacts" + (contacts_sort == ContactSort.ALPHABETICAL ? " · A–Z" : ""), Style.INFO | Style.BOLD, name_width);
                     if (details) {
-                        row.text (name_start + name_width + 1, "Time", Style.CONTACT | Style.BOLD);
-                        row.text (preview_start, "Last message", Style.CONTACT | Style.BOLD);
+                        row.text (name_start + name_width + 1, "Time", Style.INFO | Style.BOLD);
+                        row.text (preview_start, "Last message", Style.INFO | Style.BOLD);
                     }
+                } else if (contacts.length == 0 && y == help_height + 3) {
+                    row.text (2, "No conversations yet", Style.INFO | Style.BOLD);
+                } else if (contacts.length == 0 && y == help_height + 4) {
+                    row.text (2, "Use /query ADDRESS to start a chat.", Style.CONTACT | Style.PREVIEW);
                 } else if (top + y - help_height - 2 < contact_rows.length) {
                     int index = contact_rows[top + y - help_height - 2];
                     if (index < 0) {
                         string[] headings = { "Pinned", "Private chats", "Group chats", "Other chats" };
-                        row.text (name_start, " " + headings[-index - 1], Style.CONTACT | Style.BOLD, columns);
+                        row.text (name_start, " " + headings[-index - 1], Style.INFO | Style.BOLD, columns);
                         frame.set_row (y, row);
                         continue;
                     }
@@ -864,10 +882,11 @@ Esc+1..9 (0 for 10): switch tab · Alt-Left/Right: previous/next
                     Style style = tab_open (contact.id) ? Style.OPEN_CONTACT : Style.CONTACT;
                     if (active_buffer != null && active_buffer.id == contact.id) style |= Style.ACTIVE_CONTACT | Style.BOLD;
                     if (contacts_focus && index == selected_contact) style |= Style.SELECTED;
+                    if (contact.unread_count > 0) style |= Style.BOLD;
                     row.text (name_start, string.nfill (columns, ' '), style, columns);
                     // Reserve columns for unread (1+1 space) and pin (2+1 space),
                     // including when either marker is absent.
-                    row.text (name_start, contact.unread_count > 0 ? "*" : " ", style, 1);
+                    row.text (name_start, contact.unread_count > 0 ? "●" : " ", style, 1);
                     row.text (name_start + 2, contact.pinned ? "📌" : "  ", style, 2);
                     row.text (name_start + 5, contact.name +
                         (contact.status == "" ? "" : " " + contact.status), style, int.max (0, name_width - 5));
