@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Exercise saved language selection and relocated catalogs without a display."""
+import gettext
 import os
 from pathlib import Path
 import shutil
@@ -14,7 +15,7 @@ with tempfile.TemporaryDirectory(prefix="parla-language-") as folder:
     config = folder / "config"
     env = dict(os.environ, XDG_CONFIG_HOME=str(config), PARLA_TEST_CONFIG=str(config),
                LC_ALL="C", LANG="C")
-    for language in (None, "nl"):
+    for language in (None, "nl", "zh_CN"):
         shutil.rmtree(config, ignore_errors=True)
         if language is None:
             env.pop("LANGUAGE", None)
@@ -23,7 +24,7 @@ with tempfile.TemporaryDirectory(prefix="parla-language-") as folder:
         subprocess.run([str(core), "--language-settings"], env=env, check=True, timeout=30)
 
     # An app bundle path takes precedence on macOS, even with no installed
-    # ca_ES/nl_NL locale. Other platforms use the relocatable ../share path.
+    # language-specific locale. Other platforms use the relocatable ../share path.
     if sys.platform == "darwin":
         binary = folder / "Parla.app/Contents/MacOS/parla"
         locales = folder / "Parla.app/Contents/Resources/share/locale"
@@ -32,19 +33,28 @@ with tempfile.TemporaryDirectory(prefix="parla-language-") as folder:
         locales = folder / "share/locale"
     binary.parent.mkdir(parents=True)
     shutil.copy2(app, binary)
-    for code in ("ca", "nl"):
+    codes = [code for line in (root / "po/LINGUAS").read_text().splitlines()
+             for code in line.split("#", 1)[0].split()]
+    for code in codes:
         catalog = locales / code / "LC_MESSAGES/parla.mo"
         catalog.parent.mkdir(parents=True)
         subprocess.run(["msgfmt", "-c", str(root / "po" / (code + ".po")),
                         "-o", str(catalog)], check=True)
+
+    chinese = gettext.translation("parla", localedir=locales, languages=["zh_CN"])
+    for count in (0, 1, 2, 10):
+        saved = chinese.ngettext("Saved %d file", "Saved %d files", count) % count
+        assert saved == f"已保存 {count} 个文件", saved
 
     settings = config / "parla/settings.ini"
     settings.parent.mkdir(parents=True, exist_ok=True)
     for language, inherited, locale, expected in (
         ("ca", "nl", "C", "Mostra la finestra principal"),
         ("nl", "ca", "C", "Hoofdvenster tonen"),
+        ("zh_CN", "ca", "C", "显示主窗口"),
         ("en", "ca", "C", "Show the main window"),
         ("", "nl", "en_US.UTF-8", "Hoofdvenster tonen"),
+        ("", "zh_CN", "en_US.UTF-8", "显示主窗口"),
         ("unsupported", "ca", "en_US.UTF-8", "Mostra la finestra principal"),
         ("", "", "C", "Show the main window"),
     ):
@@ -61,7 +71,13 @@ with tempfile.TemporaryDirectory(prefix="parla-language-") as folder:
         # user's system settings. --help exits before GLib parses the rest.
         for languages, expected in (("(ca)", "Mostra la finestra principal"),
                                     ("(en, ca)", "Show the main window"),
-                                    ("(nl-NL, en)", "Hoofdvenster tonen")):
+                                    ("(nl-NL, en)", "Hoofdvenster tonen"),
+                                    ("(zh-CN, en)", "显示主窗口"),
+                                    ("(zh-Hans, en)", "显示主窗口"),
+                                    ("(zh-Hans-CN, en)", "显示主窗口"),
+                                    ("(zh-Hans-SG, en)", "显示主窗口"),
+                                    ("(zh-Hant-TW, en)", "Show the main window"),
+                                    ("(en, zh-Hans)", "Show the main window")):
             result = subprocess.run([str(binary), "--help", "-AppleLanguages", languages],
                                     env=env, check=True, capture_output=True,
                                     text=True, timeout=30)

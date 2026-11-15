@@ -21,6 +21,7 @@ namespace Dc.Localization {
         case "en": return "English";
         case "ca": return "Català";
         case "nl": return "Nederlands";
+        case "zh_CN": return "简体中文";
         default: return code;
         }
     }

@@ -6,11 +6,14 @@
   <name>Parla</name>
   <summary>A Delta Chat client for GNOME</summary>
   <summary xml:lang="ca">Un client del Delta Chat per al GNOME</summary>
+  <summary xml:lang="zh_CN">适用于 GNOME 的 Delta Chat 客户端</summary>
   <description>
     <p>Parla is a Delta Chat client for GNOME.</p>
     <p xml:lang="ca">El Parla és un client del Delta Chat per al GNOME.</p>
+    <p xml:lang="zh_CN">Parla 是适用于 GNOME 的 Delta Chat 客户端。</p>
     <p>Chat over email, decentralized and encrypted.</p>
     <p xml:lang="ca">Xateja per correu electrònic, de manera descentralitzada i xifrada.</p>
+    <p xml:lang="zh_CN">通过电子邮件进行去中心化的加密聊天。</p>
   </description>
   <launchable type="desktop-id">io.github.trufae.Parla.desktop</launchable>
   <supports>
@@ -27,11 +30,13 @@
       <image>https://raw.githubusercontent.com/trufae/parla/main/data/screenshots/welcome.png</image>
       <caption>Welcome</caption>
       <caption xml:lang="ca">Benvinguda</caption>
+      <caption xml:lang="zh_CN">欢迎</caption>
     </screenshot>
     <screenshot>
       <image>https://raw.githubusercontent.com/trufae/parla/main/data/screenshots/welcome-dark.png</image>
       <caption>Dark Theme</caption>
       <caption xml:lang="ca">Tema fosc</caption>
+      <caption xml:lang="zh_CN">深色主题</caption>
     </screenshot>
   </screenshots>
 

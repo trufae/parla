@@ -25,5 +25,11 @@ root:
 	cp $(ROOT_DIR)/data/io.github.trufae.Parla.desktop root$(PREFIX)/share/applications/
 	cp $(ROOT_DIR)/data/icons/hicolor/scalable/apps/io.github.trufae.Parla.svg root$(PREFIX)/share/icons/hicolor/scalable/apps/
 	cp $(ROOT_DIR)/data/io.github.trufae.Parla.appdata.xml root$(PREFIX)/share/metainfo/io.github.trufae.Parla.metainfo.xml
+	set -e; while IFS= read -r lang; do \
+		[ -n "$$lang" ] || continue; \
+		mkdir -p "root$(PREFIX)/share/locale/$$lang/LC_MESSAGES"; \
+		install -m 0644 "$(ROOT_DIR)/builddir/po/$$lang/LC_MESSAGES/parla.mo" \
+			"root$(PREFIX)/share/locale/$$lang/LC_MESSAGES/parla.mo"; \
+	done < "$(ROOT_DIR)/po/LINGUAS"
 
 include ../deb_hand.mak

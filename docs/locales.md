@@ -4,7 +4,8 @@ Parla uses the standard GNU gettext stack that is already shipped with GLib,
 GTK and libadwaita. The build system is Meson and the translation domain is
 `parla`.
 
-The UI is translated to **Catalan** (`ca`); Dutch (`nl`) is also shipped.
+The UI ships **Catalan** (`ca`), **Dutch** (`nl`), and a partial
+**Simplified Chinese** (`zh_CN`) translation. Untranslated messages use English.
 Coverage grows by wrapping more strings with `_()` and adding the source file
 to `po/POTFILES`; no architecture change is needed for that.
 
@@ -28,8 +29,8 @@ to `po/POTFILES`; no architecture change is needed for that.
 
 Settings → General → Language offers **System Language** (the default),
 **English**, and all catalogs listed in `po/LINGUAS`. The current translations
-appear as **Català** and **Nederlands**, using their own names. Selecting a
-different language opens a **Restart** / **Cancel** dialog: Restart saves the
+appear as **Català**, **Nederlands**, and **简体中文**, using their own names.
+Selecting a different language opens a **Restart** / **Cancel** dialog: Restart saves the
 choice and relaunches Parla, while Cancel keeps the previous selection.
 Existing widgets do not support live retranslation.
 
@@ -41,6 +42,8 @@ new languages; otherwise their code is displayed.
 On macOS, Finder launches without locale environment variables use the native
 preferred-language list. An explicit choice also works when the process starts
 in the C locale, without changing date or number formatting.
+Apple's `zh-Hans` preferences (including regional variants) resolve to the
+`zh_CN` catalog; Traditional Chinese preferences do not select it.
 
 With **System Language** selected, gettext follows the usual GNU locale
 environment variables. The simplest way
@@ -94,7 +97,8 @@ po/
 ├── meson.build      # i18n.gettext(...) with the glib preset
 ├── parla.pot        # generated template (do not edit by hand)
 ├── ca.po            # Catalan catalog
-└── nl.po            # Dutch catalog
+├── nl.po            # Dutch catalog
+└── zh_CN.po         # Simplified Chinese catalog
 ```
 
 `po/ca.po` is an ordinary PO file: edit it in place with any PO editor. After
@@ -108,11 +112,14 @@ Check a catalog before committing:
 msgfmt -c --statistics po/ca.po -o /dev/null
 ```
 
-A clean run reports no untranslated and no fuzzy messages.
+The check must report no errors. The statistics also show untranslated or
+fuzzy messages, which fall back to English until they are translated/reviewed.
 
 ### Add a new language
 
-1. Add the language code to `po/LINGUAS`, for example `de` for German.
+1. Add the gettext locale code to `po/LINGUAS`, for example `de` for German
+   or `zh_CN` for Simplified Chinese. Keep the catalog in `po/<code>.po`;
+   the filename, `Language` header and `LINGUAS` entry must agree.
 2. From the build directory run the update target:
 
    ```sh
@@ -121,11 +128,17 @@ A clean run reports no untranslated and no fuzzy messages.
 
    Meson creates `po/de.po` from `po/parla.pot`.
 3. Translate the strings in `po/de.po`. Any PO editor (Poedit, Gtranslator,
-   Weblate, etc.) can open the file.
-4. Rebuild so the new `.mo` file is generated and installed:
+   Weblate, etc.) can open the file. Translate only `msgstr`, never `msgid`
+   or `msgid_plural`, and preserve format placeholders such as `%s` and `%d`.
+   Set the appropriate `Plural-Forms` header and number of `msgstr[n]` entries
+   (`nplurals=1; plural=0;` and only `msgstr[0]` for Chinese).
+4. Add the language's own name in `src/localization.vala`, and translate the
+   desktop/AppStream metadata described below.
+5. Rebuild and install so the new `.mo` file is generated and installed:
 
    ```sh
    meson compile -C builddir
+   meson install -C builddir
    ```
 
 ### Update catalogs after code changes
@@ -262,9 +275,11 @@ self-contained: `_("Remove failed: %s").printf (reason)`.
 
 ### Desktop and AppData files
 
-The desktop entry contains Catalan `GenericName`, `Comment` and `Keywords`
-fields. The AppStream file contains Catalan summaries, descriptions and
-screenshot captions using `xml:lang="ca"`. These metadata translations live
+The desktop entry contains Catalan and Simplified Chinese `GenericName`,
+`Comment` and `Keywords` fields, plus a Dutch `Comment`.
+The AppStream file contains Catalan and Simplified Chinese summaries, descriptions
+and screenshot captions using `xml:lang="ca"` and `xml:lang="zh_CN"`.
+These metadata translations live
 in `data/io.github.trufae.Parla.desktop` and
 `data/io.github.trufae.Parla.appdata.xml`; edit them alongside the catalog.
 The desktop strings are also extracted into gettext, including the summary
@@ -277,6 +292,7 @@ Parla first looks for catalogs beside its executable, under
 If neither contains a matching catalog, it uses the compiled `LOCALEDIR`. This keeps
 translations working when Windows distributions or AppImages are relocated.
 The macOS bundler compiles all catalogs listed in `po/LINGUAS` into the bundle.
+The Debian packager copies the built catalogs from that same list.
 
 To test the app's translations without installing it system-wide:
 
