@@ -149,6 +149,14 @@ with tempfile.TemporaryDirectory(prefix="parla-commands-") as folder:
         assert requests("markseen_msgs")[-1]["params"] == [1, [42]]
         assert requests("marknoticed_chat")[-1]["params"] == [1, 10]
         assert "0 unread" in terminal.lines[-2]
+        # A bare /query closes the current chat tab instead of opening the picker.
+        terminal.command("/query 10")
+        terminal.until("3:#Profile 1 chat")
+        terminal.command("/query")
+        assert "#Profile 1 chat" not in terminal.lines[0]
+        assert "My own text" not in terminal.screen
+        terminal.command("/query 10")
+        terminal.until("My own text")
 
         terminal.command("/refresh")
         terminal.until("22:13 <Me> My own text")

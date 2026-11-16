@@ -35,7 +35,7 @@ internal class CliTerminal : Object {
 /help [COMMAND]             Show help
 /account [ID|next|prev]      List or switch accounts; /accounts also lists them
 /list [FILTER]              List conversations in this account
-/query NAME|ADDRESS|ID      Open a chat or start one with a contact
+/query [NAME|ADDRESS|ID]    Open/start a chat; no argument closes this tab
 /join CHAT                  Open an existing conversation by ID or name
 /msg CHAT_ID TEXT           Send to a conversation in this account
 /edit                      Edit selected/last editable own message; Enter updates, Escape cancels
@@ -1035,7 +1035,9 @@ Click a message to select it; Escape clears the selection. Image/file links use 
                     var target = yield find_chat (state, arg);
                     open_chat (state, target.id.to_string (), target.name);
                     return;
-                case "/query": yield query (state, arg); return;
+                case "/query":
+                    if (arg == "") state.view.close_tab (buffer.id); else yield query (state, arg);
+                    return;
                 case "/join":
                     var target = yield find_chat (state, arg);
                     open_chat (state, target.id.to_string (), target.name);

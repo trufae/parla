@@ -187,7 +187,8 @@ unread messages from chats without open tabs. Esc+number selects a tab; Esc+x, `
 closes it. Ctrl-W deletes a word, Ctrl-B/F pages through messages, and
 Ctrl-P/N recalls shared input history. Tab completes `/commands` and `@members`.
 Command output goes to the Parla tab. `/account` switches profiles,
-`/query name|address` opens or starts a direct chat, and `/invite` displays a QR/link.
+`/query name|address` opens or starts a direct chat; `/query` alone closes the current tab.
+`/invite` displays a QR/link.
 Click a message for `/reply`, `/react` or `/unreact`; `/reply` alone opens a
 keyboard selector. `/reply text` defaults to the latest incoming message,
 and `/reply @user text` chooses that user's latest message. Image/file
