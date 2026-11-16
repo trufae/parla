@@ -61,7 +61,8 @@ with tempfile.TemporaryDirectory(prefix="parla-language-") as folder:
         settings.write_text("[General]\nlanguage=" + language + "\n")
         env.update(LC_ALL=locale, LANG=locale, LANGUAGE=inherited)
         result = subprocess.run([str(binary), "--help"], env=env, check=True,
-                                capture_output=True, text=True, timeout=30)
+                                capture_output=True, text=True, encoding="utf-8",
+                                errors="replace", timeout=30)
         assert expected in result.stdout, (language, inherited, result.stdout)
     if sys.platform == "darwin":
         settings.write_text("[General]\nlanguage=\n")
@@ -80,6 +81,6 @@ with tempfile.TemporaryDirectory(prefix="parla-language-") as folder:
                                     ("(en, zh-Hans)", "Show the main window")):
             result = subprocess.run([str(binary), "--help", "-AppleLanguages", languages],
                                     env=env, check=True, capture_output=True,
-                                    text=True, timeout=30)
+                                    text=True, encoding="utf-8", errors="replace", timeout=30)
             assert expected in result.stdout, (languages, result.stdout)
     print("Language persistence, environment overrides, C locale and relocated catalogs: PASS")

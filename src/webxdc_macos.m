@@ -130,6 +130,21 @@ setup_webview (ParlaWebxdcController *c, WKContentRuleList *rules)
 	[[cfg userContentController] addScriptMessageHandler:c name:@"webxdc"];
 	if (rules)
 		[[cfg userContentController] addContentRuleList:rules];
+	if (!c->allow_wasm) {
+		/* Some WKWebView releases ignore wasm-unsafe-eval in CSP, so remove
+		 * the constructor at document start in every frame as well. Dedicated
+		 * workers can still reach the engine API; that gap is documented. */
+		NSString *source =
+		    @"(()=>{try{Object.defineProperty(window,'WebAssembly',{"
+		     "value:undefined,writable:false,configurable:false})}catch(e){"
+		     "try{window.WebAssembly=undefined}catch(e2){}}})();";
+		WKUserScript *script = [[WKUserScript alloc]
+		    initWithSource:source
+		    injectionTime:WKUserScriptInjectionTimeAtDocumentStart
+		    forMainFrameOnly:NO];
+		[[cfg userContentController] addUserScript:script];
+		[script release];
+	}
 	if (!c->allow_webgl) {
 		/* WKWebView has no public WebGL-disable preference. Install this at
 		 * document start in every frame as the strongest public best-effort

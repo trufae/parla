@@ -214,7 +214,7 @@ Click a message to select it; Escape clears the selection. Image/file links use 
         var buffer = state.view.active_buffer;
         int64 unread = 0;
         foreach (var item in state.chats) unread += item.unread_count;
-        string chat = buffer == null || !state.histories.contains (buffer.id) ? "%d conversation%s · %lld unread".printf (state.chats.length, state.chats.length == 1 ? "" : "s", unread) :
+        string chat = buffer == null || !state.histories.contains (buffer.id) ? ("%d conversation%s · %" + int64.FORMAT + " unread").printf (state.chats.length, state.chats.length == 1 ? "" : "s", unread) :
             "%s (#%s) · %d unread".printf (buffer.title, buffer.id, buffer.unread_count);
         if (buffer != null && buffer.selected_message_id != "") chat +=
             (state.view.selecting_messages ? " · Selecting #" : " · Selected #") + buffer.selected_message_id;
@@ -291,7 +291,7 @@ Click a message to select it; Escape clears the selection. Image/file links use 
                 "No conversations yet. Use /query ADDRESS to say hello." : "You're all caught up. No unread messages.");
         } else {
             if (conversations > 5) details.append_printf ("\n… and %d more. Use /list or Ctrl-G to see all.", conversations - 5);
-            activity (state, first || !increased ? "Unread" : "New", "%lld unread message%s in %d conversation%s.%s".printf (
+            activity (state, first || !increased ? "Unread" : "New", ("%" + int64.FORMAT + " unread message%s in %d conversation%s.%s").printf (
                 total, total == 1 ? "" : "s", conversations, conversations == 1 ? "" : "s", details.str), Style.CODE, notify && (!first || state != current));
         }
     }
@@ -484,7 +484,7 @@ Click a message to select it; Escape clears the selection. Image/file links use 
                         (json_str (detail, "reaction") ?? "") + event_join (detail), Style.ACCENT, true);
                     break;
                 case "MsgFailed":
-                    activity (state, "Failed", "Message #%lld could not be sent to %s.%s".printf (
+                    activity (state, "Failed", ("Message #%" + int64.FORMAT + " could not be sent to %s.%s").printf (
                         json_int (detail, "msgId"), event_chat (state, detail), event_join (detail)), Style.ERROR, true);
                     break;
                 case "Warning": case "Error":
@@ -522,7 +522,7 @@ Click a message to select it; Escape clears the selection. Image/file links use 
     }
 
     private string event_join (Json.Object detail) {
-        return " · /join %lld".printf (json_int (detail, "chatId"));
+        return (" · /join %" + int64.FORMAT).printf (json_int (detail, "chatId"));
     }
 
     private async void load_accounts () throws Error {

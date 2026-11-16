@@ -89,6 +89,20 @@ static gboolean stage (const wchar_t *source, const wchar_t *directory,
                 if (!slash) { ok = FALSE; break; }
                 *slash = 0;
                 g_autofree wchar_t *dependency = join (parent, wdll);
+                /* Build-tree helpers resolve their DLLs through PATH rather
+                 * than living next to every dependency. Search there before
+                 * giving up, but never copy a directory or an absolute path
+                 * supplied by the PE we are parsing. */
+                if (GetFileAttributesW (dependency) == INVALID_FILE_ATTRIBUTES) {
+                    wchar_t found[32768];
+                    DWORD length = SearchPathW (NULL, wdll, NULL,
+                        G_N_ELEMENTS (found), found, NULL);
+                    if (length > 0 && length < G_N_ELEMENTS (found)) {
+                        g_free (dependency);
+                        dependency = g_memdup2 (found,
+                            (wcslen (found) + 1) * sizeof (wchar_t));
+                    }
+                }
                 ok = stage (dependency, directory, copied, error);
             }
         }

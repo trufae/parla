@@ -180,6 +180,10 @@ relax individual capabilities in Settings:
   the remaining restrictions. Linux additionally fixes JavaScriptCore's
   `JSC_useWasm` engine option before launch and verifies it in the helper,
   because some WebKitGTK releases do not enforce Wasm compilation through CSP.
+  macOS removes the `WebAssembly` constructor at document start in every frame
+  for the same reason: some WKWebView releases ignore `wasm-unsafe-eval`. Code
+  in a dedicated worker can still reach the engine API, so the macOS Wasm
+  restriction is best effort like its WebGL control.
 - **No WebGL.** WebKitGTK uses its public per-view `enable-webgl` setting.
   WKWebView has no public equivalent, so macOS installs a document-start
   script in every frame which blocks canvas WebGL contexts. This is a

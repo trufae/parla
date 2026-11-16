@@ -37,7 +37,7 @@ private int fake_core (string mode) throws Error {
             if (ev.has_member ("connectivity")) connectivity[account] = (int) json_int (ev, "connectivity");
             if (ev.has_member ("unread")) { unread[account] = (int) json_int (ev, "unread"); seen[account] = false; }
             FileUtils.unlink (event_file);
-            stdout.printf ("{\"jsonrpc\":\"2.0\",\"id\":%lld,\"result\":%s}\n", event_request, Json.to_string (injected.get_root (), false));
+            stdout.printf ("{\"jsonrpc\":\"2.0\",\"id\":%" + int64.FORMAT + ",\"result\":%s}\n", event_request, Json.to_string (injected.get_root (), false));
             stdout.flush ();
             event_request = 0;
         }
