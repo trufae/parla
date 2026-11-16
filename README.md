@@ -150,7 +150,7 @@ To select multiple messages using the keyboard:
 ```sh
 # Install dependencies (Ubuntu; Webxdc is enabled by default)
 sudo apt install valac meson libgtk-4-dev libadwaita-1-dev libjson-glib-dev \
-  libwebkitgtk-6.0-dev
+  libwebkitgtk-6.0-dev libseccomp-dev bubblewrap
 
 # Install the RPC backend for source builds
 pip install deltachat-rpc-server
@@ -336,7 +336,7 @@ To build and run it from the source tree:
 
 ```sh
 # Ubuntu/Debian build dependency
-sudo apt install libwebkitgtk-6.0-dev
+sudo apt install libwebkitgtk-6.0-dev libseccomp-dev bubblewrap
 
 make run
 # Or with Meson directly:
@@ -364,9 +364,14 @@ On Windows, use the bundle command above. For a direct Meson build, extract
 the official `Microsoft.Web.WebView2` NuGet package and pass its root as
 `-Dwebview2_sdk=/path/to/package`.
 
-Webxdc attachments contain untrusted JavaScript, so Parla deliberately does
-not fall back to running them without the web-engine sandbox. On Linux,
-WebKitGTK uses bubblewrap and unprivileged user namespaces for that sandbox.
+Each Webxdc runs in a separate native helper behind a bounded IPC interface.
+The helper has no account/core connection. Linux uses bubblewrap namespaces
+and seccomp, macOS uses a signed App Sandbox XPC service, and Windows uses a
+fresh AppContainer plus a Job Object. A failed sandbox launch closes the app.
+Linux requires **Wayland**: directly exposing X11 would let a compromised
+helper inspect or control other applications. Flatpak uses a restricted
+`flatpak-spawn --sandbox` child. On native Linux, both the helper sandbox and
+WebKitGTK's renderer sandbox require unprivileged user namespaces.
 Ubuntu 24.04 and newer may restrict those namespaces through AppArmor; without
 an application policy WebKitGTK can fail with `bwrap: setting up uid map:
 Permission denied`.
@@ -385,10 +390,15 @@ restriction is active. Direct installs on systems without that restriction do
 not install the policy.
 Running `make run` directly from a build directory is not covered by the
 installed-binary policy on restricted Ubuntu systems; install the binary first
-and run the installed `parla` executable. Parla detects this specific unsafe
-host state and refuses to launch the app with an error instead of disabling the
-WebKit sandbox or allowing WebKitGTK to abort. Flatpak uses its own sandbox and
+and run the installed `parla` executable. Failed helper startup is reported
+without an unsandboxed fallback. Flatpak uses its own sandbox and
 does not install a host AppArmor profile.
+
+On macOS, run the signed `.app` produced by `make run` or the bundle scripts;
+the build-directory executable has no embedded XPC service. WKWebView requires
+the network-client entitlement even for local HTML, so macOS offline mode
+uses browser request policies rather than native network denial. See the
+documented [platform boundaries](docs/webxdc.md#security-boundaries).
 
 See [docs/webxdc.md](docs/webxdc.md) for the implementation, security
 boundaries, and currently exposed JavaScript API.

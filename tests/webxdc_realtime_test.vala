@@ -7,6 +7,7 @@ public int run_fake_realtime_server () {
     string fail = "";
     string? held = null;
     bool link_peers = false;
+    string page = "<!doctype html><script src='webxdc.js'></script>";
     int64 event_request = 0;
     var events = new Queue<Json.Object> ();
     string? line;
@@ -27,8 +28,10 @@ public int run_fake_realtime_server () {
             break;
         case "get_config": result.init_string ("Fixture"); break;
         case "get_webxdc_blob":
-            result.init_string (Base64.encode ("<!doctype html><script src='webxdc.js'></script>".data));
+            result.init_string (Base64.encode (page.data));
             break;
+        case "test_page": page = args.get_string_element (0); break;
+        case "send_webxdc_status_update": break;
         case "test_link": link_peers = true; break;
         case "get_next_event":
             assert (event_request == 0);

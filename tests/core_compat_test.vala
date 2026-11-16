@@ -510,7 +510,7 @@ public int main (string[] args) {
         return run_chat_lifetime_test (args.length > 2 ? int.parse (args[2]) : 24, true);
     if (args.length > 1 && args[1] == "--realtime-settings")
         return run_realtime_settings_test ();
-#if WEBXDC && !MACOS && !WINDOWS
+#if WEBXDC
     if (args.length > 1 && args[1] == "--realtime-ui") {
         test_executable = File.new_for_path (args[0]).get_path ();
         return run_realtime_ui_test ();

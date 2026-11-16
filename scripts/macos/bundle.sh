@@ -27,6 +27,17 @@ mkdir -p "$MACOS" "$RESOURCES" "$FRAMEWORKS"
 
 cp "$BUILD_DIR/parla" "$MACOS/parla"
 chmod 755 "$MACOS/parla"
+if python3 - "$BUILD_DIR/meson-info/intro-buildoptions.json" <<'PY'
+import json, sys
+options = {o['name']: o['value'] for o in json.load(open(sys.argv[1]))}
+sys.exit(0 if options.get('webxdc') and options.get('gui') else 1)
+PY
+then
+    # Fail if an enabled helper was not built; never package a stale fallback.
+    bash "$ROOT/scripts/macos/webxdc-bundle.sh" "$BUILD_DIR" "$APP_DIR"
+else
+    rm -rf "$CONTENTS/XPCServices/io.github.trufae.Parla.Webxdc.xpc"
+fi
 
 cat > "$CONTENTS/Info.plist" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -232,7 +243,7 @@ relative_to_frameworks() {
     python3 - "$1" "$FRAMEWORKS" <<'PY'
 import os
 import sys
-print(os.path.relpath(sys.argv[2], sys.argv[1]))
+print(os.path.relpath(os.path.realpath(sys.argv[2]), os.path.realpath(sys.argv[1])))
 PY
 }
 
@@ -250,6 +261,15 @@ processed_contains() {
 
 bundle_macho() {
     local file="$1"
+    local FRAMEWORKS="$FRAMEWORKS"
+    # An App Sandbox XPC service can read its own bundle. Keep its small
+    # runtime closure there instead of granting access to the containing app.
+    case "$file" in
+        *.xpc/Contents/*)
+            FRAMEWORKS="${file%%.xpc/Contents/*}.xpc/Contents/Frameworks"
+            mkdir -p "$FRAMEWORKS"
+            ;;
+    esac
     [ -f "$file" ] || return 0
     is_macho "$file" || return 0
 
@@ -339,8 +359,9 @@ if command -v gio-querymodules >/dev/null 2>&1 && [ -d "$RESOURCES/lib/gio/modul
 fi
 
 if [ "${CODESIGN:-adhoc}" != "none" ] && command -v codesign >/dev/null 2>&1; then
-    codesign --force --deep --sign "${CODESIGN_IDENTITY:--}" "$APP_DIR" >/dev/null 2>&1 || \
-        echo "warning: codesign failed; leaving app unsigned" >&2
+    codesign --force --deep --sign "${CODESIGN_IDENTITY:--}" "$APP_DIR" >/dev/null 2>&1
+    bash "$ROOT/scripts/macos/webxdc-sign.sh" "$APP_DIR" "${CODESIGN_IDENTITY:--}"
+    codesign --force --sign "${CODESIGN_IDENTITY:--}" "$APP_DIR"
 fi
 
 echo "$APP_DIR"

@@ -65,6 +65,7 @@ for folder in "${folders[@]}"; do
             done
     done
 
+    bash scripts/macos/webxdc-sign.sh "$app" "$IDENTITY"
     echo "[${build}] Signing app bundle..."
     codesign --force --options runtime --timestamp \
         --entitlements "${ENTITLEMENTS}" --sign "$IDENTITY" "${app}"

@@ -14,8 +14,8 @@ mkdir -p "$ZIP_DIR"
 make -C "$ROOT" all BUILD_DIR="${BUILD_DIR:-$ROOT/builddir}" BUILDTYPE="${BUILDTYPE:-release}"
 APP_DIR="$APP_DIR" VERSION="$VERSION" "$ROOT/scripts/macos/bundle.sh" >/dev/null
 
-# ad-hoc sign
-codesign --force --deep -s - "$APP_DIR"
+# bundle.sh signs nested Webxdc services with their individual entitlements.
+codesign --verify --deep --strict "$APP_DIR"
 
 # create Zip
 rm -f "$ZIP"

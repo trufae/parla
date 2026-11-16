@@ -9,12 +9,20 @@ private void test_safest_defaults () {
 }
 
 private void test_wasm_csp () {
-    var blocked = WebxdcSecurity.wasm_csp (false);
-    assert (blocked != null);
+    string blocked = response_policy (false, false);
     assert (!blocked.contains ("'unsafe-eval'"));
     assert (!blocked.contains ("'wasm-unsafe-eval'"));
-    assert (WebxdcSecurity.wasm_csp (true) == null);
+    assert (blocked.contains ("connect-src"));
+    assert (!blocked.contains ("https:"));
+    string wasm = response_policy (false, true);
+    assert (wasm.contains ("'wasm-unsafe-eval'"));
+    assert (!wasm.contains ("'unsafe-eval'"));
+    assert (!wasm.contains ("https:"));
+    assert (response_policy (true, false).contains ("https:"));
 }
+
+[CCode (cheader_filename = "webxdc_view.h", cname = "parla_webxdc_csp")]
+private extern unowned string response_policy (bool internet, bool wasm);
 
 int main (string[] args) {
     Test.init (ref args);

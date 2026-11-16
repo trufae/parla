@@ -1,4 +1,4 @@
-#include "webxdc_windows.h"
+#include "webxdc_view.h"
 
 #ifdef _WIN32
 
@@ -27,8 +27,6 @@
 static constexpr wchar_t kWindowClass[] = L"ParlaWebxdcWindow";
 static constexpr wchar_t kOrigin[] = L"https://webxdc.invalid";
 static constexpr wchar_t kStartUri[] = L"https://webxdc.invalid/index.html";
-static constexpr wchar_t kNoWasmCsp[] =
-    L"script-src 'self' 'unsafe-inline' data: blob: http: https:";
 
 struct WebxdcWindow;
 struct RequestTask;
@@ -168,9 +166,9 @@ struct WebxdcWindow {
     bool allow_wasm = false;
     bool allow_webgl = false;
     bool developer_tools = false;
-    ParlaWebxdcWinBlobFn blob_cb = nullptr;
-    ParlaWebxdcWinMsgFn message_cb = nullptr;
-    ParlaWebxdcWinClosedFn closed_cb = nullptr;
+    ParlaWebxdcBlobFn blob_cb = nullptr;
+    ParlaWebxdcMsgFn message_cb = nullptr;
+    ParlaWebxdcClosedFn closed_cb = nullptr;
     gpointer user_data = nullptr;
     std::wstring user_data_folder;
     ICoreWebView2Environment *environment = nullptr;
@@ -348,8 +346,8 @@ make_response (WebxdcWindow *window, const guint8 *data, gint length,
     }
     std::wstring headers = L"Content-Type: " + safe_mime (mime)
         + L"\r\nX-Content-Type-Options: nosniff";
-    if (!window->allow_wasm)
-        headers += std::wstring (L"\r\nContent-Security-Policy: ") + kNoWasmCsp;
+    const char *csp = parla_webxdc_csp (window->allow_internet, window->allow_wasm);
+    headers += std::wstring (L"\r\nContent-Security-Policy: ") + std::wstring (csp, csp + strlen (csp));
     LPCWSTR reason = status == 200 ? L"OK" :
                      status == 403 ? L"Forbidden" : L"Not Found";
     result = window->environment->CreateWebResourceResponse (
@@ -790,9 +788,9 @@ using CreateEnvironmentFn = HRESULT (STDAPICALLTYPE *) (
     ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler *);
 
 extern "C" gpointer
-parla_webxdc_win_open (const char *title, ParlaWebxdcWinBlobFn blob,
-                       ParlaWebxdcWinMsgFn message,
-                       ParlaWebxdcWinClosedFn closed,
+parla_webxdc_open (const char *title, ParlaWebxdcBlobFn blob,
+                       ParlaWebxdcMsgFn message,
+                       ParlaWebxdcClosedFn closed,
                        gboolean allow_internet, gboolean allow_wasm,
                        gboolean allow_webgl, gboolean developer_tools,
                        gpointer user_data)
@@ -840,11 +838,8 @@ parla_webxdc_win_open (const char *title, ParlaWebxdcWinBlobFn blob,
         return window;
     }
 
-    unsigned policy = (allow_internet ? 1U : 0U) | (allow_webgl ? 2U : 0U);
-    gchar *name = g_strdup_printf ("webview2-%u", policy);
-    gchar *folder = g_build_filename (g_get_user_cache_dir (), "parla",
-                                      name, nullptr);
-    g_free (name);
+    // TEMP is the private AppContainer directory selected by the launcher.
+    gchar *folder = g_build_filename (g_get_tmp_dir (), "webview2", nullptr);
     g_mkdir_with_parents (folder, 0700);
     window->user_data_folder = utf8_to_wide (folder);
     g_free (folder);
@@ -873,7 +868,7 @@ parla_webxdc_win_open (const char *title, ParlaWebxdcWinBlobFn blob,
 }
 
 extern "C" void
-parla_webxdc_win_load (gpointer handle, const char *)
+parla_webxdc_load (gpointer handle, const char *)
 {
     auto *window = static_cast<WebxdcWindow *> (handle);
     if (window == nullptr || window->closed)
@@ -884,7 +879,7 @@ parla_webxdc_win_load (gpointer handle, const char *)
 }
 
 extern "C" void
-parla_webxdc_win_finish_task (gpointer handle, gpointer task_ptr,
+parla_webxdc_finish_task (gpointer handle, gpointer task_ptr,
                               const guint8 *data, gint data_length,
                               const char *mime)
 {
@@ -900,7 +895,7 @@ parla_webxdc_win_finish_task (gpointer handle, gpointer task_ptr,
 }
 
 extern "C" void
-parla_webxdc_win_fail_task (gpointer handle, gpointer task_ptr)
+parla_webxdc_fail_task (gpointer handle, gpointer task_ptr)
 {
     auto *window = static_cast<WebxdcWindow *> (handle);
     auto *task = static_cast<RequestTask *> (task_ptr);
@@ -914,7 +909,7 @@ parla_webxdc_win_fail_task (gpointer handle, gpointer task_ptr)
 }
 
 extern "C" void
-parla_webxdc_win_eval_js (gpointer handle, const char *javascript)
+parla_webxdc_eval_js (gpointer handle, const char *javascript)
 {
     auto *window = static_cast<WebxdcWindow *> (handle);
     if (window != nullptr && !window->closed && window->view != nullptr)
@@ -923,7 +918,7 @@ parla_webxdc_win_eval_js (gpointer handle, const char *javascript)
 }
 
 extern "C" void
-parla_webxdc_win_set_title (gpointer handle, const char *title)
+parla_webxdc_set_title (gpointer handle, const char *title)
 {
     auto *window = static_cast<WebxdcWindow *> (handle);
     if (window != nullptr && window->hwnd != nullptr)
@@ -931,7 +926,7 @@ parla_webxdc_win_set_title (gpointer handle, const char *title)
 }
 
 extern "C" void
-parla_webxdc_win_present (gpointer handle)
+parla_webxdc_present (gpointer handle)
 {
     auto *window = static_cast<WebxdcWindow *> (handle);
     if (window == nullptr || window->hwnd == nullptr)
@@ -941,7 +936,7 @@ parla_webxdc_win_present (gpointer handle)
 }
 
 extern "C" void
-parla_webxdc_win_minimize (gpointer handle)
+parla_webxdc_minimize (gpointer handle)
 {
     auto *window = static_cast<WebxdcWindow *> (handle);
     if (window != nullptr && window->hwnd != nullptr)
@@ -950,7 +945,7 @@ parla_webxdc_win_minimize (gpointer handle)
 }
 
 extern "C" void
-parla_webxdc_win_set_visible (gpointer handle, gboolean visible)
+parla_webxdc_set_visible (gpointer handle, gboolean visible)
 {
     auto *window = static_cast<WebxdcWindow *> (handle);
     if (window != nullptr && window->hwnd != nullptr)
@@ -958,7 +953,7 @@ parla_webxdc_win_set_visible (gpointer handle, gboolean visible)
 }
 
 extern "C" void
-parla_webxdc_win_close (gpointer handle)
+parla_webxdc_close (gpointer handle)
 {
     auto *window = static_cast<WebxdcWindow *> (handle);
     if (window != nullptr && window->hwnd != nullptr)
@@ -966,7 +961,7 @@ parla_webxdc_win_close (gpointer handle)
 }
 
 extern "C" void
-parla_webxdc_win_free (gpointer handle)
+parla_webxdc_free (gpointer handle)
 {
     auto *window = static_cast<WebxdcWindow *> (handle);
     if (window != nullptr) {

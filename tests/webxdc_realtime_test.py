@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Isolated realtime settings test; add --ui for the optional WebKitGTK test.
+"""Isolated realtime settings test; add --ui for the sandboxed UI test.
 
 Usage: python3 tests/webxdc_realtime_test.py builddir/core-compat-test [--ui]
 The UI test needs a display and an operational WebKit process sandbox.

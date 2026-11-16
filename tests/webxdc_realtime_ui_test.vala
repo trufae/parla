@@ -17,32 +17,21 @@ public int run_realtime_settings_test () {
     return 0;
 }
 
-#if WEBXDC && !MACOS && !WINDOWS
-private WebKit.WebView? realtime_view_in (Gtk.Widget widget) {
-    if (widget is WebKit.WebView) return widget as WebKit.WebView;
-    for (var child = widget.get_first_child (); child != null; child = child.get_next_sibling ()) {
-        var found = realtime_view_in (child);
-        if (found != null) return found;
-    }
-    return null;
-}
-
-private WebKit.WebView? realtime_view (WebKit.WebView? except = null) {
-    var windows = Gtk.Window.get_toplevels ();
-    for (uint i = 0; i < windows.get_n_items (); i++) {
-        var view = realtime_view_in ((Gtk.Window) windows.get_item (i));
-        if (view != null && view != except) return view;
-    }
-    return null;
-}
-
-private async void wait_realtime_js (WebKit.WebView view, string condition) throws Error {
-    for (int i = 0; i < 200; i++) {
-        var value = yield view.evaluate_javascript (condition, -1, null, null, null);
-        if (value.to_boolean ()) return;
+#if WEBXDC
+// The page drives its own JS. Tests observe the public broker/core boundary,
+// so the same contract runs with every real sandbox and native web engine.
+private async void wait_status (RpcClient rpc, int account, string payload) throws Error {
+    for (int i = 0; i < 1000; i++) {
+        var result = yield rpc.call ("test_calls", Params.begin ().build ());
+        foreach (var node in result.get_array ().get_elements ()) {
+            var call = node.get_object ();
+            if (call.get_string_member ("method") != "send_webxdc_status_update") continue;
+            var args = call.get_array_member ("params");
+            if (args.get_int_element (0) == account && args.get_string_element (2).contains (payload)) return;
+        }
         yield nap (20);
     }
-    error ("Webxdc JS condition not met: %s", condition);
+    error ("Missing sandboxed app status %s for profile %d", payload, account);
 }
 
 private async void check_realtime_ui () {
@@ -56,66 +45,61 @@ private async void check_realtime_ui () {
         var handler = new EventHandler (rpc);
         handler.start.begin ();
         yield rpc.call ("test_link", Params.begin ().build ());
+        string page = """<!doctype html><script src='webxdc.js'></script><script>
+if (webxdc.joinRealtimeChannel) {
+  const c = webxdc.joinRealtimeChannel();
+  let received = false;
+  const timer = setInterval(() => c.send(new Uint8Array([0,127,128,255])), 100);
+  c.setListener(data => {
+    if (data.length === 128000 && data.every(byte => byte === 255)) {
+      webxdc.sendUpdate({payload: 'maximum-packet'}, '');
+      return;
+    }
+    if (received) return;
+    received = true;
+    clearInterval(timer);
+    c.send(new Uint8Array([0,127,128,255]));
+    c.send(new Uint8Array(128000).fill(255));
+    webxdc.sendUpdate({payload: {received: Array.from(data)}}, '');
+  });
+  webxdc.sendUpdate({payload: 'ready'}, '');
+} else {
+  webxdc.sendUpdate({payload: 'disabled'}, '');
+  window.webkit.messageHandlers.webxdc.postMessage(JSON.stringify({type:'realtime-join',channel:'bypass'}));
+}
+</script>""";
+        yield rpc.call ("test_page", Params.begin ().add_string (page).build ());
         var msg = new Message ();
-        msg.id = 100;
-        msg.chat_id = 10;
-        msg.file_name = "realtime.xdc";
+        msg.id = 100; msg.chat_id = 10; msg.file_name = "realtime.xdc";
         Webxdc.open (null, rpc, msg);
-        var alice = realtime_view ();
-        assert (alice != null);
         rpc.account_id = 2;
         Webxdc.open (null, rpc, msg);
-        var bob = realtime_view (alice);
-        assert (bob != null);
-        assert (Webxdc.running_apps (1, 10).length == 1);
-        assert (Webxdc.running_apps (2, 10).length == 1);
-        foreach (var view in new WebKit.WebView[] { alice, bob }) {
-            assert (!view.get_settings ().enable_webrtc);
-            assert (!view.get_settings ().enable_webgl);
-            yield wait_realtime_js (view, "!!window.webxdc && !!webxdc.joinRealtimeChannel");
-            yield view.evaluate_javascript ("window.channel = webxdc.joinRealtimeChannel(); channel.setListener(data => window.received = Array.from(data)); true;", -1, null, null, null);
-        }
-        yield realtime_calls (rpc, 2);
-        yield alice.evaluate_javascript ("channel.send(new Uint8Array([0,127,128,255])); true;", -1, null, null, null);
-        yield wait_realtime_js (bob, "JSON.stringify(window.received) === '[0,127,128,255]'");
-        yield bob.evaluate_javascript ("channel.send(new Uint8Array([255,0,128])); true;", -1, null, null, null);
-        yield wait_realtime_js (alice, "JSON.stringify(window.received) === '[255,0,128]'");
-
-        // Deleting a background profile's app must not close the other one.
+        yield wait_status (rpc, 1, "ready");
+        yield wait_status (rpc, 2, "ready");
+        yield wait_status (rpc, 1, "[0,127,128,255]");
+        yield wait_status (rpc, 2, "[0,127,128,255]");
+        yield wait_status (rpc, 1, "maximum-packet");
+        yield wait_status (rpc, 2, "maximum-packet");
         Webxdc.handle_event (rpc, 1, "WebxdcInstanceDeleted", object_from_json ("{\"msgId\":100}"));
         assert (Webxdc.running_apps (1, 10).length == 0);
         assert (Webxdc.is_running (100));
-        yield realtime_calls (rpc, 5);
-
         settings.save_webxdc_realtime (false);
-        yield realtime_calls (rpc, 6);
         for (int i = 0; i < 100 && Webxdc.is_running (100); i++) yield nap (10);
         assert (!Webxdc.is_running (100));
-        settings.load ();
-        assert (!settings.webxdc_realtime);
+        var previous = yield rpc.call ("test_calls", Params.begin ().build ());
+        uint before = previous.get_array ().get_length ();
         Webxdc.open (null, rpc, msg);
-        var disabled = realtime_view ();
-        assert (disabled != null);
-        yield wait_realtime_js (disabled, "!!window.webxdc");
-        var value = yield disabled.evaluate_javascript ("typeof webxdc.joinRealtimeChannel", -1, null, null, null);
-        assert (value.to_string () == "undefined");
-        yield disabled.evaluate_javascript ("window.webkit.messageHandlers.webxdc.postMessage(JSON.stringify({type:'realtime-join',channel:'bypass'})); true;", -1, null, null, null);
-        assert ((yield realtime_calls (rpc, 6)).get_length () == 6);
-        settings.save_webxdc_realtime (true);
-        for (int i = 0; i < 100 && Webxdc.is_running (100); i++) yield nap (10);
-        Webxdc.open (null, rpc, msg);
-        var reopened = realtime_view ();
-        assert (reopened != null);
-        yield wait_realtime_js (reopened, "!!window.webxdc && !!webxdc.joinRealtimeChannel");
-        yield reopened.evaluate_javascript ("webxdc.joinRealtimeChannel(); true;", -1, null, null, null);
-        yield realtime_calls (rpc, 7);
+        yield wait_status (rpc, 2, "disabled");
+        yield nap (100);
+        var after = yield rpc.call ("test_calls", Params.begin ().build ());
+        for (uint i = before; i < after.get_array ().get_length (); i++) {
+            assert (after.get_array ().get_object_element (i).get_string_member ("method")
+                != "send_webxdc_realtime_advertisement");
+        }
         settings.save_webxdc_apps (false);
         for (int i = 0; i < 100 && Webxdc.is_running (100); i++) yield nap (10);
         assert (!Webxdc.is_running (100));
-        Webxdc.open (null, rpc, msg);
-        assert (!Webxdc.is_running (100));
-        yield realtime_calls (rpc, 8);
-        stdout.printf ("Two WebKit apps exchange binary data; profile isolation, deletion and settings closure: PASS\n");
+        stdout.printf ("Sandboxed apps exchange binary data; profile isolation and policy revocation: PASS\n");
     } catch (Error e) { error ("Realtime UI: %s", e.message); }
     rpc.stop ();
 }

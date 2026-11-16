@@ -315,29 +315,39 @@ endif
 # installed Evergreen WebView2 Runtime through Microsoft's SDK loader.
 # Native implementations remain isolated in their platform files.
 if get_option('webxdc')
-  sources += files('src/webxdc.vala')
+  sources += files('src/webxdc.vala', 'src/webxdc_host.vala', 'src/webxdc_wire.vala')
+  webxdc_sources = files('src/webxdc_helper.vala', 'src/webxdc_wire.vala',
+                         'src/webxdc_helper_platform.c')
+  webxdc_deps = [dependency('gio-2.0'), dependency('json-glib-1.0')]
   resources += gnome.compile_resources(
     'webxdc-resources',
     'data/webxdc.gresource.xml',
     source_dir: 'data',
   )
   if host_machine.system() == 'darwin'
-    sources += files('src/webxdc_macos.m')
-    deps += dependency('appleframeworks', modules: ['WebKit'])
+    sandbox_sources = files('src/webxdc_sandbox_macos.m')
+    sandbox_deps = [dependency('gio-unix-2.0'), dependency('appleframeworks', modules: ['Foundation', 'Security'])]
+    webxdc_sources += files('src/webxdc_macos.m', 'src/webxdc_helper_macos.m')
+    webxdc_deps += [dependency('gio-unix-2.0'),
+      dependency('appleframeworks', modules: ['Cocoa', 'WebKit'])]
+    executable('parla-webxdc-launcher', 'src/webxdc_launcher_macos.m',
+      dependencies: dependency('appleframeworks', modules: ['Foundation', 'Security']),
+      install: false)
   elif host_machine.system() == 'windows'
     webview2_sdk = get_option('webview2_sdk')
     if webview2_sdk == ''
       error('Windows Webxdc builds need -Dwebview2_sdk=/path/to/Microsoft.Web.WebView2')
     endif
     add_languages('cpp', native: false)
-    sources += files('src/webxdc_windows.cpp')
+    sandbox_sources = files('src/webxdc_sandbox_windows.c')
+    sandbox_deps = [dependency('gio-windows-2.0'), cc.find_library('userenv'), cc.find_library('advapi32'), cc.find_library('ole32')]
+    webxdc_sources += files('src/webxdc_windows.cpp')
     webview2_inc = include_directories(
       webview2_sdk / 'build/native/include',
       is_system: true,
     )
-    deps += declare_dependency(include_directories: webview2_inc)
-    deps += cc.find_library('ole32')
-    deps += cc.find_library('uuid')
+    webxdc_deps += [declare_dependency(include_directories: webview2_inc),
+      dependency('gio-windows-2.0'), cc.find_library('ole32'), cc.find_library('uuid')]
 
     webview2_arch = ''
     if host_machine.cpu_family() == 'x86_64'
@@ -363,9 +373,33 @@ if get_option('webxdc')
       install: true,
       install_dir: get_option('datadir') / 'licenses' / 'parla',
     )
+  elif host_machine.system() == 'linux'
+    sandbox_sources = files('src/webxdc_sandbox_linux.c')
+    sandbox_deps = [dependency('gio-unix-2.0')]
+    webxdc_sources += files('src/webxdc_linux.c')
+    webxdc_deps += [dependency('gio-unix-2.0'), dependency('libadwaita-1'),
+      dependency('webkitgtk-6.0'), cc.find_library('seccomp')]
   else
-    deps += dependency('webkitgtk-6.0')
+    error('Webxdc has no sandbox backend for this platform; configure with -Dwebxdc=false')
   endif
+  sources += sandbox_sources
+  deps += sandbox_deps
+  webxdc_helper = executable('parla-webxdc', webxdc_sources,
+    dependencies: webxdc_deps, include_directories: src_inc,
+    win_subsystem: 'windows', install: true)
+  executable('webxdc-sandbox-probe', 'tests/webxdc_sandbox_probe.c',
+    dependencies: dependency('gio-2.0'), install: false)
+  executable('webxdc-sandbox-boundary-test', 'tests/webxdc_sandbox_boundary_test.c', sandbox_sources,
+    dependencies: [dependency('gio-2.0')] + sandbox_deps,
+    include_directories: src_inc, install: false)
+  executable('webxdc-sandbox-test', 'tests/webxdc_sandbox_test.vala',
+    'src/webxdc_wire.vala', sandbox_sources,
+    dependencies: [dependency('gio-2.0'), dependency('json-glib-1.0')] + sandbox_deps,
+    include_directories: src_inc, install: false)
+  webxdc_wire_test = executable('webxdc-wire-test',
+    files('tests/webxdc_wire_test.vala', 'src/webxdc_wire.vala'),
+    dependencies: [dependency('gio-2.0'), dependency('json-glib-1.0')], install: false)
+  test('webxdc-wire', webxdc_wire_test)
 else
   sources += files('src/webxdc_stub.vala')
 endif
@@ -570,6 +604,7 @@ webxdc_security_test = executable(
   'webxdc-security-test',
   files('tests/webxdc_security_test.vala', 'src/webxdc_security.vala'),
   dependencies: [dependency('glib-2.0'), dependency('gobject-2.0')],
+  include_directories: src_inc,
   install: false,
 )
 

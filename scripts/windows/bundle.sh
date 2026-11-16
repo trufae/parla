@@ -18,7 +18,7 @@ DIST="$ROOT/dist/windows/parla"
 ZIP="$ROOT/dist/windows/parla-$ARCH-$VERSION.zip"
 WITH_WEBXDC="${WITH_WEBXDC:-1}"
 
-meson_options=(-Dwerror=true -Dwebxdc=true)
+meson_options=(-Dwerror=true -Dwebxdc=false)
 if [ "$WITH_WEBXDC" != "0" ]; then
     WEBVIEW2_SDK_DIR="${WEBVIEW2_SDK_DIR:-$(
         bash "$ROOT/scripts/windows/fetch-webview2-sdk.sh"
@@ -153,8 +153,8 @@ if [ -d "$PREFIX/etc/fonts" ]; then
     cp -r "$PREFIX/etc/fonts" "$DIST/etc/"
 fi
 
-if [ "$WITH_WEBXDC" = "1" ] && [ ! -f "$BIN/WebView2Loader.dll" ]; then
-    echo "error: WebView2Loader.dll was not installed into the bundle" >&2
+if [ "$WITH_WEBXDC" != "0" ] && { [ ! -f "$BIN/WebView2Loader.dll" ] || [ ! -f "$BIN/parla-webxdc.exe" ]; }; then
+    echo "error: the Webxdc helper or WebView2Loader.dll is missing from the bundle" >&2
     exit 1
 fi
 
