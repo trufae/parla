@@ -13,8 +13,10 @@ root = Path(__file__).resolve().parent.parent
 with tempfile.TemporaryDirectory(prefix="parla-language-") as folder:
     folder = Path(folder)
     config = folder / "config"
+    # Keep the C locale checks, but ask GLib to emit UTF-8 to the captured
+    # pipe instead of transliterating Chinese help text to ASCII question marks.
     env = dict(os.environ, XDG_CONFIG_HOME=str(config), PARLA_TEST_CONFIG=str(config),
-               LC_ALL="C", LANG="C")
+               LC_ALL="C", LANG="C", CHARSET="UTF-8")
     for language in (None, "nl", "zh_CN"):
         shutil.rmtree(config, ignore_errors=True)
         if language is None:

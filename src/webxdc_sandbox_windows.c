@@ -156,6 +156,11 @@ gpointer parla_webxdc_sandbox_launch (const char *helper, gboolean internet, gbo
     g_autofree wchar_t *executable = wide (helper);
     g_autofree wchar_t *command = NULL;
     g_autofree wchar_t *env = NULL;
+    /* GLib and Python also supply Windows paths with forward slashes. Keep
+     * the staging code's basename and parent lookups in native form. */
+    for (wchar_t *p = executable; *p; p++) {
+        if (*p == L'/') *p = L'\\';
+    }
     HRESULT result = CreateAppContainerProfile (sandbox->profile, L"Parla Webxdc", L"Isolated chat app", NULL, 0, &sid);
     if (FAILED (result)) {
         g_set_error (error, G_IO_ERROR, G_IO_ERROR_FAILED, "Cannot create Webxdc AppContainer (HRESULT 0x%08lx)", result);

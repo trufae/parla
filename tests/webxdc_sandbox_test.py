@@ -30,8 +30,13 @@ def binary(name):
 
 
 def exercise(smoke, helper, integration, boundary, probe):
-    for policy in ((), ('--wasm',), ('--online',)):
-        run(smoke, helper, *policy)
+    helpers = [helper]
+    if sys.platform == 'win32':
+        # Both spellings are accepted by Windows and used by our callers.
+        helpers = [str(helper).replace('\\', '/'), str(helper).replace('/', '\\')]
+    for executable in helpers:
+        for policy in ((), ('--wasm',), ('--online',)):
+            run(smoke, executable, *policy)
     run(sys.executable, root / 'tests/webxdc_realtime_test.py', integration, '--ui')
     run(boundary, probe)
 
