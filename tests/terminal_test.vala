@@ -168,10 +168,10 @@ private void editor_test () {
 private void completion_test () {
     var completion = new Parla.Terminal.Completion ();
     var editor = new Editor ();
-    string[] commands = { "/close", "/query", "/set", "/version" };
+    string[] commands = { "/part", "/query", "/set", "/version" };
     editor.insert ("/"); completion.complete (editor, commands);
     assert (editor.text == "/" && completion.hint.contains ("/version"));
-    completion.complete (editor, commands); assert (editor.text == "/close ");
+    completion.complete (editor, commands); assert (editor.text == "/part ");
     completion.complete (editor, commands, true); assert (editor.text == "/version ");
     editor.clear (); editor.insert ("/ver more");
     for (int i = 0; i < 5; i++) editor.handle (Key.LEFT, 80);

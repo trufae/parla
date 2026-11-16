@@ -47,7 +47,7 @@ displayed incoming messages as read and clears its unread marker.
 Commands work from every chat. Their replies and errors go to the permanent
 Parla tab, which gets an unread marker when output arrives in the background.
 Esc+1 selects Parla. `/help` lists commands and keys; `/version` prints the
-version; `/quit` exits. `/close` and `/part` close the current tab. Reopening
+version; `/quit` exits. `/part` and a bare `/query` close the current tab. Reopening
 a contact restores its draft, history and scroll position for this session.
 Use `//text` to send a literal leading slash.
 

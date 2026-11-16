@@ -356,7 +356,7 @@ with tempfile.TemporaryDirectory(prefix="parla-commands-") as folder:
         terminal.command("/invite self")
         assert requests("get_chat_securejoin_qr_code")[-1]["params"] == [1, None]
         terminal.send("\x1b3")
-        terminal.command("/close")
+        terminal.command("/part")
         assert "Profile 1 chat" not in terminal.lines[0]
         terminal.send("\x1b1")
         terminal.send("\x02")

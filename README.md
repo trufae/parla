@@ -183,7 +183,7 @@ select them, use the wheel to scroll, or press Ctrl-G and navigate contacts
 with `j`/`k` or arrows. Contacts has its own permanent tab, with aligned pin,
 unread, time and grey message-preview columns. Use `g` to group chats, `a`
 to sort alphabetically or by activity, and `p` to pin/unpin. Its badge counts
-unread messages from chats without open tabs. Esc+number selects a tab; Esc+x, `/close`, or middle-click
+unread messages from chats without open tabs. Esc+number selects a tab; Esc+x or middle-click
 closes it. Ctrl-W deletes a word, Ctrl-B/F pages through messages, and
 Ctrl-P/N recalls shared input history. Tab completes `/commands` and `@members`.
 Command output goes to the Parla tab. `/account` switches profiles,

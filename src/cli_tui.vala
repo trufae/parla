@@ -44,7 +44,7 @@ internal class CliTerminal : Object {
 /react [#ID] EMOJI          Add your reaction to selected/latest incoming message
 /unreact [#ID] [EMOJI]      Remove one reaction, or all your reactions if omitted
 /window next|prev|CHAT      Switch tabs or open a conversation
-/close, /part               Close this tab, preserving its draft
+/part                       Close this tab, preserving its draft
 /set [OPTION[=VALUE]]       Show or save terminal preferences
 /theme [NAME|reset]         List or save a theme; reset restores shipped colors
 /color [ROLE[=FG[:BG]]]     Show or save overrides; ROLE=inherit clears one
@@ -1014,7 +1014,7 @@ Click a message to select it; Escape clears the selection. Image/file links use 
                 case "/refresh": schedule_refresh (); return;
                 case "/bottom": state.view.scroll (-int.MAX); return;
                 case "/clear": buffer.clear (); return;
-                case "/close": case "/part": state.view.close_tab (buffer.id); return;
+                case "/part": state.view.close_tab (buffer.id); return;
                 case "/list":
                     if (state.id <= 0) throw new IOError.NOT_INITIALIZED ("Select an account first");
                     yield load_chats (state);
