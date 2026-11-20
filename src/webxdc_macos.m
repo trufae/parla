@@ -350,6 +350,18 @@ parla_webxdc_open (const char *title, ParlaWebxdcBlobFn blob,
 	    defer:NO];
 	[c->window setReleasedWhenClosed:NO];
 	[c->window setTitle:[NSString stringWithUTF8String:title]];
+	NSString *explanation = [NSString stringWithUTF8String:parla_webxdc_sandbox_tooltip ()];
+	NSImageView *shield = [NSImageView imageViewWithImage:
+	    [NSImage imageWithSystemSymbolName:@"checkmark.shield" accessibilityDescription:explanation]];
+	[shield setFrame:NSMakeRect (0, 0, 32, 24)];
+	[shield setImageScaling:NSImageScaleProportionallyDown];
+	[shield setToolTip:explanation];
+	[shield setAccessibilityLabel:explanation];
+	NSTitlebarAccessoryViewController *badge = [[NSTitlebarAccessoryViewController alloc] init];
+	[badge setView:shield];
+	[badge setLayoutAttribute:NSLayoutAttributeRight];
+	[c->window addTitlebarAccessoryViewController:badge];
+	[badge release];
 	[c->window setDelegate:c];
 	[c->window center];
 

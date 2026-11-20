@@ -47,6 +47,7 @@ src/tray_macos.m
 src/video_player.vala
 src/video_macos.m
 src/webxdc.vala
+src/webxdc_view.h
 src/webxdc_bar.vala
 src/webxdc_manager_dialog.vala
 src/window.vala

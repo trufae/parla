@@ -150,6 +150,11 @@ Closing the instance kills its
 process tree and removes the container profile; abnormal parent termination
 can leave an unused profile directory behind.
 
+Webxdc windows show a shield in their native title area. Hover over the title
+on Linux and Windows, or the shield on macOS, for an explanation of the sandbox.
+The indicator remains visible when the app title changes and is outside the
+app's web content.
+
 All platforms use an allowlisted environment and keep the engine's process
 isolation enabled. Sandbox creation has no unsandboxed fallback. Within that
 boundary, these browser restrictions apply by default; users may explicitly

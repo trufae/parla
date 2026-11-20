@@ -2,6 +2,15 @@
 #include <glib.h>
 
 G_BEGIN_DECLS
+/* These belong to native window chrome, outside the app's web content. */
+#define PARLA_WEBXDC_SANDBOX_ICON "🛡️"
+static inline const char *parla_webxdc_sandbox_tooltip (void) {
+    return g_dgettext ("parla", "Sandboxed app. Runs separately with restricted access to your files.");
+}
+static inline char *parla_webxdc_window_title (const char *title) {
+    return g_strconcat (PARLA_WEBXDC_SANDBOX_ICON " ", title, NULL);
+}
+
 /* Private native-view ABI, linked only into the sandboxed helper. Resource
  * task pointers and engine callbacks never cross the process boundary. */
 typedef void (*ParlaWebxdcBlobFn)   (const char *path, gpointer task,

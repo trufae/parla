@@ -113,10 +113,17 @@ gpointer parla_webxdc_open (const char *title, ParlaWebxdcBlobFn blob,
     g_signal_connect (v->view, "permission-request", G_CALLBACK (permission), v);
     v->window = GTK_WINDOW (adw_window_new ());
     g_object_ref_sink (v->window);
-    gtk_window_set_title (v->window, title);
+    parla_webxdc_set_title (v, title);
     gtk_window_set_default_size (v->window, 420, 640);
     AdwToolbarView *toolbar = ADW_TOOLBAR_VIEW (adw_toolbar_view_new ());
-    adw_toolbar_view_add_top_bar (toolbar, adw_header_bar_new ());
+    GtkWidget *header = adw_header_bar_new ();
+    GtkWidget *caption = gtk_label_new (NULL);
+    gtk_label_set_ellipsize (GTK_LABEL (caption), PANGO_ELLIPSIZE_END);
+    gtk_widget_add_css_class (caption, "title");
+    gtk_widget_set_tooltip_text (caption, parla_webxdc_sandbox_tooltip ());
+    g_object_bind_property (v->window, "title", caption, "label", G_BINDING_SYNC_CREATE);
+    adw_header_bar_set_title_widget (ADW_HEADER_BAR (header), caption);
+    adw_toolbar_view_add_top_bar (toolbar, header);
     adw_toolbar_view_set_content (toolbar, GTK_WIDGET (v->view));
     adw_window_set_content (ADW_WINDOW (v->window), GTK_WIDGET (toolbar));
     g_signal_connect (v->window, "close-request", G_CALLBACK (closed), v);
@@ -128,7 +135,10 @@ void parla_webxdc_load (gpointer handle, const char *uri) { webkit_web_view_load
 void parla_webxdc_eval_js (gpointer handle, const char *js) {
     webkit_web_view_evaluate_javascript (((View *)handle)->view, js, -1, NULL, NULL, NULL, NULL, NULL);
 }
-void parla_webxdc_set_title (gpointer handle, const char *title) { gtk_window_set_title (((View *)handle)->window, title); }
+void parla_webxdc_set_title (gpointer handle, const char *title) {
+    g_autofree char *caption = parla_webxdc_window_title (title);
+    gtk_window_set_title (((View *)handle)->window, caption);
+}
 void parla_webxdc_present (gpointer handle) { gtk_window_present (((View *)handle)->window); }
 void parla_webxdc_minimize (gpointer handle) {
     View *v = handle;

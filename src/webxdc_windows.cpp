@@ -4,6 +4,7 @@
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#include <commctrl.h>
 #include <objbase.h>
 
 #include <WebView2.h>
@@ -156,6 +157,9 @@ private:
 struct WebxdcWindow {
     std::atomic<ULONG> refs { 1 };
     HWND hwnd = nullptr;
+    HWND sandbox_tip = nullptr;
+    TOOLINFOW sandbox_tool {};
+    std::wstring sandbox_explanation;
     HMODULE loader = nullptr;
     bool co_initialized = false;
     bool closed = false;
@@ -196,6 +200,7 @@ struct WebxdcWindow {
     void notify_closed ();
     void navigate ();
     void resize ();
+    void sandbox_tooltip (bool show);
     HRESULT environment_created (HRESULT result,
                                  ICoreWebView2Environment *created);
     HRESULT controller_created (HRESULT result,
@@ -682,6 +687,10 @@ WebxdcWindow::cleanup ()
         return;
     cleaned = true;
     closed = true;
+    if (sandbox_tip != nullptr) {
+        DestroyWindow (sandbox_tip);
+        sandbox_tip = nullptr;
+    }
     auto pending = std::move (tasks);
     tasks.clear ();
     for (auto *task : pending)
@@ -735,6 +744,22 @@ WebxdcWindow::~WebxdcWindow ()
 
 static INIT_ONCE window_class_once = INIT_ONCE_STATIC_INIT;
 
+void
+WebxdcWindow::sandbox_tooltip (bool show)
+{
+    if (sandbox_tip == nullptr)
+        return;
+    if (show) {
+        POINT cursor;
+        if (!GetCursorPos (&cursor))
+            return;
+        SendMessageW (sandbox_tip, TTM_TRACKPOSITION, 0,
+                      MAKELPARAM (cursor.x, cursor.y + 20));
+    }
+    SendMessageW (sandbox_tip, TTM_TRACKACTIVATE, show,
+                  reinterpret_cast<LPARAM> (&sandbox_tool));
+}
+
 static BOOL CALLBACK
 register_window_class (PINIT_ONCE, PVOID, PVOID *)
 {
@@ -764,6 +789,27 @@ window_proc (HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam)
                            reinterpret_cast<LONG_PTR> (window));
     }
     switch (message) {
+    case WM_NCMOUSEMOVE:
+        if (window != nullptr) {
+            if (wparam == HTCAPTION) {
+                TRACKMOUSEEVENT tracking { sizeof (tracking),
+                    TME_NONCLIENT | TME_HOVER | TME_LEAVE, hwnd, HOVER_DEFAULT };
+                TrackMouseEvent (&tracking);
+            } else {
+                window->sandbox_tooltip (false);
+            }
+        }
+        break;
+    case WM_NCMOUSEHOVER:
+        if (window != nullptr && wparam == HTCAPTION)
+            window->sandbox_tooltip (true);
+        break;
+    case WM_NCMOUSELEAVE:
+    case WM_NCLBUTTONDOWN:
+    case WM_MOUSEMOVE:
+    case WM_KILLFOCUS:
+        if (window != nullptr) window->sandbox_tooltip (false);
+        break;
     case WM_SIZE:
         if (window != nullptr) window->resize ();
         return 0;
@@ -815,8 +861,9 @@ parla_webxdc_open (const char *title, ParlaWebxdcBlobFn blob,
     }
     InitOnceExecuteOnce (&window_class_once, register_window_class,
                          nullptr, nullptr);
+    g_autofree char *caption = parla_webxdc_window_title (title);
     window->hwnd = CreateWindowExW (
-        0, kWindowClass, utf8_to_wide (title).c_str (),
+        0, kWindowClass, utf8_to_wide (caption).c_str (),
         WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, 440, 680,
         nullptr, nullptr, GetModuleHandleW (nullptr), window);
     if (window->hwnd == nullptr) {
@@ -824,6 +871,22 @@ parla_webxdc_open (const char *title, ParlaWebxdcBlobFn blob,
             HRESULT_FROM_WIN32 (GetLastError ()));
         window->notify_closed ();
         return window;
+    }
+    INITCOMMONCONTROLSEX controls { sizeof (controls), ICC_WIN95_CLASSES };
+    InitCommonControlsEx (&controls);
+    window->sandbox_tip = CreateWindowExW (WS_EX_TOPMOST, TOOLTIPS_CLASSW, nullptr,
+        WS_POPUP | TTS_ALWAYSTIP | TTS_NOPREFIX, CW_USEDEFAULT, CW_USEDEFAULT,
+        CW_USEDEFAULT, CW_USEDEFAULT, window->hwnd, nullptr, GetModuleHandleW (nullptr), nullptr);
+    if (window->sandbox_tip != nullptr) {
+        window->sandbox_explanation = utf8_to_wide (parla_webxdc_sandbox_tooltip ());
+        auto &tool = window->sandbox_tool;
+        tool.cbSize = sizeof (tool);
+        tool.uFlags = TTF_TRACK | TTF_ABSOLUTE;
+        tool.hwnd = window->hwnd;
+        tool.uId = 1;
+        tool.lpszText = window->sandbox_explanation.data ();
+        SendMessageW (window->sandbox_tip, TTM_ADDTOOLW, 0, reinterpret_cast<LPARAM> (&tool));
+        SendMessageW (window->sandbox_tip, TTM_SETMAXTIPWIDTH, 0, 360);
     }
     window->loader = LoadLibraryExW (
         L"WebView2Loader.dll", nullptr,
@@ -922,8 +985,10 @@ extern "C" void
 parla_webxdc_set_title (gpointer handle, const char *title)
 {
     auto *window = static_cast<WebxdcWindow *> (handle);
-    if (window != nullptr && window->hwnd != nullptr)
-        SetWindowTextW (window->hwnd, utf8_to_wide (title).c_str ());
+    if (window != nullptr && window->hwnd != nullptr) {
+        g_autofree char *caption = parla_webxdc_window_title (title);
+        SetWindowTextW (window->hwnd, utf8_to_wide (caption).c_str ());
+    }
 }
 
 extern "C" void

@@ -354,7 +354,8 @@ if get_option('webxdc')
     webview2_target = webview2_options.split('#define CORE_WEBVIEW_TARGET_PRODUCT_VERSION L"')[1].split('"')[0]
     webxdc_cpp_args = ['-DPARLA_WEBVIEW2_TARGET_VERSION=L"' + webview2_target + '"']
     webxdc_deps += [declare_dependency(include_directories: webview2_inc),
-      dependency('gio-windows-2.0'), cc.find_library('ole32'), cc.find_library('uuid')]
+      dependency('gio-windows-2.0'), cc.find_library('ole32'), cc.find_library('uuid'),
+      cc.find_library('comctl32')]
 
     webview2_arch = ''
     if host_machine.cpu_family() == 'x86_64'
