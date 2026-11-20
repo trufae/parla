@@ -97,17 +97,22 @@ jobs:
       - name: Check Webxdc process sandbox
         if: matrix.a11y == true
         run: |
-          export XDG_RUNTIME_DIR="$(mktemp -d)" WAYLAND_DISPLAY=webxdc-test GTK_A11Y=none
+          XDG_RUNTIME_DIR="$(mktemp -d)"
+          export XDG_RUNTIME_DIR WAYLAND_DISPLAY=webxdc-test GTK_A11Y=none
           weston --backend=headless-backend.so --socket="$WAYLAND_DISPLAY" --idle-time=0 --no-config > "$XDG_RUNTIME_DIR/weston.log" 2>&1 &
           compositor=$!
           profile="$XDG_RUNTIME_DIR/apparmor"
-          printf 'abi <abi/4.0>,\nprofile parla-webxdc-tests "%s/builddir/{core-compat-test,webxdc-sandbox-test,webxdc-sandbox-boundary-test}" flags=(unconfined) { userns, }\n' "$PWD" > "$profile"
+          # Bubblewrap execs out of the test binary's unconfined profile.
+          # Give the namespace launcher its own allowance as well.
+          printf 'abi <abi/4.0>,\nprofile parla-webxdc-tests "%s/builddir/{core-compat-test,webxdc-sandbox-test,webxdc-sandbox-boundary-test}" flags=(unconfined) { userns, }\nprofile bwrap /usr/bin/bwrap flags=(unconfined) { userns, }\n' "$PWD" > "$profile"
           sudo apparmor_parser -r "$profile"
           trap 'kill "$compositor"; sudo apparmor_parser -R "$profile"' EXIT
-          for attempt in $(seq 1 50); do
+          bwrap --unshare-all --cap-drop ALL --ro-bind / / -- /usr/bin/true
+          for ((attempt = 0; attempt < 50; attempt++)); do
             test -S "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY" && break
             sleep 0.1
           done
+          test -S "$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY" || { cat "$XDG_RUNTIME_DIR/weston.log"; exit 1; }
           python3 tests/webxdc_sandbox_test.py builddir
 
       - name: Check Android text menu fallback
@@ -513,6 +518,21 @@ jobs:
 
       - name: Run unit tests
         run: meson test -C builddir-windows --print-errorlogs
+
+      - name: Install Evergreen WebView2 Runtime
+        shell: pwsh
+        run: |
+          # Windows Server runners do not guarantee an installed runtime.
+          # Install machine-wide so the AppContainer can read and execute it.
+          $runtime = 'HKLM:\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}'
+          $version = (Get-ItemProperty -Path $runtime -Name pv -ErrorAction SilentlyContinue).pv
+          if (!$version -or $version -eq '0.0.0.0') {
+            $installer = Join-Path $env:RUNNER_TEMP 'MicrosoftEdgeWebview2Setup.exe'
+            Invoke-WebRequest 'https://go.microsoft.com/fwlink/p/?LinkId=2124703' -OutFile $installer
+            $process = Start-Process $installer -ArgumentList '/silent', '/install' -Wait -PassThru
+            if ($process.ExitCode -ne 0) { throw "WebView2 installation failed: $($process.ExitCode)" }
+          }
+          Get-ItemProperty -Path $runtime -Name pv
 
       - name: Check Webxdc AppContainer
         run: python3 tests/webxdc_sandbox_test.py builddir-windows
