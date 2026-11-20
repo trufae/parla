@@ -47,6 +47,15 @@
     <name translate="no">pancake</name>
   </developer>
   <releases>
+    <release version="0.10.10" date="2026-11-20">
+      <description>
+        <ul>
+          <li>Sandbox webxdc for Mac, Linux and Windows</li>
+          <li>Introduce parla cli</li>
+          <li>Add Chinese translation</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.10.9" date="2026-11-12">
       <description>
         <ul>
