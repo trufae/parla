@@ -39,6 +39,7 @@ int main (int argc, char **argv)
     g_output_stream_write_all (output, request, strlen (request), NULL, NULL, &error);
     g_assert_no_error (error);
     GDataInputStream *reader = g_data_input_stream_new (input);
+    g_data_input_stream_set_newline_type (reader, G_DATA_STREAM_NEWLINE_TYPE_ANY);
     char *reply = g_data_input_stream_read_line (reader, NULL, NULL, &error);
     g_assert_no_error (error);
 #ifdef __APPLE__
