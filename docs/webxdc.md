@@ -144,8 +144,9 @@ The network entitlement requirement is enforced by
 Windows stages only the helper's DLL import closure and WebView2 loader into
 a fresh container, inheriting that directory's ACL. It never changes access
 permissions on the installation or account directories. Only the IPC handles
-and a null stderr handle are inherited. The helper is assigned to its Job
-Object before its first instruction executes. Closing the instance kills its
+and a write-only stderr handle (or a null handle if unavailable) are inherited.
+The helper is assigned to its Job Object before its first instruction executes.
+Closing the instance kills its
 process tree and removes the container profile; abnormal parent termination
 can leave an unused profile directory behind.
 

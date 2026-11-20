@@ -191,7 +191,12 @@ gpointer parla_webxdc_sandbox_launch (const char *helper, gboolean internet, gbo
     if (!CreatePipe (&in_read, &in_write, &sa, 0) || !CreatePipe (&out_read, &out_write, &sa, 0)
         || !SetHandleInformation (in_write, HANDLE_FLAG_INHERIT, 0)
         || !SetHandleInformation (out_read, HANDLE_FLAG_INHERIT, 0)) goto failure;
-    err = CreateFileW (L"NUL", GENERIC_WRITE, FILE_SHARE_WRITE | FILE_SHARE_READ, &sa, OPEN_EXISTING, 0, NULL);
+    // Preserve startup diagnostics while inheriting only a write handle.
+    HANDLE parent_err = GetStdHandle (STD_ERROR_HANDLE);
+    if (!parent_err || parent_err == INVALID_HANDLE_VALUE
+        || !DuplicateHandle (GetCurrentProcess (), parent_err, GetCurrentProcess (),
+            &err, GENERIC_WRITE, TRUE, 0))
+        err = CreateFileW (L"NUL", GENERIC_WRITE, FILE_SHARE_WRITE | FILE_SHARE_READ, &sa, OPEN_EXISTING, 0, NULL);
     if (err == INVALID_HANDLE_VALUE) { err = NULL; goto failure; }
     SECURITY_CAPABILITIES capabilities = {0};
     SID_AND_ATTRIBUTES network_capability = {0};
