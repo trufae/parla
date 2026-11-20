@@ -346,6 +346,12 @@ if get_option('webxdc')
       webview2_sdk / 'build/native/include',
       is_system: true,
     )
+    # Match the SDK's options default without depending on its MSVC-only WRL
+    # implementation. A null compatibility version makes WebView2 reject
+    # CreateCoreWebView2EnvironmentWithOptions with E_INVALIDARG.
+    webview2_options = import('fs').read(webview2_sdk / 'build/native/include/WebView2EnvironmentOptions.h')
+    webview2_target = webview2_options.split('#define CORE_WEBVIEW_TARGET_PRODUCT_VERSION L"')[1].split('"')[0]
+    add_project_arguments('-DPARLA_WEBVIEW2_TARGET_VERSION=L"' + webview2_target + '"', language: 'cpp')
     webxdc_deps += [declare_dependency(include_directories: webview2_inc),
       dependency('gio-windows-2.0'), cc.find_library('ole32'), cc.find_library('uuid')]
 

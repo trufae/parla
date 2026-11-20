@@ -89,9 +89,9 @@ public:
     { return copy_wide ({}, value); }
     HRESULT STDMETHODCALLTYPE put_Language (LPCWSTR) override { return S_OK; }
     HRESULT STDMETHODCALLTYPE get_TargetCompatibleBrowserVersion (LPWSTR *value) override
-    { return copy_wide ({}, value); }
-    HRESULT STDMETHODCALLTYPE put_TargetCompatibleBrowserVersion (LPCWSTR) override
-    { return S_OK; }
+    { return copy_wide (target_version_, value); }
+    HRESULT STDMETHODCALLTYPE put_TargetCompatibleBrowserVersion (LPCWSTR value) override
+    { target_version_ = value != nullptr ? value : PARLA_WEBVIEW2_TARGET_VERSION; return S_OK; }
     HRESULT STDMETHODCALLTYPE get_AllowSingleSignOnUsingOSPrimaryAccount (
         BOOL *value) override
     {
@@ -108,6 +108,7 @@ private:
     ~EnvironmentOptions () = default;
     std::atomic<ULONG> refs_ { 1 };
     std::wstring arguments_;
+    std::wstring target_version_ = PARLA_WEBVIEW2_TARGET_VERSION;
 };
 
 /* All WebView2 callbacks are one-method COM interfaces. This generic wrapper
