@@ -319,6 +319,7 @@ if get_option('webxdc')
   webxdc_sources = files('src/webxdc_helper.vala', 'src/webxdc_wire.vala',
                          'src/webxdc_helper_platform.c')
   webxdc_deps = [dependency('gio-2.0'), dependency('json-glib-1.0')]
+  webxdc_cpp_args = []
   resources += gnome.compile_resources(
     'webxdc-resources',
     'data/webxdc.gresource.xml',
@@ -351,7 +352,7 @@ if get_option('webxdc')
     # CreateCoreWebView2EnvironmentWithOptions with E_INVALIDARG.
     webview2_options = import('fs').read(webview2_sdk / 'build/native/include/WebView2EnvironmentOptions.h')
     webview2_target = webview2_options.split('#define CORE_WEBVIEW_TARGET_PRODUCT_VERSION L"')[1].split('"')[0]
-    add_project_arguments('-DPARLA_WEBVIEW2_TARGET_VERSION=L"' + webview2_target + '"', language: 'cpp')
+    webxdc_cpp_args = ['-DPARLA_WEBVIEW2_TARGET_VERSION=L"' + webview2_target + '"']
     webxdc_deps += [declare_dependency(include_directories: webview2_inc),
       dependency('gio-windows-2.0'), cc.find_library('ole32'), cc.find_library('uuid')]
 
@@ -392,6 +393,7 @@ if get_option('webxdc')
   deps += sandbox_deps
   webxdc_helper = executable('parla-webxdc', webxdc_sources,
     dependencies: webxdc_deps, include_directories: src_inc,
+    cpp_args: webxdc_cpp_args,
     win_subsystem: 'windows', install: true)
   executable('webxdc-sandbox-probe', 'tests/webxdc_sandbox_probe.c',
     dependencies: dependency('gio-2.0'), install: false)
