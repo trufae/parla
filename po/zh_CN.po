@@ -3614,8 +3614,8 @@ msgid "Restart to Change Language?"
 msgstr "重新启动以更改语言？"
 
 #: src/settings_dialog.vala:1003
-msgid "Parla needs to restart to apply the new language."
-msgstr ""
+msgid ""
+msgstr "Parla 需要重启以应用新语言"
 
 #: src/settings_dialog.vala:1005 src/settings_dialog.vala:1047
 msgid "Restart"
@@ -3691,7 +3691,7 @@ msgstr ""
 
 #: src/settings_dialog.vala:1077
 msgid "Format Text"
-msgstr ""
+msgstr "文本格式"
 
 #: src/settings_dialog.vala:1077
 msgid "Hide Formatting Marks"
