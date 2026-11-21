@@ -535,7 +535,7 @@ msgstr ""
 
 #: src/chat_info_dialog.vala:91 src/chat_row.vala:318
 msgid "Chat Details"
-msgstr ""
+msgstr "聊天详情"
 
 #: src/chat_info_dialog.vala:192
 msgid "Could not change disappearing messages: "
@@ -739,7 +739,7 @@ msgstr ""
 
 #: src/chat_info_dialog.vala:563 src/message_actions.vala:509
 msgid "Could not open contact details: "
-msgstr ""
+msgstr "无法打开联系人详情："
 
 #: src/chat_info_dialog.vala:586
 msgid "Unblock Contact"
@@ -903,7 +903,7 @@ msgstr ""
 
 #: src/chat_row.vala:134
 msgid "Request"
-msgstr ""
+msgstr "请求"
 
 #: src/chat_row.vala:207
 msgid ", contact request"
@@ -1845,7 +1845,7 @@ msgstr "选择消息"
 
 #: src/message_actions.vala:83
 msgid "Details..."
-msgstr ""
+msgstr "详情…"
 
 #: src/message_actions.vala:92
 msgid "Save file"
@@ -1889,7 +1889,7 @@ msgstr ""
 
 #: src/message_details_dialog.vala:35
 msgid "Message Details"
-msgstr ""
+msgstr "消息详情"
 
 #: src/message_details_dialog.vala:116
 msgid "Timer not started"
@@ -1909,7 +1909,7 @@ msgstr ""
 
 #: src/message_details_dialog.vala:139
 msgid "Show contact details"
-msgstr ""
+msgstr "显示联系人详情"
 
 #: src/message_details_dialog.vala:164
 msgid "Outgoing message"
@@ -2775,7 +2775,7 @@ msgstr ""
 
 #: src/profile_dialog.vala:415 src/profile_dialog.vala:660
 msgid "Storage Details"
-msgstr ""
+msgstr "存储详情"
 
 #: src/profile_dialog.vala:416
 msgid "Show Storage by Chat"
@@ -3487,15 +3487,15 @@ msgstr "使用系统样式或选择浅色或深色"
 
 #: src/settings_dialog.vala:860
 msgid "Adaptive"
-msgstr ""
+msgstr "自适应"
 
 #: src/settings_dialog.vala:863
 msgid "Code highlighting"
-msgstr ""
+msgstr "代码高亮"
 
 #: src/settings_dialog.vala:863
 msgid "Color scheme for code blocks in messages"
-msgstr ""
+msgstr "消息中代码块的配色方案"
 
 #: src/settings_dialog.vala:868
 msgid "Bubbles"
@@ -3515,31 +3515,31 @@ msgstr "消息布局"
 
 #: src/settings_dialog.vala:870
 msgid "Choose how messages are arranged"
-msgstr ""
+msgstr "选择消息的排列方式"
 
 #: src/settings_dialog.vala:876
 msgid "Other People"
-msgstr ""
+msgstr "其他人"
 
 #: src/settings_dialog.vala:876
 msgid "Everyone"
-msgstr ""
+msgstr "任何人"
 
 #: src/settings_dialog.vala:879
 msgid "Profile pictures"
-msgstr ""
+msgstr "显示头像"
 
 #: src/settings_dialog.vala:879
 msgid "Choose whose picture appears beside message bubbles"
-msgstr ""
+msgstr "选择在消息气泡旁显示谁的头像"
 
 #: src/settings_dialog.vala:887
 msgid "Show profile pictures in direct chats"
-msgstr ""
+msgstr "在私聊中显示头像"
 
 #: src/settings_dialog.vala:888
 msgid "Apply the profile picture setting to direct chats too"
-msgstr ""
+msgstr "也将头像设置应用于直接聊天"
 
 #: src/settings_dialog.vala:901
 msgid "Message font"
@@ -3671,11 +3671,11 @@ msgstr ""
 
 #: src/settings_dialog.vala:1063
 msgid "Show Contact Details"
-msgstr ""
+msgstr "显示联系人详情"
 
 #: src/settings_dialog.vala:1063
 msgid "Show Message Menu"
-msgstr ""
+msgstr "显示消息菜单"
 
 #: src/settings_dialog.vala:1063
 msgid "Do Nothing"
@@ -3719,11 +3719,11 @@ msgstr ""
 
 #: src/settings_dialog.vala:1094
 msgid "Use External Audio Tools"
-msgstr ""
+msgstr "使用外部音频工具"
 
 #: src/settings_dialog.vala:1095
 msgid "Use installed audio programs for voice playback and recording"
-msgstr ""
+msgstr "使用已安装的音频程序进行语音播放和录音"
 
 #: src/settings_dialog.vala:1104
 msgid "Keep Running in Background"
@@ -4082,7 +4082,7 @@ msgstr ""
 
 #: src/settings_dialog.vala:1609
 msgid "System default"
-msgstr ""
+msgstr "系统默认"
 
 #: src/settings_dialog.vala:1656 src/settings_dialog.vala:1748
 msgid "Enabled for current profile"
