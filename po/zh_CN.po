@@ -1,7 +1,7 @@
 # Simplified Chinese translation of Parla.
 # Copyright (C) 2026 the Parla authors
 # This file is distributed under the same license as the parla package.
-# Kaiyu Linux <kaiyu@disroot.org>, 2026.
+# Kaiyu Linux(librekaiyu) <kaiyu@disroot.org>, 2026.
 #
 msgid ""
 msgstr ""
@@ -3614,7 +3614,7 @@ msgid "Restart to Change Language?"
 msgstr "重新启动以更改语言？"
 
 #: src/settings_dialog.vala:1003
-msgid ""
+msgid "Parla needs to restart to apply the new language."
 msgstr "Parla 需要重启以应用新语言"
 
 #: src/settings_dialog.vala:1005 src/settings_dialog.vala:1047
@@ -3805,7 +3805,7 @@ msgstr ""
 
 #: src/settings_dialog.vala:1170
 msgid "Chatmail Core"
-msgstr ""
+msgstr "Chatmail 核心"
 
 #: src/settings_dialog.vala:1172
 msgid "Custom"
@@ -4197,15 +4197,15 @@ msgstr ""
 
 #: src/settings_dialog.vala:1906
 msgid "Install"
-msgstr ""
+msgstr "安装"
 
 #: src/settings_dialog.vala:1906 src/window.vala:1584
 msgid "Update"
-msgstr ""
+msgstr "更新"
 
 #: src/settings_dialog.vala:1911
 msgid "Update check failed: "
-msgstr ""
+msgstr "检查更新失败："
 
 #: src/settings_dialog.vala:1935
 msgid "Chatmail Core source saved"
@@ -4253,7 +4253,7 @@ msgstr ""
 
 #: src/settings_dialog.vala:2041 src/window.vala:1496 src/window.vala:1534
 msgid "Download failed: "
-msgstr ""
+msgstr "下载失败："
 
 #: src/settings_dialog.vala:2054 src/window.vala:1567
 msgid "Unable to open download page: "
