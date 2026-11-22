@@ -4,6 +4,7 @@ using Dc;
 public int run_fake_retry_server () {
     var messages = new HashTable<int, Json.Object> (direct_hash, direct_equal);
     var calls = new Json.Array ();
+    var pins = new Json.Array ();
     string hold = "";
     string fail = "";
     string? held_reply = null;
@@ -22,7 +23,7 @@ public int run_fake_retry_server () {
                 || method == "get_message_reactions"
                 || method == "search_messages" || method == "message_ids_to_search_results"
                 || method == "set_chat_ephemeral_timer" || method == "get_message_info_object"
-                || method == "get_blob_dir")
+                || method == "get_blob_dir" || method == "set_pinned_message_state")
             calls.add_object_element (request);
         if (method == fail) {
             fail = "";
@@ -55,9 +56,10 @@ public int run_fake_retry_server () {
             case "get_fresh_msgs":
             case "list_transports":
             case "get_message_ids":
-            case "get_pinned_messages":
                 result.init_array (new Json.Array ());
                 break;
+            case "get_pinned_messages": result.init_array (pins); break;
+            case "test_pins": pins = args.get_array_element (0); break;
             case "get_next_event":
                 event_request = request.get_int_member ("id");
                 continue;

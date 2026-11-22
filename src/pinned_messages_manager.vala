@@ -10,6 +10,8 @@ namespace Dc {
         private unowned RpcClient? rpc = null;
         private Gtk.Box bar_content;
         private int[] msg_ids = {};
+        private HashTable<int, bool> dismissed_ids =
+            new HashTable<int, bool> (direct_hash, direct_equal);
         private int current_chat_id = 0;
         private unowned GLib.ListStore message_store;
         private unowned SettingsManager settings;
@@ -34,6 +36,7 @@ namespace Dc {
         public void set_rpc (RpcClient r) { this.rpc = r; }
 
         public async void load_for_chat (int chat_id) {
+            if (chat_id != current_chat_id) dismissed_ids.remove_all ();
             current_chat_id = chat_id;
             uint generation = ++load_generation;
             if (!rpc_available) {
@@ -123,6 +126,7 @@ namespace Dc {
 
             int[] displayed_ids = msg_ids;
             foreach (int pin_id in displayed_ids) {
+                if (dismissed_ids.contains (pin_id)) continue;
                 string? text = null;
                 string? sender = null;
 
@@ -155,7 +159,7 @@ namespace Dc {
                 var pin_icon = new Gtk.Label ("\xf0\x9f\x93\x8c");
                 row_box.append (pin_icon);
 
-                var text_box = new Gtk.Box (Gtk.Orientation.VERTICAL, 0);
+                var text_box = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 6);
                 text_box.hexpand = true;
 
                 if (sender != null && sender.length > 0) {
@@ -163,14 +167,20 @@ namespace Dc {
                     sender_lbl.add_css_class ("caption");
                     sender_lbl.add_css_class ("dim-label");
                     sender_lbl.halign = Gtk.Align.START;
+                    sender_lbl.single_line_mode = true;
+                    sender_lbl.ellipsize = Pango.EllipsizeMode.END;
+                    sender_lbl.max_width_chars = 15;
                     text_box.append (sender_lbl);
                 }
 
-                var text_lbl = new Gtk.Label (text ?? _("(attachment)"));
-                text_lbl.halign = Gtk.Align.START;
+                var text_lbl = new Gtk.Label (null);
+                text_lbl.set_markup (Markdown.format (text ?? _("(attachment)"))
+                    .replace ("\r", " ").replace ("\n", " "));
+                text_lbl.xalign = 0;
+                text_lbl.hexpand = true;
                 text_lbl.ellipsize = Pango.EllipsizeMode.END;
                 text_lbl.max_width_chars = 50;
-                text_lbl.lines = 1;
+                text_lbl.single_line_mode = true;
                 text_box.append (text_lbl);
 
                 row_box.append (text_box);
@@ -185,16 +195,18 @@ namespace Dc {
                 outer.append (row_btn);
                 row_btn.hexpand = true;
 
-                var unpin_btn = new Gtk.Button.from_icon_name (
+                var close_btn = new Gtk.Button.from_icon_name (
                     "window-close-symbolic");
-                unpin_btn.add_css_class ("flat");
-                unpin_btn.add_css_class ("circular");
-                unpin_btn.valign = Gtk.Align.CENTER;
-                unpin_btn.tooltip_text = _("Unpin");
-                unpin_btn.clicked.connect (() => {
-                    toggle_pin.begin (captured_id);
+                close_btn.add_css_class ("flat");
+                close_btn.add_css_class ("circular");
+                close_btn.valign = Gtk.Align.CENTER;
+                close_btn.tooltip_text = _("Close");
+                close_btn.clicked.connect (() => {
+                    // Subscribers can dismiss a preview without unpinning for everyone.
+                    dismissed_ids.insert (captured_id, true);
+                    update_bar.begin ();
                 });
-                outer.append (unpin_btn);
+                outer.append (close_btn);
 
                 next_content.append (outer);
             }
@@ -211,6 +223,7 @@ namespace Dc {
                 if (id != msg_id) next_ids += id;
             }
             if (pinned) next_ids += msg_id;
+            else dismissed_ids.remove (msg_id);
             msg_ids = next_ids;
         }
 
@@ -256,6 +269,7 @@ namespace Dc {
         }
 
         private void sync_store_state () {
+            dismissed_ids.foreach_remove ((id, dismissed) => !is_pinned (id));
             for (uint i = 0; i < message_store.get_n_items (); i++) {
                 var msg = (Message) message_store.get_item (i);
                 update_message_state (msg.id, is_pinned (msg.id));
