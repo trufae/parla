@@ -1,7 +1,7 @@
 # Simplified Chinese translation of Parla.
 # Copyright (C) 2026 the Parla authors
 # This file is distributed under the same license as the parla package.
-# Kaiyu Linux <kaiyu@disroot.org>, 2026.
+# Kaiyu Linux(librekaiyu) <kaiyu@disroot.org>, 2026.
 #
 msgid ""
 msgstr ""
@@ -9,7 +9,7 @@ msgstr ""
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2026-11-12 12:01+0000\n"
 "PO-Revision-Date: 2026-11-15 06:00+0000\n"
-"Last-Translator: Kaiyu Linux <kaiyu@disroot.org>\n"
+"Last-Translator: Kaiyu Linux(librekaiyu) <kaiyu@disroot.org>\n"
 "Language-Team: Simplified Chinese\n"
 "Language: zh_CN\n"
 "MIME-Version: 1.0\n"
@@ -205,7 +205,7 @@ msgstr ""
 
 #: src/account_creation.vala:485 src/account_creation.vala:495
 msgid "Creating profile…"
-msgstr ""
+msgstr "创建账号中…"
 
 #: src/account_creation.vala:498
 msgid "Accepting invitation…"
@@ -285,7 +285,7 @@ msgstr ""
 #: src/audio_player.vala:634 src/compose_bar.vala:893
 #: src/conversation_media_bar.vala:224 src/gallery_dialog.vala:1158
 msgid "Pause"
-msgstr ""
+msgstr "暂停"
 
 #: src/audio_player.vala:634 src/conversation_media_bar.vala:54
 #: src/conversation_media_bar.vala:224 src/gallery_dialog.vala:1051
@@ -373,7 +373,7 @@ msgstr "备份密码"
 
 #: src/backup_dialog.vala:52
 msgid "Repeat password"
-msgstr ""
+msgstr "重复密码"
 
 #: src/backup_dialog.vala:61
 msgid "Create Backup"
@@ -395,7 +395,7 @@ msgstr ""
 #: src/profile_dialog.vala:58 src/profile_dialog.vala:1026
 #: src/settings_dialog.vala:1000 src/settings_dialog.vala:1044
 msgid "Close"
-msgstr ""
+msgstr "关闭"
 
 #: src/backup_dialog.vala:75
 msgid "Reading account files…"
@@ -403,7 +403,7 @@ msgstr ""
 
 #: src/backup_dialog.vala:75
 msgid "Encrypting backup…"
-msgstr ""
+msgstr "加密备份中…"
 
 #: src/backup_dialog.vala:75
 msgid "Restoring files…"
@@ -503,11 +503,11 @@ msgstr ""
 
 #: src/chat_actions.vala:27
 msgid "Delete Request…"
-msgstr ""
+msgstr "删除请求…"
 
 #: src/chat_actions.vala:28 src/chat_info_dialog.vala:589
 msgid "Block Contact…"
-msgstr "屏蔽用户…"
+msgstr "屏蔽联系人…"
 
 #: src/chat_actions.vala:29 src/chat_info_dialog.vala:427
 msgid "Block Chat…"
@@ -535,7 +535,7 @@ msgstr ""
 
 #: src/chat_info_dialog.vala:91 src/chat_row.vala:318
 msgid "Chat Details"
-msgstr ""
+msgstr "聊天详情"
 
 #: src/chat_info_dialog.vala:192
 msgid "Could not change disappearing messages: "
@@ -544,11 +544,11 @@ msgstr ""
 #: src/chat_info_dialog.vala:208 src/chat_info_dialog.vala:291
 #: src/search_results_view.vala:126
 msgid "Chat"
-msgstr ""
+msgstr "聊天"
 
 #: src/chat_info_dialog.vala:243
 msgid "View image"
-msgstr ""
+msgstr "查看图片"
 
 #: src/chat_info_dialog.vala:254
 msgid "Change Avatar"
@@ -556,23 +556,23 @@ msgstr ""
 
 #: src/chat_info_dialog.vala:271
 msgid "Edit contact name"
-msgstr ""
+msgstr "编辑联系人名称"
 
 #: src/chat_info_dialog.vala:277
 msgid "Edit channel name"
-msgstr ""
+msgstr "编辑频道名称"
 
 #: src/chat_info_dialog.vala:277
 msgid "Edit group name"
-msgstr ""
+msgstr "编辑群组名称"
 
 #: src/chat_info_dialog.vala:286 src/new_group_dialog.vala:19
 msgid "Channel"
-msgstr ""
+msgstr "频道"
 
 #: src/chat_info_dialog.vala:287 src/new_group_dialog.vala:19
 msgid "Group"
-msgstr ""
+msgstr "群组"
 
 #: src/chat_info_dialog.vala:288
 msgid "Mailing List"
@@ -629,7 +629,7 @@ msgstr "打开此对话"
 
 #: src/chat_info_dialog.vala:355 src/chat_row.vala:316
 msgid "View Media"
-msgstr "浏览媒体"
+msgstr "查看媒体"
 
 #: src/chat_info_dialog.vala:356
 msgid "Browse apps and media shared in this chat"
@@ -642,7 +642,7 @@ msgstr "成员 (%u)"
 
 #: src/chat_info_dialog.vala:375 src/message_row.vala:2216
 msgid "Contact"
-msgstr ""
+msgstr "联系人"
 
 #: src/chat_info_dialog.vala:383
 msgid "Add member"
@@ -667,7 +667,7 @@ msgstr ""
 #: src/chat_info_dialog.vala:435 src/chat_row.vala:321
 #: src/profile_dialog.vala:957
 msgid "Clear Chat…"
-msgstr "清理消息"
+msgstr "清空聊天…"
 
 #: src/chat_info_dialog.vala:436
 msgid "Delete messages for this profile and keep the chat"
@@ -707,23 +707,23 @@ msgstr ""
 
 #: src/chat_info_dialog.vala:484
 msgid "View contact details"
-msgstr ""
+msgstr "查看联系人详情"
 
 #: src/chat_info_dialog.vala:509
 msgid "Copy email address"
-msgstr ""
+msgstr "复制电子邮箱地址"
 
 #: src/chat_info_dialog.vala:518
 msgid "Remove from channel…"
-msgstr ""
+msgstr "从频道中删除…"
 
 #: src/chat_info_dialog.vala:518
 msgid "Remove from group…"
-msgstr ""
+msgstr "从群组中删除…"
 
 #: src/chat_info_dialog.vala:531
 msgid "View Contact Details"
-msgstr ""
+msgstr "查看联系人详情"
 
 #: src/chat_info_dialog.vala:537
 msgid "Copy Email Address"
@@ -731,19 +731,19 @@ msgstr "复制邮箱地址"
 
 #: src/chat_info_dialog.vala:546
 msgid "Remove from Channel…"
-msgstr ""
+msgstr "从频道中删除…"
 
 #: src/chat_info_dialog.vala:546
 msgid "Remove from Group…"
-msgstr ""
+msgstr "从群组中删除…"
 
 #: src/chat_info_dialog.vala:563 src/message_actions.vala:509
 msgid "Could not open contact details: "
-msgstr ""
+msgstr "无法打开联系人详情："
 
 #: src/chat_info_dialog.vala:586
 msgid "Unblock Contact"
-msgstr "取消屏蔽用户"
+msgstr "取消屏蔽联系人"
 
 #: src/chat_info_dialog.vala:587
 #, c-format
@@ -757,11 +757,11 @@ msgstr ""
 
 #: src/chat_info_dialog.vala:597
 msgid "this contact"
-msgstr "此用户"
+msgstr "此联系人"
 
 #: src/chat_info_dialog.vala:602
 msgid "Edit Contact Name"
-msgstr ""
+msgstr "编辑联系人名称"
 
 #: src/chat_info_dialog.vala:603
 msgid "Leave empty to use the contact's own name."
@@ -775,7 +775,7 @@ msgstr "保存"
 
 #: src/chat_info_dialog.vala:604
 msgid "Contact name"
-msgstr "用户名"
+msgstr "联系人名称"
 
 #: src/chat_info_dialog.vala:640
 msgid "Edit Channel Name"
@@ -903,11 +903,11 @@ msgstr ""
 
 #: src/chat_row.vala:134
 msgid "Request"
-msgstr ""
+msgstr "请求"
 
 #: src/chat_row.vala:207
 msgid ", contact request"
-msgstr ""
+msgstr "联系人请求"
 
 #: src/chat_row.vala:209
 #, c-format
@@ -997,11 +997,11 @@ msgstr ""
 
 #: src/chat_row.vala:404
 msgid "Marked unread"
-msgstr ""
+msgstr "标记为未读"
 
 #: src/chat_row.vala:404
 msgid "Marked read"
-msgstr ""
+msgstr "标记为已读"
 
 #: src/chat_row.vala:406
 msgid "Failed to update unread marker: "
@@ -1052,7 +1052,7 @@ msgstr "对话"
 
 #: src/classic_email_dialog.vala:51
 msgid "Use Classic Email Address"
-msgstr "使用传统的邮箱地址"
+msgstr "使用现有电子邮箱地址"
 
 #: src/classic_email_dialog.vala:61
 msgid "Edit Transport"
@@ -1091,7 +1091,7 @@ msgstr ""
 
 #: src/classic_email_dialog.vala:110
 msgid "Sign In"
-msgstr "登陆"
+msgstr "登录"
 
 #: src/classic_email_dialog.vala:131
 msgid "Inbox (IMAP)"
@@ -1102,15 +1102,15 @@ msgstr ""
 #: src/classic_email_dialog.vala:183 src/classic_email_dialog.vala:191
 #: src/settings_dialog.vala:1172
 msgid "Automatic"
-msgstr ""
+msgstr "自动"
 
 #: src/classic_email_dialog.vala:133 src/classic_email_dialog.vala:143
 msgid "Login name"
-msgstr "登陆名称"
+msgstr "登录名"
 
 #: src/classic_email_dialog.vala:137 src/classic_email_dialog.vala:151
 msgid "Port"
-msgstr ""
+msgstr "端口"
 
 #: src/classic_email_dialog.vala:139 src/classic_email_dialog.vala:153
 msgid "Security"
@@ -1228,7 +1228,7 @@ msgstr ""
 
 #: src/compose_bar.vala:399 src/compose_bar.vala:893
 msgid "Preview voice message"
-msgstr ""
+msgstr "预览语音消息"
 
 #: src/compose_bar.vala:410 src/compose_bar.vala:854
 msgid "Stop recording"
@@ -1295,7 +1295,7 @@ msgstr ""
 
 #: src/contact_picker_dialog.vala:43
 msgid "Select Contact"
-msgstr "选择用户"
+msgstr "选择联系人"
 
 #: src/contact_picker_dialog.vala:64
 msgid "Destination account"
@@ -1307,11 +1307,11 @@ msgstr ""
 
 #: src/contact_picker_dialog.vala:73
 msgid "Search or enter email…"
-msgstr "搜索或输入邮件地址"
+msgstr "搜索或输入电子邮箱地址"
 
 #: src/contact_picker_dialog.vala:107
 msgid "Contacts"
-msgstr "用户"
+msgstr "联系人"
 
 #: src/contact_picker_dialog.vala:165 src/window.vala:2753
 #, c-format
@@ -1751,7 +1751,7 @@ msgstr "链接已复制"
 
 #: src/gallery_dialog.vala:1310
 msgid "Save As…"
-msgstr "保存到…"
+msgstr "另存为…"
 
 #: src/gallery_dialog.vala:1323
 msgid "Select…"
@@ -1763,7 +1763,7 @@ msgstr "在对话中查看"
 
 #: src/gallery_dialog.vala:1356 src/message_actions.vala:111
 msgid "Add Sticker…"
-msgstr "添加 Sticker…"
+msgstr "添加贴纸…"
 
 #: src/gallery_dialog.vala:1364
 msgid "Delete Message…"
@@ -1845,7 +1845,7 @@ msgstr "选择消息"
 
 #: src/message_actions.vala:83
 msgid "Details..."
-msgstr ""
+msgstr "详情…"
 
 #: src/message_actions.vala:92
 msgid "Save file"
@@ -1881,7 +1881,7 @@ msgstr ""
 
 #: src/message_actions.vala:408
 msgid "Could not refresh message: "
-msgstr "无法刷新消息"
+msgstr "无法刷新消息："
 
 #: src/message_actions.vala:422
 msgid "Could not retry message: "
@@ -1889,7 +1889,7 @@ msgstr ""
 
 #: src/message_details_dialog.vala:35
 msgid "Message Details"
-msgstr ""
+msgstr "消息详情"
 
 #: src/message_details_dialog.vala:116
 msgid "Timer not started"
@@ -1909,7 +1909,7 @@ msgstr ""
 
 #: src/message_details_dialog.vala:139
 msgid "Show contact details"
-msgstr ""
+msgstr "显示联系人详情"
 
 #: src/message_details_dialog.vala:164
 msgid "Outgoing message"
@@ -2058,7 +2058,7 @@ msgstr[0] ""
 #: src/message_row.vala:2221
 #, c-format
 msgid "Contact %d"
-msgstr "用户 %d"
+msgstr "联系人 %d"
 
 #: src/message_details_dialog.vala:512 src/message_row.vala:2222
 msgid "Unknown user"
@@ -2100,7 +2100,7 @@ msgstr ""
 #: src/message_details_dialog.vala:623
 #, c-format
 msgid "State %d"
-msgstr "状态： %d"
+msgstr "状态 %d"
 
 #: src/message_details_dialog.vala:628
 msgid "Downloaded"
@@ -2289,7 +2289,7 @@ msgstr ""
 
 #: src/message_row.vala:2265
 msgid "empty message"
-msgstr ""
+msgstr "空消息"
 
 #: src/message_row.vala:2268
 msgid ", reactions: "
@@ -2302,7 +2302,7 @@ msgstr ""
 
 #: src/message_row.vala:2277
 msgid "sticker"
-msgstr ""
+msgstr "贴纸"
 
 #: src/message_row.vala:2279
 msgid "photo"
@@ -2393,17 +2393,17 @@ msgstr ""
 
 #: src/models.vala:196
 msgid "Delete Chat"
-msgstr "删除聊天？"
+msgstr "删除聊天"
 
 #: src/models.vala:202
 #, c-format
 msgid "Delete 1 message in “%s”?"
-msgstr "删除 1 条消息 in ‘%s’？"
+msgstr "删除“%s”中的 1 条消息？"
 
 #: src/models.vala:203
 #, c-format
 msgid "Delete %d messages in “%s”?"
-msgstr "删除 %d 条消息 in ‘%s’？"
+msgstr "删除“%2$s”中的 %1$d 条消息？"
 
 #: src/models.vala:205
 msgid ""
@@ -2442,7 +2442,7 @@ msgstr ""
 
 #: src/models.vala:238
 msgid "Leave Channel"
-msgstr ""
+msgstr "退出频道"
 
 #: src/models.vala:238
 msgid "Leave Group"
@@ -2467,11 +2467,11 @@ msgstr ""
 
 #: src/models.vala:245
 msgid "Leave Channel?"
-msgstr "退出频道"
+msgstr "退出频道？"
 
 #: src/models.vala:245
 msgid "Leave Group?"
-msgstr "退出群组?"
+msgstr "退出群组？"
 
 #: src/models.vala:248
 msgid "Leave and Delete"
@@ -2479,7 +2479,7 @@ msgstr "退出并删除"
 
 #: src/models.vala:263
 msgid "Block Contact?"
-msgstr "屏蔽用户？"
+msgstr "屏蔽联系人？"
 
 #: src/models.vala:263
 msgid "Block Chat?"
@@ -2510,7 +2510,7 @@ msgstr ""
 
 #: src/models.vala:270
 msgid "Block Contact"
-msgstr "屏蔽用户"
+msgstr "屏蔽联系人"
 
 #: src/models.vala:270
 msgid "Block Chat"
@@ -2557,16 +2557,16 @@ msgstr "我的群组"
 msgid ""
 "Only you can write in a channel. Members read messages without seeing each "
 "other."
-msgstr ""
+msgstr "只有你可以在频道内发言。成员们可以阅读消息，但彼此无法看到对方。"
 
 #: src/new_group_dialog.vala:84
 msgid "Members"
-msgstr ""
+msgstr "成员"
 
 #. Add member button — opens contact picker
 #: src/new_group_dialog.vala:92
 msgid "Add Member…"
-msgstr ""
+msgstr "添加成员…"
 
 #: src/new_group_dialog.vala:198
 msgid "Select Channel Avatar"
@@ -2623,7 +2623,7 @@ msgstr ""
 
 #: src/profile_dialog.vala:96
 msgid "Profile"
-msgstr ""
+msgstr "账号"
 
 #: src/profile_dialog.vala:108 src/profile_dialog.vala:1075
 msgid "Invite Code"
@@ -2635,7 +2635,7 @@ msgstr "显示联系人邀请 QR 码"
 
 #: src/profile_dialog.vala:109
 msgid "Share your contact"
-msgstr "分享你的账号"
+msgstr "分享你的联系人"
 
 #: src/profile_dialog.vala:118 src/relay_picker.vala:241
 msgid "Relays"
@@ -2647,11 +2647,11 @@ msgstr ""
 
 #: src/profile_dialog.vala:119
 msgid "Manage the servers used by this profile"
-msgstr ""
+msgstr "管理此账号使用的服务器"
 
 #: src/profile_dialog.vala:122
 msgid "Add Second Device…"
-msgstr "添加第二台设备"
+msgstr "添加第二台设备…"
 
 #: src/profile_dialog.vala:123
 msgid "Show a setup QR code for another device"
@@ -2663,7 +2663,7 @@ msgstr ""
 
 #: src/profile_dialog.vala:128 src/profile_dialog.vala:518
 msgid "Blocked Contacts"
-msgstr "屏蔽用户"
+msgstr "屏蔽联系人"
 
 #: src/profile_dialog.vala:128
 msgid "Unblock contacts, channels and mailing lists"
@@ -2671,11 +2671,11 @@ msgstr ""
 
 #: src/profile_dialog.vala:129
 msgid "Manage blocked contacts for this profile"
-msgstr ""
+msgstr "管理此账号的屏蔽联系人"
 
 #: src/profile_dialog.vala:135
 msgid "Remove Profile…"
-msgstr ""
+msgstr "删除账号…"
 
 #: src/profile_dialog.vala:136
 msgid "Remove this profile from this device"
@@ -2687,7 +2687,7 @@ msgstr ""
 
 #: src/profile_dialog.vala:183
 msgid "Change Profile Picture…"
-msgstr ""
+msgstr "更改个人资料头像"
 
 #: src/profile_dialog.vala:206
 msgid "Name"
@@ -2759,11 +2759,11 @@ msgstr ""
 
 #: src/profile_dialog.vala:385
 msgid "Storage and Connection"
-msgstr ""
+msgstr "存储和连接"
 
 #: src/profile_dialog.vala:392
 msgid "Checking connection…"
-msgstr ""
+msgstr "检查连接中…"
 
 #: src/profile_dialog.vala:401
 msgid "Loading server quota…"
@@ -2775,7 +2775,7 @@ msgstr ""
 
 #: src/profile_dialog.vala:415 src/profile_dialog.vala:660
 msgid "Storage Details"
-msgstr ""
+msgstr "存储详情"
 
 #: src/profile_dialog.vala:416
 msgid "Show Storage by Chat"
@@ -2808,7 +2808,7 @@ msgstr "连接状态未知"
 
 #: src/profile_dialog.vala:528
 msgid "No blocked contacts"
-msgstr "未屏蔽用户"
+msgstr "未屏蔽联系人"
 
 #: src/profile_dialog.vala:539
 msgid "Unblock"
@@ -2816,7 +2816,7 @@ msgstr "解除屏蔽"
 
 #: src/profile_dialog.vala:568
 msgid "Could not load blocked contacts: "
-msgstr "无法加载屏蔽用户"
+msgstr "无法加载屏蔽联系人"
 
 #: src/profile_dialog.vala:578
 msgid "this profile"
@@ -2840,7 +2840,7 @@ msgstr ""
 
 #: src/profile_dialog.vala:583
 msgid "Remove Profile"
-msgstr ""
+msgstr "删除账号"
 
 #: src/profile_dialog.vala:602
 msgid "Select Avatar"
@@ -2848,7 +2848,7 @@ msgstr ""
 
 #: src/profile_dialog.vala:668
 msgid "Rescan storage usage"
-msgstr ""
+msgstr "重新扫描存储占用"
 
 #: src/profile_dialog.vala:675
 msgid "Server Quota"
@@ -2865,7 +2865,7 @@ msgstr ""
 #: src/profile_dialog.vala:692 src/profile_dialog.vala:731
 #: src/profile_dialog.vala:733
 msgid "Scanning local files…"
-msgstr ""
+msgstr "扫描本地文件中…"
 
 #: src/profile_dialog.vala:701
 msgid "Chats by Storage Size"
@@ -2873,11 +2873,11 @@ msgstr ""
 
 #: src/profile_dialog.vala:703
 msgid "Preparing scan…"
-msgstr ""
+msgstr "准备扫描中…"
 
 #: src/profile_dialog.vala:730
 msgid "Scanning chats…"
-msgstr ""
+msgstr "扫描聊天中…"
 
 #: src/profile_dialog.vala:751
 msgid "Server quota unavailable: "
@@ -2909,7 +2909,7 @@ msgstr[0] ""
 
 #: src/profile_dialog.vala:779
 msgid "Storage scan failed: "
-msgstr ""
+msgstr "存储扫描失败："
 
 #: src/profile_dialog.vala:780 src/profile_dialog.vala:781
 msgid "Local storage scan incomplete"
@@ -2938,13 +2938,13 @@ msgstr ""
 #, c-format
 msgid "%d file"
 msgid_plural "%d files"
-msgstr[0] ""
+msgstr[0] "%d 文件"
 
 #: src/profile_dialog.vala:969
 #, c-format
 msgid "%d message"
 msgid_plural "%d messages"
-msgstr[0] ""
+msgstr[0] "%d 消息"
 
 #: src/profile_dialog.vala:991
 #, c-format
@@ -3011,7 +3011,7 @@ msgstr ""
 
 #: src/profile_dialog.vala:1183
 msgid "Invite code creation failed: "
-msgstr ""
+msgstr "邀请码创建失败："
 
 #: src/profile_dialog.vala:1200
 msgid "Add Second Device"
@@ -3019,7 +3019,7 @@ msgstr "添加第二台设备"
 
 #: src/profile_dialog.vala:1205
 msgid "Preparing account…"
-msgstr ""
+msgstr "准备账号中…"
 
 #: src/profile_dialog.vala:1207
 msgid "Copy Text"
@@ -3035,7 +3035,7 @@ msgstr ""
 
 #: src/profile_dialog.vala:1246
 msgid "Second-device setup failed: "
-msgstr ""
+msgstr "第二台设备安装失败："
 
 #: src/quick_switch_dialog.vala:13
 msgid "Switch Chat"
@@ -3047,7 +3047,7 @@ msgstr ""
 
 #: src/relay_picker.vala:15
 msgid "Default"
-msgstr ""
+msgstr "默认"
 
 #: src/relay_picker.vala:16
 msgid "German"
@@ -3143,7 +3143,7 @@ msgstr ""
 
 #: src/relay_picker.vala:76
 msgid "Automatic (recommended)"
-msgstr ""
+msgstr "自动（推荐）"
 
 #: src/relay_picker.vala:90
 msgid "Custom server name"
@@ -3159,7 +3159,7 @@ msgstr ""
 
 #: src/relay_picker.vala:119
 msgid "Scanning…"
-msgstr ""
+msgstr "扫描中…"
 
 #: src/relay_picker.vala:127
 msgid "Failed to scan contacts: "
@@ -3179,7 +3179,7 @@ msgstr ""
 #, c-format
 msgid "%d contact"
 msgid_plural "%d contacts"
-msgstr[0] ""
+msgstr[0] "%d 联系人"
 
 #: src/relay_picker.vala:257
 msgid ""
@@ -3388,11 +3388,11 @@ msgstr ""
 
 #: src/search_results_view.vala:52
 msgid "Search failed: "
-msgstr "搜索失败"
+msgstr "搜索失败："
 
 #: src/search_results_view.vala:54
 msgid "No messages found"
-msgstr "消息未找到"
+msgstr "未找到消息"
 
 #: src/search_results_view.vala:55
 msgid "1,000+ results · newest matches shown"
@@ -3475,27 +3475,27 @@ msgstr "系统"
 
 #: src/settings_dialog.vala:850
 msgid "Light"
-msgstr ""
+msgstr "浅色"
 
 #: src/settings_dialog.vala:850
 msgid "Dark"
-msgstr ""
+msgstr "深色"
 
 #: src/settings_dialog.vala:852
 msgid "Use the system style or choose light or dark"
-msgstr ""
+msgstr "使用系统样式或选择浅色或深色"
 
 #: src/settings_dialog.vala:860
 msgid "Adaptive"
-msgstr ""
+msgstr "自适应"
 
 #: src/settings_dialog.vala:863
 msgid "Code highlighting"
-msgstr ""
+msgstr "代码高亮"
 
 #: src/settings_dialog.vala:863
 msgid "Color scheme for code blocks in messages"
-msgstr ""
+msgstr "消息中代码块的配色方案"
 
 #: src/settings_dialog.vala:868
 msgid "Bubbles"
@@ -3511,35 +3511,35 @@ msgstr ""
 
 #: src/settings_dialog.vala:870
 msgid "Message layout"
-msgstr ""
+msgstr "消息布局"
 
 #: src/settings_dialog.vala:870
 msgid "Choose how messages are arranged"
-msgstr ""
+msgstr "选择消息的排列方式"
 
 #: src/settings_dialog.vala:876
 msgid "Other People"
-msgstr ""
+msgstr "其他人"
 
 #: src/settings_dialog.vala:876
 msgid "Everyone"
-msgstr ""
+msgstr "任何人"
 
 #: src/settings_dialog.vala:879
 msgid "Profile pictures"
-msgstr ""
+msgstr "个人资料头像"
 
 #: src/settings_dialog.vala:879
 msgid "Choose whose picture appears beside message bubbles"
-msgstr ""
+msgstr "选择在消息气泡旁显示谁的头像"
 
 #: src/settings_dialog.vala:887
 msgid "Show profile pictures in direct chats"
-msgstr ""
+msgstr "在私聊中显示头像"
 
 #: src/settings_dialog.vala:888
 msgid "Apply the profile picture setting to direct chats too"
-msgstr ""
+msgstr "也将头像设置应用于直接聊天"
 
 #: src/settings_dialog.vala:901
 msgid "Message font"
@@ -3615,7 +3615,7 @@ msgstr "重新启动以更改语言？"
 
 #: src/settings_dialog.vala:1003
 msgid "Parla needs to restart to apply the new language."
-msgstr ""
+msgstr "Parla 需要重启以应用新语言"
 
 #: src/settings_dialog.vala:1005 src/settings_dialog.vala:1047
 msgid "Restart"
@@ -3623,7 +3623,7 @@ msgstr "重启"
 
 #: src/settings_dialog.vala:1023 src/settings_dialog.vala:1031
 msgid "Accessibility"
-msgstr ""
+msgstr "无障碍"
 
 #: src/settings_dialog.vala:1024
 msgid "Long press to right-click"
@@ -3637,7 +3637,7 @@ msgstr ""
 
 #: src/settings_dialog.vala:1032
 msgid "Screen Reader Support"
-msgstr ""
+msgstr "屏幕朗读支持"
 
 #: src/settings_dialog.vala:1034
 msgid "Accessibility support is disabled in this build"
@@ -3663,19 +3663,19 @@ msgstr ""
 
 #: src/settings_dialog.vala:1062
 msgid "React with ❤️"
-msgstr ""
+msgstr "回应 ❤️"
 
 #: src/settings_dialog.vala:1062
 msgid "React with 👍"
-msgstr ""
+msgstr "回应 👍"
 
 #: src/settings_dialog.vala:1063
 msgid "Show Contact Details"
-msgstr ""
+msgstr "显示联系人详情"
 
 #: src/settings_dialog.vala:1063
 msgid "Show Message Menu"
-msgstr ""
+msgstr "显示消息菜单"
 
 #: src/settings_dialog.vala:1063
 msgid "Do Nothing"
@@ -3683,7 +3683,7 @@ msgstr ""
 
 #: src/settings_dialog.vala:1069
 msgid "Double-click action"
-msgstr ""
+msgstr "双击操作"
 
 #: src/settings_dialog.vala:1070
 msgid "Action when a message is double-clicked or Enter is pressed on its row"
@@ -3691,7 +3691,7 @@ msgstr ""
 
 #: src/settings_dialog.vala:1077
 msgid "Format Text"
-msgstr ""
+msgstr "文本格式"
 
 #: src/settings_dialog.vala:1077
 msgid "Hide Formatting Marks"
@@ -3699,7 +3699,7 @@ msgstr ""
 
 #: src/settings_dialog.vala:1078
 msgid "Show Original Text"
-msgstr ""
+msgstr "显示原文"
 
 #: src/settings_dialog.vala:1081
 msgid "Message formatting"
@@ -3707,7 +3707,7 @@ msgstr "消息格式"
 
 #: src/settings_dialog.vala:1081
 msgid "Choose how Markdown formatting is displayed"
-msgstr ""
+msgstr "选择 Markdown 格式的显示方式"
 
 #: src/settings_dialog.vala:1088
 msgid "Send with Shift+Enter"
@@ -3715,15 +3715,15 @@ msgstr "按 Shift+Enter 发送"
 
 #: src/settings_dialog.vala:1089
 msgid "Enter inserts a new line; Shift+Enter sends the message"
-msgstr ""
+msgstr "Enter 插入新行；Shift+Enter 发送消息"
 
 #: src/settings_dialog.vala:1094
 msgid "Use External Audio Tools"
-msgstr ""
+msgstr "使用外部音频工具"
 
 #: src/settings_dialog.vala:1095
 msgid "Use installed audio programs for voice playback and recording"
-msgstr ""
+msgstr "使用已安装的音频程序进行语音播放和录音"
 
 #: src/settings_dialog.vala:1104
 msgid "Keep Running in Background"
@@ -3743,7 +3743,7 @@ msgstr ""
 
 #: src/settings_dialog.vala:1115
 msgid "Animate Stickers"
-msgstr ""
+msgstr "动画贴纸"
 
 #: src/settings_dialog.vala:1116
 msgid "Play stickers automatically; click a sticker to pause or resume"
@@ -3777,7 +3777,7 @@ msgstr ""
 
 #: src/settings_dialog.vala:1142
 msgid "Install Whisper to transcribe voice messages on this device"
-msgstr ""
+msgstr "安装 Whisper，以便在此设备上转录语音消息"
 
 #: src/settings_dialog.vala:1144
 msgid "Not found"
@@ -3805,7 +3805,7 @@ msgstr ""
 
 #: src/settings_dialog.vala:1170
 msgid "Chatmail Core"
-msgstr ""
+msgstr "Chatmail 核心"
 
 #: src/settings_dialog.vala:1172
 msgid "Custom"
@@ -3861,7 +3861,7 @@ msgstr "网络"
 
 #: src/settings_dialog.vala:1234
 msgid "Use Proxy"
-msgstr "使用 Proxy"
+msgstr "使用代理"
 
 #: src/settings_dialog.vala:1235
 msgid "Route this profile through the configured proxy"
@@ -3869,7 +3869,7 @@ msgstr ""
 
 #: src/settings_dialog.vala:1243
 msgid "Proxy URL"
-msgstr "Proxy URL"
+msgstr "代理 URL"
 
 #: src/settings_dialog.vala:1244 src/settings_dialog.vala:1658
 msgid "socks5://, http://, https://, or ss://"
@@ -3941,7 +3941,7 @@ msgstr ""
 
 #: src/settings_dialog.vala:1320
 msgid "Allow apps to compile and run WebAssembly"
-msgstr ""
+msgstr "允许 Apps 编译并运行 WebAssembly"
 
 #: src/settings_dialog.vala:1325
 msgid "WebGL"
@@ -3957,15 +3957,15 @@ msgstr ""
 
 #: src/settings_dialog.vala:1335
 msgid "Hardware Acceleration"
-msgstr ""
+msgstr "硬件加速"
 
 #: src/settings_dialog.vala:1336
 msgid "Use the graphics processor to display apps"
-msgstr ""
+msgstr "使用图形处理器来显示应用程序"
 
 #: src/settings_dialog.vala:1343
 msgid "Developer Tools"
-msgstr ""
+msgstr "开发者工具"
 
 #: src/settings_dialog.vala:1344
 msgid "Open the browser inspector and JavaScript console when apps start"
@@ -4082,7 +4082,7 @@ msgstr ""
 
 #: src/settings_dialog.vala:1609
 msgid "System default"
-msgstr ""
+msgstr "系统默认"
 
 #: src/settings_dialog.vala:1656 src/settings_dialog.vala:1748
 msgid "Enabled for current profile"
@@ -4197,15 +4197,15 @@ msgstr ""
 
 #: src/settings_dialog.vala:1906
 msgid "Install"
-msgstr ""
+msgstr "安装"
 
 #: src/settings_dialog.vala:1906 src/window.vala:1584
 msgid "Update"
-msgstr ""
+msgstr "更新"
 
 #: src/settings_dialog.vala:1911
 msgid "Update check failed: "
-msgstr ""
+msgstr "检查更新失败："
 
 #: src/settings_dialog.vala:1935
 msgid "Chatmail Core source saved"
@@ -4253,7 +4253,7 @@ msgstr ""
 
 #: src/settings_dialog.vala:2041 src/window.vala:1496 src/window.vala:1534
 msgid "Download failed: "
-msgstr ""
+msgstr "下载失败："
 
 #: src/settings_dialog.vala:2054 src/window.vala:1567
 msgid "Unable to open download page: "
@@ -4268,11 +4268,11 @@ msgstr ""
 
 #: src/settings_dialog.vala:2061
 msgid "Reset and Close"
-msgstr ""
+msgstr "重置并关闭"
 
 #: src/sticker_manager_dialog.vala:44
 msgid "Create a new sticker pack"
-msgstr ""
+msgstr "创建一个新的贴纸包"
 
 #: src/sticker_manager_dialog.vala:62
 msgid "Rename the selected pack"
@@ -4292,11 +4292,11 @@ msgstr ""
 
 #: src/sticker_manager_dialog.vala:115
 msgid "Pack name"
-msgstr ""
+msgstr "贴纸包名称"
 
 #: src/sticker_manager_dialog.vala:125
 msgid "Add Sticker"
-msgstr ""
+msgstr "添加贴纸"
 
 #: src/sticker_manager_dialog.vala:126
 msgid "Choose the sticker pack to add this sticker to."
@@ -4337,6 +4337,8 @@ msgid ""
 "No sticker packs yet.\n"
 "Press + to create one."
 msgstr ""
+"暂无贴纸包\n"
+"点击 + 创建一个"
 
 #: src/sticker_manager_dialog.vala:234
 msgid ""
@@ -4714,7 +4716,7 @@ msgstr ""
 
 #: src/window.vala:301
 msgid "Set Up Profile"
-msgstr "设置用户"
+msgstr "设置个人资料"
 
 #: src/window.vala:513
 msgid "Wait for the backup operation to finish, or cancel it first"
@@ -4740,7 +4742,7 @@ msgstr "搜索聊天或消息"
 #: src/window.vala:967
 #, c-format
 msgid "Apps and media (%s)"
-msgstr "App 与媒体 (%s)"
+msgstr "Apps 与媒体 (%s)"
 
 #: src/window.vala:973
 #, c-format
@@ -4749,7 +4751,7 @@ msgstr ""
 
 #: src/window.vala:992 src/window.vala:1128
 msgid "Select a chat to start messaging"
-msgstr ""
+msgstr "选择一个聊天以开始即时通讯"
 
 #: src/window.vala:1052
 msgid "Open Parla on GitHub"
@@ -4757,7 +4759,7 @@ msgstr ""
 
 #: src/window.vala:1099
 msgid "Profiles"
-msgstr ""
+msgstr "账号"
 
 #: src/window.vala:1136 src/window.vala:1411
 msgid "RPC server not found"
@@ -4901,7 +4903,7 @@ msgstr ""
 #: src/window.vala:1555
 #, c-format
 msgid "Parla %s available"
-msgstr ""
+msgstr "Parla %s 版本可用"
 
 #: src/window.vala:1582
 #, c-format
@@ -4930,7 +4932,7 @@ msgstr "启动 Delta Chat 引擎中…"
 
 #: src/window.vala:1625
 msgid "Reconnecting…"
-msgstr ""
+msgstr "重新连接中…"
 
 #: src/window.vala:1637 src/window.vala:3580
 msgid "Select a chat to start messaging."
@@ -5113,7 +5115,7 @@ msgstr "创建新账号"
 
 #: src/window.vala:2824
 msgid "Pick a chatmail relay and create a new account"
-msgstr ""
+msgstr "选择一个 Chatmail 中继并创建一个新账号"
 
 #: src/window.vala:2825
 msgid "Import from another device"
@@ -5121,27 +5123,27 @@ msgstr "从其他设备导入"
 
 #: src/window.vivala:2825
 msgid "Link to an existing profile on the same network"
-msgstr ""
+msgstr "链接到同一网络上的现有账号"
 
 #: src/window.vala:2826
 msgid "Use classic email address"
-msgstr "使用传统邮箱地址"
+msgstr "使用现有电子邮箱地址"
 
 #: src/window.vala:2826
 msgid "Sign in with an existing email account"
-msgstr ""
+msgstr "使用现有电子邮箱账号登录"
 
 #: src/window.vala:2827
 msgid "Use invitation code"
-msgstr ""
+msgstr "使用邀请码"
 
 #: src/window.vala:2827
 msgid "Join via a dcaccount: link or QR code"
-msgstr ""
+msgstr "通过 dcaccount 加入：链接或 QR 码"
 
 #: src/window.vala:2847
 msgid "Choose how you want to add a profile."
-msgstr ""
+msgstr "选择您想要如何添加账号"
 
 #: src/window.vala:2924 src/window.vala:2946
 msgid "Profile created"
@@ -5189,7 +5191,7 @@ msgstr "使用邀请链接"
 
 #: src/window.vala:3329 src/window.vala:4130
 msgid "Shortcuts"
-msgstr ""
+msgstr "快捷键"
 
 #: src/window.vala:3384
 msgid "Invite link will open once a profile is ready"
@@ -5197,7 +5199,7 @@ msgstr ""
 
 #: src/window.vala:3406
 msgid "Paste a Delta Chat invite link."
-msgstr ""
+msgstr "粘贴一个 Delta Chat 的邀请链接"
 
 #: src/window.vala:3414
 msgid "https://i.delta.chat/#..."
