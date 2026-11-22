@@ -124,8 +124,10 @@ namespace Dc {
         /* Floating connection-status banner (revealed when RPC is down) */
         private Gtk.Revealer connection_banner;
         private Gtk.Label connection_banner_label;
+        private bool connection_banner_dismissed = false;
         private Gtk.Button parla_update_button;
         private Gtk.Button disk_space_button;
+        private bool disk_space_dismissed = false;
         private uint disk_space_revision = 0;
 
         /* Profile avatar */
@@ -404,6 +406,7 @@ namespace Dc {
                 queue_font_update ();
             });
             settings.disk_space_settings_changed.connect (() => {
+                disk_space_dismissed = false;
                 refresh_disk_space_warning.begin ();
             });
             close_request.connect (on_close_request);
@@ -1075,7 +1078,10 @@ namespace Dc {
                 if (!can_show_account_modal ()) return;
                 present_modal (new StorageDetailsDialog (rpc, rpc.account_id, settings));
             });
-            status_banners.append (disk_space_button);
+            Gtk.Button dismiss_disk_space;
+            status_banners.append (build_status_pill (disk_space_button,
+                "low-disk-space", out dismiss_disk_space));
+            dismiss_disk_space.clicked.connect (() => { disk_space_dismissed = true; });
             parla_update_button = new Gtk.Button ();
             parla_update_button.add_css_class ("pill");
             parla_update_button.add_css_class ("suggested-action");
@@ -1085,7 +1091,9 @@ namespace Dc {
             parla_update_button.clicked.connect (() => {
                 open_parla_download_page.begin ();
             });
-            status_banners.append (parla_update_button);
+            Gtk.Button dismiss_update;
+            status_banners.append (build_status_pill (parla_update_button,
+                "suggested-action", out dismiss_update));
             image_overlay.add_overlay (status_banners);
 
             this.content = image_overlay;
@@ -1113,7 +1121,7 @@ namespace Dc {
             if (client != rpc || acct_id != rpc.account_id) return;
             // Invalidate a startup query if a newer dialog refresh has arrived.
             disk_space_revision++;
-            disk_space_button.visible = settings.check_disk_space
+            disk_space_button.visible = !disk_space_dismissed && settings.check_disk_space
                 && space.is_low (settings.low_disk_space_gb);
             if (disk_space_button.visible) {
                 disk_space_button.label = _("Low disk space · %s free").printf (
@@ -4266,6 +4274,22 @@ namespace Dc {
             (modal_toasts ?? toast_overlay).add_toast (toast);
         }
 
+        private Gtk.Box build_status_pill (Gtk.Button action, string css_class,
+                out Gtk.Button dismiss) {
+            var box = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 0);
+            box.add_css_class ("linked");
+            box.halign = Gtk.Align.CENTER;
+            action.bind_property ("visible", box, "visible", BindingFlags.SYNC_CREATE);
+            box.append (action);
+            dismiss = new Gtk.Button.from_icon_name ("window-close-symbolic");
+            dismiss.add_css_class ("pill");
+            dismiss.add_css_class (css_class);
+            dismiss.tooltip_text = _("Dismiss");
+            dismiss.clicked.connect (() => { action.visible = false; });
+            box.append (dismiss);
+            return box;
+        }
+
         private Gtk.Revealer build_connection_banner () {
             var box = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 8);
             box.add_css_class ("connection-banner");
@@ -4278,6 +4302,14 @@ namespace Dc {
             connection_banner_label.add_css_class ("connection-banner-label");
             box.append (connection_banner_label);
 
+            var dismiss = flat_icon_button ("window-close-symbolic", _("Dismiss"));
+            dismiss.add_css_class ("circular");
+            dismiss.clicked.connect (() => {
+                connection_banner_dismissed = true;
+                connection_banner.reveal_child = false;
+            });
+            box.append (dismiss);
+
             connection_banner = new Gtk.Revealer ();
             connection_banner.child = box;
             connection_banner.reveal_child = false;
@@ -4285,17 +4317,17 @@ namespace Dc {
             connection_banner.transition_duration = 200;
             connection_banner.halign = Gtk.Align.CENTER;
             connection_banner.valign = Gtk.Align.START;
-            connection_banner.can_target = false;   /* clicks pass through */
             return connection_banner;
         }
 
         public void set_connection_status (bool connected, string? reason = null) {
             if (connection_banner == null) return;
             if (connected) {
+                connection_banner_dismissed = false;
                 connection_banner.reveal_child = false;
             } else {
                 connection_banner_label.label = reason ?? _("Not connected");
-                connection_banner.reveal_child = true;
+                connection_banner.reveal_child = !connection_banner_dismissed;
             }
         }
 
