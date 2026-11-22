@@ -466,6 +466,8 @@ public int main (string[] args) {
         return run_sidebar_scroll_ui_test ();
     if (args.length > 1 && args[1] == "--ephemeral-ui")
         return run_ephemeral_ui_test ();
+    if (args.length > 1 && args[1] == "--pinned-ui")
+        return run_pinned_messages_ui_test (args[0]);
     if (args.length > 1 && args[1] == "--chat-navigation-ui")
         return run_chat_navigation_ui_test ();
     if (args.length > 1 && args[1] == "--chat-navigation-window-ui")
